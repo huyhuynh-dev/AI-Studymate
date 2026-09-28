@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 /* ──────────────────────────── SVG Icon Components ──────────────────────────── */
 
@@ -339,18 +340,18 @@ export default function LandingPage() {
 
           {/* CTA Buttons */}
           <div className="flex items-center gap-3">
-            <a
-              href="#"
+            <Link
+              href="/auth/login"
               className="hidden rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 sm:inline-flex"
             >
               Đăng nhập
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              href="/auth/register"
               className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700"
             >
               Đăng ký miễn phí
-            </a>
+            </Link>
           </div>
         </div>
       </header>
