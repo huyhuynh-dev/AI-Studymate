@@ -356,10 +356,10 @@ export default function LandingPage() {
       </header>
 
       {/* ═══════════════════ Hero Section ═══════════════════ */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-indigo-50/70 via-white to-white">
+      <section className="relative overflow-hidden bg-linear-to-b from-indigo-50/70 via-white to-white">
         {/* Decorative blobs */}
-        <div className="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-indigo-200/30 blur-3xl" />
-        <div className="pointer-events-none absolute top-20 right-0 h-[400px] w-[400px] rounded-full bg-purple-200/20 blur-3xl" />
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-150 w-150 -translate-x-1/2 rounded-full bg-indigo-200/30 blur-3xl" />
+        <div className="pointer-events-none absolute top-20 right-0 h-100 w-100 rounded-full bg-purple-200/20 blur-3xl" />
 
         <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-20 sm:px-6 sm:pt-28 lg:px-8 lg:pt-32">
           <div className="mx-auto max-w-3xl text-center">
@@ -372,7 +372,7 @@ export default function LandingPage() {
             {/* Headline */}
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
               Tối ưu quá trình học tập{" "}
-              <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 với sức mạnh AI
               </span>
             </h1>
@@ -406,7 +406,7 @@ export default function LandingPage() {
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div
                     key={i}
-                    className="h-8 w-8 rounded-full border-2 border-white bg-gradient-to-br from-indigo-400 to-purple-400"
+                    className="h-8 w-8 rounded-full border-2 border-white bg-linear-to-br from-indigo-400 to-purple-400"
                   />
                 ))}
               </div>
@@ -596,7 +596,7 @@ export default function LandingPage() {
               <div key={step.step} className="relative text-center">
                 {/* Connector line */}
                 {index < steps.length - 1 && (
-                  <div className="absolute left-1/2 top-10 hidden h-0.5 w-full bg-gradient-to-r from-indigo-300 to-indigo-100 lg:block" />
+                  <div className="absolute left-1/2 top-10 hidden h-0.5 w-full bg-linear-to-r from-indigo-300 to-indigo-100 lg:block" />
                 )}
                 <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-50">
                   <span className="text-2xl font-extrabold text-indigo-600">{step.step}</span>
@@ -702,7 +702,7 @@ export default function LandingPage() {
                   &ldquo;{testimonial.content}&rdquo;
                 </p>
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-sm font-bold text-white">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-linear-to-br from-indigo-400 to-purple-500 text-sm font-bold text-white">
                     {testimonial.name.charAt(0)}
                   </div>
                   <div>
@@ -719,7 +719,7 @@ export default function LandingPage() {
       {/* ═══════════════════ CTA Banner ═══════════════════ */}
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 px-8 py-16 text-center sm:px-16 sm:py-20">
+          <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-indigo-600 via-indigo-700 to-purple-700 px-8 py-16 text-center sm:px-16 sm:py-20">
             {/* Decorative elements */}
             <div className="pointer-events-none absolute -left-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-20 -right-20 h-80 w-80 rounded-full bg-purple-500/20 blur-3xl" />
@@ -772,14 +772,13 @@ export default function LandingPage() {
             {pricingPlans.map((plan) => (
               <div
                 key={plan.name}
-                className={`relative rounded-2xl border p-8 transition-shadow ${
-                  plan.highlighted
-                    ? "border-indigo-600 bg-white shadow-xl shadow-indigo-100/50 ring-1 ring-indigo-600"
-                    : "border-gray-200 bg-white hover:shadow-lg"
-                }`}
+                className={`relative rounded-2xl border p-8 transition-shadow ${plan.highlighted
+                  ? "border-indigo-600 bg-white shadow-xl shadow-indigo-100/50 ring-1 ring-indigo-600"
+                  : "border-gray-200 bg-white hover:shadow-lg"
+                  }`}
               >
                 {plan.highlighted && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-1 text-xs font-semibold text-white">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-linear-to-r from-indigo-600 to-purple-600 px-4 py-1 text-xs font-semibold text-white">
                     Phổ biến nhất
                   </div>
                 )}
@@ -802,9 +801,8 @@ export default function LandingPage() {
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-3">
                       <CheckIcon
-                        className={`w-5 h-5 shrink-0 ${
-                          plan.highlighted ? "text-indigo-600" : "text-green-500"
-                        }`}
+                        className={`w-5 h-5 shrink-0 ${plan.highlighted ? "text-indigo-600" : "text-green-500"
+                          }`}
                       />
                       <span className="text-gray-600">{feature}</span>
                     </li>
@@ -813,11 +811,10 @@ export default function LandingPage() {
 
                 <a
                   href="#"
-                  className={`mt-8 block rounded-xl px-6 py-3.5 text-center text-sm font-semibold transition-all ${
-                    plan.highlighted
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-700"
-                      : "border border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
-                  }`}
+                  className={`mt-8 block rounded-xl px-6 py-3.5 text-center text-sm font-semibold transition-all ${plan.highlighted
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-700"
+                    : "border border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                    }`}
                 >
                   {plan.cta}
                 </a>
@@ -864,7 +861,7 @@ export default function LandingPage() {
       {/* ═══════════════════ Final CTA ═══════════════════ */}
       <section className="bg-gray-50 py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-700 px-8 py-16 text-center sm:px-16">
+          <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-indigo-600 to-purple-700 px-8 py-16 text-center sm:px-16">
             <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
             <div className="pointer-events-none absolute -bottom-10 -right-10 h-60 w-60 rounded-full bg-purple-500/20 blur-2xl" />
             <div className="relative">
