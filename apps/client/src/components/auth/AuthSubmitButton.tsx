@@ -23,7 +23,7 @@ export function AuthSubmitButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className={`w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-semibold text-sm flex items-center justify-center gap-2 hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg shadow-indigo-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${className}`.trim()}
+      className={`w-full py-3.5 rounded-xl bg-linear-to-r from-indigo-600 to-indigo-700 text-white font-semibold text-sm flex items-center justify-center gap-2 hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg shadow-indigo-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${className}`.trim()}
     >
       <span>{label}</span>
       <ArrowRight size={16} />

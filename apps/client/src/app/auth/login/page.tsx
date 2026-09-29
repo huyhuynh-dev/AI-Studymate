@@ -1,3 +1,5 @@
+'use client';
+
 import { AtSign, Lock, ShieldCheck } from 'lucide-react';
 import AuthCardHeader from '@/components/auth/AuthCardHeader';
 import GoogleButton from '@/components/auth/GoogleButton';
@@ -9,7 +11,10 @@ import AuthInfoBox from '@/components/auth/AuthInfoBox';
 import AuthCheckbox from '@/components/auth/AuthCheckbox';
 import Link from 'next/link';
 
+
+
 export default function LoginPage() {
+
   return (
     <>
       {/* Card Header */}
