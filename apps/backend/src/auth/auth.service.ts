@@ -1,9 +1,11 @@
 import {
     ConflictException,
+    ForbiddenException,
     Injectable,
     InternalServerErrorException,
     UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { GoogleService } from './google.service.js';
 import { UsersService } from '../users/users.service.js';
 import bcrypt from 'bcrypt';
@@ -12,15 +14,47 @@ import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { User } from '../generated/prisma/client.js';
 
+export interface TokenPair {
+    access_token: string;
+    refresh_token: string;
+}
+
 @Injectable()
 export class AuthService {
     constructor(
-        private googleService: GoogleService,
-        private jwtService: JwtService,
-        private usersService: UsersService
+        private readonly configService: ConfigService,
+        private readonly googleService: GoogleService,
+        private readonly jwtService: JwtService,
+        private readonly usersService: UsersService,
     ) { }
 
-    async signUpWithEmailAndPassword(registerDto: RegisterDto): Promise<{ access_token: string }> {
+    // ─── Token Generation ───────────────────────────────────
+
+    private async generateTokens(userId: string, email: string): Promise<TokenPair> {
+        const payload = { sub: userId, email };
+
+        const [access_token, refresh_token] = await Promise.all([
+            this.jwtService.signAsync(payload, {
+                secret: this.configService.getOrThrow<string>('JWT_SECRET'),
+                expiresIn: Number(this.configService.get<string>('JWT_EXPIRES_IN') ?? '3600'),
+            }),
+            this.jwtService.signAsync(payload, {
+                secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+                expiresIn: '7d',
+            }),
+        ]);
+
+        return { access_token, refresh_token };
+    }
+
+    private async updateRefreshTokenHash(userId: string, refreshToken: string): Promise<void> {
+        const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+        await this.usersService.updateUser(userId, { refresh_token: hashedRefreshToken });
+    }
+
+    // ─── Email/Password Auth ────────────────────────────────
+
+    async signUpWithEmailAndPassword(registerDto: RegisterDto): Promise<TokenPair> {
         const { name, email, password } = registerDto;
 
         const isUserExist: User | null = await this.usersService.findUserByEmail(email);
@@ -34,7 +68,7 @@ export class AuthService {
         let user: User | null;
 
         try {
-            user = await this.usersService.createUser({ email, password_hash, name });
+            user = await this.usersService.createUser({ email, password_hash, name, provider: 'local' });
         } catch (error: unknown) {
             const prismaError = error as {
                 code?: unknown;
@@ -56,14 +90,13 @@ export class AuthService {
             throw new InternalServerErrorException('Sign up failed');
         }
 
-        const payload = { sub: user.id, email: user.email }
+        const tokens = await this.generateTokens(user.id, user.email);
+        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
 
-        return {
-            access_token: await this.jwtService.signAsync(payload)
-        };
+        return tokens;
     }
 
-    async signInWithEmailAndPassword(loginDto: LoginDto): Promise<{ access_token: string }> {
+    async signInWithEmailAndPassword(loginDto: LoginDto): Promise<TokenPair> {
         const { email, password } = loginDto;
 
         const user = await this.usersService.findUserByEmail(email);
@@ -78,31 +111,31 @@ export class AuthService {
             throw new UnauthorizedException('Invalid credentials');
         }
 
-        const payload = { sub: user.id, email: user.email };
+        const tokens = await this.generateTokens(user.id, user.email);
+        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
 
-        return {
-            access_token: await this.jwtService.signAsync(payload),
-        };
+        return tokens;
     }
 
-    async createUserFromGoogleData(googleData: { email: string; name: string; avatar_url: string }): Promise<{ access_token: string }> {
+    // ─── Google OAuth ───────────────────────────────────────
+
+    async createUserFromGoogleData(googleData: { email: string; name: string; avatar_url: string }): Promise<TokenPair> {
         const { email, name, avatar_url } = googleData;
 
         let user: User | null = await this.usersService.findUserByEmail(email);
 
         if (!user) {
-            user = await this.usersService.createUser({ email, name, avatar_url });
+            user = await this.usersService.createUser({ email, name, avatar_url, provider: 'google' });
 
             if (!user) {
                 throw new InternalServerErrorException('Failed to create user from Google data');
             }
         }
 
-        const payload = { sub: user.id, email: user.email };
+        const tokens = await this.generateTokens(user.id, user.email);
+        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
 
-        return {
-            access_token: await this.jwtService.signAsync(payload),
-        };
+        return tokens;
     }
 
     async googleAuth(): Promise<{ url: string }> {
@@ -112,6 +145,35 @@ export class AuthService {
     async getAuthClientData(code: string): Promise<{ email: string; name: string; avatar_url: string }> {
         return this.googleService.getAuthClientData(code);
     }
+
+    // ─── Token Refresh ──────────────────────────────────────
+
+    async refreshTokens(userId: string, refreshToken: string): Promise<TokenPair> {
+        const user = await this.usersService.findUserById(userId);
+
+        if (!user || !user.refresh_token) {
+            throw new ForbiddenException('Access denied');
+        }
+
+        const isRefreshTokenValid = await bcrypt.compare(refreshToken, user.refresh_token);
+
+        if (!isRefreshTokenValid) {
+            throw new ForbiddenException('Access denied');
+        }
+
+        const tokens = await this.generateTokens(user.id, user.email);
+        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
+
+        return tokens;
+    }
+
+    // ─── Logout ─────────────────────────────────────────────
+
+    async logout(userId: string): Promise<void> {
+        await this.usersService.updateUser(userId, { refresh_token: null });
+    }
+
+    // ─── Utilities ──────────────────────────────────────────
 
     async hashPassword(password: string): Promise<string> {
         const saltOrRounds = 10;

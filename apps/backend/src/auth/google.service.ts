@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { google } from 'googleapis';
 import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
@@ -7,29 +7,41 @@ import * as path from 'path';
 
 @Injectable()
 export class GoogleService {
+    private readonly logger = new Logger(GoogleService.name);
     private readonly scopesAPI: string[];
     private readonly credentialsPath: string;
+    private cachedCredentials: IGoogleAuthCredentials | null = null;
+
     constructor(private configService: ConfigService) {
         this.credentialsPath = path.join(
             process.cwd(),
             this.configService.get('GOOGLE_CREDENTIALS_PATH') ?? '',
         );
-        this.scopesAPI = this.configService.get('GOOGLE_SCOPES_API').split(',');
+        this.scopesAPI = (this.configService.get<string>('GOOGLE_SCOPES_API') ?? 'email,profile').split(',');
     }
 
-    readCredentials(filePath: string): IGoogleAuthCredentials {
-        const credentialsPath = path.join(filePath);
-        const content: string = fs.readFileSync(credentialsPath, 'utf-8');
-        return JSON.parse(content);
+    private readCredentials(): IGoogleAuthCredentials {
+        if (this.cachedCredentials) {
+            return this.cachedCredentials;
+        }
+
+        try {
+            const content: string = fs.readFileSync(this.credentialsPath, 'utf-8');
+            this.cachedCredentials = JSON.parse(content);
+            return this.cachedCredentials!;
+        } catch (error) {
+            this.logger.error(`Failed to read Google credentials from: ${this.credentialsPath}`, error);
+            throw new Error(`Google OAuth credentials file not found or invalid at: ${this.credentialsPath}`);
+        }
     }
+
     async getOAuth2ClientUrl(): Promise<{ url: string }> {
         const authClient = this.getAuthClient();
         return this.getAuthUrl(authClient);
     }
+
     getAuthClient(): OAuth2Client {
-        const keys: IGoogleAuthCredentials = this.readCredentials(
-            this.credentialsPath,
-        );
+        const keys: IGoogleAuthCredentials = this.readCredentials();
         const authClient = new OAuth2Client(
             keys.web.client_id,
             keys.web.client_secret,
@@ -37,8 +49,8 @@ export class GoogleService {
         );
         return authClient;
     }
+
     getAuthUrl(authClient: OAuth2Client): { url: string } {
-        // Generate the url that will be used for the consent dialog.
         const authorizeUrl = authClient.generateAuthUrl({
             access_type: 'offline',
             scope: this.scopesAPI,
@@ -47,14 +59,13 @@ export class GoogleService {
         });
         return { url: authorizeUrl };
     }
+
     async getAuthClientData(
         code: string,
     ): Promise<{ email: string; name: string; avatar_url: string }> {
         const authClient = this.getAuthClient();
         const tokenData = await authClient.getToken(code);
         const tokens = tokenData.tokens;
-        const refreshToken = tokens?.refresh_token || '';
-        const accessToken = tokens?.access_token || '';
 
         authClient.setCredentials(tokens);
 
@@ -71,6 +82,7 @@ export class GoogleService {
         return { email, name, avatar_url };
     }
 }
+
 export interface IGoogleAuthCredentials {
     web: {
         client_id: string;

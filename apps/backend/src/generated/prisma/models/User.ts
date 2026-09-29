@@ -32,6 +32,9 @@ export type UserMinAggregateOutputType = {
   avatar_url: string | null
   role: string | null
   is_active: boolean | null
+  provider: string | null
+  provider_id: string | null
+  refresh_token: string | null
   created_at: Date | null
   updated_at: Date | null
 }
@@ -44,6 +47,9 @@ export type UserMaxAggregateOutputType = {
   avatar_url: string | null
   role: string | null
   is_active: boolean | null
+  provider: string | null
+  provider_id: string | null
+  refresh_token: string | null
   created_at: Date | null
   updated_at: Date | null
 }
@@ -56,6 +62,9 @@ export type UserCountAggregateOutputType = {
   avatar_url: number
   role: number
   is_active: number
+  provider: number
+  provider_id: number
+  refresh_token: number
   created_at: number
   updated_at: number
   _all: number
@@ -70,6 +79,9 @@ export type UserMinAggregateInputType = {
   avatar_url?: true
   role?: true
   is_active?: true
+  provider?: true
+  provider_id?: true
+  refresh_token?: true
   created_at?: true
   updated_at?: true
 }
@@ -82,6 +94,9 @@ export type UserMaxAggregateInputType = {
   avatar_url?: true
   role?: true
   is_active?: true
+  provider?: true
+  provider_id?: true
+  refresh_token?: true
   created_at?: true
   updated_at?: true
 }
@@ -94,6 +109,9 @@ export type UserCountAggregateInputType = {
   avatar_url?: true
   role?: true
   is_active?: true
+  provider?: true
+  provider_id?: true
+  refresh_token?: true
   created_at?: true
   updated_at?: true
   _all?: true
@@ -179,6 +197,9 @@ export type UserGroupByOutputType = {
   avatar_url: string | null
   role: string
   is_active: boolean
+  provider: string | null
+  provider_id: string | null
+  refresh_token: string | null
   created_at: Date
   updated_at: Date
   _count: UserCountAggregateOutputType | null
@@ -212,6 +233,9 @@ export type UserWhereInput = {
   avatar_url?: Prisma.StringNullableFilter<"User"> | string | null
   role?: Prisma.StringFilter<"User"> | string
   is_active?: Prisma.BoolFilter<"User"> | boolean
+  provider?: Prisma.StringNullableFilter<"User"> | string | null
+  provider_id?: Prisma.StringNullableFilter<"User"> | string | null
+  refresh_token?: Prisma.StringNullableFilter<"User"> | string | null
   created_at?: Prisma.DateTimeFilter<"User"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"User"> | Date | string
 }
@@ -224,6 +248,9 @@ export type UserOrderByWithRelationInput = {
   avatar_url?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrder
   is_active?: Prisma.SortOrder
+  provider?: Prisma.SortOrderInput | Prisma.SortOrder
+  provider_id?: Prisma.SortOrderInput | Prisma.SortOrder
+  refresh_token?: Prisma.SortOrderInput | Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
@@ -239,6 +266,9 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   avatar_url?: Prisma.StringNullableFilter<"User"> | string | null
   role?: Prisma.StringFilter<"User"> | string
   is_active?: Prisma.BoolFilter<"User"> | boolean
+  provider?: Prisma.StringNullableFilter<"User"> | string | null
+  provider_id?: Prisma.StringNullableFilter<"User"> | string | null
+  refresh_token?: Prisma.StringNullableFilter<"User"> | string | null
   created_at?: Prisma.DateTimeFilter<"User"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"User"> | Date | string
 }, "id" | "email">
@@ -251,6 +281,9 @@ export type UserOrderByWithAggregationInput = {
   avatar_url?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrder
   is_active?: Prisma.SortOrder
+  provider?: Prisma.SortOrderInput | Prisma.SortOrder
+  provider_id?: Prisma.SortOrderInput | Prisma.SortOrder
+  refresh_token?: Prisma.SortOrderInput | Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
@@ -269,6 +302,9 @@ export type UserScalarWhereWithAggregatesInput = {
   avatar_url?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   role?: Prisma.StringWithAggregatesFilter<"User"> | string
   is_active?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
+  provider?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  provider_id?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  refresh_token?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   created_at?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updated_at?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
 }
@@ -281,6 +317,9 @@ export type UserCreateInput = {
   avatar_url?: string | null
   role?: string
   is_active?: boolean
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
   created_at?: Date | string
   updated_at?: Date | string
 }
@@ -293,6 +332,9 @@ export type UserUncheckedCreateInput = {
   avatar_url?: string | null
   role?: string
   is_active?: boolean
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
   created_at?: Date | string
   updated_at?: Date | string
 }
@@ -305,6 +347,9 @@ export type UserUpdateInput = {
   avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -317,6 +362,9 @@ export type UserUncheckedUpdateInput = {
   avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -329,6 +377,9 @@ export type UserCreateManyInput = {
   avatar_url?: string | null
   role?: string
   is_active?: boolean
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
   created_at?: Date | string
   updated_at?: Date | string
 }
@@ -341,6 +392,9 @@ export type UserUpdateManyMutationInput = {
   avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -353,6 +407,9 @@ export type UserUncheckedUpdateManyInput = {
   avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -365,6 +422,9 @@ export type UserCountOrderByAggregateInput = {
   avatar_url?: Prisma.SortOrder
   role?: Prisma.SortOrder
   is_active?: Prisma.SortOrder
+  provider?: Prisma.SortOrder
+  provider_id?: Prisma.SortOrder
+  refresh_token?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
@@ -377,6 +437,9 @@ export type UserMaxOrderByAggregateInput = {
   avatar_url?: Prisma.SortOrder
   role?: Prisma.SortOrder
   is_active?: Prisma.SortOrder
+  provider?: Prisma.SortOrder
+  provider_id?: Prisma.SortOrder
+  refresh_token?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
@@ -389,6 +452,9 @@ export type UserMinOrderByAggregateInput = {
   avatar_url?: Prisma.SortOrder
   role?: Prisma.SortOrder
   is_active?: Prisma.SortOrder
+  provider?: Prisma.SortOrder
+  provider_id?: Prisma.SortOrder
+  refresh_token?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
@@ -419,6 +485,9 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   avatar_url?: boolean
   role?: boolean
   is_active?: boolean
+  provider?: boolean
+  provider_id?: boolean
+  refresh_token?: boolean
   created_at?: boolean
   updated_at?: boolean
 }, ExtArgs["result"]["user"]>
@@ -431,6 +500,9 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   avatar_url?: boolean
   role?: boolean
   is_active?: boolean
+  provider?: boolean
+  provider_id?: boolean
+  refresh_token?: boolean
   created_at?: boolean
   updated_at?: boolean
 }, ExtArgs["result"]["user"]>
@@ -443,6 +515,9 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   avatar_url?: boolean
   role?: boolean
   is_active?: boolean
+  provider?: boolean
+  provider_id?: boolean
+  refresh_token?: boolean
   created_at?: boolean
   updated_at?: boolean
 }, ExtArgs["result"]["user"]>
@@ -455,11 +530,14 @@ export type UserSelectScalar = {
   avatar_url?: boolean
   role?: boolean
   is_active?: boolean
+  provider?: boolean
+  provider_id?: boolean
+  refresh_token?: boolean
   created_at?: boolean
   updated_at?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "password_hash" | "name" | "avatar_url" | "role" | "is_active" | "created_at" | "updated_at", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "password_hash" | "name" | "avatar_url" | "role" | "is_active" | "provider" | "provider_id" | "refresh_token" | "created_at" | "updated_at", ExtArgs["result"]["user"]>
 
 export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "User"
@@ -472,6 +550,9 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     avatar_url: string | null
     role: string
     is_active: boolean
+    provider: string | null
+    provider_id: string | null
+    refresh_token: string | null
     created_at: Date
     updated_at: Date
   }, ExtArgs["result"]["user"]>
@@ -904,6 +985,9 @@ export interface UserFieldRefs {
   readonly avatar_url: Prisma.FieldRef<"User", 'String'>
   readonly role: Prisma.FieldRef<"User", 'String'>
   readonly is_active: Prisma.FieldRef<"User", 'Boolean'>
+  readonly provider: Prisma.FieldRef<"User", 'String'>
+  readonly provider_id: Prisma.FieldRef<"User", 'String'>
+  readonly refresh_token: Prisma.FieldRef<"User", 'String'>
   readonly created_at: Prisma.FieldRef<"User", 'DateTime'>
   readonly updated_at: Prisma.FieldRef<"User", 'DateTime'>
 }

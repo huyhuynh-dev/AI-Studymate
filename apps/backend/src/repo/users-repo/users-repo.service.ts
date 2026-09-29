@@ -25,4 +25,11 @@ export class UsersRepoService {
             }
         })
     };
+
+    async updateUser(id: string, data: Prisma.UserUpdateInput): Promise<User> {
+        return this.prisma.user.update({
+            where: { id },
+            data,
+        });
+    }
 }

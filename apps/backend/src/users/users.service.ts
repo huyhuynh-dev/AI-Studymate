@@ -20,4 +20,8 @@ export class UsersService {
     async findUserById(id: string): Promise<User | null> {
         return this.usersRepo.findUserById(id);
     }
+
+    async updateUser(id: string, data: Prisma.UserUpdateInput): Promise<User> {
+        return this.usersRepo.updateUser(id, data);
+    }
 }
