@@ -4,6 +4,10 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './prisma/prisma.module.js';
+import { UsersModule } from './users/users.module.js';
+import { RepoModule } from './repo/repo.module.js';
+
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -19,7 +23,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     AuthModule,
     ConfigModule.forRoot({
       isGlobal: true,
-    })
+    }),
+    PrismaModule,
+    UsersModule,
+    RepoModule
   ],
   controllers: [AppController],
   providers: [AppService],
