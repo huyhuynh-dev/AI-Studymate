@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Next.js 16 Proxy (formerly Middleware)
- * Intercepts incoming requests to extract OAuth tokens (access_token & refresh_token)
- * passed as query parameters (e.g., from Google OAuth callback redirect: /?token=...&refresh_token=...),
+ * Next.js Middleware
+ * Automatically intercepts incoming requests containing OAuth tokens in the query string
+ * (e.g. from Google OAuth callback: http://localhost:3000/?token=...&refresh_token=...),
  * stores them into HttpOnly Secure Cookies, and redirects to a clean URL.
  */
 export function proxy(request: NextRequest) {
@@ -12,13 +12,13 @@ export function proxy(request: NextRequest) {
   const refreshToken = request.nextUrl.searchParams.get('refresh_token');
 
   if (token && refreshToken) {
+    // Clone URL and remove token and refresh_token from search parameters
     const cleanUrl = request.nextUrl.clone();
     cleanUrl.searchParams.delete('token');
     cleanUrl.searchParams.delete('refresh_token');
 
-    // Redirect to the clean URL (removing tokens from browser address bar & history)
+    // Create redirect response so URL in browser bar is clean
     const response = NextResponse.redirect(cleanUrl);
-
     const isProduction = process.env.NODE_ENV === 'production';
 
     // Store tokens into HttpOnly Secure Cookies
@@ -43,10 +43,6 @@ export function proxy(request: NextRequest) {
 
   return NextResponse.next();
 }
-
-// Also export as default and middleware for complete compatibility across environments
-export default proxy;
-export { proxy as middleware };
 
 export const config = {
   matcher: [
