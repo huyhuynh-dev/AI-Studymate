@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
+import OAuthCallbackHandler from "@/components/auth/OAuthCallbackHandler";
 
 const beVietnamPro = Be_Vietnam_Pro({
   weight: ["300", "400", "500", "600", "700", "800"],
@@ -19,8 +21,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="vi"
       className={`${beVietnamPro.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <Suspense fallback={null}>
+          <OAuthCallbackHandler />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }
-
