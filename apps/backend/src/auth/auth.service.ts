@@ -85,11 +85,33 @@ export class AuthService {
         };
     }
 
+    async createUserFromGoogleData(googleData: { email: string; name: string; avatar_url: string }): Promise<{ access_token: string }> {
+        const { email, name, avatar_url } = googleData;
+
+        const isUserExist: User | null = await this.usersService.findUserByEmail(email);
+
+        if (isUserExist) {
+            throw new ConflictException('User with this email already exists');
+        }
+
+        const user = await this.usersService.createUser({ email, name, avatar_url });
+
+        if (!user) {
+            throw new InternalServerErrorException('Failed to create user from Google data');
+        }
+
+        const payload = { sub: user.id, email: user.email };
+
+        return {
+            access_token: await this.jwtService.signAsync(payload),
+        };
+    }
+
     async googleAuth(): Promise<{ url: string }> {
         return this.googleService.getOAuth2ClientUrl();
     }
 
-    async getAuthClientData(code: string): Promise<{ email: string; refreshToken: string; accessToken: string }> {
+    async getAuthClientData(code: string): Promise<{ email: string; name: string; avatar_url: string }> {
         return this.googleService.getAuthClientData(code);
     }
 

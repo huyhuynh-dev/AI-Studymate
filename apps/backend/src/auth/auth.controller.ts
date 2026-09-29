@@ -30,8 +30,9 @@ export class AuthController {
     @Get('google-callback')
     @Redirect()
     async googleAuthCallback(@Query('code') code: string): Promise<{ url: string }> {
-        const { email, refreshToken, accessToken } = await this.authService.getAuthClientData(code);
-        // Implement additional sign-in logic here
+        const { email, name, avatar_url } = await this.authService.getAuthClientData(code);
+        this.authService.createUserFromGoogleData({ email, name, avatar_url });
+
         return { url: process.env.REDIRECT_TO_LOGIN ?? '' };
     }
 }

@@ -49,7 +49,7 @@ export class GoogleService {
     }
     async getAuthClientData(
         code: string,
-    ): Promise<{ email: string; refreshToken: string; accessToken: string }> {
+    ): Promise<{ email: string; name: string; avatar_url: string }> {
         const authClient = this.getAuthClient();
         const tokenData = await authClient.getToken(code);
         const tokens = tokenData.tokens;
@@ -65,7 +65,10 @@ export class GoogleService {
 
         const googleUserInfo = await googleAuth.userinfo.get();
         const email = googleUserInfo.data.email ?? '';
-        return { email, refreshToken, accessToken };
+        const name = googleUserInfo.data.name ?? '';
+        const avatar_url = googleUserInfo.data.picture ?? '';
+
+        return { email, name, avatar_url };
     }
 }
 export interface IGoogleAuthCredentials {
