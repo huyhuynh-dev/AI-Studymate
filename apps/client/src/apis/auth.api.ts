@@ -6,6 +6,12 @@ export interface LoginCredentials {
   rememberMe?: boolean;
 }
 
+export interface RegisterCredentials {
+  name: string;
+  email: string;
+  password: string;
+}
+
 export interface AuthResponse {
   success: boolean;
   message?: string;
@@ -61,6 +67,40 @@ export const handleEmailLogin = async (
       error.response?.data?.message ||
       error.message ||
       'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
+
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+};
+
+/**
+ * Handle user registration (sign-up).
+ * Sends registration data to Next.js API route handler, which registers the account
+ * at the backend and sets HttpOnly Secure Cookies for the returned tokens.
+ */
+export const handleRegister = async (
+  credentials: RegisterCredentials
+): Promise<AuthResponse> => {
+  try {
+    const response = await axios.post<AuthResponse>(
+      '/api/auth/register',
+      credentials,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message ||
+      'Đăng ký không thành công. Vui lòng thử lại sau.';
 
     return {
       success: false,
