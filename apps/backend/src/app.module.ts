@@ -1,7 +1,15 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { AuthModule } from './auth/auth.module.js';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard.js';
+import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './prisma/prisma.module.js';
+import { UsersModule } from './users/users.module.js';
+import { RepoModule } from './repo/repo.module.js';
+
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -14,8 +22,21 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       appSecret: 'YOUR_APP_SECRET',
       serviceId: 'backend',
     }),
+    AuthModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    PrismaModule,
+    UsersModule,
+    RepoModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
-export class AppModule {}
+export class AppModule { }

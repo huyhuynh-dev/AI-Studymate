@@ -10,3 +10,4 @@ export { default as AuthSwitchLink } from './AuthSwitchLink';
 export { default as AuthInfoBox } from './AuthInfoBox';
 export { default as AuthCheckbox } from './AuthCheckbox';
 export { default as PasswordStrength } from './PasswordStrength';
+export { default as OtpInput } from './OtpInput';
