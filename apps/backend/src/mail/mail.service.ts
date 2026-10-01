@@ -8,8 +8,8 @@ export class MailService {
     async sendMail() {
         try {
             await this.mailerService.sendMail({
-                to: 'opensource@is.best',
-                from: '"Welcome to the fold" <linux@over.windows>', // sender address
+                to: 'hh0926261619@gmail.com',
+                from: '"Welcome to the fold" <huyhn.tools@gmail.com>',
                 subject: 'Quotes', // Subject line
                 text: '', // plaintext body
                 html: '<p>How many programmers does it take to change a light bulb? None, that’s a hardware problem.</p>',
