@@ -66,4 +66,9 @@ export class AuthController {
             url: `${baseUrl}?token=${encodeURIComponent(access_token)}&refresh_token=${encodeURIComponent(refresh_token)}`,
         };
     }
+
+    // @Post('forgot-password')
+    // async forgotPassword(email: string): Promise<void> {
+    //     this.authService.
+    // }
 }

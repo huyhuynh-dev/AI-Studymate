@@ -9,6 +9,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { UsersModule } from './users/users.module.js';
 import { RepoModule } from './repo/repo.module.js';
+import { MailModule } from './mail/mail.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -28,7 +29,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     }),
     PrismaModule,
     UsersModule,
-    RepoModule
+    RepoModule,
+    MailModule
   ],
   controllers: [AppController],
   providers: [

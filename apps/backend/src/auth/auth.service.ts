@@ -13,6 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { User } from '../generated/prisma/client.js';
+import { randomInt } from 'crypto';
 
 export interface TokenPair {
     access_token: string;
@@ -175,9 +176,21 @@ export class AuthService {
 
     // ─── Utilities ──────────────────────────────────────────
 
+
     async hashPassword(password: string): Promise<string> {
         const saltOrRounds = 10;
         const hash = await bcrypt.hash(password, saltOrRounds);
         return hash;
     }
+
+    async hashOTP(num: number): Promise<string> {
+        const saltOrRounds = 10;
+        const hash = await bcrypt.hash(num.toString(), saltOrRounds);
+        return hash;
+    }
+
+    createOTP() {
+        return randomInt(100000, 1000000);
+    }
+
 }
