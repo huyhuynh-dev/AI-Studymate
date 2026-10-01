@@ -22,7 +22,7 @@ import AuthSwitchLink from '@/components/auth/AuthSwitchLink';
 import AuthInfoBox from '@/components/auth/AuthInfoBox';
 import AuthCheckbox from '@/components/auth/AuthCheckbox';
 import PasswordStrength from '@/components/auth/PasswordStrength';
-import { handleGoogleLogin, handleRegister } from '@/apis/auth.api';
+import { handleGoogleLogin, handleRegister } from '@/services/auth.api';
 
 export default function RegisterPage() {
   const router = useRouter();

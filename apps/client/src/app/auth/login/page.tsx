@@ -13,7 +13,7 @@ import AuthSubmitButton from '@/components/auth/AuthSubmitButton';
 import AuthSwitchLink from '@/components/auth/AuthSwitchLink';
 import AuthInfoBox from '@/components/auth/AuthInfoBox';
 import AuthCheckbox from '@/components/auth/AuthCheckbox';
-import { handleGoogleLogin, handleEmailLogin } from '@/apis/auth.api';
+import { handleGoogleLogin, handleEmailLogin } from '@/services/auth.api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -163,7 +163,7 @@ export default function LoginPage() {
           showPasswordToggle
           rightLabel={
             <Link
-              href="/auth/forgot-password"
+              href="/auth/reset-password"
               className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
             >
               Quên mật khẩu?
