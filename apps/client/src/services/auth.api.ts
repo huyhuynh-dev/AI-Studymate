@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 
 export interface LoginCredentials {
   email: string;
@@ -16,6 +16,56 @@ export interface AuthResponse {
   success: boolean;
   message?: string;
   error?: string;
+}
+
+export interface ForgotPasswordCredentials {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface VerifyOtpCredentials {
+  email: string;
+  otp: string;
+}
+
+export interface VerifyOtpResponse {
+  success: boolean;
+  reset_token?: string;
+  message?: string;
+  error?: string;
+}
+
+export interface ResetPasswordCredentials {
+  reset_token: string;
+  new_password: string;
+}
+
+export interface ResetPasswordResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+function extractErrorMessage(error: unknown, defaultMessage: string): string {
+  if (isAxiosError(error)) {
+    const data = error.response?.data as
+      | { error?: string; message?: string | string[] }
+      | undefined;
+    if (data?.error) return data.error;
+    if (data?.message) {
+      return Array.isArray(data.message) ? data.message.join(', ') : data.message;
+    }
+    return error.message || defaultMessage;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return defaultMessage;
 }
 
 /**
@@ -61,16 +111,10 @@ export const handleEmailLogin = async (
     );
 
     return response.data;
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.error ||
-      error.response?.data?.message ||
-      error.message ||
-      'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
-
+  } catch (error: unknown) {
     return {
       success: false,
-      error: errorMessage,
+      error: extractErrorMessage(error, 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'),
     };
   }
 };
@@ -95,16 +139,97 @@ export const handleRegister = async (
     );
 
     return response.data;
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.error ||
-      error.response?.data?.message ||
-      error.message ||
-      'Đăng ký không thành công. Vui lòng thử lại sau.';
-
+  } catch (error: unknown) {
     return {
       success: false,
-      error: errorMessage,
+      error: extractErrorMessage(error, 'Đăng ký không thành công. Vui lòng thử lại sau.'),
+    };
+  }
+};
+
+/**
+ * Handle forgot password request.
+ * Sends email to Next.js API route handler to trigger OTP generation and email delivery.
+ */
+export const handleForgotPassword = async (
+  credentials: ForgotPasswordCredentials
+): Promise<ForgotPasswordResponse> => {
+  try {
+    const response = await axios.post<ForgotPasswordResponse>(
+      '/api/auth/forgot-password',
+      credentials,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: extractErrorMessage(
+        error,
+        'Không thể gửi mã xác nhận OTP. Vui lòng thử lại sau.'
+      ),
+    };
+  }
+};
+
+/**
+ * Handle OTP verification.
+ * Sends email and 6-digit OTP code to verify and retrieve a 5-minute reset_token.
+ */
+export const handleVerifyOtp = async (
+  credentials: VerifyOtpCredentials
+): Promise<VerifyOtpResponse> => {
+  try {
+    const response = await axios.post<VerifyOtpResponse>(
+      '/api/auth/verify-otp',
+      credentials,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: extractErrorMessage(error, 'Mã OTP không hợp lệ hoặc đã hết hạn.'),
+    };
+  }
+};
+
+/**
+ * Handle resetting password.
+ * Sends reset_token and new_password to complete password reset flow.
+ */
+export const handleResetPassword = async (
+  credentials: ResetPasswordCredentials
+): Promise<ResetPasswordResponse> => {
+  try {
+    const response = await axios.post<ResetPasswordResponse>(
+      '/api/auth/reset-password',
+      credentials,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: extractErrorMessage(
+        error,
+        'Đặt lại mật khẩu thất bại. Vui lòng thử lại sau.'
+      ),
     };
   }
 };
