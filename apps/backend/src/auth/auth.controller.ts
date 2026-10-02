@@ -9,6 +9,7 @@ import { RefreshTokenGuard } from './guards/refresh-token.guard.js';
 import { MailService } from '../mail/mail.service.js';
 import { VerifyOtpDto } from './dto/verify-otp.dto.js';
 import { RequestOtpDto } from './dto/request-otp.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller('auth')
@@ -72,21 +73,7 @@ export class AuthController {
         };
     }
 
-    @Public()
-    @UseGuards(ThrottlerGuard)
-    @Throttle({ default: { limit: 3, ttl: 60000 } })
-    @Get('test-mail')
-    async testMail(@Body() body: { to?: string }): Promise<{ message: string }> {
-        return await this.authService.requestOTP(body?.to ?? 'hh0926261619@gmail.com');
-    }
-
-
-    @Public()
-    @Post('verify-otp')
-    @HttpCode(HttpStatus.OK) // Trả về 200 thay vì 201 (Created) mặc định của NestJS cho method POST
-    async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
-        return await this.authService.verifyOTP(verifyOtpDto.email, verifyOtpDto.otp.toString());
-    }
+    // ─── Reset Password Flow ────────────────────────────────
 
     @Public()
     @UseGuards(ThrottlerGuard)
@@ -95,5 +82,26 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async forgotPassword(@Body() requestOtpDto: RequestOtpDto): Promise<{ message: string }> {
         return await this.authService.requestOTP(requestOtpDto.email);
+    }
+
+    @Public()
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 5, ttl: 60000 } })
+    @Post('verify-otp')
+    @HttpCode(HttpStatus.OK)
+    async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto): Promise<{ reset_token: string }> {
+        return await this.authService.verifyOTP(verifyOtpDto.email, verifyOtpDto.otp.toString());
+    }
+
+    @Public()
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 5, ttl: 60000 } })
+    @Post('reset-password')
+    @HttpCode(HttpStatus.OK)
+    async resetPassword(@Body() resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> {
+        return await this.authService.resetPassword(
+            resetPasswordDto.reset_token,
+            resetPasswordDto.new_password,
+        );
     }
 }

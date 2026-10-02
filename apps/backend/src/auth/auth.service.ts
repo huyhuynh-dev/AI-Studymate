@@ -311,22 +311,41 @@ export class AuthService {
     }
 
     async resetPassword(resetToken: string, newPassword: string): Promise<{ message: string }> {
-        const resetTokenKey = `reset_token:${resetToken}`;
+        const cleanToken = resetToken.trim();
+        const resetTokenKey = `reset_token:${cleanToken}`;
 
-        // 1. Kiểm tra Token trong Redis
-        const userId = await this.redisService.get(resetTokenKey);
-        if (!userId) {
-            throw new BadRequestException('Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
+        try {
+            // 1. Kiểm tra Opaque Token trong Redis
+            const userId = await this.redisService.get(resetTokenKey);
+            if (!userId) {
+                throw new BadRequestException('Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
+            }
+
+            // 2. Kiểm tra xem User có tồn tại trong hệ thống không
+            const user = await this.usersService.findUserById(userId);
+            if (!user) {
+                await this.redisService.del(resetTokenKey);
+                throw new NotFoundException('Người dùng không tồn tại trong hệ thống.');
+            }
+
+            // 3. Hash mật khẩu mới và cập nhật Database (thu hồi luôn phiên đăng nhập cũ)
+            const password_hash = await this.hashPassword(newPassword);
+            await this.usersService.updateUser(userId, {
+                password_hash,
+                refresh_token: null, // Đăng xuất khỏi mọi phiên đăng nhập cũ
+            });
+
+            // 4. Xóa ngay Token khỏi Redis để đảm bảo tính chất Single-use
+            await this.redisService.del(resetTokenKey);
+
+            return { message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới.' };
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            this.logger.error(`Lỗi khi đặt lại mật khẩu: ${String(error)}`);
+            throw new InternalServerErrorException('Đã xảy ra lỗi khi đặt lại mật khẩu.');
         }
-
-        // 2. Hash mật khẩu mới & Cập nhật User trong DB
-        const password_hash = await this.hashPassword(newPassword);
-        await this.usersService.updateUser(userId, { password_hash });
-
-        // 3. XÓA NGAY TOKEN (Single-use)
-        await this.redisService.del(resetTokenKey);
-
-        return { message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.' };
     }
 
     // ─── Utilities ──────────────────────────────────────────
