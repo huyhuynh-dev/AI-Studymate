@@ -7,6 +7,7 @@ import { Public } from './decorators/public.decorator.js';
 import { ConfigService } from '@nestjs/config';
 import { RefreshTokenGuard } from './guards/refresh-token.guard.js';
 import { MailService } from '../mail/mail.service.js';
+import { VerifyOtpDto } from './dto/verify-otp.dto.js';
 
 @Controller('auth')
 export class AuthController {
@@ -75,6 +76,13 @@ export class AuthController {
         return await this.authService.requestOTP('hh0926261619@gmail.com');
     }
 
+
+    @Public()
+    @Post('verify-otp')
+    @HttpCode(HttpStatus.OK) // Trả về 200 thay vì 201 (Created) mặc định của NestJS cho method POST
+    async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+        return await this.authService.verifyOTP(verifyOtpDto.email, verifyOtpDto.otp.toString());
+    }
     // @Post('forgot-password')
     // async forgotPassword(email: string): Promise<void> {
     //     this.authService.

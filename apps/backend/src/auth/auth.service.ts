@@ -4,7 +4,8 @@ import {
     Injectable,
     InternalServerErrorException,
     UnauthorizedException,
-    Logger
+    Logger,
+    NotFoundException
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleService } from './google.service.js';
@@ -189,7 +190,7 @@ export class AuthService {
             const user: User | null = await this.usersService.findUserByEmail(email);
 
             if (!user) {
-                throw new Error('Email không tồn tại trong hệ thống')
+                throw new NotFoundException('Email không tồn tại trong hệ thống')
             };
 
             const otp: number = this.createOTP();
@@ -202,6 +203,41 @@ export class AuthService {
         }
         catch (error) {
             this.logger.error(`Lỗi khi tạo OTP cho email ${email}: ${error}`);
+            throw error;
+        }
+    }
+
+    async verifyOTP(email: string, otp: string): Promise<{ reset_token: string }> {
+        try {
+            const redisKey = `otp:${email}`;
+            const storedHash: string | null = await this.redisService.get(redisKey);
+
+            if (!storedHash) {
+                throw new NotFoundException('OTP không tồn tại hoặc đã hết hạn');
+            }
+
+            const isOTPValid = await bcrypt.compare(otp, storedHash);
+
+            if (!isOTPValid) {
+                throw new ForbiddenException('OTP không hợp lệ');
+            }
+
+
+            await this.redisService.del(redisKey);
+
+            const payload = {
+                sub: email,
+                purpose: 'PASSWORD_RESET',
+            }
+            const reset_token = await this.jwtService.signAsync(payload, {
+                secret: this.configService.getOrThrow<string>('JWT_RESET_SECRET'),
+                expiresIn: '3m'
+            });
+
+            return { reset_token };
+        }
+        catch (error) {
+            this.logger.error(`Lỗi khi xác minh OTP cho email ${email}: ${error}`);
             throw error;
         }
     }
