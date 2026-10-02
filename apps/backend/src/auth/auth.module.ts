@@ -8,10 +8,13 @@ import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy.js';
+import { MailModule } from '../mail/mail.module.js';
+import { RedisService } from '../redis/redis.service.js';
 
 @Module({
   imports: [
     UsersModule,
+    MailModule,
     PassportModule,
     JwtModule.registerAsync({
       global: true,
@@ -27,7 +30,7 @@ import { RefreshTokenStrategy } from './strategies/refresh-token.strategy.js';
       }),
     }),
   ],
-  providers: [GoogleService, AuthService, JwtStrategy, RefreshTokenStrategy],
+  providers: [GoogleService, AuthService, JwtStrategy, RefreshTokenStrategy, RedisService,],
   controllers: [AuthController],
   exports: [AuthService],
 })

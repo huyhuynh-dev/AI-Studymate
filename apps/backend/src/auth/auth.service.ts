@@ -4,6 +4,7 @@ import {
     Injectable,
     InternalServerErrorException,
     UnauthorizedException,
+    Logger
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleService } from './google.service.js';
@@ -14,6 +15,8 @@ import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { User } from '../generated/prisma/client.js';
 import { randomInt } from 'crypto';
+import { RedisService } from '../redis/redis.service.js';
+import { MailService } from '../mail/mail.service.js';
 
 export interface TokenPair {
     access_token: string;
@@ -22,11 +25,15 @@ export interface TokenPair {
 
 @Injectable()
 export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
+
     constructor(
         private readonly configService: ConfigService,
         private readonly googleService: GoogleService,
         private readonly jwtService: JwtService,
         private readonly usersService: UsersService,
+        private readonly redisService: RedisService,
+        private readonly mailService: MailService
     ) { }
 
     // ─── Token Generation ───────────────────────────────────
@@ -149,6 +156,8 @@ export class AuthService {
 
     // ─── Token Refresh ──────────────────────────────────────
 
+
+
     async refreshTokens(userId: string, refreshToken: string): Promise<TokenPair> {
         const user = await this.usersService.findUserById(userId);
 
@@ -174,8 +183,35 @@ export class AuthService {
         await this.usersService.updateUser(userId, { refresh_token: null });
     }
 
+    // --- Forgot Password---
+    async requestOTP(email: string): Promise<{ message: string }> {
+        try {
+            const user: User | null = await this.usersService.findUserByEmail(email);
+
+            if (!user) {
+                throw new Error('Email không tồn tại trong hệ thống')
+            };
+
+            const otp: number = this.createOTP();
+            const hashOTP: string = await this.hashOTP(otp);
+            await this.saveOTPIntoRedis(hashOTP, email, 120); // 120 seconds = 2 minutes
+            await this.mailService.sendOtpMail(email, otp.toString(), 120);
+
+            return { message: 'OTP has been sent to your email' };
+
+        }
+        catch (error) {
+            this.logger.error(`Lỗi khi tạo OTP cho email ${email}: ${error}`);
+            throw error;
+        }
+    }
+
     // ─── Utilities ──────────────────────────────────────────
 
+    async saveOTPIntoRedis(otpHash: string, email: string, expireInSeconds: number): Promise<void> {
+        const redisKey = `otp:${email}`;
+        await this.redisService.set(redisKey, otpHash, expireInSeconds);
+    }
 
     async hashPassword(password: string): Promise<string> {
         const saltOrRounds = 10;
@@ -184,7 +220,7 @@ export class AuthService {
     }
 
     async hashOTP(num: number): Promise<string> {
-        const saltOrRounds = 10;
+        const saltOrRounds = 5;
         const hash = await bcrypt.hash(num.toString(), saltOrRounds);
         return hash;
     }

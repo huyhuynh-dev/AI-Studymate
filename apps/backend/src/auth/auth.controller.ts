@@ -6,12 +6,14 @@ import { LoginDto } from './dto/login.dto.js';
 import { Public } from './decorators/public.decorator.js';
 import { ConfigService } from '@nestjs/config';
 import { RefreshTokenGuard } from './guards/refresh-token.guard.js';
+import { MailService } from '../mail/mail.service.js';
 
 @Controller('auth')
 export class AuthController {
     constructor(
         private readonly authService: AuthService,
         private readonly configService: ConfigService,
+        private readonly mailService: MailService,
     ) { }
 
     @Public()
@@ -65,6 +67,12 @@ export class AuthController {
         return {
             url: `${baseUrl}?token=${encodeURIComponent(access_token)}&refresh_token=${encodeURIComponent(refresh_token)}`,
         };
+    }
+
+    @Public()
+    @Get('test-mail')
+    async testMail(@Body() body: { to: string }): Promise<{ message: string }> {
+        return await this.authService.requestOTP('hh0926261619@gmail.com');
     }
 
     // @Post('forgot-password')
