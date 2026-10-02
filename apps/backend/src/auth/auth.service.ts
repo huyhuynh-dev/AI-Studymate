@@ -5,7 +5,9 @@ import {
     InternalServerErrorException,
     UnauthorizedException,
     Logger,
-    NotFoundException
+    NotFoundException,
+    HttpException,
+    HttpStatus
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleService } from './google.service.js';
@@ -186,30 +188,64 @@ export class AuthService {
 
     // --- Forgot Password---
     async requestOTP(email: string): Promise<{ message: string }> {
-        try {
-            const user: User | null = await this.usersService.findUserByEmail(email);
+        const normalizedEmail = email.trim().toLowerCase();
+        const cooldownKey = `otp_cooldown:${normalizedEmail}`;
+        const redisKey = `otp:${normalizedEmail}`;
 
+        try {
+            // 1. Kiểm tra Cooldown theo email trong Redis (chống spam liên tục dù đổi IP qua proxy)
+            const isCooldown = await this.redisService.get(cooldownKey);
+            if (isCooldown) {
+                throw new HttpException(
+                    'Bạn đang thao tác quá nhanh. Vui lòng chờ 60 giây trước khi yêu cầu mã OTP mới.',
+                    HttpStatus.TOO_MANY_REQUESTS,
+                );
+            }
+
+            const user: User | null = await this.usersService.findUserByEmail(normalizedEmail);
+
+            // 2. Chống User Enumeration: Nếu email không tồn tại trong hệ thống,
+            // vẫn set cooldown để kẻ tấn công không thể phân biệt và trả về cùng thông điệp chung.
             if (!user) {
-                throw new NotFoundException('Email không tồn tại trong hệ thống')
-            };
+                await this.redisService.set(cooldownKey, '1', 60);
+                return {
+                    message: 'Nếu email tồn tại trong hệ thống, mã OTP xác thực sẽ được gửi đến hộp thư của bạn.',
+                };
+            }
+
+            // 3. User hợp lệ: Set cooldown 60s, sinh OTP, lưu Redis và gửi email
+            await this.redisService.set(cooldownKey, '1', 60);
 
             const otp: number = this.createOTP();
             const hashOTP: string = await this.hashOTP(otp);
-            await this.saveOTPIntoRedis(hashOTP, email, 120); // 120 seconds = 2 minutes
-            await this.mailService.sendOtpMail(email, otp.toString(), 120);
+            await this.saveOTPIntoRedis(hashOTP, normalizedEmail, 120); // 120 seconds = 2 minutes
 
-            return { message: 'OTP has been sent to your email' };
+            try {
+                await this.mailService.sendOtpMail(normalizedEmail, otp.toString(), 120);
+            } catch (mailError) {
+                // Nếu gửi mail thất bại, thu hồi cooldown và OTP để người dùng có thể gửi lại
+                await this.redisService.del(cooldownKey);
+                await this.redisService.del(redisKey);
+                this.logger.error(`Lỗi khi gửi email OTP cho ${normalizedEmail}: ${String(mailError)}`);
+                throw new InternalServerErrorException('Không thể gửi mã OTP qua email, vui lòng thử lại sau');
+            }
 
-        }
-        catch (error) {
-            this.logger.error(`Lỗi khi tạo OTP cho email ${email}: ${error}`);
-            throw error;
+            return {
+                message: 'Nếu email tồn tại trong hệ thống, mã OTP xác thực sẽ được gửi đến hộp thư của bạn.',
+            };
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            this.logger.error(`Lỗi khi tạo OTP cho email ${normalizedEmail}: ${String(error)}`);
+            throw new InternalServerErrorException('Đã xảy ra lỗi khi tạo mã OTP');
         }
     }
 
     async verifyOTP(email: string, otp: string): Promise<{ reset_token: string }> {
+        const normalizedEmail = email.trim().toLowerCase();
         try {
-            const redisKey = `otp:${email}`;
+            const redisKey = `otp:${normalizedEmail}`;
             const storedHash: string | null = await this.redisService.get(redisKey);
 
             if (!storedHash) {
@@ -226,7 +262,7 @@ export class AuthService {
             await this.redisService.del(redisKey);
 
             const payload = {
-                sub: email,
+                sub: normalizedEmail,
                 purpose: 'PASSWORD_RESET',
             }
             const reset_token = await this.jwtService.signAsync(payload, {
@@ -237,7 +273,7 @@ export class AuthService {
             return { reset_token };
         }
         catch (error) {
-            this.logger.error(`Lỗi khi xác minh OTP cho email ${email}: ${error}`);
+            this.logger.error(`Lỗi khi xác minh OTP cho email ${normalizedEmail}: ${String(error)}`);
             throw error;
         }
     }
@@ -245,7 +281,7 @@ export class AuthService {
     // ─── Utilities ──────────────────────────────────────────
 
     async saveOTPIntoRedis(otpHash: string, email: string, expireInSeconds: number): Promise<void> {
-        const redisKey = `otp:${email}`;
+        const redisKey = `otp:${email.trim().toLowerCase()}`;
         await this.redisService.set(redisKey, otpHash, expireInSeconds);
     }
 

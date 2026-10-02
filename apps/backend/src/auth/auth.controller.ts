@@ -8,6 +8,8 @@ import { ConfigService } from '@nestjs/config';
 import { RefreshTokenGuard } from './guards/refresh-token.guard.js';
 import { MailService } from '../mail/mail.service.js';
 import { VerifyOtpDto } from './dto/verify-otp.dto.js';
+import { RequestOtpDto } from './dto/request-otp.dto.js';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -71,9 +73,11 @@ export class AuthController {
     }
 
     @Public()
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 3, ttl: 60000 } })
     @Get('test-mail')
-    async testMail(@Body() body: { to: string }): Promise<{ message: string }> {
-        return await this.authService.requestOTP('hh0926261619@gmail.com');
+    async testMail(@Body() body: { to?: string }): Promise<{ message: string }> {
+        return await this.authService.requestOTP(body?.to ?? 'hh0926261619@gmail.com');
     }
 
 
@@ -83,8 +87,13 @@ export class AuthController {
     async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
         return await this.authService.verifyOTP(verifyOtpDto.email, verifyOtpDto.otp.toString());
     }
-    // @Post('forgot-password')
-    // async forgotPassword(email: string): Promise<void> {
-    //     this.authService.
-    // }
+
+    @Public()
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 3, ttl: 60000 } })
+    @Post('forgot-password')
+    @HttpCode(HttpStatus.OK)
+    async forgotPassword(@Body() requestOtpDto: RequestOtpDto): Promise<{ message: string }> {
+        return await this.authService.requestOTP(requestOtpDto.email);
+    }
 }

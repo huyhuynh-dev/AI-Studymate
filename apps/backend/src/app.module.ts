@@ -11,6 +11,7 @@ import { UsersModule } from './users/users.module.js';
 import { RepoModule } from './repo/repo.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { RedisModule } from './redis/redis.module.js';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -24,6 +25,12 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       appSecret: 'YOUR_APP_SECRET',
       serviceId: 'backend',
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 60,
+      },
+    ]),
     AuthModule,
     ConfigModule.forRoot({
       isGlobal: true,
