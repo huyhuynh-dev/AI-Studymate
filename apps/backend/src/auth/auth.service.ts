@@ -7,7 +7,8 @@ import {
     Logger,
     NotFoundException,
     HttpException,
-    HttpStatus
+    HttpStatus,
+    BadRequestException
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleService } from './google.service.js';
@@ -17,7 +18,7 @@ import { JwtService } from '@nestjs/jwt';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { User } from '../generated/prisma/client.js';
-import { randomInt } from 'crypto';
+import { createHash, randomBytes, randomInt } from 'crypto';
 import { RedisService } from '../redis/redis.service.js';
 import { MailService } from '../mail/mail.service.js';
 
@@ -213,11 +214,12 @@ export class AuthService {
                 };
             }
 
-            // 3. User hợp lệ: Set cooldown 60s, sinh OTP, lưu Redis và gửi email
+            // 3. User hợp lệ: Set cooldown 60s, reset attempt counter, sinh OTP, lưu Redis và gửi email
             await this.redisService.set(cooldownKey, '1', 60);
+            await this.redisService.del(`otp_attempts:${normalizedEmail}`);
 
             const otp: number = this.createOTP();
-            const hashOTP: string = await this.hashOTP(otp);
+            const hashOTP: string = this.hashOTP(otp);
             await this.saveOTPIntoRedis(hashOTP, normalizedEmail, 120); // 120 seconds = 2 minutes
 
             try {
@@ -244,38 +246,87 @@ export class AuthService {
 
     async verifyOTP(email: string, otp: string): Promise<{ reset_token: string }> {
         const normalizedEmail = email.trim().toLowerCase();
+        const redisKey = `otp:${normalizedEmail}`;
+        const attemptKey = `otp_attempts:${normalizedEmail}`;
+
         try {
-            const redisKey = `otp:${normalizedEmail}`;
             const storedHash: string | null = await this.redisService.get(redisKey);
 
             if (!storedHash) {
                 throw new NotFoundException('OTP không tồn tại hoặc đã hết hạn');
             }
 
-            const isOTPValid = await bcrypt.compare(otp, storedHash);
+            // 1. Kiểm tra số lần nhập sai (giới hạn tối đa 3 lần)
+            const attempts = await this.redisService.get(attemptKey);
+            const currentAttempts = attempts ? parseInt(attempts, 10) : 0;
 
-            if (!isOTPValid) {
-                throw new ForbiddenException('OTP không hợp lệ');
+            if (currentAttempts >= 3) {
+                // Đã sai quá 3 lần -> Xóa luôn OTP để triệt tiêu brute-force
+                await this.redisService.del(redisKey);
+                await this.redisService.del(attemptKey);
+                throw new ForbiddenException('Bạn đã nhập sai OTP quá 3 lần. Vui lòng yêu cầu mã OTP mới.');
             }
 
+            // 2. So sánh mã OTP bằng SHA-256
+            const hashedInputOtp = this.hashOTP(otp);
 
+            if (hashedInputOtp !== storedHash) {
+                const newAttempts = currentAttempts + 1;
+                if (newAttempts >= 3) {
+                    await this.redisService.del(redisKey);
+                    await this.redisService.del(attemptKey);
+                    throw new ForbiddenException('Bạn đã nhập sai OTP quá 3 lần. Vui lòng yêu cầu mã OTP mới.');
+                }
+
+                // Lưu số lần sai với TTL 120s (bằng thời gian sống của OTP)
+                await this.redisService.set(attemptKey, newAttempts.toString(), 120);
+                throw new ForbiddenException(`Mã OTP không chính xác. Bạn còn ${3 - newAttempts} lần thử.`);
+            }
+
+            // 3. OTP chính xác -> Dọn dẹp OTP và số lần thử trong Redis
             await this.redisService.del(redisKey);
+            await this.redisService.del(attemptKey);
 
-            const payload = {
-                sub: normalizedEmail,
-                purpose: 'PASSWORD_RESET',
+            // 4. Lấy thông tin user để định danh bằng User ID
+            const user = await this.usersService.findUserByEmail(normalizedEmail);
+            if (!user) {
+                throw new NotFoundException('Không tìm thấy thông tin người dùng trong hệ thống');
             }
-            const reset_token = await this.jwtService.signAsync(payload, {
-                secret: this.configService.getOrThrow<string>('JWT_RESET_SECRET'),
-                expiresIn: '3m'
-            });
+
+            // 5. Cấp Opaque Token (chuỗi ngẫu nhiên 32 bytes) và lưu vào Redis:
+            // Key: reset_token:<token> -> Value: user.id
+            // TTL: 5 phút (300 giây)
+            const reset_token = randomBytes(32).toString('hex');
+            const resetTokenKey = `reset_token:${reset_token}`;
+            await this.redisService.set(resetTokenKey, user.id, 300);
 
             return { reset_token };
-        }
-        catch (error) {
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
             this.logger.error(`Lỗi khi xác minh OTP cho email ${normalizedEmail}: ${String(error)}`);
-            throw error;
+            throw new InternalServerErrorException('Đã xảy ra lỗi khi xác minh mã OTP');
         }
+    }
+
+    async resetPassword(resetToken: string, newPassword: string): Promise<{ message: string }> {
+        const resetTokenKey = `reset_token:${resetToken}`;
+
+        // 1. Kiểm tra Token trong Redis
+        const userId = await this.redisService.get(resetTokenKey);
+        if (!userId) {
+            throw new BadRequestException('Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
+        }
+
+        // 2. Hash mật khẩu mới & Cập nhật User trong DB
+        const password_hash = await this.hashPassword(newPassword);
+        await this.usersService.updateUser(userId, { password_hash });
+
+        // 3. XÓA NGAY TOKEN (Single-use)
+        await this.redisService.del(resetTokenKey);
+
+        return { message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.' };
     }
 
     // ─── Utilities ──────────────────────────────────────────
@@ -291,10 +342,8 @@ export class AuthService {
         return hash;
     }
 
-    async hashOTP(num: number): Promise<string> {
-        const saltOrRounds = 5;
-        const hash = await bcrypt.hash(num.toString(), saltOrRounds);
-        return hash;
+    hashOTP(num: number | string): string {
+        return createHash('sha256').update(num.toString()).digest('hex');
     }
 
     createOTP() {
