@@ -135,13 +135,20 @@ export default function RegisterPage() {
         return;
       }
 
-      setSuccessMessage('Đăng ký tài khoản thành công! Đang chuyển hướng...');
+      setSuccessMessage('Đăng ký tài khoản thành công! Đang chuyển hướng đến trang xác thực email...');
 
+      // Điều hướng người dùng sang trang xác thực email kèm email vừa đăng ký
+      setTimeout(() => {
+        router.push(`/auth/email-verification?email=${encodeURIComponent(trimmedEmail)}`);
+      }, 700);
+
+      /* Code cũ điều hướng trực tiếp về trang chủ khi Backend còn cấp token tự động sau khi đăng ký:
       // Redirect user to home
       setTimeout(() => {
         router.push('/');
         router.refresh();
       }, 700);
+      */
     } catch (err: any) {
       setErrorMessage(
         err.message || 'Đã có lỗi xảy ra. Vui lòng kiểm tra lại kết nối.'

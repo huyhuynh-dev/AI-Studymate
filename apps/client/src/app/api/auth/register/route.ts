@@ -46,6 +46,8 @@ export async function POST(request: Request) {
       }
     );
 
+    // Backend hiện tại trả về boolean: true khi đăng ký thành công (không tạo hoặc trả về token)
+    /* Code cũ cấp và lưu token vào cookies trước đây:
     const { access_token, refresh_token } = backendResponse.data;
 
     if (!access_token || !refresh_token) {
@@ -54,13 +56,22 @@ export async function POST(request: Request) {
         { status: 502 }
       );
     }
+    */
+
+    const rawData = backendResponse.data;
+    const isSuccess =
+      rawData === true ||
+      rawData === 'true' ||
+      (typeof rawData === 'object' && (rawData as any)?.data === true) ||
+      Boolean(rawData);
 
     // Create JSON response
     const response = NextResponse.json({
-      success: true,
+      success: isSuccess,
       message: 'Đăng ký tài khoản thành công.',
     });
 
+    /* Code cũ set HttpOnly Secure Cookies cho access_token và refresh_token:
     const isProduction = process.env.NODE_ENV === 'production';
 
     // Set HttpOnly Secure Cookies
@@ -79,6 +90,7 @@ export async function POST(request: Request) {
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
+    */
 
     return response;
   } catch (error: any) {
