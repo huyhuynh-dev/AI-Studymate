@@ -16,6 +16,8 @@ export interface AuthResponse {
   success: boolean;
   message?: string;
   error?: string;
+  statusCode?: number;
+  requiresEmailVerification?: boolean;
 }
 
 export interface ForgotPasswordCredentials {
@@ -112,6 +114,31 @@ export const handleEmailLogin = async (
 
     return response.data;
   } catch (error: unknown) {
+    if (isAxiosError(error)) {
+      const data = error.response?.data as
+        | { statusCode?: number; message?: string | string[]; error?: string }
+        | undefined;
+      const status = error.response?.status;
+      const messageStr = typeof data?.message === 'string' ? data.message : '';
+      const errorStr = typeof data?.error === 'string' ? data.error : '';
+
+      const isEmailNotVerified =
+        (status === 403 || data?.statusCode === 403) &&
+        (messageStr.toLowerCase().includes('email is not verified') ||
+          errorStr.toLowerCase().includes('email is not verified') ||
+          (status === 403 && (messageStr === 'Email is not verified' || errorStr === 'Forbidden')));
+
+      if (isEmailNotVerified) {
+        return {
+          success: false,
+          statusCode: 403,
+          message: messageStr || 'Email is not verified',
+          error: errorStr || 'Forbidden',
+          requiresEmailVerification: true,
+        };
+      }
+    }
+
     return {
       success: false,
       error: extractErrorMessage(error, 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'),
@@ -230,6 +257,135 @@ export const handleResetPassword = async (
         error,
         'Đặt lại mật khẩu thất bại. Vui lòng thử lại sau.'
       ),
+    };
+  }
+};
+
+export interface RequestEmailVerificationResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  statusCode?: number;
+}
+
+/**
+ * Handle request email verification OTP.
+ * Sends email to backend /auth/request-email-verification to generate and send OTP.
+ */
+export const handleRequestEmailVerification = async (
+  email: string
+): Promise<RequestEmailVerificationResponse> => {
+  try {
+    const response = await axios.post<RequestEmailVerificationResponse>(
+      '/api/auth/request-email-verification',
+      { email },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: unknown) {
+    let statusCode = 500;
+    let errorMessage = 'Không thể gửi mã xác minh email. Vui lòng thử lại sau.';
+    let message: string | undefined;
+
+    if (isAxiosError(error)) {
+      statusCode = error.response?.status || 500;
+      const data = error.response?.data as
+        | { statusCode?: number; message?: string | string[]; error?: string }
+        | undefined;
+
+      if (data?.statusCode) {
+        statusCode = data.statusCode;
+      }
+      if (data?.message) {
+        message = Array.isArray(data.message)
+          ? data.message.join(', ')
+          : data.message;
+      }
+      if (data?.error) {
+        errorMessage = data.error;
+      } else if (message) {
+        errorMessage = message;
+      }
+    }
+
+    return {
+      success: false,
+      statusCode,
+      message,
+      error: errorMessage,
+    };
+  }
+};
+
+export interface VerifyEmailCredentials {
+  email: string;
+  otp: string;
+}
+
+export interface VerifyEmailResponse {
+  success: boolean;
+  isVerified?: boolean;
+  message?: string;
+  error?: string;
+  statusCode?: number;
+}
+
+/**
+ * Handle verify email OTP.
+ * Sends email and 6-digit OTP code to /api/auth/verify-email to activate user account.
+ */
+export const handleVerifyEmail = async (
+  credentials: VerifyEmailCredentials
+): Promise<VerifyEmailResponse> => {
+  try {
+    const response = await axios.post<VerifyEmailResponse>(
+      '/api/auth/verify-email',
+      credentials,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: unknown) {
+    let statusCode = 500;
+    let errorMessage = 'Xác thực email thất bại. Vui lòng thử lại sau.';
+    let message: string | undefined;
+
+    if (isAxiosError(error)) {
+      statusCode = error.response?.status || 500;
+      const data = error.response?.data as
+        | { statusCode?: number; message?: string | string[]; error?: string }
+        | undefined;
+
+      if (data?.statusCode) {
+        statusCode = data.statusCode;
+      }
+      if (data?.message) {
+        message = Array.isArray(data.message)
+          ? data.message.join(', ')
+          : data.message;
+      }
+      if (data?.error) {
+        errorMessage = data.error;
+      } else if (message) {
+        errorMessage = message;
+      }
+    }
+
+    return {
+      success: false,
+      isVerified: false,
+      statusCode,
+      message,
+      error: errorMessage,
     };
   }
 };

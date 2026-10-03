@@ -10,6 +10,8 @@ import { MailService } from '../mail/mail.service.js';
 import { VerifyOtpDto } from './dto/verify-otp.dto.js';
 import { RequestOtpDto } from './dto/request-otp.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { RequestEmailVerificationDto } from './dto/request-email-verification.dto.js';
+import { VerifyEmailOtpDto } from './dto/verify-email-otp.dto.js';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller('auth')
@@ -24,7 +26,7 @@ export class AuthController {
     @Post('sign-up')
     async signUp(
         @Body() registerDto: RegisterDto,
-    ): Promise<TokenPair> {
+    ): Promise<boolean> {
         return this.authService.signUpWithEmailAndPassword(registerDto);
     }
 
@@ -51,6 +53,29 @@ export class AuthController {
         const user = req.user as { userId: string; email: string };
         await this.authService.logout(user.userId);
         return { message: 'Logged out successfully' };
+    }
+
+    @Public()
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 3, ttl: 60000 } })
+    @Post('request-email-verification')
+    @HttpCode(HttpStatus.OK)
+    async requestEmailVerification(
+        @Body() requestEmailVerificationDto: RequestEmailVerificationDto,
+    ): Promise<{ message: string }> {
+        return this.authService.requestEmailVerificationOtp(requestEmailVerificationDto.email);
+    }
+
+    @Public()
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 5, ttl: 60000 } })
+    @Post('verify-email')
+    @HttpCode(HttpStatus.OK)
+    async verifyEmail(@Body() verifyEmailOtpDto: VerifyEmailOtpDto): Promise<boolean> {
+        return this.authService.verifyEmailOtp(
+            verifyEmailOtpDto.email,
+            verifyEmailOtpDto.otp,
+        );
     }
 
     @Public()

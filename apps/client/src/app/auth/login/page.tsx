@@ -79,6 +79,21 @@ export default function LoginPage() {
       });
 
       if (!result.success) {
+        // Check if email is not verified (403: "Email is not verified")
+        const isEmailNotVerified =
+          result.requiresEmailVerification ||
+          (result.statusCode === 403 &&
+            (result.message === 'Email is not verified' ||
+              result.error === 'Forbidden' ||
+              result.error === 'Email is not verified')) ||
+          result.message?.toLowerCase().includes('email is not verified') ||
+          result.error?.toLowerCase().includes('email is not verified');
+
+        if (isEmailNotVerified) {
+          router.push(`/auth/email-verification?email=${encodeURIComponent(trimmedEmail)}`);
+          return;
+        }
+
         setErrorMessage(result.error || 'Đăng nhập không thành công.');
         setIsLoading(false);
         return;
@@ -92,6 +107,18 @@ export default function LoginPage() {
         router.refresh();
       }, 700);
     } catch (err: any) {
+      const resData = err.response?.data;
+      const isEmailNotVerified =
+        (err.response?.status === 403 || resData?.statusCode === 403) &&
+        (resData?.message === 'Email is not verified' ||
+          resData?.error === 'Forbidden' ||
+          err.message?.toLowerCase().includes('email is not verified'));
+
+      if (isEmailNotVerified) {
+        router.push(`/auth/email-verification?email=${encodeURIComponent(trimmedEmail)}`);
+        return;
+      }
+
       setErrorMessage(
         err.message || 'Đã có lỗi xảy ra. Vui lòng kiểm tra lại kết nối.'
       );

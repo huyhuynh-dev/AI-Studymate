@@ -80,6 +80,25 @@ export async function POST(request: Request) {
     console.error('Error during sign-in route handler:', error.response?.data || error.message);
 
     const backendData = error.response?.data;
+    const statusCode = error.response?.status || 500;
+
+    // Check specifically for unverified email response from backend
+    if (
+      statusCode === 403 &&
+      (backendData?.message === 'Email is not verified' ||
+        (typeof backendData?.message === 'string' &&
+          backendData.message.toLowerCase().includes('email is not verified')))
+    ) {
+      return NextResponse.json(
+        {
+          statusCode: 403,
+          message: backendData?.message || 'Email is not verified',
+          error: backendData?.error || 'Forbidden',
+        },
+        { status: 403 }
+      );
+    }
+
     let errorMessage = 'Đăng nhập thất bại. Vui lòng thử lại sau.';
 
     if (backendData?.message) {
@@ -94,7 +113,13 @@ export async function POST(request: Request) {
       }
     }
 
-    const statusCode = error.response?.status || 500;
-    return NextResponse.json({ error: errorMessage }, { status: statusCode });
+    return NextResponse.json(
+      {
+        statusCode,
+        error: errorMessage,
+        message: backendData?.message || errorMessage,
+      },
+      { status: statusCode }
+    );
   }
 }

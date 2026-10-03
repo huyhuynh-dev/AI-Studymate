@@ -66,7 +66,7 @@ export class AuthService {
 
     // ─── Email/Password Auth ────────────────────────────────
 
-    async signUpWithEmailAndPassword(registerDto: RegisterDto): Promise<TokenPair> {
+    async signUpWithEmailAndPassword(registerDto: RegisterDto): Promise<boolean> {
         const { name, email, password } = registerDto;
 
         const isUserExist: User | null = await this.usersService.findUserByEmail(email);
@@ -102,10 +102,10 @@ export class AuthService {
             throw new InternalServerErrorException('Sign up failed');
         }
 
-        const tokens = await this.generateTokens(user.id, user.email);
-        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
+        // const tokens = await this.generateTokens(user.id, user.email);
+        // await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
 
-        return tokens;
+        return true;
     }
 
     async signInWithEmailAndPassword(loginDto: LoginDto): Promise<TokenPair> {
@@ -121,6 +121,10 @@ export class AuthService {
 
         if (!isMatch) {
             throw new UnauthorizedException('Invalid credentials');
+        }
+
+        if (!user.is_verified) {
+            throw new ForbiddenException('Email is not verified');
         }
 
         const tokens = await this.generateTokens(user.id, user.email);
@@ -187,6 +191,84 @@ export class AuthService {
         await this.usersService.updateUser(userId, { refresh_token: null });
     }
 
+    async requestEmailVerificationOtp(email: string): Promise<{ message: string }> {
+        const normalizedEmail = email.trim().toLowerCase();
+        const otpKey = this.getOtpKey(normalizedEmail, 'email-verification-otp');
+
+        try {
+            const user = await this.usersService.findUserByEmail(normalizedEmail);
+
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
+            if (user.is_verified) {
+                throw new ConflictException('Email is already verified');
+            }
+
+            const otp = this.generateOtp();
+            await this.storeOtp(normalizedEmail, otp, 300, 'email-verification-otp');
+
+            try {
+                await this.sendOtpEmail(normalizedEmail, otp, 300);
+            } catch (mailError) {
+                await this.redisService.del(otpKey);
+                this.logger.error(`Failed to send email verification OTP to ${normalizedEmail}: ${String(mailError)}`);
+                throw new InternalServerErrorException('Failed to send email verification OTP');
+            }
+
+            return { message: 'Email verification OTP sent successfully' };
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+
+            this.logger.error(`Failed to create email verification OTP for ${normalizedEmail}: ${String(error)}`);
+            throw new InternalServerErrorException('Failed to create email verification OTP');
+        }
+    }
+
+    async verifyEmailOtp(email: string, otp: string): Promise<boolean> {
+        const normalizedEmail = email.trim().toLowerCase();
+        const otpKey = this.getOtpKey(normalizedEmail, 'email-verification-otp');
+
+        try {
+            const user = await this.usersService.findUserByEmail(normalizedEmail);
+
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
+            if (user.is_verified) {
+                return true;
+            }
+
+            const storedOtpHash = await this.redisService.get(otpKey);
+
+            if (!storedOtpHash) {
+                throw new BadRequestException('Email verification OTP is invalid or expired');
+            }
+
+            const isOtpValid = this.hashOTP(otp) === storedOtpHash;
+
+            if (!isOtpValid) {
+                return false;
+            }
+
+            await this.usersService.updateUser(user.id, { is_verified: true });
+            await this.redisService.del(otpKey);
+
+            return true;
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+
+            this.logger.error(`Failed to verify email OTP for ${normalizedEmail}: ${String(error)}`);
+            throw new InternalServerErrorException('Failed to verify email OTP');
+        }
+    }
+
     // --- Forgot Password---
     async requestOTP(email: string): Promise<{ message: string }> {
         const normalizedEmail = email.trim().toLowerCase();
@@ -218,12 +300,11 @@ export class AuthService {
             await this.redisService.set(cooldownKey, '1', 60);
             await this.redisService.del(`otp_attempts:${normalizedEmail}`);
 
-            const otp: number = this.createOTP();
-            const hashOTP: string = this.hashOTP(otp);
-            await this.saveOTPIntoRedis(hashOTP, normalizedEmail, 120); // 120 seconds = 2 minutes
+            const otp = this.generateOtp();
+            await this.storeOtp(normalizedEmail, otp, 120);
 
             try {
-                await this.mailService.sendOtpMail(normalizedEmail, otp.toString(), 120);
+                await this.sendOtpEmail(normalizedEmail, otp, 120);
             } catch (mailError) {
                 // Nếu gửi mail thất bại, thu hồi cooldown và OTP để người dùng có thể gửi lại
                 await this.redisService.del(cooldownKey);
@@ -257,31 +338,8 @@ export class AuthService {
             }
 
             // 1. Kiểm tra số lần nhập sai (giới hạn tối đa 3 lần)
-            const attempts = await this.redisService.get(attemptKey);
-            const currentAttempts = attempts ? parseInt(attempts, 10) : 0;
-
-            if (currentAttempts >= 3) {
-                // Đã sai quá 3 lần -> Xóa luôn OTP để triệt tiêu brute-force
-                await this.redisService.del(redisKey);
-                await this.redisService.del(attemptKey);
-                throw new ForbiddenException('Bạn đã nhập sai OTP quá 3 lần. Vui lòng yêu cầu mã OTP mới.');
-            }
-
-            // 2. So sánh mã OTP bằng SHA-256
-            const hashedInputOtp = this.hashOTP(otp);
-
-            if (hashedInputOtp !== storedHash) {
-                const newAttempts = currentAttempts + 1;
-                if (newAttempts >= 3) {
-                    await this.redisService.del(redisKey);
-                    await this.redisService.del(attemptKey);
-                    throw new ForbiddenException('Bạn đã nhập sai OTP quá 3 lần. Vui lòng yêu cầu mã OTP mới.');
-                }
-
-                // Lưu số lần sai với TTL 120s (bằng thời gian sống của OTP)
-                await this.redisService.set(attemptKey, newAttempts.toString(), 120);
-                throw new ForbiddenException(`Mã OTP không chính xác. Bạn còn ${3 - newAttempts} lần thử.`);
-            }
+            await this.validateOtpAttempts(attemptKey, redisKey);
+            await this.verifyOtpCode(storedHash, otp, attemptKey, redisKey);
 
             // 3. OTP chính xác -> Dọn dẹp OTP và số lần thử trong Redis
             await this.redisService.del(redisKey);
@@ -350,9 +408,66 @@ export class AuthService {
 
     // ─── Utilities ──────────────────────────────────────────
 
-    async saveOTPIntoRedis(otpHash: string, email: string, expireInSeconds: number): Promise<void> {
-        const redisKey = `otp:${email.trim().toLowerCase()}`;
+    private generateOtp(): number {
+        return randomInt(100000, 1000000);
+    }
+
+    private async storeOtp(
+        email: string,
+        otp: number,
+        expireInSeconds: number,
+        keyPrefix = 'otp',
+    ): Promise<void> {
+        const otpHash = this.hashOTP(otp);
+        const redisKey = this.getOtpKey(email, keyPrefix);
         await this.redisService.set(redisKey, otpHash, expireInSeconds);
+    }
+
+    private getOtpKey(email: string, keyPrefix: string): string {
+        return `${keyPrefix}:${email.trim().toLowerCase()}`;
+    }
+
+    private async sendOtpEmail(email: string, otp: number, expireInSeconds: number): Promise<void> {
+        const result = await this.mailService.sendOtpMail(email, otp.toString(), expireInSeconds);
+        if (!result.success) {
+            throw new InternalServerErrorException('Không thể gửi email OTP');
+        }
+    }
+
+    private async validateOtpAttempts(attemptKey: string, otpKey: string): Promise<void> {
+        const attempts = await this.redisService.get(attemptKey);
+        const currentAttempts = attempts ? parseInt(attempts, 10) : 0;
+
+        if (currentAttempts >= 3) {
+            await this.redisService.del(otpKey);
+            await this.redisService.del(attemptKey);
+            throw new ForbiddenException('Bạn đã nhập sai OTP quá 3 lần. Vui lòng yêu cầu mã OTP mới.');
+        }
+    }
+
+    private async verifyOtpCode(
+        storedHash: string,
+        otp: string,
+        attemptKey: string,
+        otpKey: string,
+    ): Promise<void> {
+        const attempts = await this.redisService.get(attemptKey);
+        const currentAttempts = attempts ? parseInt(attempts, 10) : 0;
+        const hashedInputOtp = this.hashOTP(otp);
+
+        if (hashedInputOtp === storedHash) {
+            return;
+        }
+
+        const newAttempts = currentAttempts + 1;
+        if (newAttempts >= 3) {
+            await this.redisService.del(otpKey);
+            await this.redisService.del(attemptKey);
+            throw new ForbiddenException('Bạn đã nhập sai OTP quá 3 lần. Vui lòng yêu cầu mã OTP mới.');
+        }
+
+        await this.redisService.set(attemptKey, newAttempts.toString(), 120);
+        throw new ForbiddenException(`Mã OTP không chính xác. Bạn còn ${3 - newAttempts} lần thử.`);
     }
 
     async hashPassword(password: string): Promise<string> {
@@ -363,10 +478,6 @@ export class AuthService {
 
     hashOTP(num: number | string): string {
         return createHash('sha256').update(num.toString()).digest('hex');
-    }
-
-    createOTP() {
-        return randomInt(100000, 1000000);
     }
 
 }
