@@ -9,13 +9,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy.js';
 import { MailModule } from '../mail/mail.module.js';
-import { RedisService } from '../redis/redis.service.js';
+import { RedisModule } from '../redis/redis.module.js';
 
 @Module({
   imports: [
     UsersModule,
     MailModule,
     PassportModule,
+    RedisModule, // CQ-06: Import module thay vì khai báo provider trực tiếp để dùng chung 1 Redis connection
     JwtModule.registerAsync({
       global: true,
       imports: [ConfigModule],
@@ -30,7 +31,7 @@ import { RedisService } from '../redis/redis.service.js';
       }),
     }),
   ],
-  providers: [GoogleService, AuthService, JwtStrategy, RefreshTokenStrategy, RedisService,],
+  providers: [GoogleService, AuthService, JwtStrategy, RefreshTokenStrategy],
   controllers: [AuthController],
   exports: [AuthService],
 })

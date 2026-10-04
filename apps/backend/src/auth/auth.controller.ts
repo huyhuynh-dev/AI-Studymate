@@ -72,12 +72,13 @@ export class AuthController {
     @Throttle({ default: { limit: 5, ttl: 60000 } })
     @Post('verify-email')
     @HttpCode(HttpStatus.OK)
-    async verifyEmail(@Body() verifyEmailOtpDto: VerifyEmailOtpDto): Promise<boolean> {
+    async verifyEmail(@Body() verifyEmailOtpDto: VerifyEmailOtpDto): Promise<{ verified: boolean }> {
         return this.authService.verifyEmailOtp(
             verifyEmailOtpDto.email,
             verifyEmailOtpDto.otp,
         );
     }
+
 
     @Public()
     @Get('google-auth')
@@ -89,15 +90,33 @@ export class AuthController {
     @Public()
     @Get('google-callback')
     @Redirect()
-    async googleAuthCallback(@Query('code') code: string): Promise<{ url: string }> {
-        const { email, name, avatar_url } = await this.authService.getAuthClientData(code);
-        const authCode = await this.authService.createGoogleAuthCode({ email, name, avatar_url });
-
+    async googleAuthCallback(
+        @Query('code') code: string,
+        @Query('state') state: string,
+        @Query('error') error: string,
+    ): Promise<{ url: string }> {
         const baseUrl = this.configService.get<string>('REDIRECT_TO_LOGIN') ?? 'http://localhost:3000';
-        return {
-            url: `${baseUrl}?authCode=${encodeURIComponent(authCode)}`,
-        };
+
+        // SEC-07: Xử lý lỗi OAuth hoặc thiếu code param
+        if (error || !code) {
+            return { url: `${baseUrl}?error=oauth_failed` };
+        }
+
+        try {
+            // SEC-03: Validate state parameter để chống CSRF
+            await this.authService.validateGoogleOAuthState(state);
+
+            const { email, name, avatar_url } = await this.authService.getAuthClientData(code);
+            const authCode = await this.authService.createGoogleAuthCode({ email, name, avatar_url });
+
+            return {
+                url: `${baseUrl}?authCode=${encodeURIComponent(authCode)}`,
+            };
+        } catch {
+            return { url: `${baseUrl}?error=oauth_failed` };
+        }
     }
+
 
     @Public()
     @Post('exchange-code')

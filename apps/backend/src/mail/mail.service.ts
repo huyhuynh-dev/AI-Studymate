@@ -1,10 +1,12 @@
 import { MailerService } from '@nestjs-modules/mailer';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getOtpMailHtml } from './mail.html.js';
 
 @Injectable()
 export class MailService {
+    private readonly logger = new Logger(MailService.name);
+
     constructor(
         private readonly mailerService: MailerService,
         private readonly configService: ConfigService
@@ -67,7 +69,11 @@ export class MailService {
                 success: true,
             };
         } catch (error) {
-            console.error('Failed to send OTP email:', error);
+            // CQ-05: Dùng NestJS Logger thay vì console.error để log nhất quán
+            this.logger.error(
+                `Failed to send OTP email to ${to}`,
+                error instanceof Error ? error.stack : String(error),
+            );
 
             return {
                 success: false,

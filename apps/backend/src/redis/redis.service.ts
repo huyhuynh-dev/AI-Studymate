@@ -51,6 +51,16 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
         return await this.client.getDel(key);
     }
 
+    // SEC-06: Atomic increment — tránh race condition trong OTP attempt counting
+    async incr(key: string): Promise<number> {
+        return await this.client.incr(key);
+    }
+
+    // Đặt TTL cho key (dùng sau INCR vì INCR không set TTL)
+    async expire(key: string, seconds: number): Promise<void> {
+        await this.client.expire(key, seconds);
+    }
+
     getRedisClient(): RedisClientType {
         return this.client;
     }

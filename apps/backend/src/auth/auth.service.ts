@@ -56,7 +56,7 @@ export class AuthService {
             }),
             this.jwtService.signAsync(payload, {
                 secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-                expiresIn: '7d',
+                expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d') as any,
             }),
         ]);
 
@@ -139,7 +139,7 @@ export class AuthService {
 
     // ─── Google OAuth ───────────────────────────────────────
 
-    async createUserFromGoogleData(googleData: { email: string; name: string; avatar_url: string }): Promise<TokenPair> {
+    async createUserFromGoogleData(googleData: { email: string; name: string; avatar_url: string; email_verified: boolean }): Promise<TokenPair> {
         const user = await this.getOrCreateGoogleUser(googleData);
 
         const tokens = await this.generateTokens(user.id, user.email);
@@ -148,8 +148,8 @@ export class AuthService {
         return tokens;
     }
 
-    async createGoogleAuthCode(googleData: { email: string; name: string; avatar_url: string }): Promise<string> {
-        const user = await this.getOrCreateGoogleUser(googleData);
+    async createGoogleAuthCode(googleData: { email: string; name: string; avatar_url: string; email_verified?: boolean }): Promise<string> {
+        const user = await this.getOrCreateGoogleUser({ ...googleData, email_verified: googleData.email_verified ?? true });
         const authCode = randomBytes(32).toString('hex');
 
         await this.redisService.set(
@@ -180,12 +180,27 @@ export class AuthService {
         return tokens;
     }
 
-    private async getOrCreateGoogleUser(googleData: { email: string; name: string; avatar_url: string }): Promise<User> {
-        const { email, name, avatar_url } = googleData;
+    // SEC-04: Kiểm tra email_verified và xử lý account linking an toàn
+    private async getOrCreateGoogleUser(googleData: { email: string; name: string; avatar_url: string; email_verified: boolean }): Promise<User> {
+        const { email, name, avatar_url, email_verified } = googleData;
+
+        // Không chấp nhận Google account với email chưa xác thực
+        if (!email_verified) {
+            throw new ForbiddenException('Google email chưa được xác thực');
+        }
+
         let user: User | null = await this.usersService.findUserByEmail(email);
 
-        if (!user) {
-            user = await this.usersService.createUser({ email, name, avatar_url, provider: 'google' });
+        if (user) {
+            // Nếu user đã tồn tại với provider khác (local email/password), yêu cầu link account rõ ràng
+            if (user.provider && user.provider !== 'google') {
+                throw new ConflictException(
+                    'Tài khoản đã tồn tại với phương thức đăng nhập khác. Vui lòng đăng nhập và liên kết Google.',
+                );
+            }
+        } else {
+            // Tạo user mới từ Google, set is_verified = true vì Google đã xác thực email
+            user = await this.usersService.createUser({ email, name, avatar_url, provider: 'google', is_verified: true });
 
             if (!user) {
                 throw new InternalServerErrorException('Failed to create user from Google data');
@@ -203,11 +218,16 @@ export class AuthService {
         return this.googleService.getOAuth2ClientUrl();
     }
 
-    async getAuthClientData(code: string): Promise<{ email: string; name: string; avatar_url: string }> {
+    // Delegate state validation sang GoogleService
+    async validateGoogleOAuthState(state: string): Promise<void> {
+        return this.googleService.validateOAuthState(state);
+    }
+
+    async getAuthClientData(code: string): Promise<{ email: string; name: string; avatar_url: string; email_verified: boolean }> {
         return this.googleService.getAuthClientData(code);
     }
 
-    // ─── Token Refresh ──────────────────────────────────────
+
 
 
 
@@ -238,9 +258,22 @@ export class AuthService {
 
     async requestEmailVerificationOtp(email: string): Promise<{ message: string }> {
         const normalizedEmail = email.trim().toLowerCase();
+        const cooldownKey = `email_verify_cooldown:${normalizedEmail}`;
         const otpKey = this.getOtpKey(normalizedEmail, 'email-verification-otp');
 
         try {
+            // SEC-08: Cooldown per email — chống spam kể cả khi đổi IP
+            const isCooldown = await this.redisService.get(cooldownKey);
+            if (isCooldown) {
+                throw new HttpException(
+                    'Vui lòng chờ 60 giây trước khi yêu cầu mã OTP mới.',
+                    HttpStatus.TOO_MANY_REQUESTS,
+                );
+            }
+
+            // Set cooldown trước khi check user để chống enumeration + spam
+            await this.redisService.set(cooldownKey, '1', 60);
+
             const user = await this.usersService.findUserByEmail(normalizedEmail);
 
             if (!user || user.is_verified) {
@@ -254,6 +287,7 @@ export class AuthService {
                 await this.sendOtpEmail(normalizedEmail, otp, 300);
             } catch (mailError) {
                 await this.redisService.del(otpKey);
+                await this.redisService.del(cooldownKey);
                 this.logger.error(`Failed to send email verification OTP to ${normalizedEmail}: ${String(mailError)}`);
                 throw new InternalServerErrorException('Failed to send email verification OTP');
             }
@@ -269,19 +303,21 @@ export class AuthService {
         }
     }
 
-    async verifyEmailOtp(email: string, otp: string): Promise<boolean> {
+
+    async verifyEmailOtp(email: string, otp: string): Promise<{ verified: boolean }> {
         const normalizedEmail = email.trim().toLowerCase();
         const otpKey = this.getOtpKey(normalizedEmail, 'email-verification-otp');
+        const attemptKey = `email_verify_attempts:${normalizedEmail}`;
 
         try {
             const user = await this.usersService.findUserByEmail(normalizedEmail);
 
             if (!user) {
-                throw new NotFoundException('User not found');
+                throw new BadRequestException('Email verification OTP is invalid or expired');
             }
 
             if (user.is_verified) {
-                return true;
+                return { verified: true };
             }
 
             const storedOtpHash = await this.redisService.get(otpKey);
@@ -290,16 +326,15 @@ export class AuthService {
                 throw new BadRequestException('Email verification OTP is invalid or expired');
             }
 
-            const isOtpValid = this.hashOTP(otp) === storedOtpHash;
+            // CQ-01+SEC-06: Dùng atomic INCR để tránh race condition, gộp verify + attempt counting
+            await this.verifyOtpWithAttemptLimit(storedOtpHash, otp, attemptKey, otpKey);
 
-            if (!isOtpValid) {
-                return false;
-            }
-
+            // OTP đúng — xác thực user và dọn dẹp Redis
             await this.usersService.updateUser(user.id, { is_verified: true });
             await this.redisService.del(otpKey);
+            await this.redisService.del(attemptKey);
 
-            return true;
+            return { verified: true };
         } catch (error) {
             if (error instanceof HttpException) {
                 throw error;
@@ -309,6 +344,7 @@ export class AuthService {
             throw new InternalServerErrorException('Failed to verify email OTP');
         }
     }
+
 
     // --- Forgot Password---
     async requestOTP(email: string): Promise<{ message: string }> {
@@ -378,21 +414,20 @@ export class AuthService {
                 throw new NotFoundException('OTP không tồn tại hoặc đã hết hạn');
             }
 
-            // 1. Kiểm tra số lần nhập sai (giới hạn tối đa 3 lần)
-            await this.validateOtpAttempts(attemptKey, redisKey);
-            await this.verifyOtpCode(storedHash, otp, attemptKey, redisKey);
+            // CQ-01+SEC-06: Dùng method thống nhất với atomic INCR, tránh race condition và duplicate code
+            await this.verifyOtpWithAttemptLimit(storedHash, otp, attemptKey, redisKey);
 
-            // 3. OTP chính xác -> Dọn dẹp OTP và số lần thử trong Redis
+            // OTP chính xác -> Dọn dẹp OTP và số lần thử trong Redis
             await this.redisService.del(redisKey);
             await this.redisService.del(attemptKey);
 
-            // 4. Lấy thông tin user để định danh bằng User ID
+            // Lấy thông tin user để định danh bằng User ID
             const user = await this.usersService.findUserByEmail(normalizedEmail);
             if (!user) {
                 throw new NotFoundException('Không tìm thấy thông tin người dùng trong hệ thống');
             }
 
-            // 5. Cấp Opaque Token (chuỗi ngẫu nhiên 32 bytes) và lưu vào Redis:
+            // Cấp Opaque Token (chuỗi ngẫu nhiên 32 bytes) và lưu vào Redis:
             // Key: reset_token:<token> -> Value: user.id
             // TTL: 5 phút (300 giây)
             const reset_token = randomBytes(32).toString('hex');
@@ -475,50 +510,45 @@ export class AuthService {
         }
     }
 
-    private async validateOtpAttempts(attemptKey: string, otpKey: string): Promise<void> {
-        const attempts = await this.redisService.get(attemptKey);
-        const currentAttempts = attempts ? parseInt(attempts, 10) : 0;
-
-        if (currentAttempts >= 3) {
-            await this.redisService.del(otpKey);
-            await this.redisService.del(attemptKey);
-            throw new ForbiddenException('Bạn đã nhập sai OTP quá 3 lần. Vui lòng yêu cầu mã OTP mới.');
-        }
-    }
-
-    private async verifyOtpCode(
+    // SEC-06+CQ-01: Method thống nhất dùng atomic INCR — tránh race condition và duplicate GET logic
+    private async verifyOtpWithAttemptLimit(
         storedHash: string,
-        otp: string,
+        inputOtp: string,
         attemptKey: string,
         otpKey: string,
+        maxAttempts = 3,
     ): Promise<void> {
-        const attempts = await this.redisService.get(attemptKey);
-        const currentAttempts = attempts ? parseInt(attempts, 10) : 0;
-        const hashedInputOtp = this.hashOTP(otp);
+        const hashedInput = this.hashOTP(inputOtp);
 
-        if (hashedInputOtp === storedHash) {
-            return;
+        if (hashedInput === storedHash) {
+            return; // OTP đúng, không cần tăng attempt counter
         }
 
-        const newAttempts = currentAttempts + 1;
-        if (newAttempts >= 3) {
+        // OTP sai → increment atomically (INCR là lệnh atomic trong Redis)
+        const attempts = await this.redisService.incr(attemptKey);
+        if (attempts === 1) {
+            // Lần đầu increment, set TTL cho key
+            await this.redisService.expire(attemptKey, 120);
+        }
+
+        if (attempts >= maxAttempts) {
             await this.redisService.del(otpKey);
             await this.redisService.del(attemptKey);
             throw new ForbiddenException('Bạn đã nhập sai OTP quá 3 lần. Vui lòng yêu cầu mã OTP mới.');
         }
 
-        await this.redisService.set(attemptKey, newAttempts.toString(), 120);
-        throw new ForbiddenException(`Mã OTP không chính xác. Bạn còn ${3 - newAttempts} lần thử.`);
+        throw new ForbiddenException(`Mã OTP không chính xác. Bạn còn ${maxAttempts - attempts} lần thử.`);
     }
 
-    async hashPassword(password: string): Promise<string> {
+    private async hashPassword(password: string): Promise<string> {
         const saltOrRounds = 10;
         const hash = await bcrypt.hash(password, saltOrRounds);
         return hash;
     }
 
-    hashOTP(num: number | string): string {
+    private hashOTP(num: number | string): string {
         return createHash('sha256').update(num.toString()).digest('hex');
     }
 
 }
+
