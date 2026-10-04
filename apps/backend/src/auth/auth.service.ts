@@ -23,6 +23,8 @@ import { RedisService } from '../redis/redis.service.js';
 import { MailService } from '../mail/mail.service.js';
 
 const GOOGLE_AUTH_CODE_TTL_SECONDS = 60;
+const SIGN_UP_RESPONSE_MESSAGE = 'Vui lòng kiểm tra hộp thư để xác thực email.';
+const EMAIL_VERIFICATION_RESPONSE_MESSAGE = 'Nếu email hợp lệ, mã OTP sẽ được gửi đến hộp thư.';
 
 export interface TokenPair {
     access_token: string;
@@ -68,13 +70,13 @@ export class AuthService {
 
     // ─── Email/Password Auth ────────────────────────────────
 
-    async signUpWithEmailAndPassword(registerDto: RegisterDto): Promise<boolean> {
+    async signUpWithEmailAndPassword(registerDto: RegisterDto): Promise<{ message: string }> {
         const { name, email, password } = registerDto;
 
         const isUserExist: User | null = await this.usersService.findUserByEmail(email);
 
         if (isUserExist) {
-            throw new ConflictException('User with this email already exists');
+            return { message: SIGN_UP_RESPONSE_MESSAGE };
         }
 
         const password_hash: string = await this.hashPassword(password);
@@ -94,7 +96,7 @@ export class AuthService {
                 Array.isArray(prismaError.meta?.target) &&
                 prismaError.meta.target.includes('email')
             ) {
-                throw new ConflictException('User with this email already exists');
+                return { message: SIGN_UP_RESPONSE_MESSAGE };
             }
 
             throw error;
@@ -107,7 +109,7 @@ export class AuthService {
         // const tokens = await this.generateTokens(user.id, user.email);
         // await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
 
-        return true;
+        return { message: SIGN_UP_RESPONSE_MESSAGE };
     }
 
     async signInWithEmailAndPassword(loginDto: LoginDto): Promise<TokenPair> {
@@ -241,12 +243,8 @@ export class AuthService {
         try {
             const user = await this.usersService.findUserByEmail(normalizedEmail);
 
-            if (!user) {
-                throw new NotFoundException('User not found');
-            }
-
-            if (user.is_verified) {
-                throw new ConflictException('Email is already verified');
+            if (!user || user.is_verified) {
+                return { message: EMAIL_VERIFICATION_RESPONSE_MESSAGE };
             }
 
             const otp = this.generateOtp();
@@ -260,7 +258,7 @@ export class AuthService {
                 throw new InternalServerErrorException('Failed to send email verification OTP');
             }
 
-            return { message: 'Email verification OTP sent successfully' };
+            return { message: EMAIL_VERIFICATION_RESPONSE_MESSAGE };
         } catch (error) {
             if (error instanceof HttpException) {
                 throw error;

@@ -135,12 +135,15 @@ export default function RegisterPage() {
         return;
       }
 
-      setSuccessMessage('Đăng ký tài khoản thành công! Đang chuyển hướng đến trang xác thực email...');
+      setSuccessMessage(
+        result.message ||
+          'Vui lòng kiểm tra hộp thư để xác thực email. Đang chuyển hướng...'
+      );
 
       // Điều hướng người dùng sang trang xác thực email kèm email vừa đăng ký
       setTimeout(() => {
         router.push(`/auth/email-verification?email=${encodeURIComponent(trimmedEmail)}`);
-      }, 700);
+      }, 1000);
 
       /* Code cũ điều hướng trực tiếp về trang chủ khi Backend còn cấp token tự động sau khi đăng ký:
       // Redirect user to home

@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       success: true,
       message:
         backendResponse.data?.message ||
-        'Email verification OTP sent successfully',
+        'Nếu email hợp lệ, mã OTP sẽ được gửi đến hộp thư.',
     });
   } catch (error: unknown) {
     let statusCode = 500;
@@ -83,14 +83,8 @@ export async function POST(request: Request) {
 
     if (statusCode === 400) {
       errorMessage = 'Email không hợp lệ.';
-    } else if (statusCode === 404) {
-      errorMessage = 'Không tìm thấy người dùng với email này.';
-    } else if (statusCode === 409) {
-      errorMessage = 'Email này đã được xác thực trước đó.';
     } else if (statusCode === 429) {
       errorMessage = 'Bạn đã gửi yêu cầu quá số lần cho phép. Vui lòng đợi giây lát rồi thử lại.';
-    } else if (statusCode === 500) {
-      errorMessage = 'Không thể gửi mã OTP xác minh email. Vui lòng thử lại sau.';
     }
 
     return NextResponse.json(

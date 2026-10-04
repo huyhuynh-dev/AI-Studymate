@@ -379,32 +379,13 @@ function EmailVerificationContent() {
         const result = await handleRequestEmailVerification(trimmed);
 
         if (!result.success) {
-          // 409: Email is already verified
-          if (result.statusCode === 409) {
-            setSuccessMessage(
-              'Email này đã được xác thực trước đó. Đang chuyển hướng về trang đăng nhập...'
-            );
-            setTimeout(() => {
-              router.push('/auth/login');
-            }, 2000);
-            return;
-          }
-
-          // 404: User not found
-          if (result.statusCode === 404) {
-            setErrorMessage(
-              'Không tìm thấy tài khoản với email này. Vui lòng kiểm tra lại hoặc đăng ký mới.'
-            );
-            return;
-          }
-
           // 400: Email không hợp lệ
           if (result.statusCode === 400) {
             setErrorMessage('Email không hợp lệ. Vui lòng kiểm tra lại định dạng email.');
             return;
           }
 
-          // 429: Gửi quá số lần cho phép
+          // 429: Gửi quá số lần cho phép (Rate limiting)
           if (result.statusCode === 429) {
             setErrorMessage(
               'Bạn đã yêu cầu gửi mã quá nhiều lần. Vui lòng đợi ít phút trước khi thử lại.'
@@ -412,23 +393,16 @@ function EmailVerificationContent() {
             return;
           }
 
-          // 500: Failed to send email verification OTP
-          if (result.statusCode === 500) {
-            setErrorMessage(
-              'Không thể gửi mã OTP xác minh email. Vui lòng thử lại sau.'
-            );
-            return;
-          }
-
           setErrorMessage(
-            result.error || 'Có lỗi xảy ra khi yêu cầu mã xác thực. Vui lòng thử lại.'
+            result.error || 'Có lỗi xảy ra khi yêu cầu mã xác thực. Vui lòng thử lại sau.'
           );
           return;
         }
 
-        // Successfully sent OTP
+        // Thành công: hiển thị thông báo trung lập bảo vệ chống User Enumeration
         setSuccessMessage(
-          'Mã xác thực OTP gồm 6 chữ số đã được gửi đến hộp thư của bạn. Vui lòng kiểm tra email!'
+          result.message ||
+            'Nếu email hợp lệ, mã OTP sẽ được gửi đến hộp thư. Vui lòng kiểm tra email của bạn!'
         );
         setCountdown(300); // 5 minutes TTL
         if (isManualResend) {

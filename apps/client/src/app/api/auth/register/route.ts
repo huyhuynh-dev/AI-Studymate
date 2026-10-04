@@ -7,8 +7,7 @@ const BACKEND_URL =
   'http://localhost:3001';
 
 interface SignUpBackendResponse {
-  access_token: string;
-  refresh_token: string;
+  message: string;
 }
 
 export async function POST(request: Request) {
@@ -46,53 +45,14 @@ export async function POST(request: Request) {
       }
     );
 
-    // Backend hiện tại trả về boolean: true khi đăng ký thành công (không tạo hoặc trả về token)
-    /* Code cũ cấp và lưu token vào cookies trước đây:
-    const { access_token, refresh_token } = backendResponse.data;
+    const message =
+      backendResponse.data?.message ||
+      'Vui lòng kiểm tra hộp thư để xác thực email.';
 
-    if (!access_token || !refresh_token) {
-      return NextResponse.json(
-        { error: 'Phản hồi từ máy chủ không hợp lệ (thiếu token xác thực).' },
-        { status: 502 }
-      );
-    }
-    */
-
-    const rawData: any = backendResponse.data;
-    const isSuccess =
-      rawData === true ||
-      rawData === 'true' ||
-      (typeof rawData === 'object' && rawData?.data === true) ||
-      Boolean(rawData);
-
-    // Create JSON response
-    const response = NextResponse.json({
-      success: isSuccess,
-      message: 'Đăng ký tài khoản thành công.',
+    return NextResponse.json({
+      success: true,
+      message,
     });
-
-    /* Code cũ set HttpOnly Secure Cookies cho access_token và refresh_token:
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    // Set HttpOnly Secure Cookies
-    response.cookies.set('access_token', access_token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24, // 1 day
-    });
-
-    response.cookies.set('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
-    */
-
-    return response;
   } catch (error: any) {
     console.error('Error during sign-up route handler:', error.response?.data || error.message);
 
@@ -103,12 +63,7 @@ export async function POST(request: Request) {
       if (Array.isArray(backendData.message)) {
         errorMessage = backendData.message.join(', ');
       } else if (typeof backendData.message === 'string') {
-        const msgLower = backendData.message.toLowerCase();
-        if (msgLower.includes('already exists') || msgLower.includes('conflict')) {
-          errorMessage = 'Email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác.';
-        } else {
-          errorMessage = backendData.message;
-        }
+        errorMessage = backendData.message;
       }
     }
 

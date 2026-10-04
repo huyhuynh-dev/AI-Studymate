@@ -27,7 +27,7 @@ export class AuthController {
     @Post('sign-up')
     async signUp(
         @Body() registerDto: RegisterDto,
-    ): Promise<boolean> {
+    ): Promise<{ message: string }> {
         return this.authService.signUpWithEmailAndPassword(registerDto);
     }
 
