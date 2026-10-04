@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AtSign, Lock, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 
@@ -17,6 +17,7 @@ import { handleGoogleLogin, handleEmailLogin } from '@/services/auth.api';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Form states
   const [email, setEmail] = useState('');
@@ -28,6 +29,15 @@ export default function LoginPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam === 'oauth_failed' || errorParam === 'access_denied') {
+      setErrorMessage('Xác thực bằng Google thất bại hoặc đã bị hủy.');
+    } else if (errorParam) {
+      setErrorMessage(decodeURIComponent(errorParam));
+    }
+  }, [searchParams]);
 
   // Handle Google OAuth Click
   const onGoogleClick = async () => {

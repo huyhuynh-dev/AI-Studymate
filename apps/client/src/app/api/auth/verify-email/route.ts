@@ -50,13 +50,12 @@ export async function POST(request: Request) {
       }
     );
 
-    // Backend returns HTTP 200 with boolean: true (correct) or false (incorrect)
+    // Backend returns HTTP 200 with object: { verified: true } on success
     const rawData = backendResponse.data;
     const isOtpValid =
       rawData === true ||
       rawData === 'true' ||
-      (typeof rawData === 'object' && rawData?.data === true) ||
-      (typeof rawData === 'object' && rawData?.isVerified === true);
+      (typeof rawData === 'object' && (rawData?.verified === true || rawData?.isVerified === true || rawData?.data === true));
 
     if (isOtpValid) {
       return NextResponse.json({
@@ -66,15 +65,14 @@ export async function POST(request: Request) {
       });
     }
 
-    // OTP is incorrect (HTTP 200 false)
     return NextResponse.json(
       {
         success: false,
         isVerified: false,
-        error: 'Mã OTP không chính xác. Vui lòng kiểm tra lại.',
-        message: 'Mã OTP không chính xác.',
+        error: 'Phản hồi từ máy chủ không hợp lệ.',
+        message: 'Phản hồi từ máy chủ không hợp lệ.',
       },
-      { status: 200 }
+      { status: 400 }
     );
   } catch (error: unknown) {
     let statusCode = 500;

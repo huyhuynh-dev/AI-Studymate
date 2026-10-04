@@ -345,14 +345,16 @@ function StepNewPassword({
     if (!password) return { text: 'Chưa nhập', level: 'empty' };
     if (password.length < 8)
       return { text: 'Yếu (tối thiểu 8 ký tự)', level: 'weak' };
+    if (password.length > 64)
+      return { text: 'Lỗi (tối đa 64 ký tự)', level: 'weak' };
 
     let score = 0;
     if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
     if (/\d/.test(password)) score++;
-    if (/[^a-zA-Z0-9]/.test(password)) score++;
+    if (/[@$!%*?&]/.test(password)) score++;
 
-    if (score >= 2 && password.length >= 10)
-      return { text: 'Khá mạnh', level: 'strong' };
+    if (score === 3)
+      return { text: 'Mạnh', level: 'strong' };
     if (score >= 1) return { text: 'Trung bình', level: 'medium' };
     return { text: 'Yếu', level: 'weak' };
   };
@@ -360,15 +362,15 @@ function StepNewPassword({
   const passwordStrength = getPasswordStrength();
 
   const passwordChecks = [
-    { label: 'Tối thiểu 8 ký tự', valid: password.length >= 8 },
+    { label: 'Từ 8 đến 64 ký tự', valid: password.length >= 8 && password.length <= 64 },
     {
       label: 'Có cả chữ hoa (A-Z) và chữ thường (a-z)',
       valid: /[a-z]/.test(password) && /[A-Z]/.test(password),
     },
     { label: 'Có ít nhất 1 chữ số (0-9)', valid: /[0-9]/.test(password) },
     {
-      label: 'Có ít nhất 1 ký tự đặc biệt (@, #, $, ...)',
-      valid: /[^a-zA-Z0-9]/.test(password),
+      label: 'Có ít nhất 1 ký tự đặc biệt (@$!%*?&)',
+      valid: /[@$!%*?&]/.test(password),
     },
   ];
 
@@ -557,7 +559,12 @@ function StepNewPassword({
           isLoading={isLoading}
           loadingLabel="Đang cập nhật..."
           onClick={onSubmit}
-          disabled={!passwordsMatch || password.length < 8}
+          disabled={
+            !passwordsMatch ||
+            password.length < 8 ||
+            password.length > 64 ||
+            !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(password)
+          }
           className="!from-emerald-600 !to-emerald-700 hover:!from-emerald-700 hover:!to-emerald-800 !shadow-emerald-200"
         />
       </div>
@@ -724,8 +731,13 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (newPassword.length < 8) {
-      setErrorMessage('Mật khẩu mới phải có tối thiểu 8 ký tự.');
+    if (newPassword.length < 8 || newPassword.length > 64) {
+      setErrorMessage('Mật khẩu mới phải từ 8 đến 64 ký tự.');
+      return;
+    }
+
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(newPassword)) {
+      setErrorMessage('Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&).');
       return;
     }
 

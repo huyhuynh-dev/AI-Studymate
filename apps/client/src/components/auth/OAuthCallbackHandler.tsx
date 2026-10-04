@@ -52,7 +52,11 @@ export function OAuthCallbackHandler() {
           }
         })
         .catch((err) => {
-          console.error('Failed to exchange OAuth authCode:', err.response?.data || err.message);
+          const data = err.response?.data;
+          const msg = data?.message || data?.error || 'oauth_failed';
+          console.error('Failed to exchange OAuth authCode:', data || err.message);
+          
+          router.replace(`/auth/login?error=${encodeURIComponent(msg)}`);
         });
 
       return;

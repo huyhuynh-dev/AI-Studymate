@@ -479,15 +479,15 @@ function EmailVerificationContent() {
         return;
       }
 
-      // OTP sai (HTTP 200 false)
-      if (result.isVerified === false) {
+      // Handle HTTP error statuses
+      if (result.statusCode === 403) {
+        // Sai OTP or Max Attempts (ForbiddenException)
         setErrorMessage(
-          result.error || 'Mã OTP không chính xác. Vui lòng kiểm tra lại.'
+          result.error || result.message || 'Mã OTP không chính xác. Vui lòng kiểm tra lại.'
         );
         return;
       }
 
-      // Email không tồn tại (HTTP 404)
       if (result.statusCode === 404) {
         setErrorMessage(
           'Email không tồn tại trong hệ thống. Vui lòng kiểm tra lại hoặc đăng ký mới.'
@@ -495,25 +495,25 @@ function EmailVerificationContent() {
         return;
       }
 
-      // OTP hết hạn hoặc không hợp lệ (HTTP 400)
       if (result.statusCode === 400) {
         setErrorMessage(
-          result.error ||
-            'Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng nhấn "Gửi lại mã OTP".'
+          result.error || result.message || 'Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng nhấn "Gửi lại mã OTP".'
         );
         return;
       }
 
-      // Lỗi hệ thống (HTTP 500)
+      if (result.statusCode === 429) {
+        setErrorMessage('Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi ít phút rồi thử lại.');
+        return;
+      }
+
       if (result.statusCode === 500) {
-        setErrorMessage(
-          'Lỗi hệ thống khi xác thực email. Vui lòng thử lại sau.'
-        );
+        setErrorMessage('Lỗi hệ thống khi xác thực email. Vui lòng thử lại sau.');
         return;
       }
 
       setErrorMessage(
-        result.error || 'Xác thực email thất bại. Vui lòng thử lại sau.'
+        result.error || result.message || 'Xác thực email thất bại. Vui lòng thử lại sau.'
       );
     } catch (err: any) {
       setErrorMessage(
