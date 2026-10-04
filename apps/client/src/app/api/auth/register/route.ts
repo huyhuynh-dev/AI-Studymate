@@ -58,11 +58,11 @@ export async function POST(request: Request) {
     }
     */
 
-    const rawData = backendResponse.data;
+    const rawData: any = backendResponse.data;
     const isSuccess =
       rawData === true ||
       rawData === 'true' ||
-      (typeof rawData === 'object' && (rawData as any)?.data === true) ||
+      (typeof rawData === 'object' && rawData?.data === true) ||
       Boolean(rawData);
 
     // Create JSON response

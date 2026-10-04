@@ -13,6 +13,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { RequestEmailVerificationDto } from './dto/request-email-verification.dto.js';
 import { VerifyEmailOtpDto } from './dto/verify-email-otp.dto.js';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { ExchangeCodeDto } from './dto/exchange-code.dto.js';
 
 @Controller('auth')
 export class AuthController {
@@ -90,12 +91,19 @@ export class AuthController {
     @Redirect()
     async googleAuthCallback(@Query('code') code: string): Promise<{ url: string }> {
         const { email, name, avatar_url } = await this.authService.getAuthClientData(code);
-        const { access_token, refresh_token } = await this.authService.createUserFromGoogleData({ email, name, avatar_url });
+        const authCode = await this.authService.createGoogleAuthCode({ email, name, avatar_url });
 
         const baseUrl = this.configService.get<string>('REDIRECT_TO_LOGIN') ?? 'http://localhost:3000';
         return {
-            url: `${baseUrl}?token=${encodeURIComponent(access_token)}&refresh_token=${encodeURIComponent(refresh_token)}`,
+            url: `${baseUrl}?authCode=${encodeURIComponent(authCode)}`,
         };
+    }
+
+    @Public()
+    @Post('exchange-code')
+    @HttpCode(HttpStatus.OK)
+    async exchangeCode(@Body() exchangeCodeDto: ExchangeCodeDto): Promise<TokenPair> {
+        return this.authService.exchangeGoogleAuthCode(exchangeCodeDto.authCode);
     }
 
     // ─── Reset Password Flow ────────────────────────────────

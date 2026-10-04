@@ -389,3 +389,57 @@ export const handleVerifyEmail = async (
     };
   }
 };
+
+export interface ExchangeCodeResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  statusCode?: number;
+}
+
+/**
+ * Handle Google OAuth code exchange.
+ * Sends the one-time authCode to Next.js route handler, which exchanges it with backend
+ * and sets HttpOnly Secure Cookies for access_token and refresh_token.
+ */
+export const handleExchangeCode = async (
+  authCode: string
+): Promise<ExchangeCodeResponse> => {
+  try {
+    const response = await axios.post<ExchangeCodeResponse>(
+      '/api/auth/exchange-code',
+      { authCode },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: unknown) {
+    let statusCode = 500;
+    let errorMessage = 'Xác thực Google thất bại. Vui lòng thử lại sau.';
+
+    if (isAxiosError(error)) {
+      statusCode = error.response?.status || 500;
+      const data = error.response?.data as
+        | { statusCode?: number; message?: string | string[]; error?: string }
+        | undefined;
+
+      if (statusCode === 401) {
+        errorMessage = 'Mã xác thực không hợp lệ, đã được sử dụng hoặc đã hết hạn.';
+      } else if (data?.error) {
+        errorMessage = data.error;
+      } else if (data?.message) {
+        errorMessage = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+      }
+    }
+
+    return {
+      success: false,
+      statusCode,
+      error: errorMessage,
+    };
+  }
+};

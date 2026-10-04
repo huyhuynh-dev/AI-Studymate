@@ -22,6 +22,8 @@ import { createHash, randomBytes, randomInt } from 'crypto';
 import { RedisService } from '../redis/redis.service.js';
 import { MailService } from '../mail/mail.service.js';
 
+const GOOGLE_AUTH_CODE_TTL_SECONDS = 60;
+
 export interface TokenPair {
     access_token: string;
     refresh_token: string;
@@ -136,8 +138,48 @@ export class AuthService {
     // ─── Google OAuth ───────────────────────────────────────
 
     async createUserFromGoogleData(googleData: { email: string; name: string; avatar_url: string }): Promise<TokenPair> {
-        const { email, name, avatar_url } = googleData;
+        const user = await this.getOrCreateGoogleUser(googleData);
 
+        const tokens = await this.generateTokens(user.id, user.email);
+        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
+
+        return tokens;
+    }
+
+    async createGoogleAuthCode(googleData: { email: string; name: string; avatar_url: string }): Promise<string> {
+        const user = await this.getOrCreateGoogleUser(googleData);
+        const authCode = randomBytes(32).toString('hex');
+
+        await this.redisService.set(
+            this.getGoogleAuthCodeKey(authCode),
+            user.id,
+            GOOGLE_AUTH_CODE_TTL_SECONDS,
+        );
+
+        return authCode;
+    }
+
+    async exchangeGoogleAuthCode(authCode: string): Promise<TokenPair> {
+        const userId = await this.redisService.getAndDelete(this.getGoogleAuthCodeKey(authCode));
+
+        if (!userId) {
+            throw new UnauthorizedException('Invalid or expired auth code');
+        }
+
+        const user = await this.usersService.findUserById(userId);
+
+        if (!user) {
+            throw new UnauthorizedException('Invalid or expired auth code');
+        }
+
+        const tokens = await this.generateTokens(user.id, user.email);
+        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
+
+        return tokens;
+    }
+
+    private async getOrCreateGoogleUser(googleData: { email: string; name: string; avatar_url: string }): Promise<User> {
+        const { email, name, avatar_url } = googleData;
         let user: User | null = await this.usersService.findUserByEmail(email);
 
         if (!user) {
@@ -148,10 +190,11 @@ export class AuthService {
             }
         }
 
-        const tokens = await this.generateTokens(user.id, user.email);
-        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
+        return user;
+    }
 
-        return tokens;
+    private getGoogleAuthCodeKey(authCode: string): string {
+        return `auth:google-code:${authCode}`;
     }
 
     async googleAuth(): Promise<{ url: string }> {
