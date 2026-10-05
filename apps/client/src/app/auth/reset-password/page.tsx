@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Mail,
   Lock,
@@ -10,12 +10,12 @@ import {
   KeyRound,
   MailCheck,
   CheckCircle2,
+  AlertCircle,
   ArrowLeft,
   RefreshCw,
   Clock,
   Pencil,
   Sparkles,
-  LogOut,
 } from 'lucide-react';
 
 import AuthInput from '@/components/auth/AuthInput';
@@ -25,6 +25,11 @@ import AuthSwitchLink from '@/components/auth/AuthSwitchLink';
 import AuthCheckbox from '@/components/auth/AuthCheckbox';
 import PasswordStrength from '@/components/auth/PasswordStrength';
 import OtpInput from '@/components/auth/OtpInput';
+import {
+  handleForgotPassword,
+  handleVerifyOtp,
+  handleResetPassword,
+} from '@/services/auth.api';
 
 // ─────────────────────────────────────────────
 // Step 1 — Enter email
@@ -34,11 +39,15 @@ function StepEmail({
   setEmail,
   onSubmit,
   isLoading,
+  errorMessage,
+  successMessage,
 }: {
   email: string;
   setEmail: (v: string) => void;
   onSubmit: () => void;
   isLoading: boolean;
+  errorMessage?: string | null;
+  successMessage?: string | null;
 }) {
   return (
     <>
@@ -68,6 +77,21 @@ function StepEmail({
           AI StudyMate sẽ gửi mã OTP xác thực để đặt lại mật khẩu cho bạn.
         </p>
       </div>
+
+      {/* Feedback Banners */}
+      {errorMessage && (
+        <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-sm text-red-700 animate-in fade-in">
+          <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-500" />
+          <span className="flex-1 leading-snug">{errorMessage}</span>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-sm text-emerald-700 animate-in fade-in">
+          <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-500" />
+          <span className="flex-1 leading-snug">{successMessage}</span>
+        </div>
+      )}
 
       {/* Email input */}
       <div className="space-y-4">
@@ -105,9 +129,9 @@ function StepEmail({
         <div className="flex gap-2">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
           <p className="text-xs text-emerald-800 leading-relaxed">
-            Mã OTP có hiệu lực trong <strong>10 phút</strong>. Nếu không nhận
+            Mã OTP có hiệu lực trong <strong>120 giây (2 phút)</strong>. Nếu không nhận
             được thư sau 1 phút, hãy kiểm tra thư mục{' '}
-            <strong>Spam / Quảng cáo</strong>.
+            <strong>Spam / Quảng cáo</strong> hoặc bấm gửi lại mã.
           </p>
         </div>
       </div>
@@ -139,6 +163,9 @@ function StepOtp({
   isLoading,
   isResending,
   countdown,
+  resendCooldown,
+  errorMessage,
+  successMessage,
 }: {
   email: string;
   otp: string[];
@@ -150,6 +177,9 @@ function StepOtp({
   isLoading: boolean;
   isResending: boolean;
   countdown: number;
+  resendCooldown: number;
+  errorMessage?: string | null;
+  successMessage?: string | null;
 }) {
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -192,6 +222,21 @@ function StepOtp({
         </span>
       </div>
 
+      {/* Feedback Banners */}
+      {errorMessage && (
+        <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-sm text-red-700 animate-in fade-in">
+          <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-500" />
+          <span className="flex-1 leading-snug">{errorMessage}</span>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-sm text-emerald-700 animate-in fade-in">
+          <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-500" />
+          <span className="flex-1 leading-snug">{successMessage}</span>
+        </div>
+      )}
+
       {/* OTP Input */}
       <OtpInput value={otp} onChange={setOtp} disabled={isLoading} />
 
@@ -201,7 +246,7 @@ function StepOtp({
           <Clock className="w-3.5 h-3.5" />
           <span>
             Mã hết hạn sau:{' '}
-            <span className={countdown <= 60 ? 'text-red-500 font-semibold' : 'text-indigo-600 font-semibold'}>
+            <span className={countdown <= 30 ? 'text-red-500 font-semibold' : 'text-indigo-600 font-semibold'}>
               {formatTime(countdown)}
             </span>
           </span>
@@ -209,11 +254,11 @@ function StepOtp({
         <button
           type="button"
           onClick={onResend}
-          disabled={isResending || countdown > 0}
+          disabled={isResending || resendCooldown > 0}
           className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:text-gray-400 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`} />
-          Gửi lại mã OTP
+          {resendCooldown > 0 ? `Gửi lại sau (${resendCooldown}s)` : 'Gửi lại mã OTP'}
         </button>
       </div>
 
@@ -225,7 +270,7 @@ function StepOtp({
           isLoading={isLoading}
           loadingLabel="Đang xác thực..."
           onClick={onSubmit}
-          disabled={otp.some((d) => !d)}
+          disabled={otp.some((d) => !d) || countdown === 0}
         />
       </div>
 
@@ -236,8 +281,7 @@ function StepOtp({
           <div>
             <p className="text-xs text-blue-900 font-semibold">Lưu ý bảo mật</p>
             <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">
-              Tuyệt đối không chia sẻ mã này cho bất kỳ ai, kể cả nhân sự
-              quản trị viên của AI StudyMate.
+              Mã OTP có hiệu lực trong <strong>120 giây</strong> và tối đa 3 lần nhập sai. Tuyệt đối không chia sẻ mã này cho bất kỳ ai.
             </p>
           </div>
         </div>
@@ -279,6 +323,8 @@ function StepNewPassword({
   setLogoutAll,
   onSubmit,
   isLoading,
+  errorMessage,
+  successMessage,
 }: {
   password: string;
   setPassword: (v: string) => void;
@@ -288,6 +334,8 @@ function StepNewPassword({
   setLogoutAll: (v: boolean) => void;
   onSubmit: () => void;
   isLoading: boolean;
+  errorMessage?: string | null;
+  successMessage?: string | null;
 }) {
   // Password strength calculation
   const getPasswordStrength = (): {
@@ -297,14 +345,16 @@ function StepNewPassword({
     if (!password) return { text: 'Chưa nhập', level: 'empty' };
     if (password.length < 8)
       return { text: 'Yếu (tối thiểu 8 ký tự)', level: 'weak' };
+    if (password.length > 64)
+      return { text: 'Lỗi (tối đa 64 ký tự)', level: 'weak' };
 
     let score = 0;
     if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
     if (/\d/.test(password)) score++;
-    if (/[^a-zA-Z0-9]/.test(password)) score++;
+    if (/[@$!%*?&]/.test(password)) score++;
 
-    if (score >= 2 && password.length >= 10)
-      return { text: 'Khá mạnh', level: 'strong' };
+    if (score === 3)
+      return { text: 'Mạnh', level: 'strong' };
     if (score >= 1) return { text: 'Trung bình', level: 'medium' };
     return { text: 'Yếu', level: 'weak' };
   };
@@ -312,15 +362,15 @@ function StepNewPassword({
   const passwordStrength = getPasswordStrength();
 
   const passwordChecks = [
-    { label: 'Tối thiểu 8 ký tự', valid: password.length >= 8 },
+    { label: 'Từ 8 đến 64 ký tự', valid: password.length >= 8 && password.length <= 64 },
     {
       label: 'Có cả chữ hoa (A-Z) và chữ thường (a-z)',
       valid: /[a-z]/.test(password) && /[A-Z]/.test(password),
     },
     { label: 'Có ít nhất 1 chữ số (0-9)', valid: /[0-9]/.test(password) },
     {
-      label: 'Có ít nhất 1 ký tự đặc biệt (@, #, $, ...)',
-      valid: /[^a-zA-Z0-9]/.test(password),
+      label: 'Có ít nhất 1 ký tự đặc biệt (@$!%*?&)',
+      valid: /[@$!%*?&]/.test(password),
     },
   ];
 
@@ -371,6 +421,21 @@ function StepNewPassword({
           để đảm bảo an toàn tối đa cho dữ liệu học tập.
         </p>
       </div>
+
+      {/* Feedback Banners */}
+      {errorMessage && (
+        <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-sm text-red-700 animate-in fade-in">
+          <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-500" />
+          <span className="flex-1 leading-snug">{errorMessage}</span>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-sm text-emerald-700 animate-in fade-in">
+          <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-500" />
+          <span className="flex-1 leading-snug">{successMessage}</span>
+        </div>
+      )}
 
       {/* Form */}
       <div className="space-y-4">
@@ -494,7 +559,12 @@ function StepNewPassword({
           isLoading={isLoading}
           loadingLabel="Đang cập nhật..."
           onClick={onSubmit}
-          disabled={!passwordsMatch || password.length < 8}
+          disabled={
+            !passwordsMatch ||
+            password.length < 8 ||
+            password.length > 64 ||
+            !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(password)
+          }
           className="!from-emerald-600 !to-emerald-700 hover:!from-emerald-700 hover:!to-emerald-800 !shadow-emerald-200"
         />
       </div>
@@ -513,6 +583,7 @@ function StepNewPassword({
 // Main multi-step page
 // ─────────────────────────────────────────────
 export default function ResetPasswordPage() {
+  const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Step 1
@@ -520,106 +591,187 @@ export default function ResetPasswordPage() {
 
   // Step 2
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
-  const [countdown, setCountdown] = useState(180); // 3 minutes
+  const [countdown, setCountdown] = useState(120); // OTP expires in 120s
+  const [resendCooldown, setResendCooldown] = useState(60); // 60s cooldown for resend
   const [isResending, setIsResending] = useState(false);
+  const [resetToken, setResetToken] = useState<string>('');
 
   // Step 3
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [logoutAll, setLogoutAll] = useState(true);
 
-  // Shared
+  // Shared states
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Countdown timer for OTP
+  // Timers for OTP expiry and Resend cooldown
   useEffect(() => {
-    if (step !== 2 || countdown <= 0) return;
+    if (step !== 2) return;
     const interval = setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return c - 1;
-      });
+      setCountdown((c) => (c > 0 ? c - 1 : 0));
+      setResendCooldown((rc) => (rc > 0 ? rc - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
-  }, [step, countdown]);
+  }, [step]);
 
   // Step 1: Send OTP
   const handleSendOtp = useCallback(async () => {
-    if (!email.trim()) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMessage('Vui lòng nhập địa chỉ email của bạn.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setErrorMessage('Địa chỉ email không đúng định dạng.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // TODO: Call API to send OTP
-      // await sendOtpToEmail(email);
-      await new Promise((r) => setTimeout(r, 1000)); // simulate
+      const response = await handleForgotPassword({ email: trimmedEmail });
+      if (!response.success) {
+        setErrorMessage(
+          response.error || 'Không thể gửi mã xác nhận OTP. Vui lòng thử lại.'
+        );
+        return;
+      }
 
       setStep(2);
-      setCountdown(180);
+      setCountdown(120);
+      setResendCooldown(60);
       setOtp(Array(6).fill(''));
-    } catch {
-      // handle error
+      setSuccessMessage(
+        response.message || 'Mã xác thực OTP đã được gửi đến email của bạn.'
+      );
+    } catch (err: unknown) {
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Đã có lỗi xảy ra. Vui lòng kiểm tra lại kết nối.'
+      );
     } finally {
       setIsLoading(false);
     }
   }, [email]);
 
   // Step 2: Verify OTP
-  const handleVerifyOtp = useCallback(async () => {
+  const handleVerifyOtpSubmit = useCallback(async () => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
     const code = otp.join('');
-    if (code.length !== 6) return;
+    if (code.length !== 6) {
+      setErrorMessage('Vui lòng nhập đầy đủ 6 chữ số mã OTP.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // TODO: Call API to verify OTP
-      // await verifyOtp(email, code);
-      await new Promise((r) => setTimeout(r, 1000)); // simulate
+      const response = await handleVerifyOtp({
+        email: email.trim(),
+        otp: code,
+      });
 
+      if (!response.success || !response.reset_token) {
+        setErrorMessage(response.error || 'Mã OTP không hợp lệ hoặc đã hết hạn.');
+        return;
+      }
+
+      setResetToken(response.reset_token);
       setStep(3);
-    } catch {
-      // handle error
+      setSuccessMessage('Xác thực mã OTP thành công. Vui lòng thiết lập mật khẩu mới.');
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'Lỗi khi xác minh mã OTP.');
     } finally {
       setIsLoading(false);
     }
-  }, [otp]);
+  }, [email, otp]);
 
   // Step 2: Resend OTP
   const handleResendOtp = useCallback(async () => {
+    if (resendCooldown > 0) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
     setIsResending(true);
-    try {
-      // TODO: Call API to resend OTP
-      // await sendOtpToEmail(email);
-      await new Promise((r) => setTimeout(r, 1000)); // simulate
 
-      setCountdown(180);
+    try {
+      const response = await handleForgotPassword({ email: email.trim() });
+      if (!response.success) {
+        setErrorMessage(
+          response.error || 'Chưa thể gửi lại mã OTP. Vui lòng thử lại sau.'
+        );
+        return;
+      }
+
+      setCountdown(120);
+      setResendCooldown(60);
       setOtp(Array(6).fill(''));
-    } catch {
-      // handle error
+      setSuccessMessage('Đã gửi lại mã OTP mới. Vui lòng kiểm tra hộp thư!');
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'Không thể gửi lại mã OTP.');
     } finally {
       setIsResending(false);
     }
-  }, []);
+  }, [email, resendCooldown]);
 
   // Step 3: Update password
   const handleUpdatePassword = useCallback(async () => {
-    if (newPassword !== confirmPassword || newPassword.length < 8) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    if (!resetToken) {
+      setErrorMessage('Phiên xác thực đã hết hạn hoặc không hợp lệ. Vui lòng thực hiện lại.');
+      return;
+    }
+
+    if (newPassword.length < 8 || newPassword.length > 64) {
+      setErrorMessage('Mật khẩu mới phải từ 8 đến 64 ký tự.');
+      return;
+    }
+
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(newPassword)) {
+      setErrorMessage('Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&).');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setErrorMessage('Mật khẩu xác nhận không trùng khớp.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // TODO: Call API to reset password
-      // await resetPassword(email, otp.join(''), newPassword, logoutAll);
-      await new Promise((r) => setTimeout(r, 1500)); // simulate
+      const response = await handleResetPassword({
+        reset_token: resetToken,
+        new_password: newPassword,
+      });
 
-      // Redirect to login
-      window.location.href = '/auth/login';
-    } catch {
-      // handle error
+      if (!response.success) {
+        setErrorMessage(response.error || 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.');
+        return;
+      }
+
+      setSuccessMessage(
+        response.message || 'Đặt lại mật khẩu thành công! Đang chuyển hướng sang trang đăng nhập...'
+      );
+
+      setTimeout(() => {
+        router.push('/auth/login');
+      }, 1500);
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi đặt lại mật khẩu.');
     } finally {
       setIsLoading(false);
     }
-  }, [newPassword, confirmPassword]);
+  }, [resetToken, newPassword, confirmPassword, router]);
 
   return (
     <>
@@ -629,6 +781,8 @@ export default function ResetPasswordPage() {
           setEmail={setEmail}
           onSubmit={handleSendOtp}
           isLoading={isLoading}
+          errorMessage={errorMessage}
+          successMessage={successMessage}
         />
       )}
 
@@ -637,13 +791,24 @@ export default function ResetPasswordPage() {
           email={email}
           otp={otp}
           setOtp={setOtp}
-          onSubmit={handleVerifyOtp}
+          onSubmit={handleVerifyOtpSubmit}
           onResend={handleResendOtp}
-          onBack={() => setStep(1)}
-          onEditEmail={() => setStep(1)}
+          onBack={() => {
+            setErrorMessage(null);
+            setSuccessMessage(null);
+            setStep(1);
+          }}
+          onEditEmail={() => {
+            setErrorMessage(null);
+            setSuccessMessage(null);
+            setStep(1);
+          }}
           isLoading={isLoading}
           isResending={isResending}
           countdown={countdown}
+          resendCooldown={resendCooldown}
+          errorMessage={errorMessage}
+          successMessage={successMessage}
         />
       )}
 
@@ -657,6 +822,8 @@ export default function ResetPasswordPage() {
           setLogoutAll={setLogoutAll}
           onSubmit={handleUpdatePassword}
           isLoading={isLoading}
+          errorMessage={errorMessage}
+          successMessage={successMessage}
         />
       )}
     </>

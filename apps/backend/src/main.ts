@@ -15,8 +15,10 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
+    forbidNonWhitelisted: true, // CQ-10: Trả 400 nếu client gửi field không có trong DTO
     transform: true,
   }));
+
 
   await app.listen(process.env.PORT ?? 3001);
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   MailCheck,
@@ -12,6 +12,7 @@ import {
   Lightbulb,
   ShieldCheck,
   CheckCircle2,
+  AlertCircle,
   LogOut,
   Sparkles,
   ChevronLeft,
@@ -23,6 +24,7 @@ import {
 
 import OtpInput from '@/components/auth/OtpInput';
 import AuthSubmitButton from '@/components/auth/AuthSubmitButton';
+import { handleRequestEmailVerification, handleVerifyEmail } from '@/services/auth.api';
 
 // ─────────────────────────────────────────────
 // Step 1 — OTP Verification
@@ -35,7 +37,10 @@ function StepVerifyOtp({
   onResend,
   isLoading,
   isResending,
+  isRequestingOtp,
   countdown,
+  errorMessage,
+  successMessage,
 }: {
   email: string;
   otp: string[];
@@ -44,7 +49,10 @@ function StepVerifyOtp({
   onResend: () => void;
   isLoading: boolean;
   isResending: boolean;
+  isRequestingOtp: boolean;
   countdown: number;
+  errorMessage: string | null;
+  successMessage: string | null;
 }) {
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -87,7 +95,7 @@ function StepVerifyOtp({
       </div>
 
       {/* Email chip */}
-      <div className="flex justify-center mb-6">
+      <div className="flex justify-center mb-5">
         <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-700 text-sm font-medium rounded-full border border-gray-200">
           <Mail className="w-4 h-4 text-gray-400" />
           {email}
@@ -101,8 +109,32 @@ function StepVerifyOtp({
         </span>
       </div>
 
+      {/* Error / Success Feedback Banners */}
+      {errorMessage && (
+        <div className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-sm text-red-700 animate-in fade-in">
+          <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-500" />
+          <span className="flex-1 leading-snug">{errorMessage}</span>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-sm text-emerald-700 animate-in fade-in">
+          <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-500" />
+          <span className="flex-1 leading-snug">{successMessage}</span>
+        </div>
+      )}
+
+      {isRequestingOtp && !errorMessage && !successMessage && (
+        <div className="mb-5 p-3.5 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center gap-2.5 text-sm text-indigo-700 animate-in fade-in">
+          <RefreshCw size={18} className="shrink-0 animate-spin text-indigo-500" />
+          <span className="flex-1 leading-snug">
+            Đang yêu cầu mã OTP xác thực tới hộp thư của bạn...
+          </span>
+        </div>
+      )}
+
       {/* OTP Input */}
-      <OtpInput value={otp} onChange={setOtp} disabled={isLoading} />
+      <OtpInput value={otp} onChange={setOtp} disabled={isLoading || isRequestingOtp} />
 
       {/* Countdown + Resend */}
       <div className="flex items-center justify-between mt-4 px-1">
@@ -124,7 +156,7 @@ function StepVerifyOtp({
         <button
           type="button"
           onClick={onResend}
-          disabled={isResending || countdown > 0}
+          disabled={isResending || isRequestingOtp || countdown > 0}
           className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:text-gray-400 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           <RefreshCw
@@ -142,7 +174,7 @@ function StepVerifyOtp({
           isLoading={isLoading}
           loadingLabel="Đang xác thực..."
           onClick={onSubmit}
-          disabled={otp.some((d) => !d)}
+          disabled={otp.some((d) => !d) || isRequestingOtp}
         />
       </div>
 
@@ -222,7 +254,7 @@ function StepSuccess({
         <p className="text-sm text-gray-500 leading-relaxed">
           Chúc mừng bạn đã gia nhập cộng đồng{' '}
           <span className="text-indigo-600 font-semibold">AI StudyMate</span>.
-          Hộp thư <strong>{email}</strong> đã sẵn sàng đồng hành cùng bạn.
+          Email <strong>{email}</strong> đã được xác thực thành công. Vui lòng đăng nhập lại để bắt đầu góc học tập của bạn.
         </p>
       </div>
 
@@ -266,7 +298,7 @@ function StepSuccess({
       <div className="flex items-center justify-between text-xs text-gray-500 mb-4 px-1">
         <span className="flex items-center gap-1.5">
           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-          Tự động chuyển tiếp sau
+          Tự động chuyển về trang Đăng nhập sau
         </span>
         <span className="text-indigo-600 font-bold text-sm">
           {redirectCountdown} giây
@@ -275,7 +307,7 @@ function StepSuccess({
 
       {/* CTA Button */}
       <AuthSubmitButton
-        label="Bắt đầu học ngay với AI StudyMate"
+        label="Đăng nhập ngay"
         type="button"
         onClick={onRedirect}
         className="!from-emerald-600 !to-emerald-700 hover:!from-emerald-700 hover:!to-emerald-800 !shadow-emerald-200"
@@ -284,19 +316,11 @@ function StepSuccess({
       {/* Quick links */}
       <div className="mt-4 flex items-center justify-center gap-3 text-xs text-gray-500">
         <Link
-          href="/settings/profile"
+          href="/auth/login"
           className="flex items-center gap-1 hover:text-gray-700 transition-colors"
         >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          Thiết lập hồ sơ môn học
-        </Link>
-        <span className="text-gray-300">•</span>
-        <Link
-          href="/guide"
-          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
-        >
-          <Compass className="w-3.5 h-3.5" />
-          Khám phá hướng dẫn (1 phút)
+          <LogOut className="w-3.5 h-3.5" />
+          Quay lại trang Đăng nhập
         </Link>
       </div>
     </>
@@ -306,22 +330,102 @@ function StepSuccess({
 // ─────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────
-export default function EmailVerificationPage() {
+function EmailVerificationContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const emailFromQuery = searchParams.get('email');
 
   const [step, setStep] = useState<'verify' | 'success'>('verify');
 
-  // Simulated email — in production, get from auth context or query params
-  const [email] = useState('nguyen_van_a@student.edu.vn');
+  // Email from query params (e.g. redirected from login) or fallback
+  const [email] = useState(emailFromQuery || 'nguyen_van_a@student.edu.vn');
 
   // OTP state
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
   const [countdown, setCountdown] = useState(300); // 5 minutes
   const [isResending, setIsResending] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRequestingOtp, setIsRequestingOtp] = useState(false);
+
+  // Status feedback
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Success state
   const [redirectCountdown, setRedirectCountdown] = useState(5);
+
+  // Ref to prevent duplicate API calls in React StrictMode
+  const hasRequestedRef = useRef(false);
+
+  // Send / Resend OTP API caller
+  const requestOtp = useCallback(
+    async (targetEmail: string, isManualResend = false) => {
+      const trimmed = targetEmail.trim();
+      if (!trimmed) {
+        setErrorMessage('Vui lòng cung cấp địa chỉ email hợp lệ.');
+        return;
+      }
+
+      if (isManualResend) {
+        setIsResending(true);
+      } else {
+        setIsRequestingOtp(true);
+      }
+
+      setErrorMessage(null);
+      setSuccessMessage(null);
+
+      try {
+        const result = await handleRequestEmailVerification(trimmed);
+
+        if (!result.success) {
+          // 400: Email không hợp lệ
+          if (result.statusCode === 400) {
+            setErrorMessage('Email không hợp lệ. Vui lòng kiểm tra lại định dạng email.');
+            return;
+          }
+
+          // 429: Gửi quá số lần cho phép (Rate limiting)
+          if (result.statusCode === 429) {
+            setErrorMessage(
+              'Bạn đã yêu cầu gửi mã quá nhiều lần. Vui lòng đợi ít phút trước khi thử lại.'
+            );
+            return;
+          }
+
+          setErrorMessage(
+            result.error || 'Có lỗi xảy ra khi yêu cầu mã xác thực. Vui lòng thử lại sau.'
+          );
+          return;
+        }
+
+        // Thành công: hiển thị thông báo trung lập bảo vệ chống User Enumeration
+        setSuccessMessage(
+          result.message ||
+            'Nếu email hợp lệ, mã OTP sẽ được gửi đến hộp thư. Vui lòng kiểm tra email của bạn!'
+        );
+        setCountdown(300); // 5 minutes TTL
+        if (isManualResend) {
+          setOtp(Array(6).fill(''));
+        }
+      } catch (err: any) {
+        setErrorMessage(
+          err.message || 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.'
+        );
+      } finally {
+        setIsRequestingOtp(false);
+        setIsResending(false);
+      }
+    },
+    [router]
+  );
+
+  // Trigger request-email-verification API immediately upon navigating to this page
+  useEffect(() => {
+    if (!email || hasRequestedRef.current) return;
+    hasRequestedRef.current = true;
+    requestOtp(email, false);
+  }, [email, requestOtp]);
 
   // OTP countdown timer
   useEffect(() => {
@@ -338,11 +442,11 @@ export default function EmailVerificationPage() {
     return () => clearInterval(interval);
   }, [step, countdown]);
 
-  // Redirect countdown timer (after success)
+  // Redirect countdown timer (after success -> redirect to login page)
   useEffect(() => {
     if (step !== 'success') return;
     if (redirectCountdown <= 0) {
-      router.push('/');
+      router.push('/auth/login');
       return;
     }
     const interval = setInterval(() => {
@@ -354,43 +458,80 @@ export default function EmailVerificationPage() {
   // Verify OTP
   const handleVerify = useCallback(async () => {
     const code = otp.join('');
-    if (code.length !== 6) return;
+    if (code.length !== 6) {
+      setErrorMessage('Vui lòng nhập đầy đủ 6 chữ số mã OTP.');
+      return;
+    }
     setIsLoading(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
     try {
-      // TODO: Call API to verify email OTP
-      // await verifyEmailOtp(email, code);
-      await new Promise((r) => setTimeout(r, 1200)); // simulate
+      const result = await handleVerifyEmail({
+        email: email.trim(),
+        otp: code,
+      });
 
-      setStep('success');
-      setRedirectCountdown(5);
-    } catch {
-      // handle error
+      if (result.success && result.isVerified) {
+        // OTP đúng -> chuyển sang bước thành công và chuẩn bị điều hướng về login
+        setStep('success');
+        setRedirectCountdown(5);
+        return;
+      }
+
+      // Handle HTTP error statuses
+      if (result.statusCode === 403) {
+        // Sai OTP or Max Attempts (ForbiddenException)
+        setErrorMessage(
+          result.error || result.message || 'Mã OTP không chính xác. Vui lòng kiểm tra lại.'
+        );
+        return;
+      }
+
+      if (result.statusCode === 404) {
+        setErrorMessage(
+          'Email không tồn tại trong hệ thống. Vui lòng kiểm tra lại hoặc đăng ký mới.'
+        );
+        return;
+      }
+
+      if (result.statusCode === 400) {
+        setErrorMessage(
+          result.error || result.message || 'Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng nhấn "Gửi lại mã OTP".'
+        );
+        return;
+      }
+
+      if (result.statusCode === 429) {
+        setErrorMessage('Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi ít phút rồi thử lại.');
+        return;
+      }
+
+      if (result.statusCode === 500) {
+        setErrorMessage('Lỗi hệ thống khi xác thực email. Vui lòng thử lại sau.');
+        return;
+      }
+
+      setErrorMessage(
+        result.error || result.message || 'Xác thực email thất bại. Vui lòng thử lại sau.'
+      );
+    } catch (err: any) {
+      setErrorMessage(
+        err.message || 'Xác thực OTP thất bại. Vui lòng thử lại.'
+      );
     } finally {
       setIsLoading(false);
     }
-  }, [otp]);
+  }, [otp, email]);
 
-  // Resend OTP
+  // Resend OTP via API
   const handleResend = useCallback(async () => {
-    setIsResending(true);
-    try {
-      // TODO: Call API to resend email OTP
-      // await resendEmailOtp(email);
-      await new Promise((r) => setTimeout(r, 1000)); // simulate
+    await requestOtp(email, true);
+  }, [email, requestOtp]);
 
-      setCountdown(300);
-      setOtp(Array(6).fill(''));
-    } catch {
-      // handle error
-    } finally {
-      setIsResending(false);
-    }
-  }, []);
-
-  // Redirect
+  // Redirect back to login
   const handleRedirect = useCallback(() => {
-    router.push('/');
+    router.push('/auth/login');
   }, [router]);
 
   return (
@@ -404,7 +545,10 @@ export default function EmailVerificationPage() {
           onResend={handleResend}
           isLoading={isLoading}
           isResending={isResending}
+          isRequestingOtp={isRequestingOtp}
           countdown={countdown}
+          errorMessage={errorMessage}
+          successMessage={successMessage}
         />
       )}
 
@@ -416,5 +560,13 @@ export default function EmailVerificationPage() {
         />
       )}
     </>
+  );
+}
+
+export default function EmailVerificationPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <EmailVerificationContent />
+    </React.Suspense>
   );
 }
