@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import AuthHeader from '@/components/auth/AuthHeader';
 import AuthFooter from '@/components/auth/AuthFooter';
 
@@ -20,7 +21,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <main className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-lg">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100/80 px-8 py-10 sm:px-10">
-            {children}
+            <Suspense fallback={null}>
+              {children}
+            </Suspense>
           </div>
         </div>
       </main>
