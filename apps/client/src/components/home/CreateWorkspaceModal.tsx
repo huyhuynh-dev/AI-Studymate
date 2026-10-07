@@ -188,8 +188,8 @@ function WorkspaceDialog({
               }}
               placeholder="VD: Cấu trúc dữ liệu, Ôn thi IELTS..."
               className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all disabled:opacity-60 ${error
-                  ? "border-rose-400 bg-rose-50/30 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
-                  : "border-gray-200 bg-gray-50/50 hover:bg-white focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10"
+                ? "border-rose-400 bg-rose-50/30 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                : "border-gray-200 bg-gray-50/50 hover:bg-white focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10"
                 }`}
             />
             {error && <p className="text-xs text-rose-500">{error}</p>}
@@ -222,8 +222,8 @@ function WorkspaceDialog({
                     onClick={() => setSelectedColor(color.hex)}
                     title={`${color.name} (${color.hex})`}
                     className={`group relative flex h-9 w-9 items-center justify-center rounded-xl transition-transform hover:scale-110 cursor-pointer shadow-2xs disabled:cursor-not-allowed ${isSelected
-                        ? "ring-2 ring-indigo-500 ring-offset-2 scale-105"
-                        : "hover:ring-1 hover:ring-gray-300"
+                      ? "ring-2 ring-indigo-500 ring-offset-2 scale-105"
+                      : "hover:ring-1 hover:ring-gray-300"
                       }`}
                     style={{ backgroundColor: color.hex }}
                   >
