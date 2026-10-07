@@ -6,7 +6,6 @@ import { LoginDto } from './dto/login.dto.js';
 import { Public } from './decorators/public.decorator.js';
 import { ConfigService } from '@nestjs/config';
 import { RefreshTokenGuard } from './guards/refresh-token.guard.js';
-import { MailService } from '../mail/mail.service.js';
 import { VerifyOtpDto } from './dto/verify-otp.dto.js';
 import { RequestOtpDto } from './dto/request-otp.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
@@ -20,7 +19,6 @@ export class AuthController {
     constructor(
         private readonly authService: AuthService,
         private readonly configService: ConfigService,
-        private readonly mailService: MailService,
     ) { }
 
     @Public()
@@ -41,7 +39,7 @@ export class AuthController {
 
     @Public()
     @UseGuards(RefreshTokenGuard)
-    @Post('refresh')
+    @Get('refresh')
     @HttpCode(HttpStatus.OK)
     async refreshTokens(@Req() req: Request): Promise<TokenPair> {
         const user = req.user as { userId: string; email: string; refreshToken: string };

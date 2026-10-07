@@ -12,6 +12,7 @@ import { RepoModule } from './repo/repo.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { RedisModule } from './redis/redis.module.js';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { SubjectsModule } from './subjects/subjects.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -39,7 +40,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     UsersModule,
     RepoModule,
     MailModule,
-    RedisModule
+    RedisModule,
+    SubjectsModule
   ],
   controllers: [AppController],
   providers: [

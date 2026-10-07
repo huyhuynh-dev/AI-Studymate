@@ -111,9 +111,15 @@ export default function LoginPage() {
 
       setSuccessMessage('Đăng nhập thành công! Đang chuyển hướng...');
 
-      // Redirect user to home/dashboard
+      const rawRedirect = searchParams.get('redirect');
+      const redirectTarget =
+        rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+          ? rawRedirect
+          : '/home';
+
+      // Redirect user to destination
       setTimeout(() => {
-        router.push('/');
+        router.push(redirectTarget);
         router.refresh();
       }, 700);
     } catch (err: any) {

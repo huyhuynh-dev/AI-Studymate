@@ -35,7 +35,12 @@ export async function GET(request: Request) {
         );
 
         const { access_token, refresh_token } = backendResponse.data;
-        const redirectUrl = new URL('/', origin);
+        const redirectParam = searchParams.get('redirect');
+        const targetPath =
+          redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+            ? redirectParam
+            : '/home';
+        const redirectUrl = new URL(targetPath, origin);
         const response = NextResponse.redirect(redirectUrl);
 
         const isProduction = process.env.NODE_ENV === 'production';

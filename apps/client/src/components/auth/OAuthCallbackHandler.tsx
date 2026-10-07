@@ -44,12 +44,15 @@ export function OAuthCallbackHandler() {
       axios
         .post('/api/auth/exchange-code', { authCode })
         .then(() => {
-          // If user landed on auth pages (login/register), redirect to home
-          if (pathname.includes('/auth/login') || pathname.includes('/auth/register')) {
-            router.replace('/');
-          } else {
-            router.refresh();
-          }
+          // Lấy tham số redirect nếu có, mặc định chuyển hướng vào /home
+          const rawRedirect = searchParams.get('redirect');
+          const target =
+            rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+              ? rawRedirect
+              : '/home';
+
+          router.replace(target);
+          router.refresh();
         })
         .catch((err) => {
           const data = err.response?.data;
@@ -79,11 +82,14 @@ export function OAuthCallbackHandler() {
           refresh_token: refreshToken,
         })
         .then(() => {
-          if (pathname.includes('/auth/login') || pathname.includes('/auth/register')) {
-            router.replace('/');
-          } else {
-            router.refresh();
-          }
+          const rawRedirect = searchParams.get('redirect');
+          const target =
+            rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+              ? rawRedirect
+              : '/home';
+
+          router.replace(target);
+          router.refresh();
         })
         .catch((err) => {
           console.error('Failed to store OAuth tokens via API fallback:', err);
