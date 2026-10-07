@@ -13,6 +13,7 @@ import {
   Settings,
   PanelLeftClose,
 } from "lucide-react";
+import CreateWorkspaceModal from "./CreateWorkspaceModal";
 
 export interface LeftSidebarProps {
   /** User information for profile card at bottom */
@@ -41,6 +42,8 @@ export interface LeftSidebarProps {
   onSelectDocument?: (id: string) => void;
   /** Callback when new folder icon is clicked */
   onNewFolder?: () => void;
+  /** Callback when a new workspace is created */
+  onCreateWorkspace?: (workspace: { name: string; color: string }) => void;
   /** Callback when settings icon is clicked */
   onSettingsClick?: () => void;
   /** Additional container classes */
@@ -66,15 +69,25 @@ export default function LeftSidebar({
   onToggleCollapse,
   onSelectDocument,
   onNewFolder,
+  onCreateWorkspace,
   onSettingsClick,
   className = "",
 }: LeftSidebarProps) {
   const [selectedDoc, setSelectedDoc] = useState(activeDocId);
   const [isCtdlOpen, setIsCtdlOpen] = useState(true);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [customWorkspaces, setCustomWorkspaces] = useState<
+    Array<{ name: string; color: string }>
+  >([]);
 
   const handleDocClick = (id: string) => {
     setSelectedDoc(id);
     onSelectDocument?.(id);
+  };
+
+  const handleCreateWorkspace = (data: { name: string; color: string }) => {
+    setCustomWorkspaces((prev) => [...prev, data]);
+    onCreateWorkspace?.(data);
   };
 
   return (
@@ -95,7 +108,10 @@ export default function LeftSidebar({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={onNewFolder}
+              onClick={() => {
+                setIsCreateModalOpen(true);
+                onNewFolder?.();
+              }}
               aria-label="Thêm thư mục mới"
               title="Thêm thư mục"
               className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
@@ -272,6 +288,29 @@ export default function LeftSidebar({
               12
             </span>
           </button>
+
+          {/* User-created Workspaces */}
+          {customWorkspaces.map((workspace, idx) => (
+            <button
+              key={`${workspace.name}-${idx}`}
+              type="button"
+              className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition-colors hover:bg-gray-50 cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Folder
+                  className="h-4 w-4 shrink-0"
+                  style={{ color: workspace.color }}
+                />
+                <span className="text-xs sm:text-sm font-medium text-gray-700 truncate">
+                  {workspace.name}
+                </span>
+              </div>
+              <span
+                className="h-2 w-2 rounded-full shrink-0"
+                style={{ backgroundColor: workspace.color }}
+              />
+            </button>
+          ))}
         </div>
 
         {/* ── Weekly Goal Progress Card ── */}
@@ -331,6 +370,13 @@ export default function LeftSidebar({
           <Settings className="h-4 w-4" />
         </button>
       </div>
+
+      {/* ── Modal Tạo không gian học tập ── */}
+      <CreateWorkspaceModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreate={handleCreateWorkspace}
+      />
     </aside>
   );
 }

@@ -6,3 +6,6 @@ export * from './LeftSidebar';
 
 export { default as RightSidebar } from './RightSidebar';
 export * from './RightSidebar';
+
+export { default as CreateWorkspaceModal } from './CreateWorkspaceModal';
+export * from './CreateWorkspaceModal';
