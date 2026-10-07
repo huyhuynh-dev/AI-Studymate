@@ -39,7 +39,7 @@ export class AuthController {
 
     @Public()
     @UseGuards(RefreshTokenGuard)
-    @Post('refresh')
+    @Get('refresh')
     @HttpCode(HttpStatus.OK)
     async refreshTokens(@Req() req: Request): Promise<TokenPair> {
         const user = req.user as { userId: string; email: string; refreshToken: string };
