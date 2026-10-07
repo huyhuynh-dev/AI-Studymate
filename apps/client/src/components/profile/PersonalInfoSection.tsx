@@ -58,6 +58,7 @@ export default function PersonalInfoSection({
                             <User className="h-4 w-4" />
                         </div>
                         <input
+                            readOnly={true}
                             id="profile-name"
                             type="text"
                             value={name}
@@ -88,6 +89,7 @@ export default function PersonalInfoSection({
                             <Mail className="h-4 w-4" />
                         </div>
                         <input
+                            readOnly={true}
                             id="profile-email"
                             type="email"
                             value={email}
@@ -128,7 +130,7 @@ export default function PersonalInfoSection({
                             d="M5 13l4 4L19 7"
                         />
                     </svg>
-                    Lưu thay đổi
+                    Chỉnh sửa
                 </button>
             </div>
         </div>

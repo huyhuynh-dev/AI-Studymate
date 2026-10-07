@@ -85,7 +85,7 @@ export default function ProfileSidebar({
                     </div>
                 </div>
 
-                <div className="flex items-start gap-3">
+                {/* <div className="flex items-start gap-3">
                     <div className="mt-0.5 h-4 w-4 shrink-0 rounded-sm bg-gray-200" />
                     <div className="min-w-0 flex-1">
                         <p className="text-[11px] text-gray-400">Mã định danh (User ID)</p>
@@ -101,7 +101,7 @@ export default function ProfileSidebar({
                             </button>
                         </div>
                     </div>
-                </div>
+                </div> */}
             </div>
 
             {/* Logout */}
@@ -114,11 +114,11 @@ export default function ProfileSidebar({
                 Đăng xuất tài khoản
             </button>
 
-            {/* Security note */}
+            {/* Security note
             <div className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-[11px] text-gray-400">
                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
                 <p>Tài khoản được đảm bảo an toàn qua hạ tầng mã hóa AI StudyMate Cloud.</p>
-            </div>
+            </div> */}
         </div>
     );
 }

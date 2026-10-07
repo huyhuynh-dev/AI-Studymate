@@ -6,8 +6,8 @@ import { Prisma, User } from '../../generated/prisma/client.js';
 export class UsersRepoService {
     constructor(private readonly prisma: PrismaService) { };
 
-    async createUser(data: Prisma.UserCreateInput): Promise<User> {
-        return this.prisma.user.create({ data });
+    async createUser(user: Prisma.UserCreateInput): Promise<User> {
+        return this.prisma.user.create({ data: user });
     }
 
     async findUserByEmail(email: string): Promise<User | null> {
