@@ -9,3 +9,6 @@ export * from './RightSidebar';
 
 export { default as CreateWorkspaceModal } from './CreateWorkspaceModal';
 export * from './CreateWorkspaceModal';
+
+export { default as DeleteWorkspaceModal } from './DeleteWorkspaceModal';
+export * from './DeleteWorkspaceModal';
