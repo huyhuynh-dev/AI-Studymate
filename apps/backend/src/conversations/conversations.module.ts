@@ -6,6 +6,7 @@ import { RepoModule } from '../repo/repo.module.js';
 @Module({
   imports: [RepoModule],
   controllers: [ConversationsController],
-  providers: [ConversationsService]
+  providers: [ConversationsService],
+  exports: [ConversationsService],
 })
-export class ConversationsModule {}
+export class ConversationsModule { }

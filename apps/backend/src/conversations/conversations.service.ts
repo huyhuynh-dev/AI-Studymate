@@ -5,7 +5,7 @@ import { UpdateConversationDto } from './dto/update-conversation.dto.js';
 
 @Injectable()
 export class ConversationsService {
-    constructor(private readonly conversationsRepo: ConversationsRepoService) {}
+    constructor(private readonly conversationsRepo: ConversationsRepoService) { }
 
     async createConversation(userId: string, data: CreateConversationDto): Promise<any> {
         return this.conversationsRepo.createConversation({
@@ -28,5 +28,9 @@ export class ConversationsService {
 
     async deleteConversation(conversationId: string, userId: string): Promise<any> {
         return this.conversationsRepo.deleteConversation(conversationId, userId);
+    }
+
+    async findBySubjectId(subjectId: string): Promise<any[]> {
+        return this.conversationsRepo.findBySubjectId(subjectId);
     }
 }

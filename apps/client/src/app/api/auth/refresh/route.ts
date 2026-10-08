@@ -20,7 +20,7 @@ export async function GET() {
     }
 
     // Gọi backend API với refresh token truyền qua Header
-    const backendResponse = await axios.get(`${BACKEND_URL}/refresh`, {
+    const backendResponse = await axios.get(`${BACKEND_URL}/auth/refresh`, {
       headers: {
         Authorization: `Bearer ${refreshToken}`,
       },
@@ -55,7 +55,7 @@ export async function GET() {
     return response;
   } catch (error: any) {
     console.error('Refresh Token Error:', error.response?.data || error.message);
-    
+
     // Nếu refresh token cũng không hợp lệ, xóa cookies
     const response = NextResponse.json(
       { error: 'Refresh token thất bại hoặc đã hết hạn' },
