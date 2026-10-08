@@ -27,3 +27,8 @@ export type User = Prisma.UserModel
  * 
  */
 export type Subject = Prisma.SubjectModel
+/**
+ * Model Conversation
+ * 
+ */
+export type Conversation = Prisma.ConversationModel

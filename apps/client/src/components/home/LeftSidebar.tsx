@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   FolderPlus,
@@ -20,6 +20,7 @@ import { useSubjects } from "@/hooks/useSubjects";
 import { Subject } from "@/services/subjects.api";
 import CreateWorkspaceModal from "./CreateWorkspaceModal";
 import DeleteWorkspaceModal from "./DeleteWorkspaceModal";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export interface LeftSidebarProps {
   /** User information for profile card at bottom */
@@ -83,6 +84,10 @@ export default function LeftSidebar({
   onSettingsClick,
   className = "",
 }: LeftSidebarProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlSubjectId = searchParams.get("subject_id");
+
   // SWR hook quản lý danh sách và CRUD Không gian học tập
   const {
     subjects,
@@ -95,7 +100,13 @@ export default function LeftSidebar({
   } = useSubjects();
 
   // State quản lý Không gian đang chọn
-  const [activeId, setActiveId] = useState<string | null>(selectedSubjectId || null);
+  const [activeId, setActiveId] = useState<string | null>(selectedSubjectId || urlSubjectId || null);
+
+  useEffect(() => {
+    if (urlSubjectId) {
+      setActiveId(urlSubjectId);
+    }
+  }, [urlSubjectId]);
 
   // State quản lý Modals
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
@@ -112,6 +123,7 @@ export default function LeftSidebar({
   const handleSubjectClick = (subject: Subject) => {
     setActiveId(subject.id);
     onSelectSubject?.(subject);
+    router.push(`/home?subject_id=${subject.id}`);
   };
 
   // Mở modal tạo mới

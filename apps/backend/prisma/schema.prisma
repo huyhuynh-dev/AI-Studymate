@@ -24,6 +24,7 @@ model User {
   provider_id   String?   @db.VarChar(255)
   refresh_token String?   @db.VarChar(500)
   subjects      Subject[]
+  conversations Conversation[]
 
   @@map("users")
 }
@@ -38,5 +39,21 @@ model Subject {
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
+  conversations Conversation[]
+
   @@map("subjects")
+}
+
+model Conversation {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  subject_id String   @db.Uuid
+  user_id    String   @db.Uuid
+  title      String   @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  subject Subject @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("conversations")
 }

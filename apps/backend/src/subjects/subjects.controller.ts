@@ -18,11 +18,15 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { SubjectsService } from './subjects.service.js';
 import { CreateSubjectDto } from './dto/create-subject.dto.js';
 import { UpdateSubjectDto } from './dto/update-subject.dto.js';
+import { ConversationsService } from '../conversations/conversations.service.js';
 
 @Controller('subjects')
 @UseGuards(JwtAuthGuard)
 export class SubjectsController {
-    constructor(private readonly subjectsService: SubjectsService) {}
+    constructor(
+        private readonly subjectsService: SubjectsService,
+        private readonly conversationService: ConversationsService
+    ) { }
 
     private getUserId(req: Request): string {
         if (!req.user) {
@@ -76,5 +80,16 @@ export class SubjectsController {
         @Param('subjectId', new ParseUUIDPipe()) subjectId: string
     ): Promise<any> {
         return this.subjectsService.deleteSubject(subjectId, this.getUserId(req));
+    }
+
+    @Get(':subjectId/conversations')
+    async getConversationsBySubjectId(
+        @Req() req: Request,
+        @Param('subjectId', new ParseUUIDPipe()) subjectId: string
+    ): Promise<any[]> {
+        const userId = this.getUserId(req);
+        // Ensure the subject belongs to the user
+        await this.subjectsService.getSubjectById(subjectId, userId);
+        return this.conversationService.findBySubjectId(subjectId);
     }
 }
