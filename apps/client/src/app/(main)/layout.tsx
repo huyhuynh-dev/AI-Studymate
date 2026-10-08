@@ -10,11 +10,15 @@ export default function MainLayout({
     children: React.ReactNode;
 }) {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
+    const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
 
     return (
         <div className="flex h-screen w-full flex-col overflow-hidden bg-white">
             {/* Top Header */}
-            <HomeHeader />
+            <HomeHeader
+                isCollapsed={isHeaderCollapsed}
+                onToggleCollapse={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+            />
 
             {/* Main Workspace */}
             <div className="relative flex flex-1 overflow-hidden">
@@ -42,4 +46,3 @@ export default function MainLayout({
         </div>
     );
 }
-

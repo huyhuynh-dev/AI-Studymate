@@ -179,7 +179,7 @@ export default function ConversationsListView({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-100">
         {/* Left: Folder Icon & Title */}
         <div className="flex items-center gap-3.5">
-          <div 
+          <div
             className="flex items-center justify-center w-12 h-12 rounded-2xl shrink-0"
             style={{
               backgroundColor: currentSubject?.color ? `${currentSubject.color}15` : '#EEF2FF', // 15 = 8% opacity roughly for background
@@ -188,7 +188,7 @@ export default function ConversationsListView({
           >
             <Folder className="w-6 h-6 stroke-[1.8]" />
           </div>
-          <div>
+          <div className="text-left">
             <h1 className="text-xl font-bold text-gray-900 leading-tight whitespace-pre-line">
               {displayTitle}
             </h1>
@@ -257,7 +257,9 @@ export default function ConversationsListView({
                 {/* Status Indicator & Title */}
                 <div className="flex items-center gap-3.5 min-w-0 pr-3">
                   <span
-                    className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all duration-200 ${session.isActive
+                    className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all duration-200 ${isFocused
+                      ? "bg-emerald-500 ring-2 ring-emerald-500/20"
+                      : session.isActive
                         ? "bg-emerald-500 ring-2 ring-emerald-500/20"
                         : "bg-gray-300"
                       }`}
