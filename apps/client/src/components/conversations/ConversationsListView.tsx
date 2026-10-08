@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Folder, Search, Plus, ChevronRight } from "lucide-react";
+import { Folder, Search, Plus, ChevronRight, Loader2 } from "lucide-react";
 import ConversationUpsertModal from "./ConversationUpsertModal";
 import DeleteConversationModal from "./DeleteConversationModal";
 import ConversationContextMenu, { ContextMenuPosition } from "./ConversationContextMenu";
+import { useConversations } from "@/hooks/useConversations";
+import { useSubjects } from "@/hooks/useSubjects";
+import { useRouter } from "next/navigation";
 
 export interface ConversationSession {
-  id: string | number;
+  id: string;
   title: string;
   isActive?: boolean;
 }
@@ -15,7 +18,7 @@ export interface ConversationSession {
 export interface ConversationsListViewProps {
   title?: string;
   totalSessionsCount?: number;
-  conversations?: ConversationSession[];
+  subjectId?: string;
   onSelectConversation?: (session: ConversationSession) => void;
   onNavigate?: (session: ConversationSession) => void;
   onCreateSession?: () => void;
@@ -23,42 +26,34 @@ export interface ConversationsListViewProps {
   className?: string;
 }
 
-const DEFAULT_CONVERSATIONS: ConversationSession[] = [
-  {
-    id: "1",
-    title: "Giải thuật Cân bằng Cây AVL & Red-Black Tree",
-    isActive: true,
-  },
-  {
-    id: "2",
-    title: "Ôn tập Đồ thị: Duyệt BFS & DFS",
-    isActive: false,
-  },
-  {
-    id: "3",
-    title: "Độ phức tạp tính toán (Big-O)",
-    isActive: false,
-  },
-  {
-    id: "4",
-    title: "Hàng đợi ưu tiên (Priority Queue) & Cấu trúc Heap",
-    isActive: false,
-  },
-];
-
 export default function ConversationsListView({
-  title = "Cấu Trúc\nDữ Liệu",
+  title: externalTitle,
   totalSessionsCount,
-  conversations: initialConversations = DEFAULT_CONVERSATIONS,
+  subjectId,
   onSelectConversation,
   onNavigate,
   onCreateSession,
   onSearchChange,
   className = "",
 }: ConversationsListViewProps) {
-  const [conversations] = useState<ConversationSession[]>(initialConversations);
+  const router = useRouter();
+
+  // Lấy tên môn học từ hook useSubjects
+  const { subjects } = useSubjects();
+  const currentSubject = subjects.find(s => s.id === subjectId);
+  const displayTitle = externalTitle || currentSubject?.name || "Không Gian\nHọc Tập";
+
+  const { conversations: apiConversations, isLoading, createSession, updateSession, deleteSession } = useConversations(subjectId);
+
+  const conversations = useMemo<ConversationSession[]>(() => {
+    return apiConversations.map((c) => ({
+      id: c.id,
+      title: c.title,
+    }));
+  }, [apiConversations]);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [focusedSessionId, setFocusedSessionId] = useState<string | number | null>(null);
+  const [focusedSessionId, setFocusedSessionId] = useState<string | null>(null);
 
   // Trạng thái Context Menu
   const [contextMenu, setContextMenu] = useState<{
@@ -184,15 +179,21 @@ export default function ConversationsListView({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-100">
         {/* Left: Folder Icon & Title */}
         <div className="flex items-center gap-3.5">
-          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50/80 text-indigo-600 shrink-0">
+          <div 
+            className="flex items-center justify-center w-12 h-12 rounded-2xl shrink-0"
+            style={{
+              backgroundColor: currentSubject?.color ? `${currentSubject.color}15` : '#EEF2FF', // 15 = 8% opacity roughly for background
+              color: currentSubject?.color || '#4F46E5'
+            }}
+          >
             <Folder className="w-6 h-6 stroke-[1.8]" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900 leading-tight whitespace-pre-line">
-              {title}
+              {displayTitle}
             </h1>
             <p className="text-xs sm:text-sm text-gray-400 font-normal mt-0.5">
-              {displayCount} phiên học
+              {displayCount > 0 ? `${displayCount} phiên học` : 'Không có phiên học nào'}
             </p>
           </div>
         </div>
@@ -227,7 +228,15 @@ export default function ConversationsListView({
 
       {/* Conversations List */}
       <div className="mt-6 flex flex-col gap-3">
-        {filteredConversations.length > 0 ? (
+        {isLoading ? (
+          <div className="py-12 flex justify-center text-gray-400">
+            <Loader2 className="w-6 h-6 animate-spin" />
+          </div>
+        ) : !subjectId ? (
+          <div className="py-12 text-center text-sm text-gray-400 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+            Vui lòng chọn một Không gian học tập.
+          </div>
+        ) : filteredConversations.length > 0 ? (
           filteredConversations.map((session) => {
             const isFocused = focusedSessionId === session.id;
 
@@ -240,25 +249,22 @@ export default function ConversationsListView({
                 onContextMenu={(e) => handleContextMenu(e, session)}
                 className={`flex items-center justify-between px-5 py-3.5 sm:py-4 bg-white border rounded-2xl cursor-pointer select-none
                   transform transition-all duration-200 ease-out hover:scale-[1.015] hover:shadow-md
-                  ${
-                    isFocused
-                      ? "border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-50/15 shadow-sm"
-                      : "border-gray-200/80 shadow-2xs hover:border-gray-300"
+                  ${isFocused
+                    ? "border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-50/15 shadow-sm"
+                    : "border-gray-200/80 shadow-2xs hover:border-gray-300"
                   }`}
               >
                 {/* Status Indicator & Title */}
                 <div className="flex items-center gap-3.5 min-w-0 pr-3">
                   <span
-                    className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all duration-200 ${
-                      session.isActive
+                    className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all duration-200 ${session.isActive
                         ? "bg-emerald-500 ring-2 ring-emerald-500/20"
                         : "bg-gray-300"
-                    }`}
+                      }`}
                   />
                   <span
-                    className={`text-sm sm:text-base font-semibold truncate transition-colors ${
-                      isFocused ? "text-indigo-950 font-bold" : "text-gray-800"
-                    }`}
+                    className={`text-sm sm:text-base font-semibold truncate transition-colors ${isFocused ? "text-indigo-950 font-bold" : "text-gray-800"
+                      }`}
                   >
                     {session.title}
                   </span>
@@ -270,6 +276,7 @@ export default function ConversationsListView({
                   onClick={(e) => {
                     e.stopPropagation();
                     onNavigate?.(session);
+                    // router.push(`/conversations/${session.id}`);
                   }}
                   className="p-1 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
                   title="Chuyển hướng đến phiên học"
@@ -301,8 +308,13 @@ export default function ConversationsListView({
         mode={upsertModal.mode}
         initialTitle={upsertModal.session?.title || ""}
         onClose={() => setUpsertModal((prev) => ({ ...prev, isOpen: false }))}
-        onSubmit={() => {
-          // Gắn sự kiện sẵn sàng nhận logic
+        onSubmit={async (title) => {
+          if (upsertModal.mode === "create") {
+            await createSession(title);
+          } else if (upsertModal.mode === "edit" && upsertModal.session) {
+            await updateSession(upsertModal.session.id, title);
+          }
+          setUpsertModal((prev) => ({ ...prev, isOpen: false }));
         }}
       />
 
@@ -311,8 +323,11 @@ export default function ConversationsListView({
         isOpen={deleteModal.isOpen}
         conversationTitle={deleteModal.session?.title}
         onClose={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
-        onConfirm={() => {
-          // Gắn sự kiện sẵn sàng nhận logic
+        onConfirm={async () => {
+          if (deleteModal.session) {
+            await deleteSession(deleteModal.session.id);
+            setDeleteModal((prev) => ({ ...prev, isOpen: false }));
+          }
         }}
       />
     </div>
