@@ -43,9 +43,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   };
 
   return (
-    <div className="flex h-full w-full flex-col gap-4">
+    <div className="flex min-h-full w-full flex-col gap-4">
       {/* Hàng Header điều hướng: Breadcrumb bên trái & Các nút chức năng bên phải */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         {/* Component: Breadcrumb điều hướng */}
         <ConversationHeaderRoutes
           subjectName={subjectName}
@@ -74,12 +74,14 @@ export default function ConversationPage({ params }: ConversationPageProps) {
       </div>
 
       {/* Container chính: Thẻ màu trắng bo góc lớn chứa Tabs & Nội dung */}
-      <div className="flex flex-1 flex-col rounded-3xl border border-gray-100 bg-white shadow-xs overflow-hidden">
+      <div className="flex flex-1 min-h-fit flex-col rounded-3xl border border-gray-100 bg-white shadow-xs overflow-hidden">
         {/* Component: Thanh Tab điều hướng */}
-        <ConversationHeaderTabs
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+        <div className="shrink-0 border-b border-gray-100">
+          <ConversationHeaderTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+        </div>
 
         {/* Khu vực nội dung Tab */}
         <div className="flex flex-1 flex-col items-center justify-center p-4 sm:p-6 md:p-8">

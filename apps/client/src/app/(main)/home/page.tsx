@@ -1,4 +1,4 @@
-import SubjectCardListView from "@/components/home/SubjectCardListView";
+import { SubjectCardListView } from "@/components/subjects";
 
 export const metadata = {
   title: "Trang chủ - AI StudyMate",
@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-    <div className="flex h-full min-h-125 items-stretch justify-stretch">
+    <div className="flex h-full min-h-[125px] items-stretch justify-stretch">
       <SubjectCardListView />
     </div>
   );

@@ -1,5 +1,6 @@
 import useSWR from "swr";
-import { conversationsApi, Conversation } from "@/services/conversations.api";
+import { conversationsApi } from "@/services/conversations.api";
+import { Conversation } from "@/types";
 
 export function useConversations(subjectId?: string | null) {
   const { data, error, isLoading, mutate } = useSWR<Conversation[]>(

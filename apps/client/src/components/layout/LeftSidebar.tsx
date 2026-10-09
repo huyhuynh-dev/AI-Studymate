@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   FolderPlus,
-  Flame,
   Folder,
   FolderOpen,
   Settings,
@@ -17,9 +16,8 @@ import {
   Plus,
 } from "lucide-react";
 import { useSubjects } from "@/hooks/useSubjects";
-import { Subject } from "@/services/subjects.api";
-import CreateWorkspaceModal from "./CreateWorkspaceModal";
-import DeleteWorkspaceModal from "./DeleteWorkspaceModal";
+import { Subject } from "@/types";
+import { CreateWorkspaceModal, DeleteWorkspaceModal } from "@/components/subjects";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export interface LeftSidebarProps {
@@ -104,6 +102,7 @@ export default function LeftSidebar({
 
   useEffect(() => {
     if (urlSubjectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveId(urlSubjectId);
     }
   }, [urlSubjectId]);

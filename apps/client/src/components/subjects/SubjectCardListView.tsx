@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Folder, MoreVertical, Edit3, Trash2, Plus, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSubjects } from "@/hooks/useSubjects";
-import { Subject } from "@/services/subjects.api";
+import { Subject } from "@/types";
 import WelcomeComponent from "./WelcomeComponent";
 import CreateWorkspaceModal from "./CreateWorkspaceModal";
 import DeleteWorkspaceModal from "./DeleteWorkspaceModal";

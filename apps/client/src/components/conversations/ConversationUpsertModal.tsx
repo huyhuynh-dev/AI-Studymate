@@ -21,6 +21,7 @@ export default function ConversationUpsertModal({
   const [title, setTitle] = useState(initialTitle);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTitle(initialTitle);
   }, [initialTitle, isOpen]);
 
