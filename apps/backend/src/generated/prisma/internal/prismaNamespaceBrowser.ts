@@ -53,7 +53,9 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   User: 'User',
   Subject: 'Subject',
-  Conversation: 'Conversation'
+  Conversation: 'Conversation',
+  Document: 'Document',
+  DocumentChunk: 'DocumentChunk'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -113,6 +115,35 @@ export const ConversationScalarFieldEnum = {
 } as const
 
 export type ConversationScalarFieldEnum = (typeof ConversationScalarFieldEnum)[keyof typeof ConversationScalarFieldEnum]
+
+
+export const DocumentScalarFieldEnum = {
+  id: 'id',
+  conversation_id: 'conversation_id',
+  user_id: 'user_id',
+  file_name: 'file_name',
+  file_type: 'file_type',
+  file_size: 'file_size',
+  storage_key: 'storage_key',
+  raw_text: 'raw_text',
+  ocr_status: 'ocr_status',
+  embed_status: 'embed_status',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]
+
+
+export const DocumentChunkScalarFieldEnum = {
+  id: 'id',
+  document_id: 'document_id',
+  chunk_index: 'chunk_index',
+  content: 'content',
+  created_at: 'created_at'
+} as const
+
+export type DocumentChunkScalarFieldEnum = (typeof DocumentChunkScalarFieldEnum)[keyof typeof DocumentChunkScalarFieldEnum]
 
 
 export const SortOrder = {
