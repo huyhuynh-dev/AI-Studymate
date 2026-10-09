@@ -123,7 +123,7 @@ export default function LeftSidebar({
   const handleSubjectClick = (subject: Subject) => {
     setActiveId(subject.id);
     onSelectSubject?.(subject);
-    router.push(`/home?subject_id=${subject.id}`);
+    router.push(`/home/${subject.id}`);
   };
 
   // Mở modal tạo mới
@@ -151,15 +151,13 @@ export default function LeftSidebar({
     setIsDeleteModalOpen(true);
   };
 
-  // Submit Tạo mới hoặc Cập nhật
   const handleWorkspaceFormSubmit = async (data: { name: string; color: string }) => {
     if (workspaceModalMode === "create") {
       const created = await createSubject(data);
       onCreateWorkspace?.(data);
-      if (!activeId) {
-        setActiveId(created.id);
-        onSelectSubject?.(created);
-      }
+      setActiveId(created.id);
+      onSelectSubject?.(created);
+      router.push(`/home/${created.id}`);
     } else if (workspaceModalMode === "edit" && editingSubject) {
       await updateSubject(editingSubject.id, data);
     }
@@ -176,11 +174,10 @@ export default function LeftSidebar({
 
   return (
     <aside
-      className={`flex h-full flex-col justify-between border-r border-gray-100 bg-white select-none transition-all duration-300 ease-in-out ${
-        isCollapsed
-          ? "w-0 p-0 border-r-0 overflow-hidden opacity-0 pointer-events-none"
-          : "w-72 p-4 opacity-100"
-      } ${className}`.trim()}
+      className={`flex h-full flex-col justify-between border-r border-gray-100 bg-white select-none transition-all duration-300 ease-in-out ${isCollapsed
+        ? "w-0 p-0 border-r-0 overflow-hidden opacity-0 pointer-events-none"
+        : "w-72 p-4 opacity-100"
+        } ${className}`.trim()}
     >
       {/* ── Top & Main Content ── */}
       <div className="flex flex-col space-y-4 overflow-y-auto">
@@ -214,7 +211,7 @@ export default function LeftSidebar({
         </div>
 
         {/* ── Streak & XP Banner ── */}
-        <div className="flex items-center justify-between rounded-2xl border border-blue-100/60 bg-blue-50/60 p-3 shadow-2xs">
+        {/* <div className="flex items-center justify-between rounded-2xl border border-blue-100/60 bg-blue-50/60 p-3 shadow-2xs">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/20 text-emerald-600 shadow-2xs">
               <Flame className="h-5 w-5 fill-emerald-500 text-emerald-500" />
@@ -229,11 +226,11 @@ export default function LeftSidebar({
           <span className="rounded-full bg-emerald-300 px-2.5 py-1 text-xs font-bold text-emerald-950 shadow-2xs">
             +{xp} XP
           </span>
-        </div>
+        </div> */}
 
         {/* ── Document Folders / Subjects Section ── */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between px-1">
+          {/* <div className="flex items-center justify-between px-1">
             <p className="text-xs font-bold tracking-wider text-gray-400 uppercase">
               THƯ MỤC TÀI LIỆU
             </p>
@@ -242,7 +239,7 @@ export default function LeftSidebar({
                 {subjects.length} không gian
               </span>
             )}
-          </div>
+          </div> */}
 
           {/* 1. Loading Skeleton State */}
           {isLoading && subjects.length === 0 && (
@@ -322,11 +319,10 @@ export default function LeftSidebar({
                       handleSubjectClick(subject);
                     }
                   }}
-                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-indigo-50/80 text-indigo-900 shadow-2xs font-semibold"
-                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium"
-                  }`}
+                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all cursor-pointer ${isActive
+                    ? "bg-indigo-50/80 text-indigo-900 shadow-2xs font-semibold"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium"
+                    }`}
                 >
                   {/* Left: Folder Icon & Name */}
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
@@ -364,11 +360,10 @@ export default function LeftSidebar({
                         e.stopPropagation();
                         setActionMenuOpenId(isMenuOpen ? null : subject.id);
                       }}
-                      className={`rounded-md p-1 transition-colors cursor-pointer ${
-                        isMenuOpen
-                          ? "bg-gray-200 text-gray-800"
-                          : "text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-700"
-                      }`}
+                      className={`rounded-md p-1 transition-colors cursor-pointer ${isMenuOpen
+                        ? "bg-gray-200 text-gray-800"
+                        : "text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-700"
+                        }`}
                     >
                       <MoreVertical className="h-3.5 w-3.5" />
                     </button>
@@ -413,7 +408,7 @@ export default function LeftSidebar({
         </div>
 
         {/* ── Weekly Goal Progress Card ── */}
-        <div className="rounded-2xl border border-blue-100/60 bg-blue-50/50 p-3.5 shadow-2xs">
+        {/* <div className="rounded-2xl border border-blue-100/60 bg-blue-50/50 p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-xs">
             <span className="font-medium text-gray-700">
               Chỉ tiêu ghi nhớ tuần
@@ -433,7 +428,7 @@ export default function LeftSidebar({
           <p className="text-xs text-gray-500">
             {progress.current} / {progress.total} khái niệm cốt lõi
           </p>
-        </div>
+        </div> */}
       </div>
 
       {/* ── Bottom: User Profile & Settings ── */}

@@ -1,16 +1,14 @@
-import ConversationsListView from "@/components/conversations/ConversationsListView";
+import SubjectCardListView from "@/components/home/SubjectCardListView";
 
-export default async function HomePage(props: { searchParams: Promise<{ subject_id?: string }> }) {
-  const searchParams = await props.searchParams;
-  const subjectId = searchParams.subject_id;
+export const metadata = {
+  title: "Trang chủ - AI StudyMate",
+  description: "Không gian học tập cá nhân của bạn",
+};
 
+export default function HomePage() {
   return (
-    <div className="flex h-full min-h-125 items-start justify-center rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center text-gray-500 shadow-2xs">
-      <ConversationsListView subjectId={subjectId} />
+    <div className="flex h-full min-h-125 items-stretch justify-stretch">
+      <SubjectCardListView />
     </div>
-
-    //     <div className="flex h-full min-h-[500px] items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center text-gray-500 shadow-2xs">
-    //   <ConversationsListView subjectId={subjectId} />
-    // </div>
   );
 }
