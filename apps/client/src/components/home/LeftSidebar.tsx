@@ -116,8 +116,73 @@ export default function LeftSidebar({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingSubject, setDeletingSubject] = useState<Subject | null>(null);
 
-  // State menu 3 chấm (Dropdown Action Menu)
-  const [actionMenuOpenId, setActionMenuOpenId] = useState<string | null>(null);
+  // State menu 3 chấm (Fixed Floating Action Menu)
+  const [menuAnchor, setMenuAnchor] = useState<{
+    subject: Subject;
+    top: number;
+    left: number;
+  } | null>(null);
+
+  // Đóng action menu khi click ra ngoài hoặc cuộn trang/thay đổi kích thước
+  useEffect(() => {
+    if (!menuAnchor) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.closest('[data-menu-trigger="true"]') ||
+        target?.closest('[data-dropdown-menu="true"]')
+      ) {
+        return;
+      }
+      setMenuAnchor(null);
+    };
+
+    const handleScrollOrResize = () => {
+      setMenuAnchor(null);
+    };
+
+    window.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+
+    return () => {
+      window.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [menuAnchor]);
+
+  const handleToggleActionMenu = (
+    subject: Subject,
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    e.stopPropagation();
+    if (menuAnchor?.subject.id === subject.id) {
+      setMenuAnchor(null);
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menuHeight = 84;
+    const menuWidth = 144;
+
+    let top = rect.bottom + 4;
+    if (top + menuHeight > window.innerHeight) {
+      top = Math.max(8, rect.top - menuHeight - 4);
+    }
+
+    let left = rect.right - menuWidth;
+    if (left < 8) {
+      left = 8;
+    }
+
+    setMenuAnchor({
+      subject,
+      top,
+      left,
+    });
+  };
 
   // Chọn môn học
   const handleSubjectClick = (subject: Subject) => {
@@ -135,18 +200,18 @@ export default function LeftSidebar({
   };
 
   // Mở modal chỉnh sửa
-  const handleOpenEditModal = (subject: Subject, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setActionMenuOpenId(null);
+  const handleOpenEditModal = (subject: Subject, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setMenuAnchor(null);
     setWorkspaceModalMode("edit");
     setEditingSubject(subject);
     setIsWorkspaceModalOpen(true);
   };
 
   // Mở modal xóa
-  const handleOpenDeleteModal = (subject: Subject, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setActionMenuOpenId(null);
+  const handleOpenDeleteModal = (subject: Subject, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setMenuAnchor(null);
     setDeletingSubject(subject);
     setIsDeleteModalOpen(true);
   };
@@ -180,7 +245,7 @@ export default function LeftSidebar({
         } ${className}`.trim()}
     >
       {/* ── Top & Main Content ── */}
-      <div className="flex flex-col space-y-4 overflow-y-auto">
+      <div className="flex-1 min-h-0 flex flex-col space-y-4 overflow-y-auto pr-0.5">
         {/* Section Header: Workspace Title + Add Folder + Collapse */}
         <div className="flex items-center justify-between px-1">
           <span className="text-xs font-bold tracking-wider text-gray-500 uppercase">
@@ -306,7 +371,7 @@ export default function LeftSidebar({
           {subjects.map((subject) => {
             const isActive = activeId === subject.id;
             const subjectColor = subject.color || "#4F46E5";
-            const isMenuOpen = actionMenuOpenId === subject.id;
+            const isMenuOpen = menuAnchor?.subject.id === subject.id;
 
             return (
               <div key={subject.id} className="relative group">
@@ -355,13 +420,11 @@ export default function LeftSidebar({
                     {/* 3-dots Menu Button */}
                     <button
                       type="button"
+                      data-menu-trigger="true"
                       aria-label={`Tùy chọn cho ${subject.name}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActionMenuOpenId(isMenuOpen ? null : subject.id);
-                      }}
+                      onClick={(e) => handleToggleActionMenu(subject, e)}
                       className={`rounded-md p-1 transition-colors cursor-pointer ${isMenuOpen
-                        ? "bg-gray-200 text-gray-800"
+                        ? "bg-gray-200 text-gray-800 opacity-100"
                         : "text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-700"
                         }`}
                     >
@@ -369,39 +432,6 @@ export default function LeftSidebar({
                     </button>
                   </div>
                 </div>
-
-                {/* Dropdown Action Menu */}
-                {isMenuOpen && (
-                  <>
-                    {/* Backdrop to close menu when clicking outside */}
-                    <div
-                      className="fixed inset-0 z-30 cursor-default"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActionMenuOpenId(null);
-                      }}
-                    />
-
-                    <div className="absolute right-2 top-10 z-40 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg ring-1 ring-black/5 animate-in fade-in-50 zoom-in-95 duration-100">
-                      <button
-                        type="button"
-                        onClick={(e) => handleOpenEditModal(subject, e)}
-                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
-                      >
-                        <Edit3 className="h-3.5 w-3.5 text-indigo-600" />
-                        <span>Chỉnh sửa</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleOpenDeleteModal(subject, e)}
-                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-rose-600" />
-                        <span>Xóa</span>
-                      </button>
-                    </div>
-                  </>
-                )}
               </div>
             );
           })}
@@ -432,7 +462,7 @@ export default function LeftSidebar({
       </div>
 
       {/* ── Bottom: User Profile & Settings ── */}
-      <div className="border-t border-gray-100 pt-3 flex items-center justify-between">
+      <div className="border-t border-gray-100 pt-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-gray-200 shadow-2xs">
             <Image
@@ -464,6 +494,37 @@ export default function LeftSidebar({
           <Settings className="h-4 w-4" />
         </button>
       </div>
+
+      {/* ── Fixed Floating Action Menu ── */}
+      {menuAnchor && (
+        <div
+          data-dropdown-menu="true"
+          style={{
+            position: "fixed",
+            top: `${menuAnchor.top}px`,
+            left: `${menuAnchor.left}px`,
+          }}
+          className="z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg ring-1 ring-black/5 animate-in fade-in-50 zoom-in-95 duration-100 select-none"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={(e) => handleOpenEditModal(menuAnchor.subject, e)}
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
+          >
+            <Edit3 className="h-3.5 w-3.5 text-indigo-600" />
+            <span>Chỉnh sửa</span>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => handleOpenDeleteModal(menuAnchor.subject, e)}
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+            <span>Xóa</span>
+          </button>
+        </div>
+      )}
 
       {/* ── Modal Tạo mới & Chỉnh sửa Không gian học tập ── */}
       <CreateWorkspaceModal
