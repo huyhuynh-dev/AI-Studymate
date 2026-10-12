@@ -10,6 +10,7 @@ import FlashcardsTab from "@/components/conversations/FlashcardsTab";
 import QuizTab from "@/components/conversations/QuizTab";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useConversations } from "@/hooks/useConversations";
+import { useDocuments } from "@/hooks/useDocuments";
 
 interface ConversationPageProps {
   params: Promise<{
@@ -28,15 +29,24 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   const { subjects } = useSubjects();
   const { conversations } = useConversations(subjectId);
 
+  // Hook quản lý danh sách và tiến trình tải lên tài liệu
+  const {
+    documents,
+    isLoading: isDocumentsLoading,
+    isUploading,
+    uploadQueue,
+    errorMessage: documentsError,
+    clearError: clearDocumentsError,
+    uploadFiles,
+    deleteDocument,
+    downloadDocument,
+  } = useDocuments(conversationId);
+
   const currentSubject = subjects.find((s) => s.id === subjectId);
   const currentConversation = conversations.find((c) => c.id === conversationId);
 
   const subjectName = currentSubject?.name || "Cấu Trúc Dữ Liệu";
   const sessionTitle = currentConversation?.title || "Phiên học mới";
-
-  const handleUpload = (files: File[]) => {
-    console.log("Uploaded files:", files);
-  };
 
   const handleGoToDocuments = () => {
     setActiveTab("documents");
@@ -86,7 +96,18 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         {/* Khu vực nội dung Tab */}
         <div className="flex flex-1 flex-col items-center justify-center p-4 sm:p-6 md:p-8">
           {activeTab === "documents" && (
-            <DocumentsTab onUpload={handleUpload} className="w-full" />
+            <DocumentsTab
+              documents={documents}
+              isLoading={isDocumentsLoading}
+              isUploading={isUploading}
+              uploadQueue={uploadQueue}
+              errorMessage={documentsError}
+              onClearError={clearDocumentsError}
+              onUpload={uploadFiles}
+              onDelete={deleteDocument}
+              onDownload={downloadDocument}
+              className="w-full"
+            />
           )}
 
           {activeTab === "summary" && (

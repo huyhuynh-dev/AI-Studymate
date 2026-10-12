@@ -1,8 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+    DeleteObjectCommand,
+    GetObjectCommand,
+    HeadObjectCommand,
+    PutObjectCommand,
+    S3Client,
+} from "@aws-sdk/client-s3";
 import { ConfigService } from '@nestjs/config';
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+export interface ObjectMetadata {
+    exists: boolean;
+    contentLength?: number;
+    contentType?: string;
+    etag?: string;
+}
 
 @Injectable()
 export class StorageService {
@@ -23,34 +35,77 @@ export class StorageService {
             region: "auto",
             endpoint: this.endpoint,
             credentials: {
-                // Provide your R2 Access Key ID and Secret Access Key
                 accessKeyId: this.accessKeyId,
                 secretAccessKey: this.secretAccessKey,
             },
         });
-
-
     }
 
     async getSignedUrlForObject(key: string): Promise<string> {
+        return this.getSignedUrlForDownload(key);
+    }
+
+    async getSignedUrlForDownload(key: string, fileName?: string, expiresIn = 3600): Promise<string> {
         const command = new GetObjectCommand({
             Bucket: this.bucketName,
             Key: key,
+            ResponseContentDisposition: fileName
+                ? `attachment; filename="${encodeURIComponent(fileName)}"`
+                : undefined,
         });
-        return await getSignedUrl(this.s3Client, command, { expiresIn: 3600 }); // URL valid for 1 hour
-    };
+        return await getSignedUrl(this.s3Client, command, { expiresIn });
+    }
 
-    async getSignedUrlForUpload(filename: string, contentType: string): Promise<string> {
-        const prefix = this.getPrefixFromContentType(contentType);
-        const key = `${prefix}/${filename}`;
-
+    async getSignedUrlForUpload(key: string, contentType: string, expiresIn = 900): Promise<string> {
         const command = new PutObjectCommand({
             Bucket: this.bucketName,
             Key: key,
             ContentType: contentType,
         });
-        return await getSignedUrl(this.s3Client, command, { expiresIn: 3600 }); // URL valid for 1 hour
-    };
+        return await getSignedUrl(this.s3Client, command, { expiresIn });
+    }
+
+    async headObject(key: string): Promise<ObjectMetadata> {
+        try {
+            const command = new HeadObjectCommand({
+                Bucket: this.bucketName,
+                Key: key,
+            });
+            const response = await this.s3Client.send(command);
+            return {
+                exists: true,
+                contentLength: response.ContentLength,
+                contentType: response.ContentType,
+                etag: response.ETag,
+            };
+        } catch (error: any) {
+            if (error?.name === 'NotFound' || error?.$metadata?.httpStatusCode === 404) {
+                return { exists: false };
+            }
+            throw error;
+        }
+    }
+
+    async deleteObject(key: string): Promise<void> {
+        const command = new DeleteObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+        });
+        await this.s3Client.send(command);
+    }
+
+    async getObjectBuffer(key: string): Promise<Buffer> {
+        const command = new GetObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+        });
+        const response = await this.s3Client.send(command);
+        if (!response.Body) {
+            throw new Error(`Tệp trống hoặc không thể đọc nội dung: ${key}`);
+        }
+        const byteArray = await response.Body.transformToByteArray();
+        return Buffer.from(byteArray);
+    }
 
 
     private getPrefixFromContentType(contentType: string): string {
