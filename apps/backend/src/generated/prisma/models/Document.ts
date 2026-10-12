@@ -39,10 +39,12 @@ export type DocumentMinAggregateOutputType = {
   conversation_id: string | null
   user_id: string | null
   file_name: string | null
-  file_type: string | null
+  mime_type: string | null
   file_size: bigint | null
   storage_key: string | null
   raw_text: string | null
+  processing_error: string | null
+  uploaded_at: Date | null
   ocr_status: string | null
   embed_status: string | null
   created_at: Date | null
@@ -54,10 +56,12 @@ export type DocumentMaxAggregateOutputType = {
   conversation_id: string | null
   user_id: string | null
   file_name: string | null
-  file_type: string | null
+  mime_type: string | null
   file_size: bigint | null
   storage_key: string | null
   raw_text: string | null
+  processing_error: string | null
+  uploaded_at: Date | null
   ocr_status: string | null
   embed_status: string | null
   created_at: Date | null
@@ -69,10 +73,12 @@ export type DocumentCountAggregateOutputType = {
   conversation_id: number
   user_id: number
   file_name: number
-  file_type: number
+  mime_type: number
   file_size: number
   storage_key: number
   raw_text: number
+  processing_error: number
+  uploaded_at: number
   ocr_status: number
   embed_status: number
   created_at: number
@@ -94,10 +100,12 @@ export type DocumentMinAggregateInputType = {
   conversation_id?: true
   user_id?: true
   file_name?: true
-  file_type?: true
+  mime_type?: true
   file_size?: true
   storage_key?: true
   raw_text?: true
+  processing_error?: true
+  uploaded_at?: true
   ocr_status?: true
   embed_status?: true
   created_at?: true
@@ -109,10 +117,12 @@ export type DocumentMaxAggregateInputType = {
   conversation_id?: true
   user_id?: true
   file_name?: true
-  file_type?: true
+  mime_type?: true
   file_size?: true
   storage_key?: true
   raw_text?: true
+  processing_error?: true
+  uploaded_at?: true
   ocr_status?: true
   embed_status?: true
   created_at?: true
@@ -124,10 +134,12 @@ export type DocumentCountAggregateInputType = {
   conversation_id?: true
   user_id?: true
   file_name?: true
-  file_type?: true
+  mime_type?: true
   file_size?: true
   storage_key?: true
   raw_text?: true
+  processing_error?: true
+  uploaded_at?: true
   ocr_status?: true
   embed_status?: true
   created_at?: true
@@ -226,10 +238,12 @@ export type DocumentGroupByOutputType = {
   conversation_id: string
   user_id: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint
   storage_key: string
   raw_text: string | null
+  processing_error: string | null
+  uploaded_at: Date
   ocr_status: string
   embed_status: string
   created_at: Date
@@ -264,10 +278,12 @@ export type DocumentWhereInput = {
   conversation_id?: Prisma.UuidFilter<"Document"> | string
   user_id?: Prisma.UuidFilter<"Document"> | string
   file_name?: Prisma.StringFilter<"Document"> | string
-  file_type?: Prisma.StringFilter<"Document"> | string
+  mime_type?: Prisma.StringFilter<"Document"> | string
   file_size?: Prisma.BigIntFilter<"Document"> | bigint | number
   storage_key?: Prisma.StringFilter<"Document"> | string
   raw_text?: Prisma.StringNullableFilter<"Document"> | string | null
+  processing_error?: Prisma.StringNullableFilter<"Document"> | string | null
+  uploaded_at?: Prisma.DateTimeFilter<"Document"> | Date | string
   ocr_status?: Prisma.StringFilter<"Document"> | string
   embed_status?: Prisma.StringFilter<"Document"> | string
   created_at?: Prisma.DateTimeFilter<"Document"> | Date | string
@@ -282,10 +298,12 @@ export type DocumentOrderByWithRelationInput = {
   conversation_id?: Prisma.SortOrder
   user_id?: Prisma.SortOrder
   file_name?: Prisma.SortOrder
-  file_type?: Prisma.SortOrder
+  mime_type?: Prisma.SortOrder
   file_size?: Prisma.SortOrder
   storage_key?: Prisma.SortOrder
   raw_text?: Prisma.SortOrderInput | Prisma.SortOrder
+  processing_error?: Prisma.SortOrderInput | Prisma.SortOrder
+  uploaded_at?: Prisma.SortOrder
   ocr_status?: Prisma.SortOrder
   embed_status?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
@@ -303,10 +321,12 @@ export type DocumentWhereUniqueInput = Prisma.AtLeast<{
   conversation_id?: Prisma.UuidFilter<"Document"> | string
   user_id?: Prisma.UuidFilter<"Document"> | string
   file_name?: Prisma.StringFilter<"Document"> | string
-  file_type?: Prisma.StringFilter<"Document"> | string
+  mime_type?: Prisma.StringFilter<"Document"> | string
   file_size?: Prisma.BigIntFilter<"Document"> | bigint | number
   storage_key?: Prisma.StringFilter<"Document"> | string
   raw_text?: Prisma.StringNullableFilter<"Document"> | string | null
+  processing_error?: Prisma.StringNullableFilter<"Document"> | string | null
+  uploaded_at?: Prisma.DateTimeFilter<"Document"> | Date | string
   ocr_status?: Prisma.StringFilter<"Document"> | string
   embed_status?: Prisma.StringFilter<"Document"> | string
   created_at?: Prisma.DateTimeFilter<"Document"> | Date | string
@@ -321,10 +341,12 @@ export type DocumentOrderByWithAggregationInput = {
   conversation_id?: Prisma.SortOrder
   user_id?: Prisma.SortOrder
   file_name?: Prisma.SortOrder
-  file_type?: Prisma.SortOrder
+  mime_type?: Prisma.SortOrder
   file_size?: Prisma.SortOrder
   storage_key?: Prisma.SortOrder
   raw_text?: Prisma.SortOrderInput | Prisma.SortOrder
+  processing_error?: Prisma.SortOrderInput | Prisma.SortOrder
+  uploaded_at?: Prisma.SortOrder
   ocr_status?: Prisma.SortOrder
   embed_status?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
@@ -344,10 +366,12 @@ export type DocumentScalarWhereWithAggregatesInput = {
   conversation_id?: Prisma.UuidWithAggregatesFilter<"Document"> | string
   user_id?: Prisma.UuidWithAggregatesFilter<"Document"> | string
   file_name?: Prisma.StringWithAggregatesFilter<"Document"> | string
-  file_type?: Prisma.StringWithAggregatesFilter<"Document"> | string
+  mime_type?: Prisma.StringWithAggregatesFilter<"Document"> | string
   file_size?: Prisma.BigIntWithAggregatesFilter<"Document"> | bigint | number
   storage_key?: Prisma.StringWithAggregatesFilter<"Document"> | string
   raw_text?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
+  processing_error?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
+  uploaded_at?: Prisma.DateTimeWithAggregatesFilter<"Document"> | Date | string
   ocr_status?: Prisma.StringWithAggregatesFilter<"Document"> | string
   embed_status?: Prisma.StringWithAggregatesFilter<"Document"> | string
   created_at?: Prisma.DateTimeWithAggregatesFilter<"Document"> | Date | string
@@ -357,10 +381,12 @@ export type DocumentScalarWhereWithAggregatesInput = {
 export type DocumentCreateInput = {
   id?: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint | number
   storage_key: string
   raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
   ocr_status?: string
   embed_status?: string
   created_at?: Date | string
@@ -375,10 +401,12 @@ export type DocumentUncheckedCreateInput = {
   conversation_id: string
   user_id: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint | number
   storage_key: string
   raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
   ocr_status?: string
   embed_status?: string
   created_at?: Date | string
@@ -389,10 +417,12 @@ export type DocumentUncheckedCreateInput = {
 export type DocumentUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -407,10 +437,12 @@ export type DocumentUncheckedUpdateInput = {
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -423,10 +455,12 @@ export type DocumentCreateManyInput = {
   conversation_id: string
   user_id: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint | number
   storage_key: string
   raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
   ocr_status?: string
   embed_status?: string
   created_at?: Date | string
@@ -436,10 +470,12 @@ export type DocumentCreateManyInput = {
 export type DocumentUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -451,10 +487,12 @@ export type DocumentUncheckedUpdateManyInput = {
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -476,10 +514,12 @@ export type DocumentCountOrderByAggregateInput = {
   conversation_id?: Prisma.SortOrder
   user_id?: Prisma.SortOrder
   file_name?: Prisma.SortOrder
-  file_type?: Prisma.SortOrder
+  mime_type?: Prisma.SortOrder
   file_size?: Prisma.SortOrder
   storage_key?: Prisma.SortOrder
   raw_text?: Prisma.SortOrder
+  processing_error?: Prisma.SortOrder
+  uploaded_at?: Prisma.SortOrder
   ocr_status?: Prisma.SortOrder
   embed_status?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
@@ -495,10 +535,12 @@ export type DocumentMaxOrderByAggregateInput = {
   conversation_id?: Prisma.SortOrder
   user_id?: Prisma.SortOrder
   file_name?: Prisma.SortOrder
-  file_type?: Prisma.SortOrder
+  mime_type?: Prisma.SortOrder
   file_size?: Prisma.SortOrder
   storage_key?: Prisma.SortOrder
   raw_text?: Prisma.SortOrder
+  processing_error?: Prisma.SortOrder
+  uploaded_at?: Prisma.SortOrder
   ocr_status?: Prisma.SortOrder
   embed_status?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
@@ -510,10 +552,12 @@ export type DocumentMinOrderByAggregateInput = {
   conversation_id?: Prisma.SortOrder
   user_id?: Prisma.SortOrder
   file_name?: Prisma.SortOrder
-  file_type?: Prisma.SortOrder
+  mime_type?: Prisma.SortOrder
   file_size?: Prisma.SortOrder
   storage_key?: Prisma.SortOrder
   raw_text?: Prisma.SortOrder
+  processing_error?: Prisma.SortOrder
+  uploaded_at?: Prisma.SortOrder
   ocr_status?: Prisma.SortOrder
   embed_status?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
@@ -638,10 +682,12 @@ export type DocumentUpdateOneRequiredWithoutChunksNestedInput = {
 export type DocumentCreateWithoutUserInput = {
   id?: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint | number
   storage_key: string
   raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
   ocr_status?: string
   embed_status?: string
   created_at?: Date | string
@@ -654,10 +700,12 @@ export type DocumentUncheckedCreateWithoutUserInput = {
   id?: string
   conversation_id: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint | number
   storage_key: string
   raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
   ocr_status?: string
   embed_status?: string
   created_at?: Date | string
@@ -699,10 +747,12 @@ export type DocumentScalarWhereInput = {
   conversation_id?: Prisma.UuidFilter<"Document"> | string
   user_id?: Prisma.UuidFilter<"Document"> | string
   file_name?: Prisma.StringFilter<"Document"> | string
-  file_type?: Prisma.StringFilter<"Document"> | string
+  mime_type?: Prisma.StringFilter<"Document"> | string
   file_size?: Prisma.BigIntFilter<"Document"> | bigint | number
   storage_key?: Prisma.StringFilter<"Document"> | string
   raw_text?: Prisma.StringNullableFilter<"Document"> | string | null
+  processing_error?: Prisma.StringNullableFilter<"Document"> | string | null
+  uploaded_at?: Prisma.DateTimeFilter<"Document"> | Date | string
   ocr_status?: Prisma.StringFilter<"Document"> | string
   embed_status?: Prisma.StringFilter<"Document"> | string
   created_at?: Prisma.DateTimeFilter<"Document"> | Date | string
@@ -712,10 +762,12 @@ export type DocumentScalarWhereInput = {
 export type DocumentCreateWithoutConversationInput = {
   id?: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint | number
   storage_key: string
   raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
   ocr_status?: string
   embed_status?: string
   created_at?: Date | string
@@ -728,10 +780,12 @@ export type DocumentUncheckedCreateWithoutConversationInput = {
   id?: string
   user_id: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint | number
   storage_key: string
   raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
   ocr_status?: string
   embed_status?: string
   created_at?: Date | string
@@ -768,10 +822,12 @@ export type DocumentUpdateManyWithWhereWithoutConversationInput = {
 export type DocumentCreateWithoutChunksInput = {
   id?: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint | number
   storage_key: string
   raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
   ocr_status?: string
   embed_status?: string
   created_at?: Date | string
@@ -785,10 +841,12 @@ export type DocumentUncheckedCreateWithoutChunksInput = {
   conversation_id: string
   user_id: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint | number
   storage_key: string
   raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
   ocr_status?: string
   embed_status?: string
   created_at?: Date | string
@@ -814,10 +872,12 @@ export type DocumentUpdateToOneWithWhereWithoutChunksInput = {
 export type DocumentUpdateWithoutChunksInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -831,10 +891,12 @@ export type DocumentUncheckedUpdateWithoutChunksInput = {
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -845,10 +907,12 @@ export type DocumentCreateManyUserInput = {
   id?: string
   conversation_id: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint | number
   storage_key: string
   raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
   ocr_status?: string
   embed_status?: string
   created_at?: Date | string
@@ -858,10 +922,12 @@ export type DocumentCreateManyUserInput = {
 export type DocumentUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -874,10 +940,12 @@ export type DocumentUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -889,10 +957,12 @@ export type DocumentUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -903,10 +973,12 @@ export type DocumentCreateManyConversationInput = {
   id?: string
   user_id: string
   file_name: string
-  file_type: string
+  mime_type: string
   file_size: bigint | number
   storage_key: string
   raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
   ocr_status?: string
   embed_status?: string
   created_at?: Date | string
@@ -916,10 +988,12 @@ export type DocumentCreateManyConversationInput = {
 export type DocumentUpdateWithoutConversationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -932,10 +1006,12 @@ export type DocumentUncheckedUpdateWithoutConversationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -947,10 +1023,12 @@ export type DocumentUncheckedUpdateManyWithoutConversationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
-  file_type?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -993,10 +1071,12 @@ export type DocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   conversation_id?: boolean
   user_id?: boolean
   file_name?: boolean
-  file_type?: boolean
+  mime_type?: boolean
   file_size?: boolean
   storage_key?: boolean
   raw_text?: boolean
+  processing_error?: boolean
+  uploaded_at?: boolean
   ocr_status?: boolean
   embed_status?: boolean
   created_at?: boolean
@@ -1012,10 +1092,12 @@ export type DocumentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   conversation_id?: boolean
   user_id?: boolean
   file_name?: boolean
-  file_type?: boolean
+  mime_type?: boolean
   file_size?: boolean
   storage_key?: boolean
   raw_text?: boolean
+  processing_error?: boolean
+  uploaded_at?: boolean
   ocr_status?: boolean
   embed_status?: boolean
   created_at?: boolean
@@ -1029,10 +1111,12 @@ export type DocumentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   conversation_id?: boolean
   user_id?: boolean
   file_name?: boolean
-  file_type?: boolean
+  mime_type?: boolean
   file_size?: boolean
   storage_key?: boolean
   raw_text?: boolean
+  processing_error?: boolean
+  uploaded_at?: boolean
   ocr_status?: boolean
   embed_status?: boolean
   created_at?: boolean
@@ -1046,17 +1130,19 @@ export type DocumentSelectScalar = {
   conversation_id?: boolean
   user_id?: boolean
   file_name?: boolean
-  file_type?: boolean
+  mime_type?: boolean
   file_size?: boolean
   storage_key?: boolean
   raw_text?: boolean
+  processing_error?: boolean
+  uploaded_at?: boolean
   ocr_status?: boolean
   embed_status?: boolean
   created_at?: boolean
   updated_at?: boolean
 }
 
-export type DocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversation_id" | "user_id" | "file_name" | "file_type" | "file_size" | "storage_key" | "raw_text" | "ocr_status" | "embed_status" | "created_at" | "updated_at", ExtArgs["result"]["document"]>
+export type DocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversation_id" | "user_id" | "file_name" | "mime_type" | "file_size" | "storage_key" | "raw_text" | "processing_error" | "uploaded_at" | "ocr_status" | "embed_status" | "created_at" | "updated_at", ExtArgs["result"]["document"]>
 export type DocumentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1084,10 +1170,12 @@ export type $DocumentPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     conversation_id: string
     user_id: string
     file_name: string
-    file_type: string
+    mime_type: string
     file_size: bigint
     storage_key: string
     raw_text: string | null
+    processing_error: string | null
+    uploaded_at: Date
     ocr_status: string
     embed_status: string
     created_at: Date
@@ -1522,10 +1610,12 @@ export interface DocumentFieldRefs {
   readonly conversation_id: Prisma.FieldRef<"Document", 'String'>
   readonly user_id: Prisma.FieldRef<"Document", 'String'>
   readonly file_name: Prisma.FieldRef<"Document", 'String'>
-  readonly file_type: Prisma.FieldRef<"Document", 'String'>
+  readonly mime_type: Prisma.FieldRef<"Document", 'String'>
   readonly file_size: Prisma.FieldRef<"Document", 'BigInt'>
   readonly storage_key: Prisma.FieldRef<"Document", 'String'>
   readonly raw_text: Prisma.FieldRef<"Document", 'String'>
+  readonly processing_error: Prisma.FieldRef<"Document", 'String'>
+  readonly uploaded_at: Prisma.FieldRef<"Document", 'DateTime'>
   readonly ocr_status: Prisma.FieldRef<"Document", 'String'>
   readonly embed_status: Prisma.FieldRef<"Document", 'String'>
   readonly created_at: Prisma.FieldRef<"Document", 'DateTime'>
