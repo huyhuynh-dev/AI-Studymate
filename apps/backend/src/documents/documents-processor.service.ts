@@ -93,9 +93,23 @@ export class DocumentsProcessorService implements OnModuleInit, OnApplicationShu
     private async extractPdfText(buffer: Buffer): Promise<string> {
         try {
             const pdfModule = await import('pdf-parse');
+
+            // Tương thích chuẩn pdf-parse v2.x (Class PDFParse)
+            if (pdfModule.PDFParse) {
+                const parser = new pdfModule.PDFParse({ data: buffer });
+                const result = await parser.getText();
+                await parser.destroy();
+                return result?.text ? result.text.trim() : '';
+            }
+
+            // Fallback tương thích nếu dùng pdf-parse v1.x cũ
             const parseFn = (pdfModule as any).default || pdfModule;
-            const data = await parseFn(buffer);
-            return data?.text ? data.text.trim() : '';
+            if (typeof parseFn === 'function') {
+                const data = await parseFn(buffer);
+                return data?.text ? data.text.trim() : '';
+            }
+
+            throw new Error('Không tìm thấy trình trích xuất PDF hợp lệ trong module pdf-parse');
         } catch (err: any) {
             throw new Error(`Không thể giải mã tệp PDF: ${err.message}`);
         }
