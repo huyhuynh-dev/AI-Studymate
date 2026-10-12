@@ -55,6 +55,11 @@ export const documentsApi = {
     return res.data;
   },
 
+  getViewUrl: async (documentId: string): Promise<{ downloadUrl: string }> => {
+    const res = await axiosClient.get(`/documents/${documentId}/download?inline=true`);
+    return res.data;
+  },
+
   delete: async (documentId: string): Promise<{ success: boolean; message: string }> => {
     const res = await axiosClient.delete(`/documents/${documentId}`);
     return res.data;

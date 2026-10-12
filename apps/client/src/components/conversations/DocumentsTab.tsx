@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, DragEvent, ChangeEvent } from "react";
+import React, { useRef, useState, useMemo, DragEvent, ChangeEvent } from "react";
 import {
   Plus,
   FileText,
@@ -15,8 +15,11 @@ import {
   AlertCircle,
   X,
   UploadCloud,
+  Eye,
+  Layers,
 } from "lucide-react";
 import { DocumentItem, UploadProgressItem } from "@/types";
+import DocumentImageViewer from "./DocumentImageViewer";
 
 export interface DocumentsTabProps {
   documents?: DocumentItem[];
@@ -72,6 +75,38 @@ export default function DocumentsTab({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [viewingDocId, setViewingDocId] = useState<string | null>(null);
+  const [pdfNotice, setPdfNotice] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<"all" | "pdf" | "image">("all");
+
+  const pdfCount = useMemo(
+    () => documents.filter((doc) => doc.mime_type === "application/pdf").length,
+    [documents]
+  );
+
+  const imageCount = useMemo(
+    () => documents.filter((doc) => doc.mime_type.startsWith("image/")).length,
+    [documents]
+  );
+
+  const filteredDocuments = useMemo(() => {
+    if (filterType === "pdf") {
+      return documents.filter((doc) => doc.mime_type === "application/pdf");
+    }
+    if (filterType === "image") {
+      return documents.filter((doc) => doc.mime_type.startsWith("image/"));
+    }
+    return documents;
+  }, [documents, filterType]);
+
+  const handleCardClick = (doc: DocumentItem) => {
+    if (doc.mime_type.startsWith("image/")) {
+      setViewingDocId(doc.id);
+    } else {
+      setPdfNotice(`Trình xem PDF cho "${doc.file_name}" đang được phát triển.`);
+      setTimeout(() => setPdfNotice(null), 3500);
+    }
+  };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -157,6 +192,20 @@ export default function DocumentsTab({
       </span>
     );
   };
+
+  // 0. Trường hợp người dùng đang xem chi tiết ảnh (Detail View)
+  const viewingDoc = documents.find((d) => d.id === viewingDocId);
+  if (viewingDocId && viewingDoc && viewingDoc.mime_type.startsWith("image/")) {
+    return (
+      <DocumentImageViewer
+        documents={documents}
+        initialDocumentId={viewingDocId}
+        onClose={() => setViewingDocId(null)}
+        onDownload={onDownload}
+        className={className}
+      />
+    );
+  }
 
   // 1. Trường hợp chưa có tài liệu nào và không có file đang upload: Hiển thị Hero Dropzone nguyên bản
   const hasContent = documents.length > 0 || uploadQueue.length > 0;
@@ -315,28 +364,91 @@ export default function DocumentsTab({
         </div>
       )}
 
+      {/* Thông báo tính năng PDF nếu người dùng bấm vào thẻ PDF */}
+      {pdfNotice && (
+        <div className="flex items-center justify-between rounded-2xl border border-indigo-200 bg-indigo-50/90 p-4 text-sm text-indigo-800 shadow-xs animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 shrink-0 text-indigo-600" />
+            <span className="font-medium">{pdfNotice}</span>
+          </div>
+          <button
+            onClick={() => setPdfNotice(null)}
+            type="button"
+            className="rounded-lg p-1 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-800 cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Thanh Header của Tab */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4">
         <div>
           <div className="flex items-center gap-2.5">
             <h2 className="text-lg font-bold text-gray-900">Tài liệu đã tải lên</h2>
             <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-indigo-50 px-2 text-xs font-bold text-indigo-600">
-              {documents.length}
+              {filteredDocuments.length}
+              {filterType !== "all" && `/${documents.length}`}
             </span>
           </div>
-          <p className="mt-1 text-xs sm:text-sm text-gray-500">
+          {/* <p className="mt-1 text-xs sm:text-sm text-gray-500">
             Quản lý tài liệu học tập của phiên này. AI sẽ dựa vào các tài liệu này để tóm tắt và hỏi đáp.
-          </p>
+          </p> */}
         </div>
 
-        <button
-          type="button"
-          onClick={handleTriggerUpload}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-all hover:bg-[#4338CA] active:scale-[0.98] cursor-pointer"
-        >
-          <Plus className="h-4 w-4 stroke-[2.5]" />
-          <span>Tải thêm tài liệu</span>
-        </button>
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Bộ lọc loại tài liệu dạng Icon nằm ngang (Tiết kiệm không gian) */}
+          <div className="flex items-center rounded-xl border border-gray-200/90 bg-gray-50/90 p-1 shadow-xs">
+            {/* Nút: Tất cả tài liệu */}
+            <button
+              type="button"
+              onClick={() => setFilterType("all")}
+              title={`Tất cả tài liệu (${documents.length})`}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all cursor-pointer ${filterType === "all"
+                  ? "bg-white text-indigo-600 shadow-xs"
+                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-100/70"
+                }`}
+            >
+              <Layers className="h-4 w-4" />
+            </button>
+
+            {/* Nút: Chỉ PDF */}
+            <button
+              type="button"
+              onClick={() => setFilterType("pdf")}
+              title={`Tài liệu PDF (${pdfCount})`}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all cursor-pointer ${filterType === "pdf"
+                  ? "bg-white text-red-600 shadow-xs"
+                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-100/70"
+                }`}
+            >
+              <FileText className="h-4 w-4" />
+            </button>
+
+            {/* Nút: Chỉ Hình ảnh */}
+            <button
+              type="button"
+              onClick={() => setFilterType("image")}
+              title={`Hình ảnh (${imageCount})`}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all cursor-pointer ${filterType === "image"
+                  ? "bg-white text-emerald-600 shadow-xs"
+                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-100/70"
+                }`}
+            >
+              <ImageIcon className="h-4 w-4" />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleTriggerUpload}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-all hover:bg-[#4338CA] active:scale-[0.98] cursor-pointer"
+          >
+            <Plus className="h-4 w-4 stroke-[2.5]" />
+            <span className="hidden sm:inline">Tải thêm tài liệu</span>
+            <span className="sm:hidden">Tải thêm</span>
+          </button>
+        </div>
       </div>
 
       {/* Vùng kéo thả phụ trợ nếu đang drag */}
@@ -406,77 +518,123 @@ export default function DocumentsTab({
 
       {/* Danh sách các tài liệu đã tải lên */}
       <div className="flex flex-col gap-3">
-        {documents.map((doc) => {
-          const isPdf = doc.mime_type === "application/pdf";
-          return (
-            <div
-              key={doc.id}
-              className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-xs transition-all hover:border-gray-200 hover:shadow-sm"
+        {filteredDocuments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-8 text-center animate-in fade-in duration-150">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-xs border border-gray-100 text-gray-400 mb-3">
+              {filterType === "pdf" ? (
+                <FileText className="h-6 w-6 text-red-500" />
+              ) : (
+                <ImageIcon className="h-6 w-6 text-emerald-500" />
+              )}
+            </div>
+            <p className="text-sm font-semibold text-gray-800">
+              Không có tài liệu {filterType === "pdf" ? "PDF" : "hình ảnh"} nào
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              Chưa có tài liệu định dạng này trong danh sách tải lên của phiên học.
+            </p>
+            <button
+              type="button"
+              onClick={() => setFilterType("all")}
+              className="mt-3.5 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
             >
-              {/* Thông tin tệp */}
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${isPdf
-                    ? "border-red-100 bg-red-50 text-red-600"
-                    : "border-emerald-100 bg-emerald-50 text-emerald-600"
-                    }`}
-                >
-                  {isPdf ? (
-                    <span className="text-xs font-black">PDF</span>
-                  ) : (
-                    <ImageIcon className="h-5 w-5" />
-                  )}
+              <Layers className="h-3.5 w-3.5" />
+              <span>Xem tất cả tài liệu ({documents.length})</span>
+            </button>
+          </div>
+        ) : (
+          filteredDocuments.map((doc) => {
+            const isPdf = doc.mime_type === "application/pdf";
+            return (
+              <div
+                key={doc.id}
+                onClick={() => handleCardClick(doc)}
+                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-xs transition-all hover:border-indigo-200 hover:bg-indigo-50/30 hover:shadow-sm cursor-pointer select-none"
+              >
+                {/* Thông tin tệp */}
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors ${isPdf
+                      ? "border-red-100 bg-red-50 text-red-600 group-hover:border-red-200 group-hover:bg-red-100/70"
+                      : "border-emerald-100 bg-emerald-50 text-emerald-600 group-hover:border-emerald-200 group-hover:bg-emerald-100/70"
+                      }`}
+                  >
+                    {isPdf ? (
+                      <span className="text-xs font-black">PDF</span>
+                    ) : (
+                      <ImageIcon className="h-5 w-5" />
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <h4 className="truncate text-sm sm:text-base font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                      {doc.file_name}
+                    </h4>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                      <span>{formatBytes(doc.file_size)}</span>
+                      <span>•</span>
+                      <span>{formatDate(doc.uploaded_at || doc.created_at)}</span>
+                      {doc.raw_text && (
+                        <>
+                          <span>•</span>
+                          <span className="text-indigo-600">
+                            {doc.raw_text.length.toLocaleString()} ký tự
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="min-w-0">
-                  <h4 className="truncate text-sm sm:text-base font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                    {doc.file_name}
-                  </h4>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                    <span>{formatBytes(doc.file_size)}</span>
-                    <span>•</span>
-                    <span>{formatDate(doc.uploaded_at || doc.created_at)}</span>
-                    {doc.raw_text && (
-                      <>
-                        <span>•</span>
-                        <span className="text-indigo-600">
-                          {doc.raw_text.length.toLocaleString()} ký tự
-                        </span>
-                      </>
-                    )}
+                {/* Trạng thái & Nút thao tác */}
+                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-50">
+                  {renderStatusBadge(doc)}
+
+                  <div className="flex items-center gap-1.5">
+                    {/* Nút Xem chi tiết (Eye Icon) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCardClick(doc);
+                      }}
+                      title={isPdf ? "Xem tài liệu PDF" : "Xem hình ảnh"}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-600 shadow-xs transition-all hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 active:scale-95 cursor-pointer"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+
+                    {/* Nút Tải về */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDownload?.(doc.id, doc.file_name);
+                      }}
+                      title="Tải về tệp gốc"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-600 shadow-xs transition-all hover:bg-gray-50 hover:text-gray-900 active:scale-95 cursor-pointer"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+
+                    {/* Nút Xóa */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        confirmDelete(doc.id);
+                      }}
+                      title="Xóa tài liệu"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-400 shadow-xs transition-all hover:border-red-100 hover:bg-red-50 hover:text-red-600 active:scale-95 cursor-pointer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               </div>
-
-              {/* Trạng thái & Nút thao tác */}
-              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-50">
-                {renderStatusBadge(doc)}
-
-                <div className="flex items-center gap-1.5">
-                  {/* Nút Tải về */}
-                  <button
-                    type="button"
-                    onClick={() => onDownload?.(doc.id, doc.file_name)}
-                    title="Tải về tệp gốc"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-600 shadow-xs transition-all hover:bg-gray-50 hover:text-gray-900 active:scale-95 cursor-pointer"
-                  >
-                    <Download className="h-4 w-4" />
-                  </button>
-
-                  {/* Nút Xóa */}
-                  <button
-                    type="button"
-                    onClick={() => confirmDelete(doc.id)}
-                    title="Xóa tài liệu"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-400 shadow-xs transition-all hover:border-red-100 hover:bg-red-50 hover:text-red-600 active:scale-95 cursor-pointer"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* Modal xác nhận xóa */}

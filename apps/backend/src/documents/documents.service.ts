@@ -121,11 +121,11 @@ export class DocumentsService {
         return doc;
     }
 
-    async getDownloadUrl(userId: string, documentId: string): Promise<{ downloadUrl: string }> {
+    async getDownloadUrl(userId: string, documentId: string, inline = false): Promise<{ downloadUrl: string }> {
         const doc = await this.getDocumentById(userId, documentId);
         const downloadUrl = await this.storageService.getSignedUrlForDownload(
             doc.storage_key,
-            doc.file_name
+            inline ? undefined : doc.file_name
         );
         return { downloadUrl };
     }

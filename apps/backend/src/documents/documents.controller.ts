@@ -6,6 +6,7 @@ import {
     Param,
     ParseUUIDPipe,
     Post,
+    Query,
     Req,
     UnauthorizedException,
     UseGuards,
@@ -64,9 +65,10 @@ export class DocumentsController {
     @Get(':id/download')
     async getDownloadUrl(
         @Req() req: Request,
-        @Param('id', new ParseUUIDPipe()) id: string
+        @Param('id', new ParseUUIDPipe()) id: string,
+        @Query('inline') inline?: string
     ) {
-        return this.documentsService.getDownloadUrl(this.getUserId(req), id);
+        return this.documentsService.getDownloadUrl(this.getUserId(req), id, inline === 'true');
     }
 
     @Delete(':id')

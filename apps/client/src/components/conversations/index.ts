@@ -19,6 +19,9 @@ export * from "./ConversationHeaderTabs";
 export { default as DocumentsTab } from "./DocumentsTab";
 export * from "./DocumentsTab";
 
+export { default as DocumentImageViewer } from "./DocumentImageViewer";
+export * from "./DocumentImageViewer";
+
 export { default as SummaryTab } from "./SummaryTab";
 export * from "./SummaryTab";
 

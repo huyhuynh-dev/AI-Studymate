@@ -84,7 +84,7 @@ export default function ConversationHeaderTabs({
     const tabs: TabItem[] = [
         {
             id: "documents",
-            label: "Tài liệu (PDF)",
+            label: "Tài liệu",
         },
         {
             id: "summary",
@@ -148,8 +148,8 @@ export default function ConversationHeaderTabs({
                             type="button"
                             onClick={() => handleTabClick(tab.id)}
                             className={`group relative flex items-center gap-2 py-3.5 text-sm sm:text-[15px] font-medium whitespace-nowrap transition-colors cursor-pointer ${isActive
-                                    ? "text-[#4F46E5] font-semibold"
-                                    : "text-gray-700 hover:text-gray-900"
+                                ? "text-[#4F46E5] font-semibold"
+                                : "text-gray-700 hover:text-gray-900"
                                 }`}
                         >
                             {/* Tab Icon */}
