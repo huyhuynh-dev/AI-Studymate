@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Job, Worker } from 'bullmq';
 import { StorageService } from '../storage/storage.service.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
+import { GeminiVisionService } from './gemini-vision.service.js';
 import { DOCUMENT_QUEUE_NAME, DocumentJobData } from './documents-queue.service.js';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class DocumentsProcessorService implements OnModuleInit, OnApplicationShu
         private readonly configService: ConfigService,
         private readonly storageService: StorageService,
         private readonly documentsRepo: DocumentsRepoService,
+        private readonly geminiVisionService: GeminiVisionService,
     ) { }
 
     onModuleInit() {
@@ -55,7 +57,12 @@ export class DocumentsProcessorService implements OnModuleInit, OnApplicationShu
         this.logger.log(`Bắt đầu xử lý tài liệu [${documentId}] (MIME: ${mimeType})`);
 
         try {
-            // Bước 1: Cập nhật ocr_status = 'processing'
+            // Bước 1: Validate thông tin công việc
+            if (!documentId || !storageKey || !mimeType) {
+                throw new Error('Dữ liệu công việc không hợp lệ: thiếu documentId, storageKey hoặc mimeType');
+            }
+
+            // Bước 2: Cập nhật ocr_status = 'processing'
             await this.documentsRepo.updateDocumentById(documentId, {
                 ocr_status: 'processing',
                 processing_error: null,
@@ -63,16 +70,18 @@ export class DocumentsProcessorService implements OnModuleInit, OnApplicationShu
 
             let extractedText = '';
 
-            // Bước 2: Phân loại định dạng tệp để xử lý
+            // Bước 3: Phân loại định dạng tệp để xử lý
             if (mimeType === 'application/pdf') {
                 const buffer = await this.storageService.getObjectBuffer(storageKey);
                 extractedText = await this.extractPdfText(buffer);
             } else if (mimeType.startsWith('image/')) {
-                // Với ảnh, ở bước này ta ghi nhận đã tải xong và đánh dấu sẵn sàng cho Vision OCR
-                extractedText = '';
+                const buffer = await this.storageService.getObjectBuffer(storageKey);
+                extractedText = await this.geminiVisionService.extractTextFromImage(buffer, mimeType);
+            } else {
+                throw new Error(`Định dạng tệp không được hỗ trợ xử lý OCR: ${mimeType}`);
             }
 
-            // Bước 3: Cập nhật raw_text và ocr_status = 'done'
+            // Bước 4: Cập nhật raw_text và ocr_status = 'done'
             await this.documentsRepo.updateDocumentById(documentId, {
                 raw_text: extractedText,
                 ocr_status: 'done',
