@@ -65,8 +65,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
   return (
     <div
-      className={`flex h-full min-h-full w-full flex-col transition-all duration-300 ease-in-out ${
-        isFocusMode ? "gap-0" : isDocumentViewerActive ? "gap-2.5" : "gap-4"
+      className={`flex flex-1 min-h-full w-full flex-col transition-all duration-300 ease-in-out ${
+        isFocusMode ? "h-full gap-0" : isDocumentViewerActive ? "gap-2.5" : "gap-4"
       }`}
     >
       {/* Hàng Header điều hướng: Breadcrumb bên trái & Các nút chức năng bên phải — Trượt lên & Ẩn đi khi vào Focus Mode */}
@@ -106,15 +106,15 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
       {/* Container chính: Thẻ màu trắng chứa Tabs & Nội dung (Tự động xoá viền & bo góc khi vào Focus Mode) */}
       <div
-        className={`flex flex-1 min-h-0 flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out ${
+        className={`flex flex-1 flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out ${
           isFocusMode
-            ? "rounded-none border-0 shadow-none"
+            ? "min-h-0 rounded-none border-0 shadow-none"
             : "rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xs"
         }`}
       >
         {/* Component: Thanh Tab điều hướng — Trượt lên & Ẩn đi khi vào Focus Mode */}
         <div
-          className={`shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
+          className={`relative z-10 shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
             isFocusMode
               ? "max-h-0 -translate-y-4 opacity-0 border-b-0 pointer-events-none"
               : "max-h-20 translate-y-0 opacity-100 border-b border-gray-100"
@@ -128,7 +128,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
         {/* Khu vực nội dung Tab (Loại bỏ padding thừa khi đang xem PDF/Ảnh để giải quyết Box-in-box Syndrome) */}
         <div
-          className={`flex flex-1 min-h-0 flex-col transition-all duration-200 ${
+          className={`relative flex flex-1 flex-col overflow-hidden transition-all duration-200 ${
+            isFocusMode ? "min-h-0" : ""
+          } ${
             isDocumentViewerActive
               ? "p-0 items-stretch justify-start"
               : "p-4 sm:p-6 md:p-8 items-center justify-center"
@@ -145,28 +147,28 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               onUpload={uploadFiles}
               onDelete={deleteDocument}
               onDownload={downloadDocument}
-              className="w-full h-full"
+              className="w-full flex-1"
             />
           )}
 
           {activeTab === "summary" && (
             <SummaryTab
               onUploadDocument={handleGoToDocuments}
-              className="w-full"
+              className="w-full flex-1"
             />
           )}
 
           {activeTab === "flashcard" && (
             <FlashcardsTab
               onUploadDocument={handleGoToDocuments}
-              className="w-full"
+              className="w-full flex-1"
             />
           )}
 
           {activeTab === "quiz" && (
             <QuizTab
               onUploadDocument={handleGoToDocuments}
-              className="w-full"
+              className="w-full flex-1"
             />
           )}
         </div>

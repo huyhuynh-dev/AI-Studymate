@@ -86,7 +86,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     }`}
                 >
                     {/* Wrap the actual page content */}
-                    <div className="h-full min-h-full w-full flex flex-col">
+                    <div className={`min-h-full w-full flex flex-col ${isFocusMode ? "h-full" : ""}`}>
                         {children}
                     </div>
 
