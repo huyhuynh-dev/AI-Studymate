@@ -1,13 +1,5 @@
 import { axiosClient } from "@/lib/axios.client";
-
-export interface Conversation {
-  id: string;
-  subject_id: string;
-  user_id: string;
-  title: string;
-  created_at: string;
-  updated_at: string;
-}
+import { Conversation } from "@/types";
 
 export const conversationsApi = {
   getBySubjectId: async (subjectId: string): Promise<Conversation[]> => {

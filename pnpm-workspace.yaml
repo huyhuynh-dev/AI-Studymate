@@ -5,6 +5,7 @@ allowBuilds:
   '@prisma/engines': true
   bcrypt: true
   esbuild: true
+  msgpackr-extract: set this to true or false
   prisma: true
   unrs-resolver: true
   workerd: true

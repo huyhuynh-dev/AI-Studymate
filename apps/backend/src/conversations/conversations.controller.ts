@@ -14,13 +14,17 @@ import {
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ConversationsService } from './conversations.service.js';
+import { DocumentsService } from '../documents/documents.service.js';
 import { CreateConversationDto } from './dto/create-conversation.dto.js';
 import { UpdateConversationDto } from './dto/update-conversation.dto.js';
 
 @Controller('conversations')
 @UseGuards(JwtAuthGuard)
 export class ConversationsController {
-    constructor(private readonly conversationsService: ConversationsService) {}
+    constructor(
+        private readonly conversationsService: ConversationsService,
+        private readonly documentsService: DocumentsService
+    ) { }
 
     private getUserId(req: Request): string {
         if (!req.user) {
@@ -43,6 +47,14 @@ export class ConversationsController {
         @Param('id', new ParseUUIDPipe()) id: string
     ): Promise<any> {
         return this.conversationsService.getConversationById(id, this.getUserId(req));
+    }
+
+    @Get(':id/documents')
+    async getDocumentsByConversationId(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string
+    ): Promise<any> {
+        return this.documentsService.getDocumentsByConversation(this.getUserId(req), id);
     }
 
     @Put(':id')

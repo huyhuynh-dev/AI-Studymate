@@ -3,11 +3,9 @@
 import useSWR from 'swr';
 import {
   subjectsApi,
-  Subject,
-  CreateSubjectDto,
-  UpdateSubjectDto,
   extractApiErrorMessage,
 } from '@/services/subjects.api';
+import { Subject, CreateSubjectDto, UpdateSubjectDto } from '@/types';
 
 export const SUBJECTS_CACHE_KEY = '/subjects';
 

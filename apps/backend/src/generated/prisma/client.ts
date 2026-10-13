@@ -56,3 +56,13 @@ export type Subject = Prisma.SubjectModel
  * 
  */
 export type Conversation = Prisma.ConversationModel
+/**
+ * Model Document
+ * 
+ */
+export type Document = Prisma.DocumentModel
+/**
+ * Model DocumentChunk
+ * 
+ */
+export type DocumentChunk = Prisma.DocumentChunkModel

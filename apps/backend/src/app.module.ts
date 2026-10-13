@@ -14,6 +14,8 @@ import { RedisModule } from './redis/redis.module.js';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { SubjectsModule } from './subjects/subjects.module.js';
 import { ConversationsModule } from './conversations/conversations.module.js';
+import { DocumentsModule } from './documents/documents.module.js';
+import { StorageModule } from './storage/storage.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -43,7 +45,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     MailModule,
     RedisModule,
     SubjectsModule,
-    ConversationsModule
+    ConversationsModule,
+    DocumentsModule,
+    StorageModule
   ],
   controllers: [AppController],
   providers: [
