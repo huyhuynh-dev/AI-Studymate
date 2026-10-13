@@ -1,17 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 @Injectable()
 export class GeminiVisionService {
     private readonly logger = new Logger(GeminiVisionService.name);
-    private genAI: GoogleGenerativeAI | null = null;
+    private genAI: GoogleGenAI | null = null;
     private readonly modelName = 'gemini-3.5-flash-lite';
 
     constructor(private readonly configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
         if (apiKey) {
-            this.genAI = new GoogleGenerativeAI(apiKey);
+            this.genAI = new GoogleGenAI({ apiKey });
             this.logger.log(`GeminiVisionService đã khởi tạo với model [${this.modelName}]`);
         } else {
             this.logger.warn('Chưa cấu hình GEMINI_API_KEY trong file môi trường (.env)');
@@ -29,12 +29,10 @@ export class GeminiVisionService {
             if (!apiKey) {
                 throw new Error('GEMINI_API_KEY chưa được cấu hình trong biến môi trường');
             }
-            this.genAI = new GoogleGenerativeAI(apiKey);
+            this.genAI = new GoogleGenAI({ apiKey });
         }
 
         try {
-            const model = this.genAI.getGenerativeModel({ model: this.modelName });
-
             const base64Data = imageBuffer.toString('base64');
             const imagePart = {
                 inlineData: {
@@ -50,9 +48,16 @@ export class GeminiVisionService {
                 '2. Hỗ trợ đầy đủ tiếng Việt và tiếng Anh, bao gồm cả chữ viết tay hoặc chữ in.\n' +
                 '3. Tuyệt đối không thêm lời giải thích hay nhận xét, chỉ trả về chính xác nội dung văn bản được nhận dạng. Nếu ảnh không có chữ, trả về chuỗi rỗng.';
 
-            const result = await model.generateContent([prompt, imagePart]);
-            const response = await result.response;
-            const text = response.text();
+            const response = await this.genAI.models.generateContent({
+                model: this.modelName,
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [{ text: prompt }, imagePart],
+                    },
+                ],
+            });
+            const text = response.text;
 
             return text ? text.trim() : '';
         } catch (error: any) {
