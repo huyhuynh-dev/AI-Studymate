@@ -60,6 +60,16 @@ export const documentsApi = {
     return res.data;
   },
 
+  getOverwriteUrl: async (documentId: string): Promise<{ uploadUrl: string }> => {
+    const res = await axiosClient.post(`/documents/${documentId}/overwrite-url`);
+    return res.data;
+  },
+
+  completeOverwrite: async (documentId: string): Promise<DocumentItem> => {
+    const res = await axiosClient.post(`/documents/${documentId}/overwrite-complete`);
+    return res.data;
+  },
+
   delete: async (documentId: string): Promise<{ success: boolean; message: string }> => {
     const res = await axiosClient.delete(`/documents/${documentId}`);
     return res.data;

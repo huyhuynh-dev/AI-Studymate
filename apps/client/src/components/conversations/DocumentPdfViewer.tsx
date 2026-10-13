@@ -45,6 +45,10 @@ import {
   useZoom,
   ZoomGestureWrapper,
 } from "@embedpdf/plugin-zoom/react";
+import {
+  ExportPluginPackage,
+  useExport,
+} from "@embedpdf/plugin-export/react";
 
 import {
   ArrowLeft,
@@ -65,6 +69,7 @@ import {
   Trash2,
   Undo2,
   Redo2,
+  Save,
   Loader2,
   AlertCircle,
 } from "lucide-react";
@@ -81,18 +86,25 @@ export interface DocumentPdfViewerProps {
 
 interface PdfToolbarProps {
   documentId: string;
+  backendDocumentId: string;
   fileName: string;
   onClose: () => void;
 }
 
 /**
  * Thanh công cụ hợp nhất (Unified Header & Toolbar):
- * Gộp nút Quay lại + Tên file + Công cụ Tương tác/Ghi chú + Zoom + Nút Chế độ tập trung [↗]/[↙]
+ * Gộp nút Quay lại + Tên file + Công cụ Tương tác/Ghi chú + Nút Lưu R2 + Zoom + Nút Chế độ tập trung [↗]/[↙]
  * giúp loại bỏ hoàn toàn tình trạng "Box-in-box Syndrome" (nhiều thanh tiêu đề xếp chồng).
  */
-function PdfToolbar({ documentId, fileName, onClose }: PdfToolbarProps) {
+function PdfToolbar({
+  documentId,
+  backendDocumentId,
+  fileName,
+  onClose,
+}: PdfToolbarProps) {
   const { provides: zoom, state: zoomState } = useZoom(documentId);
   const { provides: annotationApi, state: annotationState } = useAnnotation(documentId);
+  const { provides: exportApi } = useExport(documentId);
   const { provides: selectionCapability } = useSelectionCapability();
   const { provides: historyCapability } = useHistoryCapability();
   const { isFocusMode, toggleFocusMode, setFocusMode } = useFocusMode();
@@ -101,6 +113,11 @@ function PdfToolbar({ documentId, fileName, onClose }: PdfToolbarProps) {
   const [copied, setCopied] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const activeToolId = annotationState?.activeToolId ?? null;
   const hasSelectedAnnotation = (annotationState?.selectedUids?.length ?? 0) > 0;
@@ -114,7 +131,7 @@ function PdfToolbar({ documentId, fileName, onClose }: PdfToolbarProps) {
     });
   }, [selectionCapability, documentId]);
 
-  // Theo dõi trạng thái Undo / Redo của lịch sử Annotation
+  // Theo dõi trạng thái Undo / Redo và phát hiện thay đổi chưa lưu của lịch sử Annotation
   useEffect(() => {
     if (!historyCapability) return;
     const scope = historyCapability.forDocument(documentId);
@@ -125,8 +142,18 @@ function PdfToolbar({ documentId, fileName, onClose }: PdfToolbarProps) {
     updateHistoryState();
     return scope.onHistoryChange(() => {
       updateHistoryState();
+      setHasUnsavedChanges(true);
+      setSaveSuccess(false);
     });
   }, [historyCapability, documentId]);
+
+  // Nếu có thay đổi đang chờ commit trong annotationState thì cũng đánh dấu chưa lưu
+  useEffect(() => {
+    if (annotationState?.hasPendingChanges) {
+      setHasUnsavedChanges(true);
+      setSaveSuccess(false);
+    }
+  }, [annotationState?.hasPendingChanges]);
 
   // Tự động căn lại chiều rộng PDF (FitWidth) sau khi chuyển đổi Focus Mode (đợi hiệu ứng đóng/mở cột trái hoàn tất)
   useEffect(() => {
@@ -152,6 +179,51 @@ function PdfToolbar({ documentId, fileName, onClose }: PdfToolbarProps) {
     }
   }, [annotationApi]);
 
+  const handleSaveToR2 = useCallback(async () => {
+    if (!exportApi || isSaving) return;
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    try {
+      // Đảm bảo mọi thay đổi annotation đang chọn/gõ đều được commit vào PDFium trước khi xuất file
+      if (annotationApi) {
+        annotationApi.deselectAnnotation();
+        await annotationApi.commit().toPromise();
+      }
+
+      // 1. Xuất dữ liệu PDF nhị phân (đã nhúng toàn bộ Highlight & Ghi chú) dưới dạng ArrayBuffer
+      const arrayBuffer = await exportApi.saveAsCopy().toPromise();
+
+      // 2. Chuyển đổi ArrayBuffer sang đối tượng File chuẩn PDF
+      const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+      const updatedFile = new File([blob], fileName, {
+        type: "application/pdf",
+      });
+
+      // 3. Lấy Presigned PUT URL để ghi đè lên đúng storage_key hiện tại trên Cloudflare R2
+      const { uploadUrl } = await documentsApi.getOverwriteUrl(backendDocumentId);
+
+      // 4. Ghi đè tệp PDF trực tiếp lên Cloudflare R2
+      await documentsApi.uploadToR2(uploadUrl, updatedFile);
+
+      // 5. Đồng bộ lại dung lượng tệp mới trong cơ sở dữ liệu
+      await documentsApi.completeOverwrite(backendDocumentId);
+
+      setHasUnsavedChanges(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    } catch (err: any) {
+      console.error("Lỗi khi lưu tài liệu PDF lên R2:", err);
+      setSaveError(
+        err?.response?.data?.message || err?.message || "Không thể lưu thay đổi"
+      );
+      setTimeout(() => setSaveError(null), 4000);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [exportApi, isSaving, annotationApi, fileName, backendDocumentId]);
+
   const handleToggleTool = (toolId: string | null) => {
     if (!annotationApi) return;
     if (toolId === null) {
@@ -162,6 +234,7 @@ function PdfToolbar({ documentId, fileName, onClose }: PdfToolbarProps) {
   };
 
   // Phím tắt:
+  // - Ctrl+S / Cmd+S: Lưu các chỉnh sửa PDF đè lên Cloudflare R2
   // - Ctrl+C / Cmd+C: Sao chép văn bản đang bôi đen
   // - Delete / Backspace: Xoá Highlight/Ghi chú đang chọn
   // - Escape: Tắt công cụ vẽ hiện tại -> Nếu không bật công cụ vẽ và đang ở Focus Mode thì thoát Focus Mode
@@ -174,7 +247,15 @@ function PdfToolbar({ documentId, fileName, onClose }: PdfToolbarProps) {
           target.tagName === "TEXTAREA" ||
           target.isContentEditable);
 
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c" && hasSelection && !isEditingInput) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleSaveToR2();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "c" &&
+        hasSelection &&
+        !isEditingInput
+      ) {
         e.preventDefault();
         handleCopySelection();
       } else if (
@@ -202,6 +283,7 @@ function PdfToolbar({ documentId, fileName, onClose }: PdfToolbarProps) {
     hasSelectedAnnotation,
     activeToolId,
     isFocusMode,
+    handleSaveToR2,
     handleCopySelection,
     handleDeleteSelectedAnnotation,
     annotationApi,
@@ -384,6 +466,61 @@ function PdfToolbar({ documentId, fileName, onClose }: PdfToolbarProps) {
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
+
+        <div className="mx-0.5 h-5 w-px bg-gray-200" />
+
+        {/* Nút Lưu chỉnh sửa đè lên Cloudflare R2 */}
+        <button
+          type="button"
+          onClick={handleSaveToR2}
+          disabled={!exportApi || isSaving}
+          title={
+            saveError
+              ? `Lỗi lưu: ${saveError} (Nhấn để thử lại)`
+              : hasUnsavedChanges
+                ? "Lưu các Highlight & Ghi chú lên đám mây (Ctrl+S)"
+                : "Lưu tài liệu PDF lên đám mây (Ctrl+S)"
+          }
+          className={`relative inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-all active:scale-95 ${
+            isSaving
+              ? "border-indigo-200 bg-indigo-50 text-indigo-600 cursor-wait"
+              : saveError
+                ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100 cursor-pointer"
+                : saveSuccess
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 cursor-default"
+                  : hasUnsavedChanges
+                    ? "border-indigo-600 bg-indigo-600 text-white shadow-2xs hover:bg-indigo-700 cursor-pointer"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+          }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span className="hidden sm:inline">Đang lưu...</span>
+            </>
+          ) : saveError ? (
+            <>
+              <AlertCircle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Lỗi lưu</span>
+            </>
+          ) : saveSuccess ? (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Đã lưu</span>
+            </>
+          ) : (
+            <>
+              <Save className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Lưu</span>
+              {hasUnsavedChanges && (
+                <span
+                  aria-label="Có thay đổi chưa lưu"
+                  className="h-1.5 w-1.5 rounded-full bg-amber-300 ring-2 ring-white/40"
+                />
+              )}
+            </>
+          )}
+        </button>
       </div>
 
       {/* Cụm Phải: Điều khiển Phóng to / Thu nhỏ & Nút Chế độ Tập trung (Focus Mode [↗] / [↙]) */}
@@ -561,6 +698,9 @@ export default function DocumentPdfViewer({
       createPluginRegistration(ZoomPluginPackage, {
         defaultZoomLevel: ZoomMode.FitWidth,
       }),
+      createPluginRegistration(ExportPluginPackage, {
+        defaultFileName: document.file_name,
+      }),
     ];
   }, [pdfUrl, document.file_name]);
 
@@ -687,6 +827,7 @@ export default function DocumentPdfViewer({
                         {/* Thanh công cụ hợp nhất duy nhất ở trên cùng */}
                         <PdfToolbar
                           documentId={activeDocumentId}
+                          backendDocumentId={document.id}
                           fileName={document.file_name}
                           onClose={onClose}
                         />

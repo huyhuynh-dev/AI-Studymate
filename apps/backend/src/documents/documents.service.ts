@@ -130,6 +130,34 @@ export class DocumentsService {
         return { downloadUrl };
     }
 
+    async getOverwriteUrl(userId: string, documentId: string): Promise<{ uploadUrl: string }> {
+        const doc = await this.getDocumentById(userId, documentId);
+        const uploadUrl = await this.storageService.getSignedUrlForUpload(
+            doc.storage_key,
+            doc.mime_type
+        );
+        return { uploadUrl };
+    }
+
+    async completeOverwrite(userId: string, documentId: string): Promise<DocumentResponse> {
+        const doc = await this.getDocumentById(userId, documentId);
+
+        const head = await this.storageService.headObject(doc.storage_key);
+        if (!head.exists) {
+            throw new BadRequestException('Tệp chưa được lưu lên hệ thống lưu trữ hoặc quá trình lưu bị gián đoạn');
+        }
+
+        if (head.contentLength && head.contentLength > MAX_FILE_SIZE_BYTES) {
+            throw new BadRequestException('Dung lượng tệp sau khi chỉnh sửa vượt quá giới hạn 50MB cho phép');
+        }
+
+        const updatedSize = head.contentLength ? BigInt(head.contentLength) : BigInt(doc.file_size);
+
+        return await this.documentsRepo.updateDocument(documentId, userId, {
+            file_size: updatedSize,
+        });
+    }
+
     async deleteDocument(
         userId: string,
         documentId: string

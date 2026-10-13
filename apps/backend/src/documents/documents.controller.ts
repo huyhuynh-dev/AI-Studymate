@@ -71,6 +71,22 @@ export class DocumentsController {
         return this.documentsService.getDownloadUrl(this.getUserId(req), id, inline === 'true');
     }
 
+    @Post(':id/overwrite-url')
+    async getOverwriteUrl(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string
+    ) {
+        return this.documentsService.getOverwriteUrl(this.getUserId(req), id);
+    }
+
+    @Post(':id/overwrite-complete')
+    async completeOverwrite(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string
+    ) {
+        return this.documentsService.completeOverwrite(this.getUserId(req), id);
+    }
+
     @Delete(':id')
     async deleteDocument(
         @Req() req: Request,
