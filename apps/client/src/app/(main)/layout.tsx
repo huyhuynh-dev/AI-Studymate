@@ -1,24 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { HomeHeader, LeftSidebar, RightSidebar } from "@/components/layout";
+import { HomeHeader, LeftSidebar, RightSidebar, FocusModeProvider, useFocusMode } from "@/components/layout";
 import { PanelLeftOpen, PanelRightOpen, Sparkles } from "lucide-react";
 import { usePathname } from "next/navigation";
 
-export default function MainLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+function MainLayoutContent({ children }: { children: React.ReactNode }) {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
     const [isRightCollapsed, setIsRightCollapsed] = useState(false);
 
+    const { isFocusMode, isViewingDocument, setFocusMode, setIsViewingDocument } = useFocusMode();
     const pathname = usePathname();
 
     // The RightSidebar is hidden completely on the profile page as requested.
     // It is shown on /home routes.
-    const showRightSidebar = pathname?.startsWith('/home');
+    const showRightSidebar = pathname?.startsWith("/home");
 
     // Force close RightSidebar when navigating to pages that don't need it
     useEffect(() => {
@@ -27,10 +24,24 @@ export default function MainLayout({
         }
     }, [showRightSidebar]);
 
+    // Thoát Focus Mode khi chuyển route
+    useEffect(() => {
+        setFocusMode(false);
+        setIsViewingDocument(false);
+    }, [pathname, setFocusMode, setIsViewingDocument]);
+
+    const effectiveLeftCollapsed = isLeftCollapsed || isFocusMode;
+
     return (
         <div className="flex h-screen w-full flex-col overflow-hidden bg-white">
-            {/* 1. Global Header Area */}
-            <header className="z-30 shrink-0">
+            {/* 1. Global Header Area — Trượt lên (Slide up) & Ẩn đi khi vào Focus Mode */}
+            <header
+                className={`z-30 shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
+                    isFocusMode
+                        ? "max-h-0 -translate-y-full opacity-0 pointer-events-none"
+                        : "max-h-20 translate-y-0 opacity-100"
+                }`}
+            >
                 <HomeHeader
                     isCollapsed={isHeaderCollapsed}
                     onToggleCollapse={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
@@ -39,18 +50,18 @@ export default function MainLayout({
 
             {/* 2. Main Workspace Area */}
             <div className="relative flex flex-1 overflow-hidden">
-                {/* 2.1 Navigation Sidebar Area */}
-                <aside className="z-20 shrink-0">
+                {/* 2.1 Navigation Sidebar Area — Tự động Collapse khi vào Focus Mode */}
+                <aside className="z-20 shrink-0 transition-all duration-300 ease-in-out">
                     <React.Suspense fallback={<div className="w-64 h-full bg-slate-50 border-r border-gray-200" />}>
                         <LeftSidebar
-                            isCollapsed={isLeftCollapsed}
+                            isCollapsed={effectiveLeftCollapsed}
                             onToggleCollapse={() => setIsLeftCollapsed(!isLeftCollapsed)}
                         />
                     </React.Suspense>
                 </aside>
 
-                {/* 2.2 Left Sidebar Toggle Button (Floating) */}
-                {isLeftCollapsed && (
+                {/* 2.2 Left Sidebar Toggle Button (Floating - Ẩn khi đang trong Focus Mode để không đè lên Toolbar PDF) */}
+                {effectiveLeftCollapsed && !isFocusMode && (
                     <div className="absolute top-4 left-4 z-20">
                         <button
                             type="button"
@@ -65,9 +76,17 @@ export default function MainLayout({
                 )}
 
                 {/* 2.3 Center Content Area */}
-                <main className="relative flex-1 overflow-y-auto bg-slate-50/50 p-4 sm:p-6 transition-all duration-300">
+                <main
+                    className={`relative flex-1 bg-slate-50/50 transition-all duration-300 ease-in-out ${
+                        isFocusMode
+                            ? "p-0 overflow-hidden"
+                            : isViewingDocument
+                              ? "p-2 sm:p-3 overflow-y-auto"
+                              : "p-4 sm:p-6 overflow-y-auto"
+                    }`}
+                >
                     {/* Wrap the actual page content */}
-                    <div className="min-h-full w-full flex flex-col">
+                    <div className="h-full min-h-full w-full flex flex-col">
                         {children}
                     </div>
 
@@ -88,7 +107,7 @@ export default function MainLayout({
                     )}
                 </main>
 
-                {/* 2.4 Contextual Right Sidebar Area */}
+                {/* 2.4 Contextual Right Sidebar Area (Luôn được giữ lại trong Focus Mode để hỏi đáp AI) */}
                 {showRightSidebar && (
                     <aside className="z-20 shrink-0">
                         <RightSidebar
@@ -101,3 +120,16 @@ export default function MainLayout({
         </div>
     );
 }
+
+export default function MainLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    return (
+        <FocusModeProvider>
+            <MainLayoutContent>{children}</MainLayoutContent>
+        </FocusModeProvider>
+    );
+}
+

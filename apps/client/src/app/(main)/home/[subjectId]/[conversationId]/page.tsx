@@ -8,6 +8,7 @@ import DocumentsTab from "@/components/conversations/DocumentsTab";
 import SummaryTab from "@/components/conversations/SummaryTab";
 import FlashcardsTab from "@/components/conversations/FlashcardsTab";
 import QuizTab from "@/components/conversations/QuizTab";
+import { useFocusMode } from "@/components/layout";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useConversations } from "@/hooks/useConversations";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -24,6 +25,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   const { subjectId, conversationId } = resolvedParams;
 
   const [activeTab, setActiveTab] = useState<TabKey>("documents");
+  const { isFocusMode, isViewingDocument, setFocusMode } = useFocusMode();
 
   // Lấy dữ liệu môn học và danh sách cuộc hội thoại thực tế
   const { subjects } = useSubjects();
@@ -52,10 +54,29 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     setActiveTab("documents");
   };
 
+  const handleTabChange = (tab: TabKey) => {
+    setActiveTab(tab);
+    if (tab !== "documents") {
+      setFocusMode(false);
+    }
+  };
+
+  const isDocumentViewerActive = activeTab === "documents" && isViewingDocument;
+
   return (
-    <div className="flex min-h-full w-full flex-col gap-4">
-      {/* Hàng Header điều hướng: Breadcrumb bên trái & Các nút chức năng bên phải */}
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+    <div
+      className={`flex h-full min-h-full w-full flex-col transition-all duration-300 ease-in-out ${
+        isFocusMode ? "gap-0" : isDocumentViewerActive ? "gap-2.5" : "gap-4"
+      }`}
+    >
+      {/* Hàng Header điều hướng: Breadcrumb bên trái & Các nút chức năng bên phải — Trượt lên & Ẩn đi khi vào Focus Mode */}
+      <div
+        className={`flex shrink-0 flex-wrap items-center justify-between gap-3 transition-all duration-300 ease-in-out overflow-hidden ${
+          isFocusMode
+            ? "max-h-0 -translate-y-4 opacity-0 pointer-events-none"
+            : "max-h-16 translate-y-0 opacity-100"
+        }`}
+      >
         {/* Component: Breadcrumb điều hướng */}
         <ConversationHeaderRoutes
           subjectName={subjectName}
@@ -83,18 +104,36 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         </div>
       </div>
 
-      {/* Container chính: Thẻ màu trắng bo góc lớn chứa Tabs & Nội dung */}
-      <div className="flex flex-1 min-h-fit flex-col rounded-3xl border border-gray-100 bg-white shadow-xs overflow-hidden">
-        {/* Component: Thanh Tab điều hướng */}
-        <div className="shrink-0 border-b border-gray-100">
+      {/* Container chính: Thẻ màu trắng chứa Tabs & Nội dung (Tự động xoá viền & bo góc khi vào Focus Mode) */}
+      <div
+        className={`flex flex-1 min-h-0 flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out ${
+          isFocusMode
+            ? "rounded-none border-0 shadow-none"
+            : "rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xs"
+        }`}
+      >
+        {/* Component: Thanh Tab điều hướng — Trượt lên & Ẩn đi khi vào Focus Mode */}
+        <div
+          className={`shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
+            isFocusMode
+              ? "max-h-0 -translate-y-4 opacity-0 border-b-0 pointer-events-none"
+              : "max-h-20 translate-y-0 opacity-100 border-b border-gray-100"
+          }`}
+        >
           <ConversationHeaderTabs
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
           />
         </div>
 
-        {/* Khu vực nội dung Tab */}
-        <div className="flex flex-1 flex-col items-center justify-center p-4 sm:p-6 md:p-8">
+        {/* Khu vực nội dung Tab (Loại bỏ padding thừa khi đang xem PDF/Ảnh để giải quyết Box-in-box Syndrome) */}
+        <div
+          className={`flex flex-1 min-h-0 flex-col transition-all duration-200 ${
+            isDocumentViewerActive
+              ? "p-0 items-stretch justify-start"
+              : "p-4 sm:p-6 md:p-8 items-center justify-center"
+          }`}
+        >
           {activeTab === "documents" && (
             <DocumentsTab
               documents={documents}
@@ -106,7 +145,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               onUpload={uploadFiles}
               onDelete={deleteDocument}
               onDownload={downloadDocument}
-              className="w-full"
+              className="w-full h-full"
             />
           )}
 

@@ -159,7 +159,7 @@ export default function DocumentImageViewer({
   const hasCurrentUrl = currentDoc ? !!urlMap[currentDoc.id] : false;
 
   return (
-    <div className={`flex w-full flex-col -mt-3 sm:-mt-4 ${className}`}>
+    <div className={`flex w-full flex-col p-3 sm:p-4 ${className}`}>
       {/* 1. Nút Quay lại (ngắn gọn, dời lên trên sát khu vực Tab) */}
       <div className="flex w-full items-center justify-start mb-2 sm:mb-2.5">
         <button

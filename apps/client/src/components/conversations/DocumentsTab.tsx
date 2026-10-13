@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useMemo, DragEvent, ChangeEvent } from "react";
+import React, { useRef, useState, useMemo, useEffect, DragEvent, ChangeEvent } from "react";
 import {
   Plus,
   FileText,
@@ -19,6 +19,7 @@ import {
   Layers,
 } from "lucide-react";
 import { DocumentItem, UploadProgressItem } from "@/types";
+import { useFocusMode } from "@/components/layout";
 import DocumentImageViewer from "./DocumentImageViewer";
 import DocumentPdfViewer from "./DocumentPdfViewer";
 
@@ -78,6 +79,21 @@ export default function DocumentsTab({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [viewingDocId, setViewingDocId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<"all" | "pdf" | "image">("all");
+  const { setIsViewingDocument, setFocusMode } = useFocusMode();
+
+  const viewingDoc = useMemo(
+    () => documents.find((d) => d.id === viewingDocId),
+    [documents, viewingDocId]
+  );
+
+  // Đồng bộ trạng thái xem tài liệu với FocusModeContext để loại bỏ padding thừa (Box-in-box)
+  useEffect(() => {
+    const isViewing = Boolean(viewingDocId && viewingDoc);
+    setIsViewingDocument(isViewing);
+    return () => {
+      setIsViewingDocument(false);
+    };
+  }, [viewingDocId, viewingDoc, setIsViewingDocument]);
 
   const pdfCount = useMemo(
     () => documents.filter((doc) => doc.mime_type === "application/pdf").length,
@@ -101,6 +117,11 @@ export default function DocumentsTab({
 
   const handleCardClick = (doc: DocumentItem) => {
     setViewingDocId(doc.id);
+  };
+
+  const handleCloseViewer = () => {
+    setFocusMode(false);
+    setViewingDocId(null);
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -189,14 +210,13 @@ export default function DocumentsTab({
   };
 
   // 0. Trường hợp người dùng đang xem chi tiết tài liệu (Detail View: Ảnh hoặc PDF)
-  const viewingDoc = documents.find((d) => d.id === viewingDocId);
   if (viewingDocId && viewingDoc) {
     if (viewingDoc.mime_type.startsWith("image/")) {
       return (
         <DocumentImageViewer
           documents={documents}
           initialDocumentId={viewingDocId}
-          onClose={() => setViewingDocId(null)}
+          onClose={handleCloseViewer}
           onDownload={onDownload}
           className={className}
         />
@@ -207,7 +227,7 @@ export default function DocumentsTab({
       return (
         <DocumentPdfViewer
           document={viewingDoc}
-          onClose={() => setViewingDocId(null)}
+          onClose={handleCloseViewer}
           className={className}
         />
       );
