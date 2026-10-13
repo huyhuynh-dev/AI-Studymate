@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { DocumentItem, UploadProgressItem } from "@/types";
 import DocumentImageViewer from "./DocumentImageViewer";
+import DocumentPdfViewer from "./DocumentPdfViewer";
 
 export interface DocumentsTabProps {
   documents?: DocumentItem[];
@@ -76,7 +77,6 @@ export default function DocumentsTab({
   const [isDragging, setIsDragging] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [viewingDocId, setViewingDocId] = useState<string | null>(null);
-  const [pdfNotice, setPdfNotice] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<"all" | "pdf" | "image">("all");
 
   const pdfCount = useMemo(
@@ -100,12 +100,7 @@ export default function DocumentsTab({
   }, [documents, filterType]);
 
   const handleCardClick = (doc: DocumentItem) => {
-    if (doc.mime_type.startsWith("image/")) {
-      setViewingDocId(doc.id);
-    } else {
-      setPdfNotice(`Trình xem PDF cho "${doc.file_name}" đang được phát triển.`);
-      setTimeout(() => setPdfNotice(null), 3500);
-    }
+    setViewingDocId(doc.id);
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -193,18 +188,30 @@ export default function DocumentsTab({
     );
   };
 
-  // 0. Trường hợp người dùng đang xem chi tiết ảnh (Detail View)
+  // 0. Trường hợp người dùng đang xem chi tiết tài liệu (Detail View: Ảnh hoặc PDF)
   const viewingDoc = documents.find((d) => d.id === viewingDocId);
-  if (viewingDocId && viewingDoc && viewingDoc.mime_type.startsWith("image/")) {
-    return (
-      <DocumentImageViewer
-        documents={documents}
-        initialDocumentId={viewingDocId}
-        onClose={() => setViewingDocId(null)}
-        onDownload={onDownload}
-        className={className}
-      />
-    );
+  if (viewingDocId && viewingDoc) {
+    if (viewingDoc.mime_type.startsWith("image/")) {
+      return (
+        <DocumentImageViewer
+          documents={documents}
+          initialDocumentId={viewingDocId}
+          onClose={() => setViewingDocId(null)}
+          onDownload={onDownload}
+          className={className}
+        />
+      );
+    }
+
+    if (viewingDoc.mime_type === "application/pdf") {
+      return (
+        <DocumentPdfViewer
+          document={viewingDoc}
+          onClose={() => setViewingDocId(null)}
+          className={className}
+        />
+      );
+    }
   }
 
   // 1. Trường hợp chưa có tài liệu nào và không có file đang upload: Hiển thị Hero Dropzone nguyên bản
@@ -358,23 +365,6 @@ export default function DocumentsTab({
             onClick={onClearError}
             type="button"
             className="rounded-lg p-1 text-red-500 hover:bg-red-100 hover:text-red-700 cursor-pointer"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
-      {/* Thông báo tính năng PDF nếu người dùng bấm vào thẻ PDF */}
-      {pdfNotice && (
-        <div className="flex items-center justify-between rounded-2xl border border-indigo-200 bg-indigo-50/90 p-4 text-sm text-indigo-800 shadow-xs animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 shrink-0 text-indigo-600" />
-            <span className="font-medium">{pdfNotice}</span>
-          </div>
-          <button
-            onClick={() => setPdfNotice(null)}
-            type="button"
-            className="rounded-lg p-1 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-800 cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
