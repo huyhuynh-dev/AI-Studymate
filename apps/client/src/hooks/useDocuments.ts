@@ -24,8 +24,8 @@ export function useDocuments(conversationId?: string | null) {
       (d) =>
         d.ocr_status === 'pending' ||
         d.ocr_status === 'processing' ||
-        d.embed_status === 'pending' ||
-        d.embed_status === 'processing'
+        (d.ocr_status === 'done' &&
+          (d.embed_status === 'pending' || d.embed_status === 'processing'))
     );
   }, []);
 

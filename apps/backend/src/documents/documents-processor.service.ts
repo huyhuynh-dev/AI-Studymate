@@ -4,7 +4,11 @@ import { Job, Worker } from 'bullmq';
 import { StorageService } from '../storage/storage.service.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import { GeminiVisionService } from './gemini-vision.service.js';
-import { DOCUMENT_QUEUE_NAME, DocumentJobData } from './documents-queue.service.js';
+import {
+    DOCUMENT_QUEUE_NAME,
+    DocumentJobData,
+    DocumentsQueueService,
+} from './documents-queue.service.js';
 
 @Injectable()
 export class DocumentsProcessorService implements OnModuleInit, OnApplicationShutdown {
@@ -16,6 +20,7 @@ export class DocumentsProcessorService implements OnModuleInit, OnApplicationShu
         private readonly storageService: StorageService,
         private readonly documentsRepo: DocumentsRepoService,
         private readonly geminiVisionService: GeminiVisionService,
+        private readonly documentsQueueService: DocumentsQueueService,
     ) { }
 
     onModuleInit() {
@@ -81,18 +86,29 @@ export class DocumentsProcessorService implements OnModuleInit, OnApplicationShu
                 throw new Error(`Định dạng tệp không được hỗ trợ xử lý OCR: ${mimeType}`);
             }
 
+            const hasTextContent = extractedText.trim().length > 0;
+
             // Bước 4: Cập nhật raw_text và ocr_status = 'done'
             await this.documentsRepo.updateDocumentById(documentId, {
                 raw_text: extractedText,
                 ocr_status: 'done',
+                embed_status: hasTextContent ? 'pending' : 'done',
                 processing_error: null,
             });
 
             this.logger.log(`Tài liệu [${documentId}] trích xuất thành công (${extractedText.length} ký tự)`);
+
+            // Bước 5: Đẩy sang hàng đợi Embedding riêng biệt (nếu có nội dung văn bản)
+            if (hasTextContent) {
+                await this.documentsQueueService.addEmbeddingJob({ documentId });
+            } else {
+                this.logger.log(`Tài liệu [${documentId}] không có chữ, bỏ qua hàng đợi Embedding`);
+            }
         } catch (error: any) {
             this.logger.error(`Lỗi xử lý tài liệu [${documentId}]: ${error.message}`, error.stack);
             await this.documentsRepo.updateDocumentById(documentId, {
                 ocr_status: 'failed',
+                embed_status: 'failed',
                 processing_error: error.message || 'Lỗi xử lý trích xuất văn bản',
             });
             throw error;

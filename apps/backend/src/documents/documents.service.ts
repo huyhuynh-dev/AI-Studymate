@@ -153,9 +153,20 @@ export class DocumentsService {
 
         const updatedSize = head.contentLength ? BigInt(head.contentLength) : BigInt(doc.file_size);
 
-        return await this.documentsRepo.updateDocument(documentId, userId, {
+        const updatedDoc = await this.documentsRepo.updateDocument(documentId, userId, {
             file_size: updatedSize,
+            ocr_status: 'pending',
+            embed_status: 'pending',
+            processing_error: null,
         });
+
+        await this.documentsQueueService.addProcessingJob({
+            documentId: updatedDoc.id,
+            mimeType: updatedDoc.mime_type,
+            storageKey: updatedDoc.storage_key,
+        });
+
+        return updatedDoc;
     }
 
     async deleteDocument(

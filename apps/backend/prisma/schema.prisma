@@ -85,12 +85,12 @@ model Document {
 }
 
 model DocumentChunk {
-  id          String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  document_id String                       @db.Uuid
+  id          String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id String                      @db.Uuid
   chunk_index Int
-  content     String                       @db.Text
-  embedding   Unsupported("vector(1536)")? // pgvector; dimension phụ thuộc model
-  created_at  DateTime                     @default(now()) @db.Timestamptz(6)
+  content     String                      @db.Text
+  embedding   Unsupported("vector(768)")? // pgvector; Gemini text-embedding-004 = 768 dims
+  created_at  DateTime                    @default(now()) @db.Timestamptz(6)
 
   document Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
 

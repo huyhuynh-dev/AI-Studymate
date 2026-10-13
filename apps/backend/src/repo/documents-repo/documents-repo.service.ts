@@ -54,6 +54,18 @@ export class DocumentsRepoService {
         });
     }
 
+    async findDocumentsPendingEmbedding(): Promise<Array<{ id: string }>> {
+        return await this.prisma.document.findMany({
+            where: {
+                ocr_status: 'done',
+                embed_status: 'pending',
+            },
+            select: {
+                id: true,
+            },
+        });
+    }
+
     async updateDocument(
         documentId: string,
         userId: string,
