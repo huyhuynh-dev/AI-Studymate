@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { StorageService } from '../storage/storage.service.js';
 import { DocumentsRepoService, DocumentResponse } from '../repo/documents-repo/documents-repo.service.js';
 import { ConversationsRepoService } from '../repo/conversations-repo/conversations-repo.service.js';
-import { DocumentsQueueService } from './documents-queue.service.js';
+import { DocumentsQueueService } from './services/documents-queue.service.js';
 import { InitUploadDto, MAX_FILE_SIZE_BYTES } from './dto/init-upload.dto.js';
 import { CompleteUploadDto } from './dto/complete-upload.dto.js';
 

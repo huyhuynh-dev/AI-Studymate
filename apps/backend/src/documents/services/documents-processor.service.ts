@@ -1,8 +1,8 @@
 import { Injectable, Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job, Worker } from 'bullmq';
-import { StorageService } from '../storage/storage.service.js';
-import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
+import { StorageService } from '../../storage/storage.service.js';
+import { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.service.js';
 import { GeminiVisionService } from './gemini-vision.service.js';
 import {
     DOCUMENT_QUEUE_NAME,

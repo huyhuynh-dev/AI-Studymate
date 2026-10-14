@@ -1,8 +1,8 @@
 import { Injectable, Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job, Worker } from 'bullmq';
-import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
-import { DocumentChunksRepoService } from '../repo/document-chunks-repo/document-chunks-repo.service.js';
+import { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.service.js';
+import { DocumentChunksRepoService } from '../../repo/document-chunks-repo/document-chunks-repo.service.js';
 import { GeminiEmbeddingService } from './gemini-embedding.service.js';
 import {
     DOCUMENT_EMBEDDING_QUEUE_NAME,
