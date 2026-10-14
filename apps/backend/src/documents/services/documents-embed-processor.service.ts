@@ -4,14 +4,13 @@ import { Job, Worker } from 'bullmq';
 import { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.service.js';
 import { DocumentChunksRepoService } from '../../repo/document-chunks-repo/document-chunks-repo.service.js';
 import { GeminiEmbeddingService } from './gemini-embedding.service.js';
+import { DoclingService } from './docling.service.js';
 import {
     DOCUMENT_EMBEDDING_QUEUE_NAME,
     DocumentEmbeddingJobData,
     DocumentsQueueService,
 } from './documents-queue.service.js';
 import { chunkText } from './text-chunker.js';
-
-const EMBED_BATCH_SIZE = 20;
 
 @Injectable()
 export class DocumentsEmbedProcessorService implements OnModuleInit, OnApplicationShutdown {
@@ -23,6 +22,7 @@ export class DocumentsEmbedProcessorService implements OnModuleInit, OnApplicati
         private readonly documentsRepo: DocumentsRepoService,
         private readonly documentChunksRepo: DocumentChunksRepoService,
         private readonly geminiEmbeddingService: GeminiEmbeddingService,
+        private readonly doclingService: DoclingService,
         private readonly documentsQueueService: DocumentsQueueService,
     ) { }
 
@@ -110,9 +110,19 @@ export class DocumentsEmbedProcessorService implements OnModuleInit, OnApplicati
                 processing_error: null,
             });
 
-            // Bước 2: Chia raw_text thành các chunks (~500 tokens, overlap ~50 tokens)
-            const chunks = chunkText(rawText);
-            this.logger.log(`Tài liệu [${documentId}] được chia thành ${chunks.length} chunks`);
+            // Bước 2: Chia nhỏ raw_text thành các chunks bằng Docling HybridChunker (ưu tiên)
+            let chunks: Array<{ index: number; content: string }> = [];
+            try {
+                this.logger.log(`Đang chia nhỏ văn bản tài liệu [${documentId}] bằng Docling HybridChunker...`);
+                chunks = await this.doclingService.chunkMarkdownHybrid(rawText, doc.file_name);
+                this.logger.log(`Docling HybridChunker hoàn tất: sinh ${chunks.length} chunks cho tài liệu [${documentId}]`);
+            } catch (chunkErr: any) {
+                this.logger.warn(
+                    `Docling HybridChunker thất bại cho tài liệu [${documentId}]: ${chunkErr.message}. Kích hoạt Fallback chunkText thủ công...`
+                );
+                chunks = chunkText(rawText);
+                this.logger.log(`Fallback chunkText hoàn tất: sinh ${chunks.length} chunks cho tài liệu [${documentId}]`);
+            }
 
             if (chunks.length === 0) {
                 await this.documentsRepo.updateDocumentById(documentId, {
@@ -122,27 +132,15 @@ export class DocumentsEmbedProcessorService implements OnModuleInit, OnApplicati
                 return;
             }
 
-            // Bước 3: Gọi Gemini Embedding API theo từng batch (tối đa 20 chunks/request)
-            const chunksWithEmbeddings: Array<{
-                chunkIndex: number;
-                content: string;
-                embedding: number[];
-            }> = [];
+            // Bước 3: Gọi Gemini Embedding API (tự động phân nhóm Content[] an toàn về token & quota)
+            const chunkTexts = chunks.map((c) => c.content);
+            const embeddings = await this.geminiEmbeddingService.embedBatch(chunkTexts);
 
-            for (let i = 0; i < chunks.length; i += EMBED_BATCH_SIZE) {
-                const batch = chunks.slice(i, i + EMBED_BATCH_SIZE);
-                const batchTexts = batch.map((c) => c.content);
-
-                const embeddings = await this.geminiEmbeddingService.embedBatch(batchTexts);
-
-                for (let j = 0; j < batch.length; j++) {
-                    chunksWithEmbeddings.push({
-                        chunkIndex: batch[j].index,
-                        content: batch[j].content,
-                        embedding: embeddings[j].values,
-                    });
-                }
-            }
+            const chunksWithEmbeddings = chunks.map((chunk, idx) => ({
+                chunkIndex: chunk.index,
+                content: chunk.content,
+                embedding: embeddings[idx].values,
+            }));
 
             // Bước 4: Lưu toàn bộ chunks kèm vector 768 chiều vào bảng document_chunks (pgvector)
             const insertedCount = await this.documentChunksRepo.replaceChunksWithEmbeddings(

@@ -6,6 +6,7 @@ import { DocumentsProcessorService } from './services/documents-processor.servic
 import { DocumentsEmbedProcessorService } from './services/documents-embed-processor.service.js';
 import { GeminiVisionService } from './services/gemini-vision.service.js';
 import { GeminiEmbeddingService } from './services/gemini-embedding.service.js';
+import { DoclingService } from './services/docling.service.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { RepoModule } from '../repo/repo.module.js';
 
@@ -18,6 +19,7 @@ import { RepoModule } from '../repo/repo.module.js';
     DocumentsEmbedProcessorService,
     GeminiVisionService,
     GeminiEmbeddingService,
+    DoclingService,
   ],
   controllers: [DocumentsController],
   exports: [
@@ -25,6 +27,7 @@ import { RepoModule } from '../repo/repo.module.js';
     DocumentsQueueService,
     GeminiVisionService,
     GeminiEmbeddingService,
+    DoclingService,
   ],
 })
 export class DocumentsModule { }

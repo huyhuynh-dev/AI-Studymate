@@ -96,6 +96,7 @@ export class DocumentsService {
             documentId: document.id,
             mimeType: document.mime_type,
             storageKey: document.storage_key,
+            fileName: document.file_name,
         });
 
         return document;
@@ -164,6 +165,7 @@ export class DocumentsService {
             documentId: updatedDoc.id,
             mimeType: updatedDoc.mime_type,
             storageKey: updatedDoc.storage_key,
+            fileName: updatedDoc.file_name,
         });
 
         return updatedDoc;

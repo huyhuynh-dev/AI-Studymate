@@ -8,24 +8,25 @@ export interface EmbeddingResult {
 }
 
 export const EMBEDDING_DIMENSIONS = 768;
+const MAX_CHUNKS_PER_REQUEST = 25;
+const MAX_CHARS_PER_REQUEST = 12000; // An toàn dưới ngưỡng 8,192 tokens của gemini-embedding-2
 
 @Injectable()
 export class GeminiEmbeddingService {
     private readonly logger = new Logger(GeminiEmbeddingService.name);
     private genAI: GoogleGenAI | null = null;
-    private readonly primaryModel: string;
-    private readonly fallbackModel = 'text-embedding-004';
+    private readonly modelName: string;
     private readonly dimensions = EMBEDDING_DIMENSIONS;
 
     constructor(private readonly configService: ConfigService) {
-        this.primaryModel =
-            this.configService.get<string>('GEMINI_EMBEDDING_MODEL') || 'gemini-embedding-001';
+        this.modelName =
+            this.configService.get<string>('GEMINI_EMBEDDING_MODEL') || 'gemini-embedding-2';
 
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
         if (apiKey) {
             this.genAI = new GoogleGenAI({ apiKey });
             this.logger.log(
-                `GeminiEmbeddingService đã khởi tạo [model: ${this.primaryModel}, dims: ${this.dimensions}]`
+                `GeminiEmbeddingService đã khởi tạo [model: ${this.modelName}, dims: ${this.dimensions}]`
             );
         } else {
             this.logger.warn('Chưa cấu hình GEMINI_API_KEY trong file môi trường (.env)');
@@ -55,8 +56,9 @@ export class GeminiEmbeddingService {
     }
 
     /**
-     * Sinh embedding vectors cho một batch nhiều đoạn văn bản (tối ưu quota & latency)
-     * Trả về mảng EmbeddingResult giữ đúng thứ tự đầu vào
+     * Sinh embedding vectors cho danh sách các đoạn văn bản.
+     * Tự động phân chia thành các sub-batch an toàn (<=25 chunks, <=12,000 ký tự)
+     * và đóng gói từng chunk vào Content object riêng để gửi trong 1 request duy nhất.
      */
     async embedBatch(texts: string[]): Promise<EmbeddingResult[]> {
         if (!texts || texts.length === 0) {
@@ -64,71 +66,149 @@ export class GeminiEmbeddingService {
         }
 
         const client = this.ensureClient();
+        const batches = this.splitIntoSafeBatches(texts);
+        const allResults: EmbeddingResult[] = [];
+        let globalIndex = 0;
 
-        try {
-            return await this.callEmbedContent(client, this.primaryModel, texts);
-        } catch (primaryError: any) {
-            const isModelNotFound =
-                primaryError?.status === 404 ||
-                /not found|not supported/i.test(primaryError?.message || '');
+        this.logger.log(
+            `Bắt đầu sinh embedding cho ${texts.length} chunks (chia thành ${batches.length} request(s) tới Gemini API)`
+        );
 
-            if (isModelNotFound && this.primaryModel !== this.fallbackModel) {
-                this.logger.warn(
-                    `Model [${this.primaryModel}] không khả dụng (${primaryError.message}), chuyển sang fallback [${this.fallbackModel}]`
+        for (let b = 0; b < batches.length; b++) {
+            const subBatch = batches[b];
+            const contents = subBatch.map((text) => ({
+                role: 'user',
+                parts: [{ text }],
+            }));
+
+            const response = await this.callEmbedWithRetry(client, contents, b + 1, batches.length);
+            const embeddings = response.embeddings;
+
+            if (!embeddings || embeddings.length !== subBatch.length) {
+                throw new Error(
+                    `Gemini Embedding trả về ${embeddings?.length ?? 0} vectors cho ${subBatch.length} đoạn văn bản trong batch #${b + 1}`
                 );
-                return await this.callEmbedContent(client, this.fallbackModel, texts);
             }
 
-            this.logger.error(
-                `Lỗi khi gọi Gemini Embedding API (${this.primaryModel}): ${primaryError.message}`,
-                primaryError.stack
-            );
-            throw new Error(`Gemini Embedding thất bại: ${primaryError.message}`);
+            for (let i = 0; i < embeddings.length; i++) {
+                const rawValues = embeddings[i].values;
+                if (!rawValues || rawValues.length === 0) {
+                    throw new Error(`Vector embedding tại vị trí ${globalIndex} bị rỗng`);
+                }
+
+                const sliced =
+                    rawValues.length > this.dimensions
+                        ? rawValues.slice(0, this.dimensions)
+                        : rawValues;
+
+                if (sliced.length !== this.dimensions) {
+                    throw new Error(
+                        `Chiều vector trả về (${sliced.length}) không khớp cấu hình (${this.dimensions})`
+                    );
+                }
+
+                allResults.push({
+                    index: globalIndex++,
+                    values: this.normalizeVector(sliced),
+                });
+            }
+
+            // Pacing nhẹ giữa các batch để tránh spike RPM
+            if (b < batches.length - 1) {
+                await new Promise((resolve) => setTimeout(resolve, 300));
+            }
         }
+
+        return allResults;
     }
 
-    private async callEmbedContent(
-        client: GoogleGenAI,
-        model: string,
-        texts: string[]
-    ): Promise<EmbeddingResult[]> {
-        const response = await client.models.embedContent({
-            model,
-            contents: texts,
-            config: {
-                outputDimensionality: this.dimensions,
-            },
-        });
+    /**
+     * Chia danh sách texts thành các sub-batches thỏa mãn:
+     * 1. Số lượng chunks <= MAX_CHUNKS_PER_REQUEST (25)
+     * 2. Tổng số ký tự <= MAX_CHARS_PER_REQUEST (12,000)
+     */
+    private splitIntoSafeBatches(texts: string[]): string[][] {
+        const batches: string[][] = [];
+        let currentBatch: string[] = [];
+        let currentChars = 0;
 
-        if (!response.embeddings || response.embeddings.length !== texts.length) {
-            throw new Error(
-                `Gemini Embedding trả về ${response.embeddings?.length ?? 0} vectors cho ${texts.length} đoạn văn bản`
-            );
+        for (const text of texts) {
+            const textLen = text.length;
+            const wouldExceedChunks = currentBatch.length >= MAX_CHUNKS_PER_REQUEST;
+            const wouldExceedChars =
+                currentChars + textLen > MAX_CHARS_PER_REQUEST && currentBatch.length > 0;
+
+            if (wouldExceedChunks || wouldExceedChars) {
+                batches.push(currentBatch);
+                currentBatch = [];
+                currentChars = 0;
+            }
+
+            currentBatch.push(text);
+            currentChars += textLen;
         }
 
-        return response.embeddings.map((emb, index) => {
-            const rawValues = emb.values;
-            if (!rawValues || rawValues.length === 0) {
-                throw new Error(`Vector embedding tại vị trí ${index} bị rỗng`);
-            }
+        if (currentBatch.length > 0) {
+            batches.push(currentBatch);
+        }
 
-            // Đảm bảo kích thước vector đúng 768 chiều và chuẩn hóa L2 nếu bị cắt giảm chiều (MRL)
-            const sliced =
-                rawValues.length > this.dimensions
-                    ? rawValues.slice(0, this.dimensions)
-                    : rawValues;
+        return batches;
+    }
 
-            if (sliced.length !== this.dimensions) {
-                throw new Error(
-                    `Chiều vector trả về (${sliced.length}) không khớp cấu hình (${this.dimensions})`
+    /**
+     * Gọi Gemini API kèm cơ chế retry thông minh với Exponential Backoff khi gặp lỗi 429 (Rate Limit)
+     */
+    private async callEmbedWithRetry(
+        client: GoogleGenAI,
+        contents: any[],
+        batchIndex: number,
+        totalBatches: number,
+        maxRetries = 3
+    ): Promise<any> {
+        let attempt = 0;
+        let lastError: any = null;
+
+        while (attempt < maxRetries) {
+            try {
+                return await client.models.embedContent({
+                    model: this.modelName,
+                    contents,
+                    config: {
+                        outputDimensionality: this.dimensions,
+                    },
+                });
+            } catch (error: any) {
+                lastError = error;
+                attempt++;
+
+                const errMsg = error.message || '';
+                const isRateLimit =
+                    error.status === 429 ||
+                    error.code === 429 ||
+                    /429|resource_exhausted|quota/i.test(errMsg);
+
+                if (isRateLimit && attempt < maxRetries) {
+                    // Trích xuất số giây retry nếu Google trả về (ví dụ "retry in 26s")
+                    const match = errMsg.match(/retry in ([\d.]+)s/i);
+                    const suggestedDelaySec = match ? Math.ceil(parseFloat(match[1])) : attempt * 5;
+                    const delayMs = Math.min(Math.max(suggestedDelaySec, 3), 35) * 1000;
+
+                    this.logger.warn(
+                        `Gemini API bị giới hạn Quota (429) ở batch ${batchIndex}/${totalBatches}. Thử lại lần ${attempt}/${maxRetries} sau ${delayMs / 1000}s...`
+                    );
+                    await new Promise((resolve) => setTimeout(resolve, delayMs));
+                    continue;
+                }
+
+                this.logger.error(
+                    `Lỗi khi gọi Gemini Embedding API (${this.modelName}) ở batch ${batchIndex}/${totalBatches}: ${errMsg}`,
+                    error.stack
                 );
+                throw error;
             }
+        }
 
-            return {
-                index,
-                values: this.normalizeVector(sliced),
-            };
-        });
+        throw lastError;
     }
 
     /**

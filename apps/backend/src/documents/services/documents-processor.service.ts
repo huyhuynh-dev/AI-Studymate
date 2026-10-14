@@ -4,6 +4,7 @@ import { Job, Worker } from 'bullmq';
 import { StorageService } from '../../storage/storage.service.js';
 import { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.service.js';
 import { GeminiVisionService } from './gemini-vision.service.js';
+import { DoclingService } from './docling.service.js';
 import {
     DOCUMENT_QUEUE_NAME,
     DocumentJobData,
@@ -20,6 +21,7 @@ export class DocumentsProcessorService implements OnModuleInit, OnApplicationShu
         private readonly storageService: StorageService,
         private readonly documentsRepo: DocumentsRepoService,
         private readonly geminiVisionService: GeminiVisionService,
+        private readonly doclingService: DoclingService,
         private readonly documentsQueueService: DocumentsQueueService,
     ) { }
 
@@ -58,8 +60,8 @@ export class DocumentsProcessorService implements OnModuleInit, OnApplicationShu
     }
 
     private async processDocumentJob(job: Job<DocumentJobData>): Promise<void> {
-        const { documentId, mimeType, storageKey } = job.data;
-        this.logger.log(`Bắt đầu xử lý tài liệu [${documentId}] (MIME: ${mimeType})`);
+        const { documentId, mimeType, storageKey, fileName } = job.data;
+        this.logger.log(`Bắt đầu xử lý tài liệu [${documentId}] (MIME: ${mimeType}, File: ${fileName || 'N/A'})`);
 
         try {
             // Bước 1: Validate thông tin công việc
@@ -73,17 +75,31 @@ export class DocumentsProcessorService implements OnModuleInit, OnApplicationShu
                 processing_error: null,
             });
 
+            // Tải buffer từ Cloudflare R2
+            const buffer = await this.storageService.getObjectBuffer(storageKey);
             let extractedText = '';
 
-            // Bước 3: Phân loại định dạng tệp để xử lý
-            if (mimeType === 'application/pdf') {
-                const buffer = await this.storageService.getObjectBuffer(storageKey);
-                extractedText = await this.extractPdfText(buffer);
-            } else if (mimeType.startsWith('image/')) {
-                const buffer = await this.storageService.getObjectBuffer(storageKey);
-                extractedText = await this.geminiVisionService.extractTextFromImage(buffer, mimeType);
-            } else {
-                throw new Error(`Định dạng tệp không được hỗ trợ xử lý OCR: ${mimeType}`);
+            // Bước 3: Ưu tiên trích xuất Markdown qua Docling Server (Docker)
+            const fallbackFileName = fileName || (mimeType === 'application/pdf' ? 'document.pdf' : 'document.png');
+            try {
+                this.logger.log(`Đang gửi tài liệu [${documentId}] tới Docling Server để trích xuất Markdown...`);
+                extractedText = await this.doclingService.convertDocumentToMarkdown(buffer, fallbackFileName);
+                this.logger.log(`Docling Server trích xuất thành công tài liệu [${documentId}] (${extractedText.length} ký tự Markdown)`);
+            } catch (doclingErr: any) {
+                this.logger.warn(
+                    `Docling Server xử lý thất bại cho tài liệu [${documentId}]: ${doclingErr.message}. Bắt đầu kích hoạt Fallback...`
+                );
+
+                // Fallback tầng 2: Phân loại định dạng tệp bằng giải pháp cũ
+                if (mimeType === 'application/pdf') {
+                    extractedText = await this.extractPdfText(buffer);
+                } else if (mimeType.startsWith('image/')) {
+                    extractedText = await this.geminiVisionService.extractTextFromImage(buffer, mimeType);
+                } else {
+                    throw new Error(`Định dạng tệp không được hỗ trợ xử lý OCR: ${mimeType}`);
+                }
+
+                this.logger.log(`Fallback OCR hoàn tất cho tài liệu [${documentId}] (${extractedText.length} ký tự)`);
             }
 
             const hasTextContent = extractedText.trim().length > 0;

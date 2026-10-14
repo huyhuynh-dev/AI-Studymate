@@ -6,6 +6,7 @@ export interface DocumentJobData {
     documentId: string;
     mimeType: string;
     storageKey: string;
+    fileName?: string;
 }
 
 export interface DocumentEmbeddingJobData {
