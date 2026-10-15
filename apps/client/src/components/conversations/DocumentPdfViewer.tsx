@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { createPluginRegistration } from "@embedpdf/core";
 import { EmbedPDF } from "@embedpdf/core/react";
 import { usePdfiumEngine } from "@embedpdf/engines/react";
@@ -11,6 +11,7 @@ import {
 import {
   Viewport,
   ViewportPluginPackage,
+  useViewportCapability,
 } from "@embedpdf/plugin-viewport/react";
 import {
   Scroller,
@@ -103,6 +104,7 @@ function PdfToolbar({
   onClose,
 }: PdfToolbarProps) {
   const { provides: zoom, state: zoomState } = useZoom(documentId);
+  const { provides: viewport } = useViewportCapability();
   const { provides: annotationApi, state: annotationState } = useAnnotation(documentId);
   const { provides: exportApi } = useExport(documentId);
   const { provides: selectionCapability } = useSelectionCapability();
@@ -155,14 +157,34 @@ function PdfToolbar({
     }
   }, [annotationState?.hasPendingChanges]);
 
-  // Tự động căn lại chiều rộng PDF (FitWidth) sau khi chuyển đổi Focus Mode (đợi hiệu ứng đóng/mở cột trái hoàn tất)
+  const initialZoomAppliedRef = useRef(false);
+
+  // Chỉ khởi tạo zoom sau khi viewport EmbedPDF đã mount và có metrics hợp lệ.
   useEffect(() => {
-    if (!zoom) return;
-    const timer = setTimeout(() => {
-      zoom.requestZoom(ZoomMode.FitWidth);
-    }, 320);
-    return () => clearTimeout(timer);
-  }, [isFocusMode, zoom]);
+    if (!zoom || !viewport || initialZoomAppliedRef.current) return;
+
+    const viewportScope = viewport.forDocument(documentId);
+    const initializeZoom = () => {
+      if (initialZoomAppliedRef.current) return;
+
+      const metrics = viewportScope.getMetrics();
+      if (
+        viewport.isViewportMounted(documentId) &&
+        metrics.clientWidth > 0 &&
+        metrics.clientHeight > 0
+      ) {
+        zoom.requestZoom(1);
+        initialZoomAppliedRef.current = true;
+      }
+    };
+
+    initializeZoom();
+    return viewport.onViewportResize((event) => {
+      if (event.documentId === documentId) {
+        initializeZoom();
+      }
+    });
+  }, [documentId, viewport, zoom]);
 
   const handleCopySelection = useCallback(() => {
     if (!selectionCapability || !hasSelection) return;
@@ -696,7 +718,7 @@ export default function DocumentPdfViewer({
         selectAfterCreate: true,
       }),
       createPluginRegistration(ZoomPluginPackage, {
-        defaultZoomLevel: ZoomMode.FitWidth,
+        defaultZoomLevel: 1,
       }),
       createPluginRegistration(ExportPluginPackage, {
         defaultFileName: document.file_name,
