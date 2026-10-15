@@ -57,6 +57,8 @@ model Conversation {
   user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   documents Document[]
+  messages  Message[]
+  summaries Summary[]
 
   @@map("conversations")
 }
@@ -80,6 +82,7 @@ model Document {
   conversation Conversation    @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
   user         User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
   chunks       DocumentChunk[]
+  summaries    Summary[]
 
   @@map("documents")
 }
@@ -97,4 +100,36 @@ model DocumentChunk {
   @@index([document_id])
   // INDEX ON embedding USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)
   @@map("document_chunks")
+}
+
+model Message {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String    @db.Uuid
+  role            String    @db.VarChar(20) // 'user' | 'assistant'
+  content         String    @db.Text
+  source_chunks   String[]  @db.Uuid // chunk IDs dùng làm context
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@index([conversation_id])
+  @@map("messages")
+}
+
+model Summary {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String    @db.Uuid
+  document_id     String?   @db.Uuid // NULL = tóm tắt toàn bộ conversation
+  title           String    @db.VarChar(255)
+  content_json    Json      @db.JsonB // BlockNote JSON format
+  pdf_storage_key String?   @db.VarChar(1000) // key PDF đã export, NULL nếu chưa export
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  document     Document?     @relation(fields: [document_id], references: [id], onDelete: SetNull)
+
+  @@index([conversation_id])
+  @@index([document_id])
+  @@map("summaries")
 }

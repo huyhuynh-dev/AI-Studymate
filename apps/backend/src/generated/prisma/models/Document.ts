@@ -291,6 +291,7 @@ export type DocumentWhereInput = {
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   chunks?: Prisma.DocumentChunkListRelationFilter
+  summaries?: Prisma.SummaryListRelationFilter
 }
 
 export type DocumentOrderByWithRelationInput = {
@@ -311,6 +312,7 @@ export type DocumentOrderByWithRelationInput = {
   conversation?: Prisma.ConversationOrderByWithRelationInput
   user?: Prisma.UserOrderByWithRelationInput
   chunks?: Prisma.DocumentChunkOrderByRelationAggregateInput
+  summaries?: Prisma.SummaryOrderByRelationAggregateInput
 }
 
 export type DocumentWhereUniqueInput = Prisma.AtLeast<{
@@ -334,6 +336,7 @@ export type DocumentWhereUniqueInput = Prisma.AtLeast<{
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   chunks?: Prisma.DocumentChunkListRelationFilter
+  summaries?: Prisma.SummaryListRelationFilter
 }, "id">
 
 export type DocumentOrderByWithAggregationInput = {
@@ -394,6 +397,7 @@ export type DocumentCreateInput = {
   conversation: Prisma.ConversationCreateNestedOneWithoutDocumentsInput
   user: Prisma.UserCreateNestedOneWithoutDocumentsInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  summaries?: Prisma.SummaryCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentUncheckedCreateInput = {
@@ -412,6 +416,7 @@ export type DocumentUncheckedCreateInput = {
   created_at?: Date | string
   updated_at?: Date | string
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentUpdateInput = {
@@ -430,6 +435,7 @@ export type DocumentUpdateInput = {
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutDocumentsNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  summaries?: Prisma.SummaryUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentUncheckedUpdateInput = {
@@ -448,6 +454,7 @@ export type DocumentUncheckedUpdateInput = {
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  summaries?: Prisma.SummaryUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentCreateManyInput = {
@@ -573,6 +580,11 @@ export type DocumentScalarRelationFilter = {
   isNot?: Prisma.DocumentWhereInput
 }
 
+export type DocumentNullableScalarRelationFilter = {
+  is?: Prisma.DocumentWhereInput | null
+  isNot?: Prisma.DocumentWhereInput | null
+}
+
 export type DocumentCreateNestedManyWithoutUserInput = {
   create?: Prisma.XOR<Prisma.DocumentCreateWithoutUserInput, Prisma.DocumentUncheckedCreateWithoutUserInput> | Prisma.DocumentCreateWithoutUserInput[] | Prisma.DocumentUncheckedCreateWithoutUserInput[]
   connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutUserInput | Prisma.DocumentCreateOrConnectWithoutUserInput[]
@@ -679,6 +691,22 @@ export type DocumentUpdateOneRequiredWithoutChunksNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentUpdateToOneWithWhereWithoutChunksInput, Prisma.DocumentUpdateWithoutChunksInput>, Prisma.DocumentUncheckedUpdateWithoutChunksInput>
 }
 
+export type DocumentCreateNestedOneWithoutSummariesInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutSummariesInput, Prisma.DocumentUncheckedCreateWithoutSummariesInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutSummariesInput
+  connect?: Prisma.DocumentWhereUniqueInput
+}
+
+export type DocumentUpdateOneWithoutSummariesNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutSummariesInput, Prisma.DocumentUncheckedCreateWithoutSummariesInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutSummariesInput
+  upsert?: Prisma.DocumentUpsertWithoutSummariesInput
+  disconnect?: Prisma.DocumentWhereInput | boolean
+  delete?: Prisma.DocumentWhereInput | boolean
+  connect?: Prisma.DocumentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentUpdateToOneWithWhereWithoutSummariesInput, Prisma.DocumentUpdateWithoutSummariesInput>, Prisma.DocumentUncheckedUpdateWithoutSummariesInput>
+}
+
 export type DocumentCreateWithoutUserInput = {
   id?: string
   file_name: string
@@ -694,6 +722,7 @@ export type DocumentCreateWithoutUserInput = {
   updated_at?: Date | string
   conversation: Prisma.ConversationCreateNestedOneWithoutDocumentsInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  summaries?: Prisma.SummaryCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentUncheckedCreateWithoutUserInput = {
@@ -711,6 +740,7 @@ export type DocumentUncheckedCreateWithoutUserInput = {
   created_at?: Date | string
   updated_at?: Date | string
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentCreateOrConnectWithoutUserInput = {
@@ -774,6 +804,7 @@ export type DocumentCreateWithoutConversationInput = {
   updated_at?: Date | string
   user: Prisma.UserCreateNestedOneWithoutDocumentsInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  summaries?: Prisma.SummaryCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentUncheckedCreateWithoutConversationInput = {
@@ -791,6 +822,7 @@ export type DocumentUncheckedCreateWithoutConversationInput = {
   created_at?: Date | string
   updated_at?: Date | string
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentCreateOrConnectWithoutConversationInput = {
@@ -834,6 +866,7 @@ export type DocumentCreateWithoutChunksInput = {
   updated_at?: Date | string
   conversation: Prisma.ConversationCreateNestedOneWithoutDocumentsInput
   user: Prisma.UserCreateNestedOneWithoutDocumentsInput
+  summaries?: Prisma.SummaryCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentUncheckedCreateWithoutChunksInput = {
@@ -851,6 +884,7 @@ export type DocumentUncheckedCreateWithoutChunksInput = {
   embed_status?: string
   created_at?: Date | string
   updated_at?: Date | string
+  summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentCreateOrConnectWithoutChunksInput = {
@@ -884,6 +918,7 @@ export type DocumentUpdateWithoutChunksInput = {
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutDocumentsNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
+  summaries?: Prisma.SummaryUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentUncheckedUpdateWithoutChunksInput = {
@@ -901,6 +936,95 @@ export type DocumentUncheckedUpdateWithoutChunksInput = {
   embed_status?: Prisma.StringFieldUpdateOperationsInput | string
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  summaries?: Prisma.SummaryUncheckedUpdateManyWithoutDocumentNestedInput
+}
+
+export type DocumentCreateWithoutSummariesInput = {
+  id?: string
+  file_name: string
+  mime_type: string
+  file_size: bigint | number
+  storage_key: string
+  raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
+  ocr_status?: string
+  embed_status?: string
+  created_at?: Date | string
+  updated_at?: Date | string
+  conversation: Prisma.ConversationCreateNestedOneWithoutDocumentsInput
+  user: Prisma.UserCreateNestedOneWithoutDocumentsInput
+  chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+}
+
+export type DocumentUncheckedCreateWithoutSummariesInput = {
+  id?: string
+  conversation_id: string
+  user_id: string
+  file_name: string
+  mime_type: string
+  file_size: bigint | number
+  storage_key: string
+  raw_text?: string | null
+  processing_error?: string | null
+  uploaded_at?: Date | string
+  ocr_status?: string
+  embed_status?: string
+  created_at?: Date | string
+  updated_at?: Date | string
+  chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+}
+
+export type DocumentCreateOrConnectWithoutSummariesInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutSummariesInput, Prisma.DocumentUncheckedCreateWithoutSummariesInput>
+}
+
+export type DocumentUpsertWithoutSummariesInput = {
+  update: Prisma.XOR<Prisma.DocumentUpdateWithoutSummariesInput, Prisma.DocumentUncheckedUpdateWithoutSummariesInput>
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutSummariesInput, Prisma.DocumentUncheckedCreateWithoutSummariesInput>
+  where?: Prisma.DocumentWhereInput
+}
+
+export type DocumentUpdateToOneWithWhereWithoutSummariesInput = {
+  where?: Prisma.DocumentWhereInput
+  data: Prisma.XOR<Prisma.DocumentUpdateWithoutSummariesInput, Prisma.DocumentUncheckedUpdateWithoutSummariesInput>
+}
+
+export type DocumentUpdateWithoutSummariesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  file_name?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
+  file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
+  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  conversation?: Prisma.ConversationUpdateOneRequiredWithoutDocumentsNestedInput
+  user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
+  chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+}
+
+export type DocumentUncheckedUpdateWithoutSummariesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  file_name?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
+  file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
+  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentCreateManyUserInput = {
@@ -934,6 +1058,7 @@ export type DocumentUpdateWithoutUserInput = {
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutDocumentsNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  summaries?: Prisma.SummaryUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentUncheckedUpdateWithoutUserInput = {
@@ -951,6 +1076,7 @@ export type DocumentUncheckedUpdateWithoutUserInput = {
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  summaries?: Prisma.SummaryUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentUncheckedUpdateManyWithoutUserInput = {
@@ -1000,6 +1126,7 @@ export type DocumentUpdateWithoutConversationInput = {
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  summaries?: Prisma.SummaryUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentUncheckedUpdateWithoutConversationInput = {
@@ -1017,6 +1144,7 @@ export type DocumentUncheckedUpdateWithoutConversationInput = {
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  summaries?: Prisma.SummaryUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentUncheckedUpdateManyWithoutConversationInput = {
@@ -1042,10 +1170,12 @@ export type DocumentUncheckedUpdateManyWithoutConversationInput = {
 
 export type DocumentCountOutputType = {
   chunks: number
+  summaries: number
 }
 
 export type DocumentCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   chunks?: boolean | DocumentCountOutputTypeCountChunksArgs
+  summaries?: boolean | DocumentCountOutputTypeCountSummariesArgs
 }
 
 /**
@@ -1063,6 +1193,13 @@ export type DocumentCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Ext
  */
 export type DocumentCountOutputTypeCountChunksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.DocumentChunkWhereInput
+}
+
+/**
+ * DocumentCountOutputType without action
+ */
+export type DocumentCountOutputTypeCountSummariesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SummaryWhereInput
 }
 
 
@@ -1084,6 +1221,7 @@ export type DocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   chunks?: boolean | Prisma.Document$chunksArgs<ExtArgs>
+  summaries?: boolean | Prisma.Document$summariesArgs<ExtArgs>
   _count?: boolean | Prisma.DocumentCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["document"]>
 
@@ -1147,6 +1285,7 @@ export type DocumentInclude<ExtArgs extends runtime.Types.Extensions.InternalArg
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   chunks?: boolean | Prisma.Document$chunksArgs<ExtArgs>
+  summaries?: boolean | Prisma.Document$summariesArgs<ExtArgs>
   _count?: boolean | Prisma.DocumentCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type DocumentIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1164,6 +1303,7 @@ export type $DocumentPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     conversation: Prisma.$ConversationPayload<ExtArgs>
     user: Prisma.$UserPayload<ExtArgs>
     chunks: Prisma.$DocumentChunkPayload<ExtArgs>[]
+    summaries: Prisma.$SummaryPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1577,6 +1717,7 @@ export interface Prisma__DocumentClient<T, Null = never, ExtArgs extends runtime
   conversation<T extends Prisma.ConversationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ConversationDefaultArgs<ExtArgs>>): Prisma.Prisma__ConversationClient<runtime.Types.Result.GetResult<Prisma.$ConversationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   chunks<T extends Prisma.Document$chunksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$chunksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  summaries<T extends Prisma.Document$summariesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$summariesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SummaryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2042,6 +2183,30 @@ export type Document$chunksArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   distinct?: Prisma.DocumentChunkScalarFieldEnum | Prisma.DocumentChunkScalarFieldEnum[]
+}
+
+/**
+ * Document.summaries
+ */
+export type Document$summariesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Summary
+   */
+  select?: Prisma.SummarySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Summary
+   */
+  omit?: Prisma.SummaryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SummaryInclude<ExtArgs> | null
+  where?: Prisma.SummaryWhereInput
+  orderBy?: Prisma.SummaryOrderByWithRelationInput | Prisma.SummaryOrderByWithRelationInput[]
+  cursor?: Prisma.SummaryWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SummaryScalarFieldEnum | Prisma.SummaryScalarFieldEnum[]
 }
 
 /**

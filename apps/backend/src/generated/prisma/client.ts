@@ -66,3 +66,13 @@ export type Document = Prisma.DocumentModel
  * 
  */
 export type DocumentChunk = Prisma.DocumentChunkModel
+/**
+ * Model Message
+ * 
+ */
+export type Message = Prisma.MessageModel
+/**
+ * Model Summary
+ * 
+ */
+export type Summary = Prisma.SummaryModel
