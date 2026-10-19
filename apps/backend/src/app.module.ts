@@ -16,6 +16,7 @@ import { SubjectsModule } from './subjects/subjects.module.js';
 import { ConversationsModule } from './conversations/conversations.module.js';
 import { DocumentsModule } from './documents/documents.module.js';
 import { StorageModule } from './storage/storage.module.js';
+import { AiModule } from './ai/ai.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -47,7 +48,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     SubjectsModule,
     ConversationsModule,
     DocumentsModule,
-    StorageModule
+    StorageModule,
+    AiModule
   ],
   controllers: [AppController],
   providers: [

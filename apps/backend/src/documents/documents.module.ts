@@ -4,30 +4,21 @@ import { DocumentsController } from './documents.controller.js';
 import { DocumentsQueueService } from './services/documents-queue.service.js';
 import { DocumentsProcessorService } from './services/documents-processor.service.js';
 import { DocumentsEmbedProcessorService } from './services/documents-embed-processor.service.js';
-import { GeminiVisionService } from './services/gemini-vision.service.js';
-import { GeminiEmbeddingService } from './services/gemini-embedding.service.js';
 import { DoclingService } from './services/docling.service.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { RepoModule } from '../repo/repo.module.js';
+import { AiModule } from '../ai/ai.module.js';
 
 @Module({
-  imports: [StorageModule, RepoModule],
+  imports: [StorageModule, RepoModule, AiModule],
   providers: [
     DocumentsService,
     DocumentsQueueService,
     DocumentsProcessorService,
     DocumentsEmbedProcessorService,
-    GeminiVisionService,
-    GeminiEmbeddingService,
     DoclingService,
   ],
   controllers: [DocumentsController],
-  exports: [
-    DocumentsService,
-    DocumentsQueueService,
-    GeminiVisionService,
-    GeminiEmbeddingService,
-    DoclingService,
-  ],
+  exports: [DocumentsService, DocumentsQueueService, DoclingService],
 })
-export class DocumentsModule { }
+export class DocumentsModule {}
