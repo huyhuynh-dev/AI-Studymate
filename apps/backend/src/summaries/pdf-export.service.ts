@@ -195,6 +195,99 @@ export class PdfExportService {
       border-color: #4F46E5;
     }
 
+    blockquote.doc-quote {
+      border-left: 3.5px solid #4F46E5;
+      background: #F8FAFC;
+      padding: 10px 14px;
+      margin: 12px 0;
+      color: #334155;
+      border-radius: 0 8px 8px 0;
+    }
+
+    pre.doc-code {
+      background: #0F172A;
+      color: #F8FAFC;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      margin: 12px 0;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+
+    .doc-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 12px;
+      page-break-inside: avoid;
+    }
+
+    .doc-table td {
+      border: 1px solid #CBD5E1;
+      padding: 7px 10px;
+      text-align: left;
+    }
+
+    .doc-table tr:first-child td {
+      font-weight: 700;
+      background-color: #EEF2FF;
+      color: #312E81;
+    }
+
+    .doc-table tr:nth-child(even):not(:first-child) td {
+      background-color: #F8FAFC;
+    }
+
+    .doc-figure {
+      margin: 14px 0;
+      text-align: center;
+      page-break-inside: avoid;
+    }
+
+    .doc-figure img {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 6px;
+      border: 1px solid #E2E8F0;
+    }
+
+    .doc-figure figcaption {
+      font-size: 11px;
+      color: #64748B;
+      margin-top: 5px;
+      font-style: italic;
+    }
+
+    .toggle-item {
+      margin-bottom: 6px;
+      padding-left: 4px;
+    }
+
+    .toggle-header {
+      font-weight: 600;
+      color: #312E81;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    a {
+      color: #4F46E5;
+      text-decoration: underline;
+    }
+
+    code {
+      background: #F1F5F9;
+      color: #0F172A;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11.5px;
+    }
+
     .bold {
       font-weight: 700;
       color: #0F172A;
@@ -206,6 +299,10 @@ export class PdfExportService {
 
     .underline {
       text-decoration: underline;
+    }
+
+    .strike {
+      text-decoration: line-through;
     }
 
     .footer {
@@ -245,7 +342,6 @@ export class PdfExportService {
 
     private renderBlockToHtml(block: any): string {
         const type = block?.type || 'paragraph';
-        const contentHtml = this.renderInlineContent(block?.content);
         const childrenHtml = Array.isArray(block?.children) && block.children.length > 0
             ? block.children.map((child: any) => this.renderBlockToHtml(child)).join('')
             : '';
@@ -253,20 +349,64 @@ export class PdfExportService {
         switch (type) {
             case 'heading': {
                 const level = block?.props?.level || 2;
+                const contentHtml = this.renderInlineContent(block?.content);
                 return `<h${level}>${contentHtml}</h${level}>${childrenHtml}`;
             }
+            case 'quote': {
+                const contentHtml = this.renderInlineContent(block?.content);
+                return `<blockquote class="doc-quote">${contentHtml}${childrenHtml}</blockquote>`;
+            }
             case 'bulletListItem': {
+                const contentHtml = this.renderInlineContent(block?.content);
                 return `<ul><li>${contentHtml}${childrenHtml}</li></ul>`;
             }
             case 'numberedListItem': {
+                const contentHtml = this.renderInlineContent(block?.content);
                 return `<ol><li>${contentHtml}${childrenHtml}</li></ol>`;
             }
             case 'checkListItem': {
+                const contentHtml = this.renderInlineContent(block?.content);
                 const isChecked = Boolean(block?.props?.checked);
                 return `<div class="check-item"><span class="check-box ${isChecked ? 'checked' : ''}"></span><span>${contentHtml}</span></div>${childrenHtml}`;
             }
+            case 'toggleListItem': {
+                const contentHtml = this.renderInlineContent(block?.content);
+                return `<div class="toggle-item"><div class="toggle-header">▸ ${contentHtml}</div>${childrenHtml ? `<div style="padding-left: 18px;">${childrenHtml}</div>` : ''}</div>`;
+            }
+            case 'codeBlock': {
+                const lang = this.escapeHtml(block?.props?.language || '');
+                const codeText = Array.isArray(block?.content)
+                    ? block.content.map((c: any) => c.text || c || '').join('')
+                    : typeof block?.content === 'string'
+                        ? block.content
+                        : '';
+                return `<pre class="doc-code"><code class="language-${lang}">${this.escapeHtml(codeText)}</code></pre>${childrenHtml}`;
+            }
+            case 'table': {
+                const rows = block?.content?.rows || block?.rows;
+                if (!Array.isArray(rows) || rows.length === 0) {
+                    return '';
+                }
+                const rowsHtml = rows
+                    .map((row: any) => {
+                        const cells = Array.isArray(row?.cells) ? row.cells : [];
+                        const cellsHtml = cells
+                            .map((cell: any) => `<td>${this.renderInlineContent(cell)}</td>`)
+                            .join('');
+                        return `<tr>${cellsHtml}</tr>`;
+                    })
+                    .join('');
+                return `<table class="doc-table"><tbody>${rowsHtml}</tbody></table>${childrenHtml}`;
+            }
+            case 'image': {
+                const url = this.escapeHtml(block?.props?.url || '');
+                const caption = this.escapeHtml(block?.props?.caption || '');
+                if (!url) return '';
+                return `<figure class="doc-figure"><img src="${url}" alt="${caption}" />${caption ? `<figcaption>${caption}</figcaption>` : ''}</figure>${childrenHtml}`;
+            }
             case 'paragraph':
             default: {
+                const contentHtml = this.renderInlineContent(block?.content);
                 if (!contentHtml.trim() && !childrenHtml) {
                     return '';
                 }
@@ -282,6 +422,11 @@ export class PdfExportService {
         if (Array.isArray(content)) {
             return content
                 .map((item) => {
+                    if (typeof item === 'string') return this.escapeHtml(item);
+                    if (item?.type === 'link') {
+                        const linkText = this.renderInlineContent(item.content) || this.escapeHtml(item.href || '#');
+                        return `<a href="${this.escapeHtml(item.href || '#')}" target="_blank">${linkText}</a>`;
+                    }
                     const text = this.escapeHtml(item?.text || '');
                     const styles = item?.styles || {};
                     let wrapped = text;
@@ -295,13 +440,26 @@ export class PdfExportService {
                     if (styles.underline) {
                         wrapped = `<span class="underline">${wrapped}</span>`;
                     }
+                    if (styles.strike) {
+                        wrapped = `<span class="strike">${wrapped}</span>`;
+                    }
+                    if (styles.code) {
+                        wrapped = `<code>${wrapped}</code>`;
+                    }
                     if (styles.textColor && styles.textColor !== 'default') {
                         wrapped = `<span style="color: ${this.escapeHtml(styles.textColor)}">${wrapped}</span>`;
+                    }
+                    if (styles.backgroundColor && styles.backgroundColor !== 'default') {
+                        wrapped = `<span style="background-color: ${this.escapeHtml(styles.backgroundColor)}">${wrapped}</span>`;
                     }
 
                     return wrapped;
                 })
                 .join('');
+        }
+
+        if (typeof content === 'object' && content?.text) {
+            return this.escapeHtml(content.text);
         }
 
         return '';

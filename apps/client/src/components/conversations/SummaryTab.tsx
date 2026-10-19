@@ -1,22 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import {
   Sparkles,
   BookOpen,
   FileUp,
   Lightbulb,
-  FileText,
   CheckCircle2,
   AlertCircle,
   X,
 } from "lucide-react";
 import { DocumentItem, CreateSummaryRequest } from "@/types";
 import { useSummaries } from "@/hooks/useSummaries";
+import { useFocusMode } from "@/components/layout";
 import SummaryConfigModal from "./SummaryConfigModal";
 import SummarySkeleton from "./SummarySkeleton";
 import SummaryToolbar from "./SummaryToolbar";
+import SummaryListView from "./SummaryListView";
 import SummaryTtsPlayer from "./SummaryTtsPlayer";
 
 // Import SummaryEditor dynamic với SSR = false để tương thích an toàn với Next.js
@@ -36,6 +37,8 @@ export interface SummaryTabProps {
   className?: string;
 }
 
+const ZOOM_STEPS = [75, 90, 100, 115, 130, 150, 175];
+
 export default function SummaryTab({
   conversationId,
   documents = [],
@@ -43,8 +46,16 @@ export default function SummaryTab({
   onInputText,
   className = "",
 }: SummaryTabProps) {
+  // Chế độ xem: 'list' (tổng quan danh sách) hoặc 'detail' (xem chi tiết editor)
+  const [viewMode, setViewMode] = useState<"list" | "detail">("list");
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isTtsOpen, setIsTtsOpen] = useState(false);
+
+  // Zoom state
+  const [zoomPercent, setZoomPercent] = useState<number>(100);
+
+  // Focus Mode (Chế độ tập trung / Mở rộng không gian hiển thị giống DocumentsTab)
+  const { isFocusMode, toggleFocusMode, setFocusMode, setIsViewingDocument } = useFocusMode();
 
   const {
     summaries,
@@ -53,18 +64,56 @@ export default function SummaryTab({
     setSelectedSummaryId,
     isLoading: isSummariesLoading,
     isGenerating,
-    isRefining,
     isExportingPdf,
     autoSaveStatus,
     errorMessage,
     clearError,
     createSummary,
     autoSaveContent,
-    refineSummary,
     exportPdf,
     renameSummary,
     deleteSummary,
   } = useSummaries(conversationId);
+
+  // Đồng bộ trạng thái xem chi tiết tóm tắt với FocusModeContext để tối ưu layout Box-in-box
+  useEffect(() => {
+    const isViewing = viewMode === "detail" && Boolean(activeSummary);
+    setIsViewingDocument(isViewing);
+    return () => {
+      setIsViewingDocument(false);
+    };
+  }, [viewMode, activeSummary, setIsViewingDocument]);
+
+  // Nhấn phím Escape để thoát Chế độ tập trung (Focus Mode)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFocusMode) {
+        setFocusMode(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFocusMode, setFocusMode]);
+
+  // Zoom handlers
+  const handleZoomIn = () => {
+    setZoomPercent((prev) => {
+      const next = ZOOM_STEPS.find((step) => step > prev);
+      return next ?? prev;
+    });
+  };
+
+  const handleZoomOut = () => {
+    setZoomPercent((prev) => {
+      const reversed = [...ZOOM_STEPS].reverse();
+      const prevStep = reversed.find((step) => step < prev);
+      return prevStep ?? prev;
+    });
+  };
+
+  const handleZoomReset = () => {
+    setZoomPercent(100);
+  };
 
   // Lọc tài liệu đã xử lý thành công
   const readyDocs = documents.filter((d) => d.ocr_status === "done");
@@ -75,9 +124,36 @@ export default function SummaryTab({
   const handleStartSummarize = async (request: CreateSummaryRequest) => {
     setIsConfigModalOpen(false);
     try {
-      await createSummary(request);
+      const created = await createSummary(request);
+      if (created) {
+        // Tự động điều hướng đến thẳng tóm tắt vừa tạo
+        setSelectedSummaryId(created.id);
+        setViewMode("detail");
+      }
     } catch (err) {
       // Error đã được lưu trong errorMessage của hook
+    }
+  };
+
+  // Click vào 1 bản tóm tắt từ danh sách
+  const handleSelectSummaryFromList = (summaryId: string) => {
+    setSelectedSummaryId(summaryId);
+    setViewMode("detail");
+  };
+
+  // Quay lại danh sách tổng quan
+  const handleBackToList = () => {
+    setFocusMode(false);
+    setViewMode("list");
+  };
+
+  // Xóa tóm tắt
+  const handleDeleteSummary = async (summaryId: string) => {
+    await deleteSummary(summaryId);
+    // Nếu xóa tóm tắt đang xem hoặc không còn tóm tắt nào thì quay lại danh sách
+    if (summaries.length <= 1) {
+      setFocusMode(false);
+      setViewMode("list");
     }
   };
 
@@ -99,73 +175,118 @@ export default function SummaryTab({
     );
   }
 
-  // 3. Trạng thái ĐÃ CÓ bản tóm tắt -> Hiển thị BlockNote Editor View
-  if (activeSummary) {
+  // 3. Trạng thái ĐÃ CÓ các bản tóm tắt
+  if (summaries.length > 0) {
+    // 3A. Chế độ xem Chi tiết (Detail / Editor View)
+    if (viewMode === "detail" && activeSummary) {
+      return (
+        <div
+          className={`flex w-full flex-1 flex-col bg-white overflow-hidden transition-all duration-300 ${
+            isFocusMode
+              ? "h-full rounded-none border-0 shadow-none"
+              : `rounded-2xl sm:rounded-3xl border border-gray-200/80 shadow-2xs ${className}`
+          }`}
+        >
+          {/* Error notification banner if any */}
+          {errorMessage && (
+            <div className="flex items-center justify-between gap-2 bg-rose-50 px-4 py-2 text-xs text-rose-700 border-b border-rose-100">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                <span>{errorMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={clearError}
+                className="text-rose-500 hover:text-rose-800 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Header Toolbar tinh gọn */}
+          <SummaryToolbar
+            summaries={summaries}
+            activeSummary={activeSummary}
+            onSelectSummary={(id) => {
+              setSelectedSummaryId(id);
+              setViewMode("detail");
+            }}
+            onBackToList={handleBackToList}
+            onOpenCreateModal={() => setIsConfigModalOpen(true)}
+            onToggleTts={() => setIsTtsOpen(!isTtsOpen)}
+            isTtsOpen={isTtsOpen}
+            onExportPdf={exportPdf}
+            isExportingPdf={isExportingPdf}
+            onRenameSummary={renameSummary}
+            onDeleteSummary={handleDeleteSummary}
+            autoSaveStatus={autoSaveStatus}
+            zoomPercent={zoomPercent}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onZoomReset={handleZoomReset}
+            isFocusMode={isFocusMode}
+            onToggleFocusMode={toggleFocusMode}
+          />
+
+          {/* Web Speech API TTS Player Bar nếu đang mở */}
+          {isTtsOpen && (
+            <div className="p-3 border-b border-indigo-100 bg-indigo-50/40">
+              <SummaryTtsPlayer
+                blocks={activeSummary.content_json}
+                title={activeSummary.title}
+                isOpen={isTtsOpen}
+                onClose={() => setIsTtsOpen(false)}
+              />
+            </div>
+          )}
+
+          {/* Vùng hiển thị Nội dung Tóm tắt - Chiếm tối đa không gian */}
+          <div className="relative flex flex-1 flex-col overflow-hidden">
+            <SummaryEditor
+              summaryId={activeSummary.id}
+              initialContent={activeSummary.content_json}
+              onChange={(blocks) => autoSaveContent(activeSummary.id, blocks)}
+              zoomPercent={zoomPercent}
+            />
+          </div>
+
+          {/* Modal cấu hình khi muốn tạo thêm bản tóm tắt */}
+          <SummaryConfigModal
+            isOpen={isConfigModalOpen}
+            onClose={() => setIsConfigModalOpen(false)}
+            onSubmit={handleStartSummarize}
+            documents={documents}
+            isSubmitting={isGenerating}
+          />
+        </div>
+      );
+    }
+
+    // 3B. Chế độ xem Danh sách Tổng quan (List View)
     return (
-      <div className={`flex w-full flex-1 flex-col rounded-2xl sm:rounded-3xl border border-gray-200/80 bg-white shadow-2xs overflow-hidden ${className}`}>
-        {/* Error notification banner if any */}
+      <div className={`flex w-full flex-1 flex-col ${className}`}>
         {errorMessage && (
-          <div className="flex items-center justify-between gap-2 bg-rose-50 px-4 py-2.5 text-xs text-rose-700 border-b border-rose-100">
+          <div className="mb-4 flex items-center justify-between gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-xs text-rose-700 border border-rose-200">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+              <AlertCircle className="h-4 w-4 text-rose-600" />
               <span>{errorMessage}</span>
             </div>
-            <button
-              type="button"
-              onClick={clearError}
-              className="text-rose-500 hover:text-rose-800 cursor-pointer"
-            >
-              <X className="h-4 w-4" />
+            <button type="button" onClick={clearError}>
+              <X className="h-4 w-4 text-rose-500" />
             </button>
           </div>
         )}
 
-        {/* Post-actions Toolbar */}
-        <SummaryToolbar
+        <SummaryListView
           summaries={summaries}
-          activeSummary={activeSummary}
-          onSelectSummary={setSelectedSummaryId}
-          onOpenCreateModal={() => setIsConfigModalOpen(true)}
-          onToggleTts={() => setIsTtsOpen(!isTtsOpen)}
-          isTtsOpen={isTtsOpen}
+          onSelectSummary={handleSelectSummaryFromList}
+          onCreateNew={() => setIsConfigModalOpen(true)}
+          onRenameSummary={renameSummary}
+          onDeleteSummary={handleDeleteSummary}
           onExportPdf={exportPdf}
           isExportingPdf={isExportingPdf}
-          onRefineSummary={refineSummary}
-          isRefining={isRefining}
-          onRenameSummary={renameSummary}
-          onDeleteSummary={deleteSummary}
-          autoSaveStatus={autoSaveStatus}
         />
-
-        {/* Web Speech API TTS Player Bar */}
-        {isTtsOpen && (
-          <div className="p-3 border-b border-indigo-100 bg-indigo-50/40">
-            <SummaryTtsPlayer
-              blocks={activeSummary.content_json}
-              title={activeSummary.title}
-              isOpen={isTtsOpen}
-              onClose={() => setIsTtsOpen(false)}
-            />
-          </div>
-        )}
-
-        {/* Active BlockNote Editor Area */}
-        <div className="relative flex flex-1 flex-col overflow-hidden">
-          {isRefining && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/75 backdrop-blur-2xs">
-              <div className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-lg">
-                <Sparkles className="h-4 w-4 animate-spin" />
-                <span>AI đang tinh chỉnh lại bản tóm tắt...</span>
-              </div>
-            </div>
-          )}
-
-          <SummaryEditor
-            summaryId={activeSummary.id}
-            initialContent={activeSummary.content_json}
-            onChange={(blocks) => autoSaveContent(activeSummary.id, blocks)}
-          />
-        </div>
 
         {/* Modal cấu hình khi muốn tạo thêm bản tóm tắt */}
         <SummaryConfigModal

@@ -16,11 +16,7 @@ export interface SummaryBlock {
     id: string;
     type: string;
     props?: Record<string, any>;
-    content?: Array<{
-        type: string;
-        text: string;
-        styles?: Record<string, any>;
-    }>;
+    content?: any;
     children?: SummaryBlock[];
 }
 
@@ -161,18 +157,36 @@ export class GeminiSummaryService {
             `    }\n` +
             `  ]\n` +
             `}\n\n` +
-            `CÁC LOẠI BLOCK HỖ TRỢ:\n` +
-            `- "heading": với props: { "level": 1 | 2 | 3 }\n` +
-            `- "paragraph": đoạn văn xuôi\n` +
-            `- "bulletListItem": danh sách gạch đầu dòng\n` +
-            `- "numberedListItem": danh sách số thứ tự\n` +
-            `- "checkListItem": với props: { "checked": false }\n` +
-            `Trong "content", mỗi phần tử là { "type": "text", "text": string, "styles": { "bold"?: boolean, "italic"?: boolean, "underline"?: boolean } }.\n\n` +
+            `DANH SÁCH TOÀN BỘ CÁC LOẠI BLOCK MÀ BLOCKNOTE HỖ TRỢ:\n` +
+            `Bạn hãy chủ động lựa chọn và kết hợp linh hoạt những loại block phù hợp và tối ưu nhất cho bài học (không nhất thiết phải dùng hết, chỉ dùng khi thấy cần thiết):\n` +
+            `- "heading": Tiêu đề phân cấp. Props: { "level": 1 | 2 | 3, "isToggleable"?: boolean }\n` +
+            `- "paragraph": Đoạn văn diễn giải, mở đầu, tổng kết hoặc giải thích\n` +
+            `- "quote": Khối trích dẫn, nguyên lý bất biến, cảnh báo quan trọng hoặc ghi nhớ nhanh\n` +
+            `- "bulletListItem": Danh sách gạch đầu dòng các ý chính, tính chất hoặc đặc điểm\n` +
+            `- "numberedListItem": Danh sách đánh số thứ tự các bước thực hiện, quy trình hoặc thứ hạng\n` +
+            `- "checkListItem": Danh sách việc cần làm, checklist mục tiêu tự ôn luyện. Props: { "checked": false }\n` +
+            `- "toggleListItem": Mục có thể thu gọn/mở rộng (toggle), rất hữu ích cho dạng câu hỏi kèm gợi ý ẩn hoặc nội dung chi tiết mở rộng\n` +
+            `- "codeBlock": Khối code khi tóm tắt các môn lập trình, thuật toán hoặc câu lệnh. Props: { "language": "javascript" | "python" | "cpp" | "java" | "sql" | "bash" | "html" | ... }, Content: chuỗi code hoặc mảng text\n` +
+            `- "table": Bảng biểu đối chiếu, so sánh các khái niệm, bảng công thức hoặc bảng tra cứu. Cấu trúc:\n` +
+            `  "content": {\n` +
+            `    "type": "tableContent",\n` +
+            `    "rows": [\n` +
+            `      { "cells": ["Tiêu chí", "Khái niệm A", "Khái niệm B"] },\n` +
+            `      { "cells": ["Định nghĩa", "...", "..."] }\n` +
+            `    ]\n` +
+            `  }\n` +
+            `- "image": Khối hình ảnh tham khảo nếu có URL hợp lệ. Props: { "url": "https://...", "caption": "Mô tả ảnh" }\n\n` +
+            `ĐỊNH DẠNG NỘI DUNG NỘI DÒNG (Inline Content):\n` +
+            `- Văn bản có định dạng: { "type": "text", "text": "...", "styles": { "bold"?: boolean, "italic"?: boolean, "underline"?: boolean, "strike"?: boolean, "code"?: boolean, "textColor"?: string, "backgroundColor"?: string } }\n` +
+            `- Đường dẫn liên kết: { "type": "link", "content": "Tên liên kết", "href": "https://..." }\n\n` +
             `${styleInstruction}\n` +
             `${lengthInstruction}\n` +
             `${sectionInstruction}\n` +
             `${extraInstruction}\n\n` +
-            `CHÚ Ý: Trình bày khoa học, rành mạch, dùng heading để phân tầng kiến thức, bôi đậm các từ khóa/thuật ngữ quan trọng. Tuyệt đối dùng Tiếng Việt tự nhiên và chuẩn thuật ngữ học thuật.`;
+            `NGUYÊN TẮC THIẾT KẾ BẢN TÓM TẮT:\n` +
+            `1. Trình bày khoa học, đẹp mắt, phân tầng logic rõ ràng.\n` +
+            `2. Sử dụng table khi cần so sánh/đối chiếu khái niệm; dùng quote khi có định lý/lưu ý sống còn; dùng codeBlock khi có mã nguồn/câu lệnh; dùng toggleListItem khi có phần mở rộng.\n` +
+            `3. Bôi đậm các từ khóa quan trọng và dùng Tiếng Việt học thuật chuẩn xác, dễ hiểu.`;
 
         const userPrompt = `Dưới đây là nội dung tài liệu học tập:\n\n${contextText.slice(0, 100000)}\n\nHãy tạo bản tóm tắt học tập theo đúng chỉ dẫn trên.`;
 
@@ -225,7 +239,7 @@ export class GeminiSummaryService {
             `  "title": "Tiêu đề mới (hoặc giữ nguyên nếu phù hợp)",\n` +
             `  "blocks": [ ...các khối BlockNote đã được tinh chỉnh... ]\n` +
             `}\n\n` +
-            `Các loại block hợp lệ: heading (level 1|2|3), paragraph, bulletListItem, numberedListItem, checkListItem.`;
+            `Các loại block BlockNote được hỗ trợ: paragraph, heading, quote, bulletListItem, numberedListItem, checkListItem, toggleListItem, codeBlock, table, image, file.`;
 
         const userPrompt =
             `CHỈ DẪN CỦA NGƯỜI HỌC: "${instruction}"\n\n` +
@@ -309,57 +323,131 @@ export class GeminiSummaryService {
     }
 
     /**
-     * Chuẩn hóa mảng blocks
+     * Chuẩn hóa mảng blocks - Hỗ trợ toàn bộ các loại Block của BlockNote
      */
     private normalizeBlocks(rawBlocks: any[]): SummaryBlock[] {
+        const VALID_BLOCK_TYPES = [
+            'paragraph',
+            'heading',
+            'quote',
+            'bulletListItem',
+            'numberedListItem',
+            'checkListItem',
+            'toggleListItem',
+            'codeBlock',
+            'table',
+            'image',
+            'video',
+            'audio',
+            'file',
+        ];
+
         return rawBlocks.map((b) => {
-            const blockType = ['heading', 'paragraph', 'bulletListItem', 'numberedListItem', 'checkListItem'].includes(b.type)
-                ? b.type
-                : 'paragraph';
-
-            const blockId = (typeof b.id === 'string' && b.id.trim()) ? b.id : randomUUID();
-
-            let contentArray: any[] = [];
-            if (Array.isArray(b.content)) {
-                contentArray = b.content.map((c: any) => {
-                    if (typeof c === 'string') {
-                        return { type: 'text', text: c, styles: {} };
-                    }
-                    return {
-                        type: 'text',
-                        text: typeof c?.text === 'string' ? c.text : '',
-                        styles: typeof c?.styles === 'object' && c.styles ? c.styles : {},
-                    };
-                });
-            } else if (typeof b.content === 'string') {
-                contentArray = [{ type: 'text', text: b.content, styles: {} }];
-            } else if (typeof b.text === 'string') {
-                contentArray = [{ type: 'text', text: b.text, styles: {} }];
-            }
-
-            if (contentArray.length === 0) {
-                contentArray = [{ type: 'text', text: '', styles: {} }];
-            }
+            const blockType = VALID_BLOCK_TYPES.includes(b?.type) ? b.type : 'paragraph';
+            const blockId = (typeof b?.id === 'string' && b.id.trim()) ? b.id : randomUUID();
 
             const props: Record<string, any> = {
-                textColor: 'default',
-                backgroundColor: 'default',
-                textAlignment: 'left',
-                ...(typeof b.props === 'object' && b.props ? b.props : {}),
+                ...(typeof b?.props === 'object' && b?.props ? b.props : {}),
             };
 
             if (blockType === 'heading' && !props.level) {
                 props.level = 2;
             }
 
+            // Xử lý nội dung (content) theo từng loại block
+            let content: any = undefined;
+
+            if (blockType === 'table') {
+                // Table block format trong BlockNote
+                if (b?.content && typeof b.content === 'object' && Array.isArray(b.content.rows)) {
+                    content = {
+                        type: 'tableContent',
+                        rows: b.content.rows.map((row: any) => ({
+                            cells: Array.isArray(row?.cells)
+                                ? row.cells.map((cell: any) => this.normalizeTableCell(cell))
+                                : [],
+                        })),
+                    };
+                } else if (Array.isArray(b?.rows)) {
+                    content = {
+                        type: 'tableContent',
+                        rows: b.rows.map((row: any) => ({
+                            cells: Array.isArray(row?.cells)
+                                ? row.cells.map((cell: any) => this.normalizeTableCell(cell))
+                                : [],
+                        })),
+                    };
+                } else {
+                    content = {
+                        type: 'tableContent',
+                        rows: [],
+                    };
+                }
+            } else if (['image', 'video', 'audio', 'file'].includes(blockType)) {
+                // Media blocks lưu thông tin trong props (url, caption, name)
+                content = undefined;
+            } else {
+                // Text-based blocks: paragraph, heading, quote, bulletListItem, numberedListItem, checkListItem, toggleListItem, codeBlock
+                if (Array.isArray(b?.content)) {
+                    content = b.content.map((item: any) => this.normalizeInlineItem(item));
+                } else if (typeof b?.content === 'string') {
+                    content = [{ type: 'text', text: b.content, styles: {} }];
+                } else if (typeof b?.text === 'string') {
+                    content = [{ type: 'text', text: b.text, styles: {} }];
+                } else {
+                    content = [{ type: 'text', text: '', styles: {} }];
+                }
+            }
+
             return {
                 id: blockId,
                 type: blockType,
                 props,
-                content: contentArray,
-                children: Array.isArray(b.children) ? this.normalizeBlocks(b.children) : [],
+                content,
+                children: Array.isArray(b?.children) ? this.normalizeBlocks(b.children) : [],
             };
         });
+    }
+
+    /**
+     * Chuẩn hóa phần tử nội dòng (Inline Item: text hoặc link)
+     */
+    private normalizeInlineItem(item: any): any {
+        if (typeof item === 'string') {
+            return { type: 'text', text: item, styles: {} };
+        }
+        if (item?.type === 'link') {
+            return {
+                type: 'link',
+                content: typeof item.content === 'string'
+                    ? [{ type: 'text', text: item.content, styles: {} }]
+                    : Array.isArray(item.content)
+                        ? item.content.map((c: any) => (typeof c === 'string' ? { type: 'text', text: c, styles: {} } : c))
+                        : [{ type: 'text', text: String(item.content || ''), styles: {} }],
+                href: item.href || '#',
+            };
+        }
+        return {
+            type: 'text',
+            text: typeof item?.text === 'string' ? item.text : '',
+            styles: typeof item?.styles === 'object' && item.styles ? item.styles : {},
+        };
+    }
+
+    /**
+     * Chuẩn hóa ô bảng (Table Cell)
+     */
+    private normalizeTableCell(cell: any): any[] {
+        if (Array.isArray(cell)) {
+            return cell.map((item) => this.normalizeInlineItem(item));
+        }
+        if (typeof cell === 'string') {
+            return [{ type: 'text', text: cell, styles: {} }];
+        }
+        if (cell && typeof cell === 'object') {
+            return [this.normalizeInlineItem(cell)];
+        }
+        return [{ type: 'text', text: '', styles: {} }];
     }
 
     /**
@@ -369,9 +457,37 @@ export class GeminiSummaryService {
         const lines = text.split('\n');
         const blocks: SummaryBlock[] = [];
         let title = 'Bản Tóm Tắt Học Tập';
+        let inCodeBlock = false;
+        let codeContent = '';
+        let codeLang = 'javascript';
 
         for (const line of lines) {
             const trimmed = line.trim();
+
+            if (trimmed.startsWith('```')) {
+                if (inCodeBlock) {
+                    blocks.push({
+                        id: randomUUID(),
+                        type: 'codeBlock',
+                        props: { language: codeLang },
+                        content: [{ type: 'text', text: codeContent.trim(), styles: {} }],
+                        children: [],
+                    });
+                    inCodeBlock = false;
+                    codeContent = '';
+                } else {
+                    inCodeBlock = true;
+                    codeLang = trimmed.replace(/^```/, '').trim() || 'javascript';
+                    codeContent = '';
+                }
+                continue;
+            }
+
+            if (inCodeBlock) {
+                codeContent += line + '\n';
+                continue;
+            }
+
             if (!trimmed) continue;
 
             if (trimmed.startsWith('# ')) {
@@ -397,6 +513,14 @@ export class GeminiSummaryService {
                     type: 'heading',
                     props: { level: 3 },
                     content: [{ type: 'text', text: trimmed.replace(/^###\s+/, ''), styles: {} }],
+                    children: [],
+                });
+            } else if (trimmed.startsWith('> ')) {
+                blocks.push({
+                    id: randomUUID(),
+                    type: 'quote',
+                    props: {},
+                    content: [{ type: 'text', text: trimmed.replace(/^>\s+/, ''), styles: {} }],
                     children: [],
                 });
             } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {

@@ -15,6 +15,7 @@ interface SummaryEditorProps {
   initialContent: any[];
   onChange: (blocks: any[]) => void;
   editable?: boolean;
+  zoomPercent?: number;
 }
 
 function InnerBlockNoteEditor({
@@ -22,6 +23,7 @@ function InnerBlockNoteEditor({
   initialContent,
   onChange,
   editable = true,
+  zoomPercent = 100,
 }: SummaryEditorProps) {
   // Chuẩn bị initial content an toàn cho BlockNote
   const validInitialBlocks = React.useMemo<PartialBlock[] | undefined>(() => {
@@ -56,7 +58,7 @@ function InnerBlockNoteEditor({
     };
   }, [editor]);
 
-  // Cập nhật blocks khi initialContent thay đổi do AI Refine (cùng summaryId)
+  // Cập nhật blocks khi initialContent thay đổi
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
@@ -68,19 +70,27 @@ function InnerBlockNoteEditor({
       try {
         editor.replaceBlocks(editor.document, initialContent as PartialBlock[]);
       } catch (err) {
-        console.warn("Lỗi đồng bộ blocks sau khi AI tinh chỉnh:", err);
+        console.warn("Lỗi đồng bộ blocks editor:", err);
       }
     }
   }, [editor, initialContent]);
 
   return (
-    <div className="w-full flex-1 bg-white min-h-[450px] p-4 sm:p-6 overflow-y-auto">
-      <BlockNoteView
-        editor={editor}
-        editable={editable}
-        theme="light"
-        className="prose prose-indigo max-w-none focus:outline-hidden"
-      />
+    <div className="w-full flex-1 bg-white min-h-[450px] p-4 sm:p-6 lg:p-8 overflow-y-auto">
+      <div
+        className="w-full origin-top-left transition-[zoom,font-size] duration-150"
+        style={{
+          zoom: `${zoomPercent}%`,
+          fontSize: `${(zoomPercent / 100) * 16}px`,
+        }}
+      >
+        <BlockNoteView
+          editor={editor}
+          editable={editable}
+          theme="light"
+          className="prose prose-indigo max-w-none focus:outline-hidden"
+        />
+      </div>
     </div>
   );
 }

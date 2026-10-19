@@ -40,11 +40,39 @@ export default function SummaryTtsPlayer({
 
     const extractBlockText = (b: any) => {
       if (!b) return;
-      if (Array.isArray(b.content)) {
-        const text = b.content.map((c: any) => c.text || "").join("").trim();
+
+      if (b.type === "table" && (b.content?.rows || b.rows)) {
+        const rows = b.content?.rows || b.rows;
+        if (Array.isArray(rows)) {
+          rows.forEach((row: any) => {
+            if (Array.isArray(row?.cells)) {
+              row.cells.forEach((cell: any) => {
+                if (Array.isArray(cell)) {
+                  const cellText = cell.map((c: any) => c.text || c || "").join("").trim();
+                  if (cellText) parts.push(cellText);
+                } else if (typeof cell === "string" && cell.trim()) {
+                  parts.push(cell.trim());
+                }
+              });
+            }
+          });
+        }
+      } else if (Array.isArray(b.content)) {
+        const text = b.content
+          .map((c: any) => {
+            if (typeof c === "string") return c;
+            if (c?.type === "link") {
+              return typeof c.content === "string" ? c.content : "";
+            }
+            return c?.text || "";
+          })
+          .join("")
+          .trim();
         if (text) parts.push(text);
       } else if (typeof b.content === "string" && b.content.trim()) {
         parts.push(b.content.trim());
+      } else if (b.props?.caption) {
+        parts.push(b.props.caption);
       }
 
       if (Array.isArray(b.children)) {
