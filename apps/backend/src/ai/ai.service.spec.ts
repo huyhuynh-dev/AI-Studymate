@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AiService } from './ai.service.js';
-import { GeminiEmbeddingService } from './gemini-embedding.service.js';
+// [TẠM THỜI] Comment GeminiEmbeddingService để dùng NomicEmbeddingService
+// import { GeminiEmbeddingService } from './gemini-embedding.service.js';
+import { NomicEmbeddingService } from './nomic-embedding.service.js';
 import { GeminiVisionService } from './gemini-vision.service.js';
+import { GeminiSummaryService } from './gemini-summary.service.js';
 
 describe('AiService', () => {
   let service: AiService;
@@ -14,8 +17,17 @@ describe('AiService', () => {
           provide: GeminiVisionService,
           useValue: {},
         },
+        // [TẠM THỜI] Comment GeminiEmbeddingService
+        // {
+        //   provide: GeminiEmbeddingService,
+        //   useValue: {},
+        // },
         {
-          provide: GeminiEmbeddingService,
+          provide: NomicEmbeddingService,
+          useValue: {},
+        },
+        {
+          provide: GeminiSummaryService,
           useValue: {},
         },
       ],

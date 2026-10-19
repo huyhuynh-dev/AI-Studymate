@@ -169,7 +169,7 @@ export class DocumentsEmbedProcessorService
         return;
       }
 
-      // Bước 3: Gọi Gemini Embedding API (tự động phân nhóm Content[] an toàn về token & quota)
+      // Bước 3: Gọi Embedding API (Tạm thời chuyển sang dùng NomicEmbeddingService qua AiService, GeminiEmbeddingService đã comment)
       const chunkTexts = chunks.map((c) => c.content);
       const embeddings = await this.aiService.embedBatch(chunkTexts);
 

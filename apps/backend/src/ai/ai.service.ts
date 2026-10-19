@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import {
-  GeminiEmbeddingService,
+  // [TẠM THỜI] Comment GeminiEmbeddingService để dùng NomicEmbeddingService (Ollama local) tránh giới hạn API
+  // GeminiEmbeddingService,
   EmbeddingResult,
 } from './gemini-embedding.service.js';
+import { NomicEmbeddingService } from './nomic-embedding.service.js';
 import { GeminiVisionService } from './gemini-vision.service.js';
 import {
   GeminiSummaryService,
@@ -14,7 +16,9 @@ import {
 export class AiService {
   constructor(
     private readonly geminiVisionService: GeminiVisionService,
-    private readonly geminiEmbeddingService: GeminiEmbeddingService,
+    // [TẠM THỜI] Chuyển từ GeminiEmbeddingService sang NomicEmbeddingService
+    // private readonly geminiEmbeddingService: GeminiEmbeddingService,
+    private readonly nomicEmbeddingService: NomicEmbeddingService,
     private readonly geminiSummaryService: GeminiSummaryService,
   ) {}
 
@@ -23,11 +27,15 @@ export class AiService {
   }
 
   embedSingle(text: string): Promise<number[]> {
-    return this.geminiEmbeddingService.embedSingle(text);
+    // [TẠM THỜI] Comment GeminiEmbeddingService, chuyển sang NomicEmbeddingService
+    // return this.geminiEmbeddingService.embedSingle(text);
+    return this.nomicEmbeddingService.embedSingle(text);
   }
 
   embedBatch(texts: string[]): Promise<EmbeddingResult[]> {
-    return this.geminiEmbeddingService.embedBatch(texts);
+    // [TẠM THỜI] Comment GeminiEmbeddingService, chuyển sang NomicEmbeddingService
+    // return this.geminiEmbeddingService.embedBatch(texts);
+    return this.nomicEmbeddingService.embedBatch(texts);
   }
 
   generateSummary(options: GenerateSummaryOptions): Promise<SummaryResult> {
