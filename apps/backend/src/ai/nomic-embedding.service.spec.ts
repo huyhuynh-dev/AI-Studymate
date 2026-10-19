@@ -1,4 +1,5 @@
-import ollama from 'ollama';
+import { ConfigService } from '@nestjs/config';
+import { Ollama } from 'ollama';
 
 import {
   NOMIC_EMBEDDING_DIMENSIONS,
@@ -9,7 +10,11 @@ describe('NomicEmbeddingService', () => {
   let service: NomicEmbeddingService;
 
   beforeEach(() => {
-    service = new NomicEmbeddingService();
+    const configService = {
+      get: vi.fn().mockReturnValue('http://127.0.0.1:11434'),
+    } as unknown as ConfigService;
+
+    service = new NomicEmbeddingService(configService);
   });
 
   afterEach(() => {
@@ -21,7 +26,9 @@ describe('NomicEmbeddingService', () => {
       Array.from({ length: NOMIC_EMBEDDING_DIMENSIONS }, () => 1),
       Array.from({ length: NOMIC_EMBEDDING_DIMENSIONS }, () => 2),
     ];
-    const embed = vi.spyOn(ollama, 'embed').mockResolvedValue({ embeddings });
+    const embed = vi
+      .spyOn(Ollama.prototype, 'embed')
+      .mockResolvedValue({ embeddings });
 
     const result = await service.embedBatch(['first', 'second']);
 
@@ -36,14 +43,14 @@ describe('NomicEmbeddingService', () => {
   });
 
   it('returns an empty result without calling Ollama for an empty batch', async () => {
-    const embed = vi.spyOn(ollama, 'embed');
+    const embed = vi.spyOn(Ollama.prototype, 'embed');
 
     await expect(service.embedBatch([])).resolves.toEqual([]);
     expect(embed).not.toHaveBeenCalled();
   });
 
   it('rejects vectors with an unexpected dimension', async () => {
-    vi.spyOn(ollama, 'embed').mockResolvedValue({
+    vi.spyOn(Ollama.prototype, 'embed').mockResolvedValue({
       embeddings: [Array.from({ length: 3 }, () => 1)],
     });
 

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import ollama from 'ollama';
+import { ConfigService } from '@nestjs/config';
+import { Ollama } from 'ollama';
 
 import { EmbeddingResult } from './gemini-embedding.service.js';
 
@@ -11,10 +12,17 @@ export class NomicEmbeddingService {
   private readonly logger = new Logger(NomicEmbeddingService.name);
   private readonly modelName = NOMIC_EMBEDDING_MODEL;
   private readonly dimensions = NOMIC_EMBEDDING_DIMENSIONS;
+  private readonly ollama: Ollama;
 
-  constructor() {
+  constructor(private readonly configService: ConfigService) {
+    const host =
+      this.configService.get<string>('OLLAMA_SERVER_URL') ??
+      'http://127.0.0.1:11434';
+
+    this.ollama = new Ollama({ host });
+
     this.logger.log(
-      `NomicEmbeddingService đã khởi tạo [model: ${this.modelName}, dims: ${this.dimensions}, host: http://localhost:11434]`,
+      `NomicEmbeddingService đã khởi tạo [model: ${this.modelName}, dims: ${this.dimensions}, host: ${host}]`,
     );
   }
 
@@ -33,7 +41,7 @@ export class NomicEmbeddingService {
 
     let response;
     try {
-      response = await ollama.embed({
+      response = await this.ollama.embed({
         model: this.modelName,
         input: texts,
       });
