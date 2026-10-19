@@ -9,5 +9,6 @@ allowBuilds:
   msgpackr-extract: set this to true or false
   prisma: true
   protobufjs: set this to true or false
+  puppeteer: set this to true or false
   unrs-resolver: true
   workerd: true

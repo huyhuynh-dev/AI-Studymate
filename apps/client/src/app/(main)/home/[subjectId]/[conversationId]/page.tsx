@@ -153,6 +153,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
           {activeTab === "summary" && (
             <SummaryTab
+              conversationId={conversationId}
+              documents={documents}
               onUploadDocument={handleGoToDocuments}
               className="w-full flex-1"
             />

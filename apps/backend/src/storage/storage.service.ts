@@ -65,6 +65,16 @@ export class StorageService {
         return await getSignedUrl(this.s3Client, command, { expiresIn });
     }
 
+    async uploadObjectBuffer(key: string, buffer: Buffer, contentType: string): Promise<void> {
+        const command = new PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+            Body: buffer,
+            ContentType: contentType,
+        });
+        await this.s3Client.send(command);
+    }
+
     async headObject(key: string): Promise<ObjectMetadata> {
         try {
             const command = new HeadObjectCommand({
