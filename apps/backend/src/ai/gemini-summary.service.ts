@@ -29,7 +29,7 @@ export interface SummaryResult {
 export class GeminiSummaryService {
     private readonly logger = new Logger(GeminiSummaryService.name);
     private genAI: GoogleGenAI | null = null;
-    private readonly modelName = 'gemini-3.6-flash';
+    private readonly modelName = 'gemini-3.5-flash-lite';
 
     constructor(private readonly configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');

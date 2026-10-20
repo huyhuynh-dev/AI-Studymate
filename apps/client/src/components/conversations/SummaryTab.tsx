@@ -229,18 +229,6 @@ export default function SummaryTab({
             onToggleFocusMode={toggleFocusMode}
           />
 
-          {/* Web Speech API TTS Player Bar nếu đang mở */}
-          {isTtsOpen && (
-            <div className="p-3 border-b border-indigo-100 bg-indigo-50/40">
-              <SummaryTtsPlayer
-                blocks={activeSummary.content_json}
-                title={activeSummary.title}
-                isOpen={isTtsOpen}
-                onClose={() => setIsTtsOpen(false)}
-              />
-            </div>
-          )}
-
           {/* Vùng hiển thị Nội dung Tóm tắt - Chiếm tối đa không gian */}
           <div className="relative flex flex-1 flex-col overflow-hidden">
             <SummaryEditor
@@ -250,6 +238,14 @@ export default function SummaryTab({
               zoomPercent={zoomPercent}
             />
           </div>
+
+          {/* Web Speech API TTS Floating Mini-Player Pill (Nổi ở góc dưới màn hình, không đẩy layout) */}
+          <SummaryTtsPlayer
+            blocks={activeSummary.content_json}
+            title={activeSummary.title}
+            isOpen={isTtsOpen}
+            onClose={() => setIsTtsOpen(false)}
+          />
 
           {/* Modal cấu hình khi muốn tạo thêm bản tóm tắt */}
           <SummaryConfigModal
