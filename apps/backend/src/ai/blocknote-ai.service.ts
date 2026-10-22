@@ -1,12 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { google } from "@ai-sdk/google";
 import { convertToModelMessages, streamText } from "ai";
-import type { UIMessage } from "ai";
+import type { LanguageModel, UIMessage } from "ai";
 import {
     aiDocumentFormats,
     injectDocumentStateMessages,
     toolDefinitionsToToolSet,
 } from "@blocknote/xl-ai/server";
+import { getModelForTask } from "./providers/ai-provider.config.js";
 
 export const maxDuration = 30;
 export type BlocknoteToolDefinitions = Parameters<
@@ -20,12 +21,14 @@ export class BlocknoteAiService {
         toolDefinitions: BlocknoteToolDefinitions,
         abortSignal?: AbortSignal,
     ) {
+        const model = getModelForTask('BLOCKNOTE_EDITOR');
+
         const modelMessages = await convertToModelMessages(
             injectDocumentStateMessages(messages),
         );
 
         return streamText({
-            model: google('gemini-3.5-flash-lite'),
+            model: model,
             abortSignal,
             system: aiDocumentFormats.html.systemPrompt,
             messages: modelMessages,

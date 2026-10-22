@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { Job, Worker } from 'bullmq';
 import { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.service.js';
 import { DocumentChunksRepoService } from '../../repo/document-chunks-repo/document-chunks-repo.service.js';
-import { AiService } from '../../ai/ai.service.js';
+import { EmbeddingService } from '../../ai/embedding.service.js';
 import { DoclingService } from './docling.service.js';
 import {
   DOCUMENT_EMBEDDING_QUEUE_NAME,
@@ -28,7 +28,7 @@ export class DocumentsEmbedProcessorService
     private readonly configService: ConfigService,
     private readonly documentsRepo: DocumentsRepoService,
     private readonly documentChunksRepo: DocumentChunksRepoService,
-    private readonly aiService: AiService,
+    private readonly embeddingService: EmbeddingService,
     private readonly doclingService: DoclingService,
     private readonly documentsQueueService: DocumentsQueueService,
   ) {}
@@ -169,9 +169,9 @@ export class DocumentsEmbedProcessorService
         return;
       }
 
-      // Bước 3: Gọi Embedding API (Tạm thời chuyển sang dùng NomicEmbeddingService qua AiService, GeminiEmbeddingService đã comment)
+      // Bước 3: Gọi Embedding API
       const chunkTexts = chunks.map((c) => c.content);
-      const embeddings = await this.aiService.embedBatch(chunkTexts);
+      const embeddings = await this.embeddingService.embedBatch(chunkTexts);
 
       const chunksWithEmbeddings = chunks.map((chunk, idx) => ({
         chunkIndex: chunk.index,
