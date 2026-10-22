@@ -1,15 +1,23 @@
-import { ollama } from 'ollama-ai-provider-v2';
-import { embedMany, cosineSimilarity } from 'ai';
+import 'dotenv/config';
+import { readFile } from 'node:fs/promises';
+import { AiService } from './src/ai/ai.service.js';
+import { VisionService } from './src/ai/vision.service.js';
 
-const model = ollama.embeddingModel('nomic-embed-text-v2-moe:latest');
+const imagePath =
+  'C:\\Users\\huyhn\\OneDrive\\Pictures\\Screenshots\\Screenshot 2026-09-03 at 08-18-22 THÔNG TIN THỰC HIỆN BÀI THU HOẠCH SINH HOẠT CÔNG DÂN – SINH VIÊN NĂM HỌC 2026 - 2027 - 2224802010817@student.tdmu.edu.vn - Thư Đại học Thủ Dầu Một.png';
 
-const { embeddings } = await embedMany({
-    model: model,
-    values: ['sunny day at the beach', 'rainy afternoon in the city'],
-});
+try {
+  const imageBuffer = await readFile(imagePath);
+  const visionService = new VisionService(
+    new AiService(undefined!, undefined!),
+  );
+  const text = await visionService.extractTextFromImage(
+    imageBuffer,
+    'image/png',
+  );
 
-console.log(
-    `cosine similarity: ${cosineSimilarity(embeddings[0], embeddings[1])}`,
-);
-
-console.log(embeddings);
+  console.log(text);
+} catch (error) {
+  console.error(error);
+  process.exitCode = 1;
+}

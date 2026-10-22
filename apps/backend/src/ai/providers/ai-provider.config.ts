@@ -11,7 +11,10 @@ export type AiTask =
 type TaskModel = EmbeddingModel | LanguageModel;
 
 const google = createGoogleGenerativeAI({
-    apiKey: process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY,
+    apiKey:
+        process.env.GOOGLE_API_KEY ??
+        process.env.GEMINI_API_KEY ??
+        process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
 const ollamaServerUrl =
@@ -23,7 +26,7 @@ const ollama = createOllama({
 });
 
 const TASK_MODELS: Record<AiTask, TaskModel> = {
-    EMBEDDING: google.embeddingModel('gemini-embedding-2'),
+    EMBEDDING: ollama.embeddingModel('nomic-embed-text-v2-moe:latest'),
     VISION_ANALYZE: google('gemini-3.5-flash-lite'),
     SUMMARIZE: google('gemini-3.5-flash'),
     BLOCKNOTE_EDITOR: google('gemini-3.5-flash-lite'),

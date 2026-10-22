@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AiService } from './ai.service.js';
 import { EmbeddingService } from './embedding.service.js';
-import { GeminiVisionService } from './gemini-vision.service.js';
+import { VisionService } from './vision.service.js';
 import { GeminiSummaryService } from './gemini-summary.service.js';
 import { BlocknoteAiService } from './blocknote-ai.service.js';
 
@@ -9,10 +9,10 @@ import { BlocknoteAiService } from './blocknote-ai.service.js';
   providers: [
     AiService,
     EmbeddingService,
-    GeminiVisionService,
+    VisionService,
     GeminiSummaryService,
     BlocknoteAiService,
   ],
-  exports: [AiService, EmbeddingService, GeminiSummaryService],
+  exports: [AiService, EmbeddingService, VisionService, GeminiSummaryService],
 })
 export class AiModule { }

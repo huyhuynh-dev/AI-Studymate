@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { Job, Worker } from 'bullmq';
 import { StorageService } from '../../storage/storage.service.js';
 import { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.service.js';
-import { AiService } from '../../ai/ai.service.js';
+import { VisionService } from '../../ai/vision.service.js';
 import { DoclingService } from './docling.service.js';
 import {
   DOCUMENT_QUEUE_NAME,
@@ -27,7 +27,7 @@ export class DocumentsProcessorService
     private readonly configService: ConfigService,
     private readonly storageService: StorageService,
     private readonly documentsRepo: DocumentsRepoService,
-    private readonly aiService: AiService,
+    private readonly visionService: VisionService,
     private readonly doclingService: DoclingService,
     private readonly documentsQueueService: DocumentsQueueService,
   ) {}
@@ -122,7 +122,7 @@ export class DocumentsProcessorService
         if (mimeType === 'application/pdf') {
           extractedText = await this.extractPdfText(buffer);
         } else if (mimeType.startsWith('image/')) {
-          extractedText = await this.aiService.extractTextFromImage(
+          extractedText = await this.visionService.extractTextFromImage(
             buffer,
             mimeType,
           );

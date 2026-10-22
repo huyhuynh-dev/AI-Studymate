@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { embedMany as aiEmbedMany } from 'ai';
-import { GeminiVisionService } from './gemini-vision.service.js';
 import {
   GeminiSummaryService,
   GenerateSummaryOptions,
@@ -12,19 +11,14 @@ import {
   BlocknoteToolDefinitions,
 } from './blocknote-ai.service.js';
 import { getModelForTask } from './providers/ai-provider.config.js';
-import { google } from 'googleapis';
+import { generateText as aiGenerateText } from 'ai';
 
 @Injectable()
 export class AiService {
   constructor(
-    private readonly geminiVisionService: GeminiVisionService,
     private readonly geminiSummaryService: GeminiSummaryService,
     private readonly blocknoteAiService: BlocknoteAiService,
   ) { }
-
-  extractTextFromImage(imageBuffer: Buffer, mimeType: string): Promise<string> {
-    return this.geminiVisionService.extractTextFromImage(imageBuffer, mimeType);
-  }
 
   embedMany(values: string[]) {
     return aiEmbedMany({
@@ -35,6 +29,15 @@ export class AiService {
           outputDimensionality: 768,
         },
       },
+    });
+  }
+
+  generateText(
+    messages: NonNullable<Parameters<typeof aiGenerateText>[0]['messages']>,
+  ) {
+    return aiGenerateText({
+      model: getModelForTask('VISION_ANALYZE'),
+      messages,
     });
   }
 
