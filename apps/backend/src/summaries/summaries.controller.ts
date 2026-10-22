@@ -16,6 +16,7 @@ import { Logger } from '@nestjs/common';
 import type { Request } from 'express';
 import type { Response } from 'express';
 import { pipeUIMessageStreamToResponse } from 'ai';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { SummariesService } from './summaries.service.js';
 import { AiService } from '../ai/ai.service.js';
@@ -102,6 +103,7 @@ export class SummariesController {
     /**
      * Stream BlockNote AI actions for a summary editor.
      */
+    @Throttle({ default: { limit: 15, ttl: 60000 } })
     @Post('summaries/:id/ai-actions')
     async executeBlocknoteAiActions(
         @Req() req: Request,
@@ -117,12 +119,21 @@ export class SummariesController {
 
         this.logger.log(`BlockNote AI request received: ${JSON.stringify(requestInfo)}`);
 
+        const abortController = new AbortController();
+        req.on('close', () => {
+            if (!response.writableEnded) {
+                this.logger.warn(`Client disconnected, aborting BlockNote AI stream (${id})`);
+                abortController.abort();
+            }
+        });
+
         try {
             await this.summariesService.getSummaryById(this.getUserId(req), id);
 
             const result = await this.aiService.executeBlocknoteEditorAiActions(
                 dto.messages,
                 dto.toolDefinitions,
+                abortController.signal,
             );
 
             await pipeUIMessageStreamToResponse({

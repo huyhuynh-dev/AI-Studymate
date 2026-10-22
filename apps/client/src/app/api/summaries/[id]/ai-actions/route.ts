@@ -33,6 +33,7 @@ export async function POST(
         },
         body: await request.text(),
         cache: 'no-store',
+        signal: request.signal,
       },
     );
 

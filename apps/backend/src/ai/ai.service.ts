@@ -55,7 +55,12 @@ export class AiService {
   executeBlocknoteEditorAiActions(
     messages: UIMessage[],
     toolDefinitions: BlocknoteToolDefinitions,
+    abortSignal?: AbortSignal,
   ) {
-    return this.blocknoteAiService.executeBlocknoteEditorAiActions(messages, toolDefinitions);
+    return this.blocknoteAiService.executeBlocknoteEditorAiActions(
+      messages,
+      toolDefinitions,
+      abortSignal,
+    );
   }
 }

@@ -18,6 +18,7 @@ export class BlocknoteAiService {
     async executeBlocknoteEditorAiActions(
         messages: UIMessage[],
         toolDefinitions: BlocknoteToolDefinitions,
+        abortSignal?: AbortSignal,
     ) {
         const modelMessages = await convertToModelMessages(
             injectDocumentStateMessages(messages),
@@ -25,6 +26,7 @@ export class BlocknoteAiService {
 
         return streamText({
             model: google('gemini-3.5-flash-lite'),
+            abortSignal,
             system: aiDocumentFormats.html.systemPrompt,
             messages: modelMessages,
             tools: toolDefinitionsToToolSet(toolDefinitions),
