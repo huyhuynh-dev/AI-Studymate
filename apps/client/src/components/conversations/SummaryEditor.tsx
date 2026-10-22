@@ -24,7 +24,7 @@ import {
   FormattingToolbar,
   getFormattingToolbarItems,
   getDefaultReactSlashMenuItems
-} from "@blocknote/react"
+} from "@blocknote/react";
 import { en } from "@blocknote/core/locales";
 import { en as aiEn } from "@blocknote/xl-ai/locales";
 
@@ -59,6 +59,9 @@ function InnerBlockNoteEditor({
   editable = true,
   zoomPercent = 100,
 }: SummaryEditorProps) {
+  // Ref đánh dấu AI đang hoạt động (gồm cả Stream và giai đoạn chờ Review Accept/Reject)
+  const isAiActiveRef = useRef<boolean>(false);
+
   // Chuẩn bị initial content an toàn cho BlockNote
   const validInitialBlocks = React.useMemo<PartialBlock[] | undefined>(() => {
     if (Array.isArray(initialContent) && initialContent.length > 0) {
@@ -67,9 +70,6 @@ function InnerBlockNoteEditor({
     return undefined;
   }, [initialContent]);
 
-  // const editor = useCreateBlockNote({
-  //   initialContent: validInitialBlocks,
-  // });
   // Create the BlockNote editor with the AI extension
   const editor = useCreateBlockNote({
     dictionary: {
@@ -83,32 +83,66 @@ function InnerBlockNoteEditor({
           // URL to your backend API, see example source in `packages/xl-ai-server/src/routes/regular.ts`
           api: `/api/summaries/${summaryId}/ai-actions`,
           fetch: async (input, init) => {
-            const response = await fetch(input, init);
+            isAiActiveRef.current = true;
+            try {
+              const response = await fetch(input, init);
 
-            if (!response.ok) {
-              const errorBody = await response.clone().text();
-              console.error('[BlockNote AI client] Request failed', {
-                status: response.status,
-                statusText: response.statusText,
-                body: errorBody,
-              });
+              if (!response.ok) {
+                isAiActiveRef.current = false;
+                const errorBody = await response.clone().text();
+                console.error('[BlockNote AI client] Request failed', {
+                  status: response.status,
+                  statusText: response.statusText,
+                  body: errorBody,
+                });
+              }
+
+              return response;
+            } catch (err) {
+              isAiActiveRef.current = false;
+              throw err;
             }
-
-            return response;
           },
         }),
       }),
     ],
-    // We set some initial content for demo purposes
+    // Nạp dữ liệu khởi tạo 1 lần duy nhất từ DB khi editor được mount
     initialContent: validInitialBlocks,
   });
 
-  // Lưu ref onChange để tránh re-subscribe không cần thiết
-  // Lắng nghe thay đổi nội dung từ editor
+  // Theo dõi chính xác vòng đời của AI Menu / Suggestions từ BlockNote Extension Store
+  useEffect(() => {
+    if (!editor) return;
+    const aiExt = (editor as any).getExtension?.("ai");
+    if (!aiExt?.store?.subscribe) return;
+
+    const unsubscribe = aiExt.store.subscribe((val: any) => {
+      const currentState = val?.currentVal?.aiMenuState ?? aiExt.store.state?.aiMenuState;
+      const isClosed = currentState === "closed";
+      isAiActiveRef.current = !isClosed;
+
+      // Khi người dùng bấm Accept hoặc Reject => Menu đóng => Auto-Save lưu nội dung chính thức
+      if (isClosed && editor.document) {
+        onChange(editor.document);
+      }
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [editor, onChange]);
+
+  // Lắng nghe thay đổi nội dung từ editor (Auto-Save 1 chiều từ Editor -> DB)
   useEffect(() => {
     if (!editor) return;
 
     const unsubscribe = editor.onChange(() => {
+      // Khi AI đang hoạt động (Stream hoặc đang hiển thị Suggestions gạch ngang chờ duyệt):
+      // Tuyệt đối không phát onChange để tránh Auto-Save lưu nháp dở dang và làm mất gạch ngang
+      if (isAiActiveRef.current) {
+        return;
+      }
+
       if (editor.document) {
         onChange(editor.document);
       }
@@ -120,24 +154,6 @@ function InnerBlockNoteEditor({
       }
     };
   }, [editor, onChange]);
-
-  // Cập nhật blocks khi initialContent thay đổi
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-
-    if (editor && Array.isArray(initialContent) && initialContent.length > 0) {
-      try {
-        editor.replaceBlocks(editor.document, initialContent as PartialBlock[]);
-      } catch (err) {
-        console.warn("Lỗi đồng bộ blocks editor:", err);
-      }
-    }
-  }, [editor, initialContent]);
-
 
   return (
     <div className="w-full flex-1 bg-white min-h-[450px] p-4 sm:p-6 lg:p-8 overflow-y-auto">
@@ -177,9 +193,7 @@ function InnerBlockNoteEditor({
               filterSuggestionItems(getSlashMenuItemsWithAI(editor), query)
             }
           />
-
         </BlockNoteView>
-
       </div>
     </div>
   );
