@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AiService } from './ai.service.js';
 import { GeminiSummaryService } from './gemini-summary.service.js';
-import { BlocknoteAiService } from './blocknote-ai.service.js';
 
 describe('AiService', () => {
   let service: AiService;
@@ -12,10 +11,6 @@ describe('AiService', () => {
         AiService,
         {
           provide: GeminiSummaryService,
-          useValue: {},
-        },
-        {
-          provide: BlocknoteAiService,
           useValue: {},
         },
       ],

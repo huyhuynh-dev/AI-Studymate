@@ -3,7 +3,7 @@ import { AiService } from './ai.service.js';
 import { EmbeddingService } from './embedding.service.js';
 import { VisionService } from './vision.service.js';
 import { GeminiSummaryService } from './gemini-summary.service.js';
-import { BlocknoteAiService } from './blocknote-ai.service.js';
+import { BlocknoteService } from './blocknote.service.js';
 
 @Module({
   providers: [
@@ -11,8 +11,14 @@ import { BlocknoteAiService } from './blocknote-ai.service.js';
     EmbeddingService,
     VisionService,
     GeminiSummaryService,
-    BlocknoteAiService,
+    BlocknoteService,
   ],
-  exports: [AiService, EmbeddingService, VisionService, GeminiSummaryService],
+  exports: [
+    AiService,
+    EmbeddingService,
+    VisionService,
+    GeminiSummaryService,
+    BlocknoteService,
+  ],
 })
 export class AiModule { }

@@ -5,19 +5,16 @@ import {
   GenerateSummaryOptions,
   SummaryResult,
 } from './gemini-summary.service.js';
-import type { UIMessage } from 'ai';
-import {
-  BlocknoteAiService,
-  BlocknoteToolDefinitions,
-} from './blocknote-ai.service.js';
 import { getModelForTask } from './providers/ai-provider.config.js';
-import { generateText as aiGenerateText } from 'ai';
+import {
+  generateText as aiGenerateText,
+  streamText as aiStreamText,
+} from 'ai';
 
 @Injectable()
 export class AiService {
   constructor(
     private readonly geminiSummaryService: GeminiSummaryService,
-    private readonly blocknoteAiService: BlocknoteAiService,
   ) { }
 
   embedMany(values: string[]) {
@@ -41,6 +38,20 @@ export class AiService {
     });
   }
 
+  streamText(
+    options: Omit<
+      Parameters<typeof aiStreamText>[0],
+      'model' | 'prompt' | 'messages'
+    > & {
+      messages: NonNullable<Parameters<typeof aiStreamText>[0]['messages']>;
+    },
+  ) {
+    return aiStreamText({
+      ...options,
+      model: getModelForTask('BLOCKNOTE_EDITOR'),
+    });
+  }
+
   generateSummary(options: GenerateSummaryOptions): Promise<SummaryResult> {
     return this.geminiSummaryService.generateSummary(options);
   }
@@ -49,15 +60,4 @@ export class AiService {
     return this.geminiSummaryService.refineSummary(currentBlocks, instruction);
   }
 
-  executeBlocknoteEditorAiActions(
-    messages: UIMessage[],
-    toolDefinitions: BlocknoteToolDefinitions,
-    abortSignal?: AbortSignal,
-  ) {
-    return this.blocknoteAiService.executeBlocknoteEditorAiActions(
-      messages,
-      toolDefinitions,
-      abortSignal,
-    );
-  }
 }

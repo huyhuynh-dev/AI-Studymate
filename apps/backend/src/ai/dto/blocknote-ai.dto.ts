@@ -1,6 +1,6 @@
 import { ArrayMaxSize, IsArray, IsObject, IsOptional, IsString } from 'class-validator';
 import type { UIMessage } from 'ai';
-import type { BlocknoteToolDefinitions } from '../blocknote-ai.service.js';
+import type { BlocknoteToolDefinitions } from '../blocknote.service.js';
 
 export class BlocknoteAiDto {
     @IsOptional()

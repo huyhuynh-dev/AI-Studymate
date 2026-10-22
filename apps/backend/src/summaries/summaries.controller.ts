@@ -19,7 +19,7 @@ import { pipeUIMessageStreamToResponse } from 'ai';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { SummariesService } from './summaries.service.js';
-import { AiService } from '../ai/ai.service.js';
+import { BlocknoteService } from '../ai/blocknote.service.js';
 import { CreateSummaryDto } from './dto/create-summary.dto.js';
 import { UpdateSummaryDto } from './dto/update-summary.dto.js';
 import { RefineSummaryDto } from './dto/refine-summary.dto.js';
@@ -32,7 +32,7 @@ export class SummariesController {
 
     constructor(
         private readonly summariesService: SummariesService,
-        private readonly aiService: AiService,
+        private readonly blocknoteService: BlocknoteService,
     ) { }
 
     private getUserId(req: Request): string {
@@ -130,7 +130,7 @@ export class SummariesController {
         try {
             await this.summariesService.getSummaryById(this.getUserId(req), id);
 
-            const result = await this.aiService.executeBlocknoteEditorAiActions(
+            const result = await this.blocknoteService.executeAiActions(
                 dto.messages,
                 dto.toolDefinitions,
                 abortController.signal,
