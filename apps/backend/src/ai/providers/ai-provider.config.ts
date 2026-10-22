@@ -17,8 +17,7 @@ const google = createGoogleGenerativeAI({
         process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
-const ollamaServerUrl =
-    process.env.OLLAMA_SERVER_URL ?? 'http://127.0.0.1:11434';
+const ollamaServerUrl = process.env.OLLAMA_SERVER_URL ?? 'http://127.0.0.1:11434';
 const ollama = createOllama({
     baseURL: ollamaServerUrl.endsWith('/api')
         ? ollamaServerUrl
@@ -28,7 +27,7 @@ const ollama = createOllama({
 const TASK_MODELS: Record<AiTask, TaskModel> = {
     EMBEDDING: ollama.embeddingModel('nomic-embed-text-v2-moe:latest'),
     VISION_ANALYZE: google('gemini-3.5-flash-lite'),
-    SUMMARIZE: google('gemini-3.5-flash-lite'),
+    SUMMARIZE: google('gemini-3.8-flash'),
     BLOCKNOTE_EDITOR: google('gemini-3.5-flash-lite'),
 };
 

@@ -52,6 +52,108 @@ const getSlashMenuItemsWithAI = (editor: BlockNoteEditor) => [
   ...getAISlashMenuItems(editor),
 ];
 
+/**
+ * Chuẩn hóa phần tử inline content (text hoặc link) để bảo đảm tuân thủ nghiêm ngặt ProseMirror Schema
+ */
+function sanitizeInline(item: any): any {
+  if (typeof item === "string") {
+    return { type: "text", text: item, styles: {} };
+  }
+  if (!item || typeof item !== "object") {
+    return { type: "text", text: "", styles: {} };
+  }
+
+  if (item.type === "link") {
+    let content: any[] = [];
+    if (Array.isArray(item.content)) {
+      content = item.content.map(sanitizeInline);
+    } else if (typeof item.content === "string") {
+      content = [{ type: "text", text: item.content, styles: {} }];
+    } else {
+      content = [{ type: "text", text: String(item.content || ""), styles: {} }];
+    }
+    return {
+      type: "link",
+      content,
+      href: typeof item.href === "string" ? item.href : "#",
+    };
+  }
+
+  let styles = typeof item.styles === "object" && item.styles ? { ...item.styles } : {};
+  // QUY TẮC BẮT BUỘC CỦA PROSEMIRROR / BLOCKNOTE:
+  // Mark 'code' có cấu hình `excludes: "_"` (loại trừ mọi định dạng khác).
+  // Nếu có cả 'code' lẫn 'bold'/'italic'/'strike'..., ProseMirror sẽ quăng RangeError làm sập trang.
+  if (styles.code) {
+    styles = { code: true };
+  }
+
+  return {
+    type: "text",
+    text: typeof item.text === "string" ? item.text : "",
+    styles,
+  };
+}
+
+/**
+ * Đệ quy chuẩn hóa từng block và con cháu của nó để ngăn chặn mọi lỗi `initialContent`
+ */
+function sanitizeBlock(block: any): PartialBlock | null {
+  if (!block || typeof block !== "object") {
+    return null;
+  }
+
+  const type = typeof block.type === "string" ? block.type : "paragraph";
+  const id = typeof block.id === "string" && block.id.trim() ? block.id : undefined;
+  const props = typeof block.props === "object" && block.props ? { ...block.props } : {};
+
+  let content: any = undefined;
+  if (type === "table") {
+    if (block.content && typeof block.content === "object" && Array.isArray(block.content.rows)) {
+      content = {
+        type: "tableContent",
+        rows: block.content.rows.map((row: any) => ({
+          cells: Array.isArray(row?.cells)
+            ? row.cells.map((cell: any) =>
+              Array.isArray(cell)
+                ? cell.map(sanitizeInline)
+                : [sanitizeInline(cell)]
+            )
+            : [],
+        })),
+      };
+    } else {
+      content = { type: "tableContent", rows: [] };
+    }
+  } else if (["image", "video", "audio", "file"].includes(type)) {
+    content = undefined;
+  } else {
+    if (Array.isArray(block.content)) {
+      content = block.content.map(sanitizeInline);
+    } else if (typeof block.content === "string") {
+      content = [sanitizeInline(block.content)];
+    } else {
+      content = [sanitizeInline("")];
+    }
+  }
+
+  const children = Array.isArray(block.children)
+    ? (block.children.map(sanitizeBlock).filter(Boolean) as PartialBlock[])
+    : [];
+
+  return {
+    ...(id ? { id } : {}),
+    type: type as any,
+    props,
+    content,
+    children,
+  };
+}
+
+export function sanitizeBlockNoteBlocks(blocks: any[]): PartialBlock[] {
+  if (!Array.isArray(blocks)) return [];
+  return blocks.map(sanitizeBlock).filter(Boolean) as PartialBlock[];
+}
+
 function InnerBlockNoteEditor({
   summaryId,
   initialContent,
@@ -65,7 +167,13 @@ function InnerBlockNoteEditor({
   // Chuẩn bị initial content an toàn cho BlockNote
   const validInitialBlocks = React.useMemo<PartialBlock[] | undefined>(() => {
     if (Array.isArray(initialContent) && initialContent.length > 0) {
-      return initialContent as PartialBlock[];
+      try {
+        const sanitized = sanitizeBlockNoteBlocks(initialContent);
+        return sanitized.length > 0 ? sanitized : undefined;
+      } catch (err) {
+        console.error("[SummaryEditor] Lỗi khi làm sạch initialContent:", err);
+        return undefined;
+      }
     }
     return undefined;
   }, [initialContent]);

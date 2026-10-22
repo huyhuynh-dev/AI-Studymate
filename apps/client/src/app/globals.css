@@ -24,3 +24,10 @@ body {
   font-family: var(--font-be-vietnam-pro), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+.bn-root,
+.bn-editor,
+.bn-inline-content,
+.prose,
+.prose * {
+  font-family: var(--font-be-vietnam-pro), sans-serif !important;
+}

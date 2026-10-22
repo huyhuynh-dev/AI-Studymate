@@ -154,6 +154,7 @@ export class SummaryService {
             `- "image": Khối hình ảnh tham khảo nếu có URL hợp lệ. Props: { "url": "https://...", "caption": "Mô tả ảnh" }\n\n` +
             `ĐỊNH DẠNG NỘI DUNG NỘI DÒNG (Inline Content):\n` +
             `- Văn bản có định dạng: { "type": "text", "text": "...", "styles": { "bold"?: boolean, "italic"?: boolean, "underline"?: boolean, "strike"?: boolean, "code"?: boolean, "textColor"?: string, "backgroundColor"?: string } }\n` +
+            `- QUY TẮC QUAN TRỌNG VỀ CODE: Inline code ("code": true) TUYỆT ĐỐI KHÔNG ĐƯỢC kết hợp đồng thời với các style khác ("bold", "italic", "underline", v.v.). Nếu muốn định dạng code thì chỉ để { "code": true }.\n` +
             `- Đường dẫn liên kết: { "type": "link", "content": "Tên liên kết", "href": "https://..." }\n\n` +
             `${styleInstruction}\n` +
             `${lengthInstruction}\n` +
@@ -389,10 +390,15 @@ export class SummaryService {
                 href: item.href || '#',
             };
         }
+        let styles: Record<string, any> = typeof item?.styles === 'object' && item.styles ? { ...item.styles } : {};
+        // QUY TẮC PROSEMIRROR / BLOCKNOTE: Mark 'code' có thuộc tính excludes: "_" (không thể đi cùng bold, italic, strike, underline, v.v.)
+        if (styles.code) {
+            styles = { code: true };
+        }
         return {
             type: 'text',
             text: typeof item?.text === 'string' ? item.text : '',
-            styles: typeof item?.styles === 'object' && item.styles ? item.styles : {},
+            styles,
         };
     }
 
