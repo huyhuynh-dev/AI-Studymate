@@ -11,6 +11,11 @@ import {
   GenerateSummaryOptions,
   SummaryResult,
 } from './gemini-summary.service.js';
+import type { UIMessage } from 'ai';
+import {
+  BlocknoteAiService,
+  BlocknoteToolDefinitions,
+} from './blocknote-ai.service.js';
 
 @Injectable()
 export class AiService {
@@ -20,7 +25,8 @@ export class AiService {
     // private readonly geminiEmbeddingService: GeminiEmbeddingService,
     private readonly nomicEmbeddingService: NomicEmbeddingService,
     private readonly geminiSummaryService: GeminiSummaryService,
-  ) {}
+    private readonly blocknoteAiService: BlocknoteAiService,
+  ) { }
 
   extractTextFromImage(imageBuffer: Buffer, mimeType: string): Promise<string> {
     return this.geminiVisionService.extractTextFromImage(imageBuffer, mimeType);
@@ -44,5 +50,12 @@ export class AiService {
 
   refineSummary(currentBlocks: any[], instruction: string): Promise<SummaryResult> {
     return this.geminiSummaryService.refineSummary(currentBlocks, instruction);
+  }
+
+  executeBlocknoteEditorAiActions(
+    messages: UIMessage[],
+    toolDefinitions: BlocknoteToolDefinitions,
+  ) {
+    return this.blocknoteAiService.executeBlocknoteEditorAiActions(messages, toolDefinitions);
   }
 }

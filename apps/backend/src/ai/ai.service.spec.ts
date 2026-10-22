@@ -5,6 +5,7 @@ import { AiService } from './ai.service.js';
 import { NomicEmbeddingService } from './nomic-embedding.service.js';
 import { GeminiVisionService } from './gemini-vision.service.js';
 import { GeminiSummaryService } from './gemini-summary.service.js';
+import { BlocknoteAiService } from './blocknote-ai.service.js';
 
 describe('AiService', () => {
   let service: AiService;
@@ -28,6 +29,10 @@ describe('AiService', () => {
         },
         {
           provide: GeminiSummaryService,
+          useValue: {},
+        },
+        {
+          provide: BlocknoteAiService,
           useValue: {},
         },
       ],

@@ -8,20 +8,31 @@ import {
     Patch,
     Post,
     Req,
+    Res,
     UnauthorizedException,
     UseGuards,
 } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import type { Request } from 'express';
+import type { Response } from 'express';
+import { pipeUIMessageStreamToResponse } from 'ai';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { SummariesService } from './summaries.service.js';
+import { AiService } from '../ai/ai.service.js';
 import { CreateSummaryDto } from './dto/create-summary.dto.js';
 import { UpdateSummaryDto } from './dto/update-summary.dto.js';
 import { RefineSummaryDto } from './dto/refine-summary.dto.js';
+import { BlocknoteAiDto } from '../ai/dto/blocknote-ai.dto.js';
 
 @Controller()
 @UseGuards(JwtAuthGuard)
 export class SummariesController {
-    constructor(private readonly summariesService: SummariesService) { }
+    private readonly logger = new Logger(SummariesController.name);
+
+    constructor(
+        private readonly summariesService: SummariesService,
+        private readonly aiService: AiService,
+    ) { }
 
     private getUserId(req: Request): string {
         if (!req.user) {
@@ -86,6 +97,53 @@ export class SummariesController {
         @Body() dto: RefineSummaryDto,
     ) {
         return this.summariesService.refineSummary(this.getUserId(req), id, dto);
+    }
+
+    /**
+     * Stream BlockNote AI actions for a summary editor.
+     */
+    @Post('summaries/:id/ai-actions')
+    async executeBlocknoteAiActions(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string,
+        @Body() dto: BlocknoteAiDto,
+        @Res() response: Response,
+    ): Promise<void> {
+        const requestInfo = {
+            summaryId: id,
+            messageCount: dto.messages?.length ?? 0,
+            toolCount: Object.keys(dto.toolDefinitions ?? {}).length,
+        };
+
+        this.logger.log(`BlockNote AI request received: ${JSON.stringify(requestInfo)}`);
+
+        try {
+            await this.summariesService.getSummaryById(this.getUserId(req), id);
+
+            const result = await this.aiService.executeBlocknoteEditorAiActions(
+                dto.messages,
+                dto.toolDefinitions,
+            );
+
+            await pipeUIMessageStreamToResponse({
+                response,
+                stream: result.toUIMessageStream({
+                    onError: (error) => {
+                        this.logger.error(
+                            `BlockNote AI stream error (${JSON.stringify(requestInfo)}): ${String(error)}`,
+                        );
+                        return 'AI stream failed';
+                    },
+                }),
+            });
+        } catch (error) {
+            this.logger.error(
+                `BlockNote AI request failed (${JSON.stringify(requestInfo)}): ${
+                    error instanceof Error ? error.stack ?? error.message : String(error)
+                }`,
+            );
+            throw error;
+        }
     }
 
     /**

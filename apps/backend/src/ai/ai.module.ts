@@ -5,6 +5,7 @@ import { AiService } from './ai.service.js';
 import { NomicEmbeddingService } from './nomic-embedding.service.js';
 import { GeminiVisionService } from './gemini-vision.service.js';
 import { GeminiSummaryService } from './gemini-summary.service.js';
+import { BlocknoteAiService } from './blocknote-ai.service.js';
 
 @Module({
   providers: [
@@ -14,7 +15,8 @@ import { GeminiSummaryService } from './gemini-summary.service.js';
     NomicEmbeddingService,
     GeminiVisionService,
     GeminiSummaryService,
+    BlocknoteAiService,
   ],
   exports: [AiService, GeminiSummaryService, NomicEmbeddingService],
 })
-export class AiModule {}
+export class AiModule { }

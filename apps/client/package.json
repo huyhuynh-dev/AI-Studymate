@@ -9,9 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@blocknote/core": "^0.55.0",
-    "@blocknote/mantine": "^0.55.0",
-    "@blocknote/react": "^0.55.0",
+    "@ai-sdk/google": "^3.0.99",
+    "@blocknote/core": "^0.56.0",
+    "@blocknote/mantine": "^0.56.0",
+    "@blocknote/react": "^0.56.0",
+    "@blocknote/xl-ai": "^0.56.0",
     "@embedpdf/core": "^2.15.1",
     "@embedpdf/engines": "^2.15.1",
     "@embedpdf/models": "^2.15.1",
@@ -28,13 +30,16 @@
     "@mantine/core": "^9.7.2",
     "@mantine/hooks": "^9.7.2",
     "@mantine/utils": "^6.0.22",
+    "ai": "6.0.309",
     "axios": "^1.20.0",
+    "dotenv": "^18.0.8",
     "lucide-react": "^1.48.0",
     "next": "16.3.6",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "swr": "^2.5.1",
-    "yet-another-react-lightbox": "^3.32.2"
+    "yet-another-react-lightbox": "^3.32.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
