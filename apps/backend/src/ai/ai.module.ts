@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AiService } from './ai.service.js';
 import { EmbeddingService } from './embedding.service.js';
 import { VisionService } from './vision.service.js';
-import { GeminiSummaryService } from './gemini-summary.service.js';
+import { SummaryService } from './summary.service.js';
 import { BlocknoteService } from './blocknote.service.js';
 
 @Module({
@@ -10,14 +10,14 @@ import { BlocknoteService } from './blocknote.service.js';
     AiService,
     EmbeddingService,
     VisionService,
-    GeminiSummaryService,
+    SummaryService,
     BlocknoteService,
   ],
   exports: [
     AiService,
     EmbeddingService,
     VisionService,
-    GeminiSummaryService,
+    SummaryService,
     BlocknoteService,
   ],
 })

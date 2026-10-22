@@ -7,7 +7,7 @@ import {
 import { SummariesRepoService } from '../repo/summaries-repo/summaries-repo.service.js';
 import { ConversationsRepoService } from '../repo/conversations-repo/conversations-repo.service.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
-import { AiService } from '../ai/ai.service.js';
+import { SummaryService } from '../ai/summary.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { PdfExportService } from './pdf-export.service.js';
 import { CreateSummaryDto, SummaryScope } from './dto/create-summary.dto.js';
@@ -22,7 +22,7 @@ export class SummariesService {
         private readonly summariesRepo: SummariesRepoService,
         private readonly conversationsRepo: ConversationsRepoService,
         private readonly documentsRepo: DocumentsRepoService,
-        private readonly aiService: AiService,
+        private readonly summaryService: SummaryService,
         private readonly storageService: StorageService,
         private readonly pdfExportService: PdfExportService,
     ) { }
@@ -123,7 +123,7 @@ export class SummariesService {
         }
 
         // Gọi AI sinh BlockNote JSON blocks
-        const aiResult = await this.aiService.generateSummary({
+        const aiResult = await this.summaryService.generateSummary({
             documentTexts,
             mode: dto.mode,
             length: dto.length,
@@ -188,7 +188,7 @@ export class SummariesService {
             throw new BadRequestException('Nội dung tóm tắt hiện tại không hợp lệ để tinh chỉnh');
         }
 
-        const aiResult = await this.aiService.refineSummary(currentBlocks, dto.instruction);
+        const aiResult = await this.summaryService.refineSummary(currentBlocks, dto.instruction);
 
         const updated = await this.summariesRepo.updateSummary(summaryId, {
             title: aiResult.title || summary.title,

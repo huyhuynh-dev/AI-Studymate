@@ -28,7 +28,7 @@ const ollama = createOllama({
 const TASK_MODELS: Record<AiTask, TaskModel> = {
     EMBEDDING: ollama.embeddingModel('nomic-embed-text-v2-moe:latest'),
     VISION_ANALYZE: google('gemini-3.5-flash-lite'),
-    SUMMARIZE: google('gemini-3.5-flash'),
+    SUMMARIZE: google('gemini-3.5-flash-lite'),
     BLOCKNOTE_EDITOR: google('gemini-3.5-flash-lite'),
 };
 

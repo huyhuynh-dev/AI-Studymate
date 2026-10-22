@@ -1,21 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { embedMany as aiEmbedMany } from 'ai';
-import {
-  GeminiSummaryService,
-  GenerateSummaryOptions,
-  SummaryResult,
-} from './gemini-summary.service.js';
 import { getModelForTask } from './providers/ai-provider.config.js';
 import {
   generateText as aiGenerateText,
   streamText as aiStreamText,
 } from 'ai';
+import type { AiTask } from './providers/ai-provider.config.js';
 
 @Injectable()
 export class AiService {
-  constructor(
-    private readonly geminiSummaryService: GeminiSummaryService,
-  ) { }
 
   embedMany(values: string[]) {
     return aiEmbedMany({
@@ -38,6 +31,26 @@ export class AiService {
     });
   }
 
+  generateTextForTask(
+    task: Exclude<AiTask, 'EMBEDDING'>,
+    messages: NonNullable<Parameters<typeof aiGenerateText>[0]['messages']>,
+  ) {
+    if (task === 'SUMMARIZE') {
+      return aiGenerateText({
+        model: getModelForTask(task),
+        messages,
+        providerOptions: {
+          google: { responseMimeType: 'application/json' },
+        },
+      });
+    }
+
+    return aiGenerateText({
+      model: getModelForTask(task),
+      messages,
+    });
+  }
+
   streamText(
     options: Omit<
       Parameters<typeof aiStreamText>[0],
@@ -50,14 +63,6 @@ export class AiService {
       ...options,
       model: getModelForTask('BLOCKNOTE_EDITOR'),
     });
-  }
-
-  generateSummary(options: GenerateSummaryOptions): Promise<SummaryResult> {
-    return this.geminiSummaryService.generateSummary(options);
-  }
-
-  refineSummary(currentBlocks: any[], instruction: string): Promise<SummaryResult> {
-    return this.geminiSummaryService.refineSummary(currentBlocks, instruction);
   }
 
 }
