@@ -1,28 +1,28 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { HomeHeader, LeftSidebar, RightSidebar, FocusModeProvider, useFocusMode } from "@/components/layout";
+import React, { useState, useEffect, useMemo } from "react";
+import { LeftSidebar, RightSidebar, FocusModeProvider, useFocusMode } from "@/components/layout";
 import { PanelLeftOpen, PanelRightOpen, Sparkles } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
-    const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
     const [isRightCollapsed, setIsRightCollapsed] = useState(false);
 
     const { isFocusMode, isViewingDocument, setFocusMode, setIsViewingDocument } = useFocusMode();
     const pathname = usePathname();
 
-    // The RightSidebar is hidden completely on the profile page as requested.
-    // It is shown on /home routes.
-    const showRightSidebar = pathname?.startsWith("/home");
+    // Extract subjectId from path: /home/{subjectId}/...
+    const currentSubjectId = useMemo(() => {
+        if (!pathname) return null;
+        const parts = pathname.split("/");
+        // parts: ['', 'home', '{subjectId}', ...]
+        if (parts[1] === "home" && parts[2]) return parts[2];
+        return null;
+    }, [pathname]);
 
-    // Force close RightSidebar when navigating to pages that don't need it
-    useEffect(() => {
-        if (!showRightSidebar) {
-            setIsRightCollapsed(true);
-        }
-    }, [showRightSidebar]);
+    // The RightSidebar is shown on /home routes.
+    const showRightSidebar = Boolean(pathname?.startsWith("/home"));
 
     // Thoát Focus Mode khi chuyển route
     useEffect(() => {
@@ -31,28 +31,13 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     }, [pathname, setFocusMode, setIsViewingDocument]);
 
     const effectiveLeftCollapsed = isLeftCollapsed || isFocusMode;
+    const effectiveRightCollapsed = isRightCollapsed || !showRightSidebar;
 
     return (
         <div className="flex h-screen w-full flex-col overflow-hidden bg-white">
-            {/*
-            1. Global Header Area — Trượt lên (Slide up) & Ẩn đi khi vào Focus Mode
-            <header
-                className={`z-30 shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
-                    isFocusMode
-                        ? "max-h-0 -translate-y-full opacity-0 pointer-events-none"
-                        : "max-h-20 translate-y-0 opacity-100"
-                }`}
-            >
-                <HomeHeader
-                    isCollapsed={isHeaderCollapsed}
-                    onToggleCollapse={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
-                />
-            </header>
-            */}
-
-            {/* 2. Main Workspace Area */}
+            {/* Main Workspace Area */}
             <div className="relative flex flex-1 overflow-hidden">
-                {/* 2.1 Navigation Sidebar Area — Tự động Collapse khi vào Focus Mode */}
+                {/* Navigation Sidebar Area */}
                 <aside className="z-20 shrink-0 transition-all duration-300 ease-in-out">
                     <React.Suspense fallback={<div className="w-64 h-full bg-slate-50 border-r border-gray-200" />}>
                         <LeftSidebar
@@ -62,7 +47,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     </React.Suspense>
                 </aside>
 
-                {/* 2.2 Left Sidebar Toggle Button (Floating - Ẩn khi đang trong Focus Mode để không đè lên Toolbar PDF) */}
+                {/* Left Sidebar Toggle Button */}
                 {effectiveLeftCollapsed && !isFocusMode && (
                     <div className="absolute top-4 left-4 z-20">
                         <button
@@ -77,7 +62,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     </div>
                 )}
 
-                {/* 2.3 Center Content Area */}
+                {/* Center Content Area */}
                 <main
                     className={`relative flex-1 bg-slate-50/50 transition-all duration-300 ease-in-out ${
                         isFocusMode
@@ -92,8 +77,8 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                         {children}
                     </div>
 
-                    {/* Right Sidebar Toggle Button (Floating inside Main Content so it respects its boundaries) */}
-                    {showRightSidebar && isRightCollapsed && (
+                    {/* Right Sidebar Toggle Button */}
+                    {showRightSidebar && effectiveRightCollapsed && (
                         <div className="absolute top-4 right-4 z-20">
                             <button
                                 type="button"
@@ -109,12 +94,13 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     )}
                 </main>
 
-                {/* 2.4 Contextual Right Sidebar Area (Luôn được giữ lại trong Focus Mode để hỏi đáp AI) */}
+                {/* Contextual Right Sidebar Area */}
                 {showRightSidebar && (
                     <aside className="z-20 shrink-0">
                         <RightSidebar
-                            isCollapsed={isRightCollapsed}
-                            onToggleCollapse={() => setIsRightCollapsed(!isRightCollapsed)}
+                            isCollapsed={effectiveRightCollapsed}
+                            onToggleCollapse={() => setIsRightCollapsed(!effectiveRightCollapsed)}
+                            subjectId={currentSubjectId}
                         />
                     </aside>
                 )}
@@ -134,4 +120,3 @@ export default function MainLayout({
         </FocusModeProvider>
     );
 }
-
