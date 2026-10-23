@@ -56,9 +56,9 @@ model Conversation {
   subject Subject @relation(fields: [subject_id], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  documents Document[]
-  messages  Message[]
-  summaries Summary[]
+  documents    Document[]
+  chat_sessions ChatSession[]
+  summaries    Summary[]
 
   @@map("conversations")
 }
@@ -102,17 +102,30 @@ model DocumentChunk {
   @@map("document_chunks")
 }
 
-model Message {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversation_id String    @db.Uuid
-  role            String    @db.VarChar(20) // 'user' | 'assistant'
-  content         String    @db.Text
-  source_chunks   String[]  @db.Uuid // chunk IDs dùng làm context
-  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+model ChatSession {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String       @db.Uuid
+  title           String       @db.VarChar(255)
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
 
   conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  messages     Message[]
 
   @@index([conversation_id])
+  @@map("chat_sessions")
+}
+
+model Message {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  chat_session_id String     @db.Uuid
+  role           String      @db.VarChar(20) // 'user' | 'assistant'
+  content        String      @db.Text
+  source_chunks  String[]    @db.Uuid // chunk IDs dùng làm context
+  created_at     DateTime    @default(now()) @db.Timestamptz(6)
+
+  chat_session ChatSession @relation(fields: [chat_session_id], references: [id], onDelete: Cascade)
+
+  @@index([chat_session_id])
   @@map("messages")
 }
 

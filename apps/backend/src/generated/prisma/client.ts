@@ -67,6 +67,11 @@ export type Document = Prisma.DocumentModel
  */
 export type DocumentChunk = Prisma.DocumentChunkModel
 /**
+ * Model ChatSession
+ * 
+ */
+export type ChatSession = Prisma.ChatSessionModel
+/**
  * Model Message
  * 
  */
