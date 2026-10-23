@@ -56,12 +56,13 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
   const handleTabChange = (tab: TabKey) => {
     setActiveTab(tab);
-    if (tab !== "documents") {
+    if (tab !== "documents" && tab !== "summary") {
       setFocusMode(false);
     }
   };
 
-  const isDocumentViewerActive = activeTab === "documents" && isViewingDocument;
+  const isDocumentViewerActive =
+    (activeTab === "documents" || activeTab === "summary") && isViewingDocument;
 
   return (
     <div
@@ -153,6 +154,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
           {activeTab === "summary" && (
             <SummaryTab
+              conversationId={conversationId}
+              documents={documents}
               onUploadDocument={handleGoToDocuments}
               className="w-full flex-1"
             />

@@ -23,9 +23,10 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "3.0.135",
     "@aws-sdk/client-s3": "^3.1147.0",
     "@aws-sdk/s3-request-presigner": "^3.1147.0",
-    "@google/generative-ai": "^0.24.1",
+    "@blocknote/xl-ai": "^0.56.0",
     "@nestjs-modules/mailer": "^2.3.7",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.1",
@@ -37,6 +38,7 @@
     "@nestjs/throttler": "^6.7.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "ai": "6.0.309",
     "bcrypt": "^6.0.0",
     "bullmq": "^6.3.12",
     "class-transformer": "^0.5.1",
@@ -46,10 +48,13 @@
     "googleapis": "^182.0.0",
     "ioredis": "^6.0.0",
     "nodemailer": "^10.0.13",
+    "ollama-ai-provider-v2": "3.6.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pdf-parse": "^2.4.5",
     "pg": "^8.23.0",
+    "puppeteer": "^25.14.0",
+    "puppeteer-core": "^25.14.0",
     "redis": "^6.3.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"

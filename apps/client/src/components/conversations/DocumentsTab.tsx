@@ -174,25 +174,49 @@ export default function DocumentsTab({
     if (doc.ocr_status === "failed") {
       return (
         <span
-          title={doc.processing_error || "Lỗi trong quá trình xử lý"}
+          title={doc.processing_error || "Lỗi trong quá trình trích xuất văn bản"}
           className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200 ring-inset cursor-help"
         >
           <AlertCircle className="h-3.5 w-3.5 text-red-600" />
-          Lỗi xử lý
+          Lỗi trích xuất
         </span>
       );
     }
 
-    if (doc.ocr_status === "processing" || doc.embed_status === "processing") {
+    if (doc.ocr_status === "done" && doc.embed_status === "failed") {
+      return (
+        <span
+          title={doc.processing_error || "Lỗi trong quá trình tạo chỉ mục ngữ nghĩa (Embedding)"}
+          className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 ring-1 ring-orange-200 ring-inset cursor-help"
+        >
+          <AlertCircle className="h-3.5 w-3.5 text-orange-600" />
+          Lỗi chỉ mục
+        </span>
+      );
+    }
+
+    if (doc.ocr_status === "processing") {
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200 ring-inset">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
-          Đang xử lý...
+          Đang trích xuất...
         </span>
       );
     }
 
-    if (doc.ocr_status === "done") {
+    if (
+      doc.ocr_status === "done" &&
+      (doc.embed_status === "pending" || doc.embed_status === "processing")
+    ) {
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 ring-1 ring-violet-200 ring-inset">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-600" />
+          Đang lập chỉ mục...
+        </span>
+      );
+    }
+
+    if (doc.ocr_status === "done" && doc.embed_status === "done") {
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 ring-inset">
           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
@@ -203,7 +227,7 @@ export default function DocumentsTab({
 
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200 ring-inset">
-        <Loader2 className="h-3.5 w-3.5 text-amber-600" />
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-600" />
         Đang chờ
       </span>
     );

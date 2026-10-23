@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { StorageService } from '../storage/storage.service.js';
 import { DocumentsRepoService, DocumentResponse } from '../repo/documents-repo/documents-repo.service.js';
 import { ConversationsRepoService } from '../repo/conversations-repo/conversations-repo.service.js';
-import { DocumentsQueueService } from './documents-queue.service.js';
+import { DocumentsQueueService } from './services/documents-queue.service.js';
 import { InitUploadDto, MAX_FILE_SIZE_BYTES } from './dto/init-upload.dto.js';
 import { CompleteUploadDto } from './dto/complete-upload.dto.js';
 
@@ -96,6 +96,7 @@ export class DocumentsService {
             documentId: document.id,
             mimeType: document.mime_type,
             storageKey: document.storage_key,
+            fileName: document.file_name,
         });
 
         return document;
@@ -153,9 +154,21 @@ export class DocumentsService {
 
         const updatedSize = head.contentLength ? BigInt(head.contentLength) : BigInt(doc.file_size);
 
-        return await this.documentsRepo.updateDocument(documentId, userId, {
+        const updatedDoc = await this.documentsRepo.updateDocument(documentId, userId, {
             file_size: updatedSize,
+            ocr_status: 'pending',
+            embed_status: 'pending',
+            processing_error: null,
         });
+
+        await this.documentsQueueService.addProcessingJob({
+            documentId: updatedDoc.id,
+            mimeType: updatedDoc.mime_type,
+            storageKey: updatedDoc.storage_key,
+            fileName: updatedDoc.file_name,
+        });
+
+        return updatedDoc;
     }
 
     async deleteDocument(

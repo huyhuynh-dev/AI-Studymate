@@ -34,7 +34,8 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 
     return (
         <div className="flex h-screen w-full flex-col overflow-hidden bg-white">
-            {/* 1. Global Header Area — Trượt lên (Slide up) & Ẩn đi khi vào Focus Mode */}
+            {/*
+            1. Global Header Area — Trượt lên (Slide up) & Ẩn đi khi vào Focus Mode
             <header
                 className={`z-30 shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
                     isFocusMode
@@ -47,6 +48,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     onToggleCollapse={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
                 />
             </header>
+            */}
 
             {/* 2. Main Workspace Area */}
             <div className="relative flex flex-1 overflow-hidden">

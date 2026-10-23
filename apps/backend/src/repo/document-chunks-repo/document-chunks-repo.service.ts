@@ -101,10 +101,10 @@ export class DocumentChunksRepoService {
         embedding: number[]
     ): Promise<void> {
         if (
-            embedding.length !== 1536 ||
+            embedding.length !== 768 ||
             embedding.some((value) => !Number.isFinite(value))
         ) {
-            throw new BadRequestException('Embedding phải chứa đúng 1536 giá trị số hợp lệ');
+            throw new BadRequestException('Embedding phải chứa đúng 768 giá trị số hợp lệ');
         }
 
         const vector = `[${embedding.join(',')}]`;
@@ -126,6 +126,57 @@ export class DocumentChunksRepoService {
         if (updatedRows === 0) {
             throw new NotFoundException('Không tìm thấy đoạn tài liệu hoặc bạn không có quyền truy cập');
         }
+    }
+
+    /**
+     * Xóa toàn bộ chunks cũ của document (đảm bảo idempotent khi BullMQ retry)
+     * và lưu danh sách chunks kèm vector 768 chiều vào pgvector trong một transaction.
+     */
+    async replaceChunksWithEmbeddings(
+        documentId: string,
+        chunks: Array<{ chunkIndex: number; content: string; embedding: number[] }>
+    ): Promise<number> {
+        for (const chunk of chunks) {
+            if (
+                chunk.embedding.length !== 768 ||
+                chunk.embedding.some((value) => !Number.isFinite(value))
+            ) {
+                throw new BadRequestException(
+                    `Chunk #${chunk.chunkIndex} có vector embedding không hợp lệ (yêu cầu 768 chiều)`
+                );
+            }
+        }
+
+        await this.prisma.$transaction(async (tx) => {
+            await tx.documentChunk.deleteMany({
+                where: { document_id: documentId },
+            });
+
+            for (const chunk of chunks) {
+                const vector = `[${chunk.embedding.join(',')}]`;
+                await tx.$executeRaw(
+                    Prisma.sql`
+                        INSERT INTO "document_chunks" ("id", "document_id", "chunk_index", "content", "embedding", "created_at")
+                        VALUES (
+                            gen_random_uuid(),
+                            ${documentId}::uuid,
+                            ${chunk.chunkIndex},
+                            ${chunk.content},
+                            ${vector}::vector,
+                            NOW()
+                        )
+                    `
+                );
+            }
+        });
+
+        return chunks.length;
+    }
+
+    async countByDocumentId(documentId: string): Promise<number> {
+        return await this.prisma.documentChunk.count({
+            where: { document_id: documentId },
+        });
     }
 
     async deleteDocumentChunk(

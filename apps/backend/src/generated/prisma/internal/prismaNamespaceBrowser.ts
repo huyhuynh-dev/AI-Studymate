@@ -55,7 +55,9 @@ export const ModelName = {
   Subject: 'Subject',
   Conversation: 'Conversation',
   Document: 'Document',
-  DocumentChunk: 'DocumentChunk'
+  DocumentChunk: 'DocumentChunk',
+  Message: 'Message',
+  Summary: 'Summary'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -148,12 +150,45 @@ export const DocumentChunkScalarFieldEnum = {
 export type DocumentChunkScalarFieldEnum = (typeof DocumentChunkScalarFieldEnum)[keyof typeof DocumentChunkScalarFieldEnum]
 
 
+export const MessageScalarFieldEnum = {
+  id: 'id',
+  conversation_id: 'conversation_id',
+  role: 'role',
+  content: 'content',
+  source_chunks: 'source_chunks',
+  created_at: 'created_at'
+} as const
+
+export type MessageScalarFieldEnum = (typeof MessageScalarFieldEnum)[keyof typeof MessageScalarFieldEnum]
+
+
+export const SummaryScalarFieldEnum = {
+  id: 'id',
+  conversation_id: 'conversation_id',
+  document_id: 'document_id',
+  title: 'title',
+  content_json: 'content_json',
+  pdf_storage_key: 'pdf_storage_key',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type SummaryScalarFieldEnum = (typeof SummaryScalarFieldEnum)[keyof typeof SummaryScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {
@@ -170,4 +205,13 @@ export const NullsOrder = {
 } as const
 
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 
