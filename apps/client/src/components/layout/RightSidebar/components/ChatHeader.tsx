@@ -12,6 +12,8 @@ interface ChatHeaderProps {
   isLoading: boolean;
   activeChatId: string | null;
   onSelectChat: (id: string) => void;
+  onRenameChat: (id: string, newTitle: string) => Promise<void>;
+  onRequestDeleteChat: (session: ChatSessionItem) => void;
   onNewChat: () => void;
   /** Nếu không truyền, nút đóng sẽ được ẩn */
   onClose?: () => void;
@@ -23,6 +25,8 @@ export function ChatHeader({
   isLoading,
   activeChatId,
   onSelectChat,
+  onRenameChat,
+  onRequestDeleteChat,
   onNewChat,
   onClose,
 }: ChatHeaderProps) {
@@ -42,6 +46,8 @@ export function ChatHeader({
           isLoading={isLoading}
           activeChatId={activeChatId}
           onSelect={onSelectChat}
+          onRename={onRenameChat}
+          onRequestDelete={onRequestDeleteChat}
         />
         <IconButton label="Tạo đoạn chat mới" onClick={onNewChat}>
           <Plus className="h-4 w-4" />

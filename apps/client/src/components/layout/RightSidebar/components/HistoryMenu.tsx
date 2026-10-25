@@ -4,6 +4,7 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { History, MessageSquare, Search, X } from "lucide-react";
 import type { ChatSessionItem } from "../types";
 import { useClickOutside } from "../hooks/useClickOutside";
+import { HistorySessionRow } from "./HistorySessionRow";
 import { IconButton } from "./IconButton";
 
 /** Chỉ hiện ô tìm kiếm khi có nhiều hơn số đoạn chat này */
@@ -14,6 +15,8 @@ interface HistoryMenuProps {
   isLoading: boolean;
   activeChatId: string | null;
   onSelect: (id: string) => void;
+  onRename: (id: string, newTitle: string) => Promise<void>;
+  onRequestDelete: (session: ChatSessionItem) => void;
 }
 
 /**
@@ -26,6 +29,8 @@ export function HistoryMenu({
   isLoading,
   activeChatId,
   onSelect,
+  onRename,
+  onRequestDelete,
 }: HistoryMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -101,40 +106,31 @@ export function HistoryMenu({
                 ))}
               </div>
             ) : filtered.length === 0 ? (
-              <p className="px-3 py-6 text-center text-xs text-gray-500">
-                {query ? "Không tìm thấy đoạn chat nào" : "Chưa có lịch sử trò chuyện"}
-              </p>
+              <div className="flex flex-col items-center gap-2 px-3 py-6 text-center">
+                <MessageSquare className="h-6 w-6 text-gray-200" />
+                <p className="text-xs text-gray-500">
+                  {query ? "Không tìm thấy đoạn chat nào" : "Chưa có lịch sử trò chuyện"}
+                </p>
+              </div>
             ) : (
-              filtered.map((session) => {
-                const isActive = session.id === activeChatId;
-                return (
-                  <button
+              <div className="space-y-0.5">
+                {filtered.map((session) => (
+                  <HistorySessionRow
                     key={session.id}
-                    type="button"
-                    onClick={() => {
+                    session={session}
+                    isActive={session.id === activeChatId}
+                    onSelect={() => {
                       onSelect(session.id);
                       close();
                     }}
-                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors ${
-                      isActive
-                        ? "bg-indigo-50 text-indigo-900"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <MessageSquare
-                      className={`h-4 w-4 shrink-0 ${
-                        isActive ? "text-indigo-600" : "text-gray-400"
-                      }`}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-[13px]">
-                      {session.title}
-                    </span>
-                    <span className="shrink-0 text-[10px] text-gray-400">
-                      {session.timestamp}
-                    </span>
-                  </button>
-                );
-              })
+                    onRename={(newTitle) => onRename(session.id, newTitle)}
+                    onRequestDelete={() => {
+                      close();
+                      onRequestDelete(session);
+                    }}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </div>

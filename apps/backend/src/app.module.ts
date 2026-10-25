@@ -18,6 +18,7 @@ import { DocumentsModule } from './documents/documents.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { AiModule } from './ai/ai.module.js';
 import { SummariesModule } from './summaries/summaries.module.js';
+import { ChatAgentModule } from './chat-agent/chat-agent.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -52,6 +53,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     StorageModule,
     AiModule,
     SummariesModule,
+    ChatAgentModule,
   ],
   controllers: [AppController],
   providers: [

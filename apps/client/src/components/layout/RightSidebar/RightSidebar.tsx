@@ -6,6 +6,7 @@ import { useDocuments } from "@/hooks/useDocuments";
 
 import { ChatComposer } from "./components/ChatComposer";
 import { ChatHeader } from "./components/ChatHeader";
+import { ConfirmDeleteDialog } from "./components/ConfirmDeleteDialog";
 import { EmptyState } from "./components/EmptyState";
 import { MessageList } from "./components/MessageList";
 import { WorkspaceDocModal } from "./components/WorkspaceDocModal";
@@ -59,6 +60,21 @@ export interface RightSidebarProps {
     chatSessionId?: string,
     options?: SendMessageOptions
   ) => void;
+  /**
+   * Gọi khi người dùng đổi tên một đoạn chat (ChatSession).
+   * `chatId` = chat_sessions.id; hãy cập nhật cột `title` của ChatSession ở đây.
+   * Nếu ném lỗi (hoặc reject), giao diện sẽ báo lỗi và giữ nguyên tên cũ.
+   * Không truyền → chỉ đổi tên cục bộ trên giao diện (mất khi tải lại trang).
+   */
+  onRenameChat?: (chatId: string, newTitle: string) => void | Promise<void>;
+  /**
+   * Gọi khi người dùng xác nhận xóa một đoạn chat (ChatSession).
+   * `chatId` = chat_sessions.id. Xóa ChatSession sẽ xóa luôn các Message của nó
+   * (onDelete: Cascade); Document và Summary thuộc Conversation nên không bị ảnh hưởng.
+   * Nếu ném lỗi (hoặc reject), hộp thoại báo lỗi và đoạn chat vẫn được giữ lại.
+   * Không truyền → chỉ ẩn cục bộ trên giao diện (xuất hiện lại khi tải lại trang).
+   */
+  onDeleteChat?: (chatId: string) => void | Promise<void>;
   /** Additional container classes */
   className?: string;
 }
@@ -85,6 +101,8 @@ export default function RightSidebar({
   isCollapsed = false,
   onToggleCollapse,
   onSendMessage,
+  onRenameChat,
+  onDeleteChat,
   className = "",
 }: RightSidebarProps) {
   // ── Chat state ──
@@ -92,6 +110,11 @@ export default function RightSidebar({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
+
+  // ── Đổi tên / xóa đoạn chat ──
+  const [titleOverrides, setTitleOverrides] = useState<Record<string, string>>({});
+  const [deletedIds, setDeletedIds] = useState<ReadonlySet<string>>(new Set());
+  const [pendingDelete, setPendingDelete] = useState<ChatSessionItem | null>(null);
 
   // ── Model / reasoning ──
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
@@ -122,7 +145,7 @@ export default function RightSidebar({
   const { conversations, isLoading, createSession } = useConversations(subjectId);
   const { documents } = useDocuments(activeChatId);
 
-  const sessions: ChatSessionItem[] = useMemo(() => {
+  const baseSessions: ChatSessionItem[] = useMemo(() => {
     if (conversations.length > 0) {
       return conversations.map((c) => {
         const date = new Date(c.updated_at || c.created_at);
@@ -139,6 +162,15 @@ export default function RightSidebar({
     // Đang tải: để trống cho HistoryMenu hiển thị skeleton. Tải xong mà chưa có gì: dùng dữ liệu mẫu.
     return isLoading ? [] : DEFAULT_SAMPLE_CONVERSATIONS;
   }, [conversations, isLoading]);
+
+  // Áp dụng các thay đổi đã xác nhận (tên mới, đoạn chat đã xóa) lên danh sách
+  const sessions: ChatSessionItem[] = useMemo(
+    () =>
+      baseSessions
+        .filter((s) => !deletedIds.has(s.id))
+        .map((s) => (titleOverrides[s.id] ? { ...s, title: titleOverrides[s.id] } : s)),
+    [baseSessions, deletedIds, titleOverrides]
+  );
 
   // ── Derived ──
   const chatState: ChatState = messages.length > 0 ? "active" : "empty";
@@ -166,6 +198,33 @@ export default function RightSidebar({
     // TODO: tải tin nhắn thật của phiên `id`. Hiện dùng dữ liệu mẫu như bản gốc.
     setMessages(SAMPLE_ACTIVE_MESSAGES);
   }, []);
+
+  /** Ném lỗi nếu onRenameChat thất bại → HistorySessionRow tự hiển thị thông báo */
+  const handleRenameChat = useCallback(
+    async (id: string, newTitle: string) => {
+      await onRenameChat?.(id, newTitle);
+      setTitleOverrides((prev) => ({ ...prev, [id]: newTitle }));
+    },
+    [onRenameChat]
+  );
+
+  /** Ném lỗi nếu onDeleteChat thất bại → ConfirmDeleteDialog tự hiển thị thông báo */
+  const handleConfirmDelete = useCallback(async () => {
+    if (!pendingDelete) return;
+    const id = pendingDelete.id;
+
+    await onDeleteChat?.(id);
+
+    setDeletedIds((prev) => new Set(prev).add(id));
+    setTitleOverrides((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    // Đang mở chính đoạn chat vừa xóa → quay về đoạn chat mới
+    if (id === activeChatId) handleNewChat();
+    setPendingDelete(null);
+  }, [pendingDelete, onDeleteChat, activeChatId, handleNewChat]);
 
   const sendMessage = useCallback(
     async (rawText: string) => {
@@ -232,8 +291,8 @@ export default function RightSidebar({
     <aside
       aria-hidden={isCollapsed}
       className={`flex h-full flex-col border-l border-gray-100 bg-white select-none transition-all duration-300 ease-in-out ${isCollapsed
-        ? "w-0 border-l-0 overflow-hidden opacity-0 pointer-events-none"
-        : "w-80 md:w-96 opacity-100"
+          ? "w-0 border-l-0 overflow-hidden opacity-0 pointer-events-none"
+          : "w-80 md:w-96 opacity-100"
         } ${className}`.trim()}
     >
       {/* Input ẩn để chọn tệp từ thiết bị */}
@@ -252,6 +311,8 @@ export default function RightSidebar({
         isLoading={isLoading}
         activeChatId={activeChatId}
         onSelectChat={handleSelectChat}
+        onRenameChat={handleRenameChat}
+        onRequestDeleteChat={setPendingDelete}
         onNewChat={handleNewChat}
         onClose={onToggleCollapse}
       />
@@ -287,6 +348,12 @@ export default function RightSidebar({
         onClose={closeWorkspaceModal}
         onSelect={addWorkspaceDoc}
         availableDocs={documents || []}
+      />
+
+      <ConfirmDeleteDialog
+        session={pendingDelete}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={handleConfirmDelete}
       />
     </aside>
   );
