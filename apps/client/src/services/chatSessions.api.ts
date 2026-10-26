@@ -1,4 +1,5 @@
 import { axiosClient } from "@/lib/axios.client";
+import type { UIMessage } from "ai";
 import type { ChatSession } from "@/hooks/useChatSessions";
 
 export interface CreateChatSessionParams {
@@ -30,6 +31,17 @@ export const chatSessionsApi = {
   async getById(id: string): Promise<ChatSession> {
     const response = await axiosClient.get<ChatSession>(
       `/chat-agent/sessions/${id}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Lấy danh sách tin nhắn cũ của một ChatSession.
+   * GET /api/proxy/chat-agent/sessions/{id}/messages
+   */
+  async getMessages(sessionId: string): Promise<UIMessage[]> {
+    const response = await axiosClient.get<UIMessage[]>(
+      `/chat-agent/sessions/${sessionId}/messages`
     );
     return response.data;
   },

@@ -55,6 +55,27 @@ export class ChatAgentService {
         return this.chatAgentRepo.deleteChatSession(chatSessionId, userId);
     }
 
+    async getMessagesBySessionId(userId: string, chatSessionId: string): Promise<UIMessage[]> {
+        await this.getChatSessionById(userId, chatSessionId);
+        const rawMessages = await this.chatAgentRepo.getMessagesBySessionId(chatSessionId, userId);
+
+        return rawMessages.map((msg) => {
+            let parts: UIMessage['parts'] = [];
+            try {
+                const parsed = JSON.parse(msg.content);
+                parts = Array.isArray(parsed) ? parsed : [{ type: 'text', text: msg.content }];
+            } catch {
+                parts = [{ type: 'text', text: msg.content }];
+            }
+
+            return {
+                id: msg.id,
+                role: msg.role as 'user' | 'assistant',
+                parts,
+            };
+        });
+    }
+
     // ── 1. Lưu tin nhắn vào Database ──
     async saveMessage(
         chatSessionId: string,

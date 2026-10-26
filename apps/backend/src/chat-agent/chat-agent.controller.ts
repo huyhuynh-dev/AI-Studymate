@@ -64,6 +64,14 @@ export class ChatAgentController {
         return this.chatAgentService.getChatSessionById(this.getUserId(req), id);
     }
 
+    @Get('sessions/:id/messages')
+    async getMessages(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string
+    ) {
+        return this.chatAgentService.getMessagesBySessionId(this.getUserId(req), id);
+    }
+
     @Patch('sessions/:id')
     async updateChatSession(
         @Req() req: Request,

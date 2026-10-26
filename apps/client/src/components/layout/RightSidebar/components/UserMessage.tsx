@@ -1,8 +1,26 @@
-import React from "react";
+"use client";
+
+import React, { useMemo } from "react";
 import { FileText } from "lucide-react";
 import type { ChatMessage } from "../types";
 
-export function UserMessage({ message }: { message: ChatMessage }) {
+export const UserMessage = React.memo(function UserMessage({
+  message,
+}: {
+  message: ChatMessage;
+}) {
+  const parts = message.parts;
+
+  const textContent = useMemo(() => {
+    if (parts && parts.length > 0) {
+      return parts
+        .filter((p) => p.type === "text")
+        .map((p) => p.text)
+        .join("\n\n");
+    }
+    return message.content || "";
+  }, [parts, message.content]);
+
   return (
     <div className="flex flex-col items-end gap-1">
       {message.attachedFiles && message.attachedFiles.length > 0 && (
@@ -19,12 +37,16 @@ export function UserMessage({ message }: { message: ChatMessage }) {
         </div>
       )}
 
-      {message.content && (
+      {textContent && (
         <div className="max-w-[90%] whitespace-pre-wrap break-words rounded-2xl rounded-tr-sm bg-indigo-600 px-3.5 py-2.5 text-[13px] leading-relaxed text-white">
-          {message.content}
+          {textContent}
         </div>
       )}
-      <span className="text-[10px] text-gray-400">{message.timestamp}</span>
+      {message.timestamp && (
+        <span className="text-[10px] text-gray-400">{message.timestamp}</span>
+      )}
     </div>
   );
-}
+});
+
+UserMessage.displayName = "UserMessage";

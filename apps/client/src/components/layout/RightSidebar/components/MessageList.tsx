@@ -8,14 +8,15 @@ import { UserMessage } from "./UserMessage";
 interface MessageListProps {
   messages: ChatMessage[];
   onFollowUp?: (prompt: string) => void;
+  isLoading?: boolean;
 }
 
-export function MessageList({ messages, onFollowUp }: MessageListProps) {
+export function MessageList({ messages, onFollowUp, isLoading }: MessageListProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isLoading]);
 
   return (
     // select-text: cho phép bôi đen / sao chép nội dung dù <aside> đang để select-none

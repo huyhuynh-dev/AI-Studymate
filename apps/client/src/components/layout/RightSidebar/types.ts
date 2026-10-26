@@ -16,11 +16,14 @@ export interface AttachedFile {
   file?: File;
 }
 
+export type MessageRole = "user" | "ai" | "assistant" | "system";
+
 export interface ChatMessage {
   id: string;
-  role: "user" | "ai";
-  content: string;
-  timestamp: string;
+  role: MessageRole;
+  content?: string;
+  parts?: Array<any>;
+  timestamp?: string;
   citation?: string;
   hasCitation?: boolean;
   attachedFiles?: string[];

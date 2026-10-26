@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useDocuments } from "@/hooks/useDocuments";
+import { chatSessionsApi } from "@/services/chatSessions.api";
 
 import { ChatComposer } from "./components/ChatComposer";
 import { ChatHeader } from "./components/ChatHeader";
@@ -13,7 +16,6 @@ import { WorkspaceDocModal } from "./components/WorkspaceDocModal";
 import {
   DEFAULT_EFFORT,
   DEFAULT_MODEL_ID,
-  SAMPLE_ACTIVE_MESSAGES,
 } from "./constants";
 import { useAttachments } from "./hooks/useAttachments";
 import type {
@@ -23,7 +25,7 @@ import type {
   ModelConfig,
   SendMessageOptions,
 } from "./types";
-import { createId, formatSessionTime, formatTime } from "./utils";
+import { formatSessionTime } from "./utils";
 
 // Giữ nguyên các export cũ để những file khác import từ RightSidebar vẫn chạy
 export { EFFORT_LEVELS } from "./constants";
@@ -69,18 +71,6 @@ export interface RightSidebarProps {
   className?: string;
 }
 
-// TODO: thay bằng phản hồi thật từ API. Hiện giữ lại câu trả lời giả lập như bản gốc.
-function buildPlaceholderReply(text: string, isNewChat: boolean): ChatMessage {
-  return {
-    id: createId("ai"),
-    role: "ai",
-    content: isNewChat
-      ? `Tôi đã nhận được câu hỏi "${text}". Đang tra cứu thông tin từ tài liệu liên quan...`
-      : `Dựa trên tài liệu bạn cung cấp, đây là giải đáp cho câu hỏi: "${text}"`,
-    timestamp: formatTime(),
-  };
-}
-
 // ─────────────────────────────────────────────
 // Main Component: RightSidebar
 // ─────────────────────────────────────────────
@@ -95,9 +85,12 @@ export default function RightSidebar({
 }: RightSidebarProps) {
   // ── Chat state (activeChatId = id của ChatSession đang mở) ──
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const activeChatIdRef = useRef<string | null>(null);
+  activeChatIdRef.current = activeChatId;
+
   const [inputValue, setInputValue] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const [, setIsLoadingMessages] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ChatSessionItem | null>(null);
 
   // ── Model / reasoning ──
@@ -128,8 +121,32 @@ export default function RightSidebar({
   // ── Data hooks ──
   const { chatSessions, isLoading, createSession, updateSession, deleteSession } =
     useChatSessions(conversationId);
-  // Document thuộc Conversation (không thuộc ChatSession)
   const { documents } = useDocuments(conversationId);
+
+  // ── Vercel AI SDK useChat ──
+  const transport = useMemo(() => {
+    return new DefaultChatTransport({
+      prepareSendMessagesRequest: ({ messages }) => {
+        const id = activeChatIdRef.current;
+        return {
+          url: `/api/proxy/chat-agent/sessions/${id}/chat`,
+          body: { messages },
+        };
+      },
+    });
+  }, []);
+
+  const {
+    messages,
+    setMessages,
+    sendMessage: aiSendMessage,
+    status,
+  } = useChat({
+    transport,
+  });
+
+  const isSending =
+    status === "submitted" || status === "streaming" || isCreatingSession;
 
   const sessions: ChatSessionItem[] = useMemo(
     () =>
@@ -154,8 +171,19 @@ export default function RightSidebar({
     if (chatState === "empty") return "Đoạn chat mới";
     const session = sessions.find((s) => s.id === activeChatId);
     if (session) return session.title;
-    const firstUserMessage = messages.find((m) => m.role === "user" && m.content);
-    return firstUserMessage?.content.slice(0, 50) ?? "Đoạn chat hiện tại";
+    const firstUserMsg = messages.find((m) => m.role === "user");
+    if (firstUserMsg) {
+      if (firstUserMsg.parts && firstUserMsg.parts.length > 0) {
+        const textPart = firstUserMsg.parts.find((p) => p.type === "text");
+        if (textPart && "text" in textPart) {
+          return (textPart as { text: string }).text.slice(0, 50);
+        }
+      }
+      if ((firstUserMsg as unknown as { content?: string }).content) {
+        return (firstUserMsg as unknown as { content: string }).content.slice(0, 50);
+      }
+    }
+    return "Đoạn chat hiện tại";
   }, [chatState, sessions, activeChatId, messages]);
 
   const shortContext = contextTitle ? contextTitle.split(" – ")[0] : undefined;
@@ -163,10 +191,11 @@ export default function RightSidebar({
   // ── Handlers ──
   const handleNewChat = useCallback(() => {
     setActiveChatId(null);
+    activeChatIdRef.current = null;
     setMessages([]);
     setInputValue("");
     clearFiles();
-  }, [clearFiles]);
+  }, [setMessages, clearFiles]);
 
   // Chuyển sang Conversation khác → bỏ đoạn chat / tin nhắn của Conversation cũ
   const [trackedConversationId, setTrackedConversationId] = useState(conversationId);
@@ -176,12 +205,22 @@ export default function RightSidebar({
     setPendingDelete(null);
   }
 
-  const handleSelectChat = useCallback((id: string) => {
-    setActiveChatId(id);
-    // TODO: tải tin nhắn thật (bảng messages) của ChatSession `id`.
-    // Hiện dùng dữ liệu mẫu như bản gốc.
-    setMessages(SAMPLE_ACTIVE_MESSAGES);
-  }, []);
+  const handleSelectChat = useCallback(
+    async (id: string) => {
+      setActiveChatId(id);
+      activeChatIdRef.current = id;
+      try {
+        setIsLoadingMessages(true);
+        const history = await chatSessionsApi.getMessages(id);
+        setMessages(history);
+      } catch (err) {
+        console.error("Lỗi khi tải lịch sử tin nhắn:", err);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    },
+    [setMessages]
+  );
 
   /** Ném lỗi nếu API thất bại → HistorySessionRow tự hiển thị thông báo */
   const handleRenameChat = useCallback(
@@ -208,36 +247,25 @@ export default function RightSidebar({
       const text = rawText.trim();
       if ((!text && attachedFiles.length === 0) || isSending) return;
 
-      const isNewChat = messages.length === 0;
-      const userMsg: ChatMessage = {
-        id: createId("msg"),
-        role: "user",
-        content: text,
-        timestamp: formatTime(),
-        attachedFiles: attachedFiles.map((f) => f.name),
-      };
+      let sessionId = activeChatIdRef.current;
+      const isNewChat = !sessionId;
 
-      setIsSending(true);
       try {
-        let sessionId = activeChatId ?? undefined;
-
-        // Đoạn chat mới → tạo ChatSession trên server (cần conversationId)
-        if (isNewChat && conversationId && text) {
-          try {
-            const created = await createSession(text.slice(0, 50));
-            if (created?.id) {
-              sessionId = created.id;
-              setActiveChatId(created.id);
-            }
-          } catch {
-            // Tạo phiên thất bại: vẫn cho chat cục bộ như bản gốc
+        if (isNewChat && conversationId) {
+          setIsCreatingSession(true);
+          const created = await createSession(text.slice(0, 50));
+          if (created?.id) {
+            sessionId = created.id;
+            activeChatIdRef.current = created.id;
+            setActiveChatId(created.id);
           }
         }
 
-        const aiMsg = buildPlaceholderReply(text, isNewChat);
-        setMessages((prev) =>
-          isNewChat ? [userMsg, aiMsg] : [...prev, userMsg, aiMsg]
-        );
+        if (!sessionId) {
+          console.warn("Không thể gửi tin nhắn do chưa có ChatSession");
+          return;
+        }
+
         setInputValue("");
         clearFiles();
 
@@ -247,20 +275,23 @@ export default function RightSidebar({
           thinking: modelConfig.thinking,
           attachedFiles,
         });
+
+        await aiSendMessage({ text });
+      } catch (error) {
+        console.error("Lỗi khi gửi tin nhắn:", error);
       } finally {
-        setIsSending(false);
+        setIsCreatingSession(false);
       }
     },
     [
       attachedFiles,
       isSending,
-      messages.length,
-      activeChatId,
       conversationId,
       createSession,
       clearFiles,
       onSendMessage,
       modelConfig,
+      aiSendMessage,
     ]
   );
 
@@ -298,7 +329,11 @@ export default function RightSidebar({
       {chatState === "empty" ? (
         <EmptyState onPromptSelect={(prompt) => void sendMessage(prompt)} />
       ) : (
-        <MessageList messages={messages} onFollowUp={setInputValue} />
+        <MessageList
+          messages={messages as unknown as ChatMessage[]}
+          onFollowUp={setInputValue}
+          isLoading={isSending}
+        />
       )}
 
       <ChatComposer

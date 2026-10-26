@@ -159,6 +159,23 @@ export class ChatAgentRepoService {
         });
     }
 
+    async getMessagesBySessionId(
+        chatSessionId: string,
+        userId: string
+    ): Promise<Message[]> {
+        return this.prisma.message.findMany({
+            where: {
+                chat_session_id: chatSessionId,
+                chat_session: {
+                    conversation: {
+                        is: { user_id: userId },
+                    },
+                },
+            },
+            orderBy: { created_at: 'asc' },
+        });
+    }
+
     private notFound(): NotFoundException {
         return new NotFoundException(
             'Không tìm thấy phiên trò chuyện hoặc bạn không có quyền truy cập'
