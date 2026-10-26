@@ -2,7 +2,6 @@
 
 import React, { useEffect } from "react";
 import { FileText, FolderOpen, X } from "lucide-react";
-import { SAMPLE_WORKSPACE_DOCS } from "../constants";
 import type { WorkspaceDoc } from "../types";
 
 interface WorkspaceDocModalProps {
@@ -28,9 +27,6 @@ export function WorkspaceDocModal({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  // Chưa có tài liệu thật → hiển thị danh sách mẫu (giữ nguyên hành vi cũ)
-  const docs = availableDocs.length > 0 ? availableDocs : SAMPLE_WORKSPACE_DOCS;
 
   return (
     <div
@@ -66,8 +62,17 @@ export function WorkspaceDocModal({
           AI sẽ đọc nội dung tài liệu bạn chọn để trả lời chính xác hơn.
         </p>
 
+        {availableDocs.length === 0 && (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center">
+            <FileText className="h-6 w-6 text-gray-300" />
+            <p className="text-xs text-gray-500">
+              Không gian học tập chưa có tài liệu nào. Hãy tải tài liệu lên trước.
+            </p>
+          </div>
+        )}
+
         <div className="max-h-60 space-y-1.5 overflow-y-auto">
-          {docs.map((doc) => (
+          {availableDocs.map((doc) => (
             <button
               key={doc.id}
               type="button"

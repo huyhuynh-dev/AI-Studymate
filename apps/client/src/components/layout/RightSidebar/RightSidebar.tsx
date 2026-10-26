@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useMemo, useState } from "react";
-import { useConversations } from "@/hooks/useConversations";
+import { useChatSessions } from "@/hooks/useChatSessions";
 import { useDocuments } from "@/hooks/useDocuments";
 
 import { ChatComposer } from "./components/ChatComposer";
@@ -13,7 +13,6 @@ import { WorkspaceDocModal } from "./components/WorkspaceDocModal";
 import {
   DEFAULT_EFFORT,
   DEFAULT_MODEL_ID,
-  DEFAULT_SAMPLE_CONVERSATIONS,
   SAMPLE_ACTIVE_MESSAGES,
 } from "./constants";
 import { useAttachments } from "./hooks/useAttachments";
@@ -43,7 +42,13 @@ export type {
 // ─────────────────────────────────────────────
 
 export interface RightSidebarProps {
-  /** subjectId để fetch danh sách conversations */
+  /**
+   * Id của Conversation đang mở. Dùng để:
+   *  - lấy / tạo các ChatSession (đoạn chat) thuộc Conversation này
+   *  - lấy tài liệu (Document) cho mục "Không gian học tập"
+   */
+  conversationId?: string | null;
+  /** @deprecated Không còn dùng – danh sách đoạn chat giờ lấy theo `conversationId`. */
   subjectId?: string | null;
   /** Tên context tài liệu hiện tại */
   contextTitle?: string;
@@ -60,21 +65,6 @@ export interface RightSidebarProps {
     chatSessionId?: string,
     options?: SendMessageOptions
   ) => void;
-  /**
-   * Gọi khi người dùng đổi tên một đoạn chat (ChatSession).
-   * `chatId` = chat_sessions.id; hãy cập nhật cột `title` của ChatSession ở đây.
-   * Nếu ném lỗi (hoặc reject), giao diện sẽ báo lỗi và giữ nguyên tên cũ.
-   * Không truyền → chỉ đổi tên cục bộ trên giao diện (mất khi tải lại trang).
-   */
-  onRenameChat?: (chatId: string, newTitle: string) => void | Promise<void>;
-  /**
-   * Gọi khi người dùng xác nhận xóa một đoạn chat (ChatSession).
-   * `chatId` = chat_sessions.id. Xóa ChatSession sẽ xóa luôn các Message của nó
-   * (onDelete: Cascade); Document và Summary thuộc Conversation nên không bị ảnh hưởng.
-   * Nếu ném lỗi (hoặc reject), hộp thoại báo lỗi và đoạn chat vẫn được giữ lại.
-   * Không truyền → chỉ ẩn cục bộ trên giao diện (xuất hiện lại khi tải lại trang).
-   */
-  onDeleteChat?: (chatId: string) => void | Promise<void>;
   /** Additional container classes */
   className?: string;
 }
@@ -96,24 +86,18 @@ function buildPlaceholderReply(text: string, isNewChat: boolean): ChatMessage {
 // ─────────────────────────────────────────────
 
 export default function RightSidebar({
-  subjectId,
+  conversationId,
   contextTitle = "Trang 12 – Giáo trình CTDL",
   isCollapsed = false,
   onToggleCollapse,
   onSendMessage,
-  onRenameChat,
-  onDeleteChat,
   className = "",
 }: RightSidebarProps) {
-  // ── Chat state ──
+  // ── Chat state (activeChatId = id của ChatSession đang mở) ──
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
-
-  // ── Đổi tên / xóa đoạn chat ──
-  const [titleOverrides, setTitleOverrides] = useState<Record<string, string>>({});
-  const [deletedIds, setDeletedIds] = useState<ReadonlySet<string>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<ChatSessionItem | null>(null);
 
   // ── Model / reasoning ──
@@ -142,34 +126,25 @@ export default function RightSidebar({
   } = useAttachments();
 
   // ── Data hooks ──
-  const { conversations, isLoading, createSession } = useConversations(subjectId);
-  const { documents } = useDocuments(activeChatId);
+  const { chatSessions, isLoading, createSession, updateSession, deleteSession } =
+    useChatSessions(conversationId);
+  // Document thuộc Conversation (không thuộc ChatSession)
+  const { documents } = useDocuments(conversationId);
 
-  const baseSessions: ChatSessionItem[] = useMemo(() => {
-    if (conversations.length > 0) {
-      return conversations.map((c) => {
-        const date = new Date(c.updated_at || c.created_at);
+  const sessions: ChatSessionItem[] = useMemo(
+    () =>
+      chatSessions.map((s) => {
+        const date = new Date(s.created_at);
         return {
-          id: c.id,
-          title: c.title,
+          id: s.id,
+          title: s.title,
           lastMessage: "Nhấn để tiếp tục cuộc trò chuyện",
           lastMessageRole: "ai" as const,
           timestamp: formatSessionTime(date),
           rawDate: date,
         };
-      });
-    }
-    // Đang tải: để trống cho HistoryMenu hiển thị skeleton. Tải xong mà chưa có gì: dùng dữ liệu mẫu.
-    return isLoading ? [] : DEFAULT_SAMPLE_CONVERSATIONS;
-  }, [conversations, isLoading]);
-
-  // Áp dụng các thay đổi đã xác nhận (tên mới, đoạn chat đã xóa) lên danh sách
-  const sessions: ChatSessionItem[] = useMemo(
-    () =>
-      baseSessions
-        .filter((s) => !deletedIds.has(s.id))
-        .map((s) => (titleOverrides[s.id] ? { ...s, title: titleOverrides[s.id] } : s)),
-    [baseSessions, deletedIds, titleOverrides]
+      }),
+    [chatSessions]
   );
 
   // ── Derived ──
@@ -193,38 +168,40 @@ export default function RightSidebar({
     clearFiles();
   }, [clearFiles]);
 
+  // Chuyển sang Conversation khác → bỏ đoạn chat / tin nhắn của Conversation cũ
+  const [trackedConversationId, setTrackedConversationId] = useState(conversationId);
+  if (trackedConversationId !== conversationId) {
+    setTrackedConversationId(conversationId);
+    handleNewChat();
+    setPendingDelete(null);
+  }
+
   const handleSelectChat = useCallback((id: string) => {
     setActiveChatId(id);
-    // TODO: tải tin nhắn thật của phiên `id`. Hiện dùng dữ liệu mẫu như bản gốc.
+    // TODO: tải tin nhắn thật (bảng messages) của ChatSession `id`.
+    // Hiện dùng dữ liệu mẫu như bản gốc.
     setMessages(SAMPLE_ACTIVE_MESSAGES);
   }, []);
 
-  /** Ném lỗi nếu onRenameChat thất bại → HistorySessionRow tự hiển thị thông báo */
+  /** Ném lỗi nếu API thất bại → HistorySessionRow tự hiển thị thông báo */
   const handleRenameChat = useCallback(
     async (id: string, newTitle: string) => {
-      await onRenameChat?.(id, newTitle);
-      setTitleOverrides((prev) => ({ ...prev, [id]: newTitle }));
+      await updateSession(id, newTitle);
     },
-    [onRenameChat]
+    [updateSession]
   );
 
-  /** Ném lỗi nếu onDeleteChat thất bại → ConfirmDeleteDialog tự hiển thị thông báo */
+  /** Ném lỗi nếu API thất bại → ConfirmDeleteDialog tự hiển thị thông báo */
   const handleConfirmDelete = useCallback(async () => {
     if (!pendingDelete) return;
     const id = pendingDelete.id;
 
-    await onDeleteChat?.(id);
+    await deleteSession(id);
 
-    setDeletedIds((prev) => new Set(prev).add(id));
-    setTitleOverrides((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
     // Đang mở chính đoạn chat vừa xóa → quay về đoạn chat mới
     if (id === activeChatId) handleNewChat();
     setPendingDelete(null);
-  }, [pendingDelete, onDeleteChat, activeChatId, handleNewChat]);
+  }, [pendingDelete, deleteSession, activeChatId, handleNewChat]);
 
   const sendMessage = useCallback(
     async (rawText: string) => {
@@ -244,8 +221,8 @@ export default function RightSidebar({
       try {
         let sessionId = activeChatId ?? undefined;
 
-        // Đoạn chat mới → tạo phiên trên server (nếu có subjectId)
-        if (isNewChat && subjectId && text) {
+        // Đoạn chat mới → tạo ChatSession trên server (cần conversationId)
+        if (isNewChat && conversationId && text) {
           try {
             const created = await createSession(text.slice(0, 50));
             if (created?.id) {
@@ -279,7 +256,7 @@ export default function RightSidebar({
       isSending,
       messages.length,
       activeChatId,
-      subjectId,
+      conversationId,
       createSession,
       clearFiles,
       onSendMessage,
@@ -290,10 +267,11 @@ export default function RightSidebar({
   return (
     <aside
       aria-hidden={isCollapsed}
-      className={`flex h-full flex-col border-l border-gray-100 bg-white select-none transition-all duration-300 ease-in-out ${isCollapsed
+      className={`flex h-full flex-col border-l border-gray-100 bg-white select-none transition-all duration-300 ease-in-out ${
+        isCollapsed
           ? "w-0 border-l-0 overflow-hidden opacity-0 pointer-events-none"
           : "w-80 md:w-96 opacity-100"
-        } ${className}`.trim()}
+      } ${className}`.trim()}
     >
       {/* Input ẩn để chọn tệp từ thiết bị */}
       <input
@@ -347,7 +325,7 @@ export default function RightSidebar({
         isOpen={isWorkspaceModalOpen}
         onClose={closeWorkspaceModal}
         onSelect={addWorkspaceDoc}
-        availableDocs={documents || []}
+        availableDocs={documents}
       />
 
       <ConfirmDeleteDialog
