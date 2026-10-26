@@ -32,7 +32,7 @@ const TASK_MODELS: Record<AiTask, TaskModel> = {
     SUMMARIZE: google('gemini-3.8-flash'),
     BLOCKNOTE_EDITOR: google('gemini-3.5-flash-lite'),
     CHAT_AGENT: google('gemini-3.5-flash'),
-    AUTO_HEADER: ollama('qwen3.5:2b'),
+    AUTO_HEADER: ollama('qwen3.5:0.8b'),
 };
 
 export function getModelForTask(task: 'EMBEDDING'): EmbeddingModel;

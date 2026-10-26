@@ -83,8 +83,9 @@ export class ChatAgentAiService {
     try {
       console.log(`[ChatAgentAiService] Generating auto-header for prompt: "${promptText.slice(0, 80)}..."`);
       const response = await this.aiService.generateTextForTask('AUTO_HEADER', [
+        { role: 'user', content: AUTO_HEADER_SYSTEM_PROMPT },
         { role: 'user', content: promptText.slice(0, 500) },
-      ], AUTO_HEADER_SYSTEM_PROMPT);
+      ]);
 
       let rawTitle = response.text || '';
       // Làm sạch tiêu đề: loại bỏ ngoặc kép, dấu xuống dòng, tiền tố "Tiêu đề:"
