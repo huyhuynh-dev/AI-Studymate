@@ -131,8 +131,14 @@ export default function RightSidebar({
   } = useAttachments();
 
   // ── Data hooks ──
-  const { chatSessions, isLoading, createSession, updateSession, deleteSession } =
-    useChatSessions(conversationId);
+  const {
+    chatSessions,
+    isLoading,
+    createSession,
+    updateSession,
+    deleteSession,
+    refresh: refreshSessions,
+  } = useChatSessions(conversationId);
   const { documents } = useDocuments(conversationId);
 
   // ── Vercel AI SDK useChat ──
@@ -163,6 +169,7 @@ export default function RightSidebar({
     },
     onFinish: ({ message }) => {
       console.log("[RightSidebar] useChat onFinish -> Tin nhắn AI nhận về thành công:", message);
+      refreshSessions();
     },
   });
 
@@ -279,7 +286,7 @@ export default function RightSidebar({
         if (isNewChat && conversationId) {
           setIsCreatingSession(true);
           try {
-            const created = await createSession(text.slice(0, 50));
+            const created = await createSession("Đoạn chat mới");
             if (created?.id) {
               sessionId = created.id;
               activeChatIdRef.current = created.id;
@@ -317,6 +324,13 @@ export default function RightSidebar({
         console.log("[RightSidebar] Kích hoạt aiSendMessage({ text })...");
         await aiSendMessage({ text });
         console.log("[RightSidebar] aiSendMessage đã gọi xong.");
+
+        // Nếu là phiên mới, sau 1.2s kích hoạt tải lại tiêu đề mới do Ollama cập nhật ngầm
+        if (isNewChat) {
+          setTimeout(() => {
+            refreshSessions();
+          }, 1200);
+        }
       } catch (error) {
         console.error("Lỗi khi gửi tin nhắn:", error);
       } finally {

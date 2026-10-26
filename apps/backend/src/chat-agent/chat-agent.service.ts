@@ -156,7 +156,32 @@ export class ChatAgentService {
             await this.saveMessage(chatSessionId, 'user', userContent);
         }
 
-        // c. Khởi tạo luồng sinh văn bản từ AI
+        // c. Tự động sinh tiêu đề ngầm (Fire-and-forget Asynchronous Fast LLM)
+        this.triggerAutoHeaderAsync(userId, chatSessionId, messages);
+
+        // d. Khởi tạo luồng sinh văn bản từ AI
         return this.executeAiChatStream(chatSessionId, messages, abortSignal);
+    }
+
+    private triggerAutoHeaderAsync(
+        userId: string,
+        chatSessionId: string,
+        messages: UIMessage[]
+    ) {
+        const userMessages = messages.filter((m) => m.role === 'user');
+        // Chỉ kích hoạt tự động đặt tiêu đề cho 1-2 tin nhắn đầu tiên của cuộc trò chuyện
+        if (userMessages.length > 2) return;
+
+        setImmediate(async () => {
+            try {
+                const title = await this.chatAgentAiService.generateSessionTitle(userMessages);
+                if (title && title.length >= 2) {
+                    await this.chatAgentRepo.updateChatSession(chatSessionId, title, userId);
+                    console.log(`[ChatAgentService] Auto-header updated: session=${chatSessionId}, title="${title}"`);
+                }
+            } catch (err: any) {
+                console.warn(`[ChatAgentService] Auto-header error for session ${chatSessionId}: ${err?.message}`);
+            }
+        });
     }
 }

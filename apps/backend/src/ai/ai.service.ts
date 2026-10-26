@@ -34,6 +34,7 @@ export class AiService {
   generateTextForTask(
     task: Exclude<AiTask, 'EMBEDDING'>,
     messages: NonNullable<Parameters<typeof aiGenerateText>[0]['messages']>,
+    systemPrompt?: string,
   ) {
     if (task === 'SUMMARIZE') {
       return aiGenerateText({
@@ -41,6 +42,20 @@ export class AiService {
         messages,
         providerOptions: {
           google: { responseMimeType: 'application/json' },
+        },
+      });
+    }
+
+    if (task === 'AUTO_HEADER') {
+      return aiGenerateText({
+        model: getModelForTask(task),
+        system: systemPrompt,
+        messages,
+        temperature: 0.1,
+        providerOptions: {
+          ollama: {
+            think: false,
+          },
         },
       });
     }
