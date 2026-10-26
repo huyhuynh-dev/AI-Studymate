@@ -3,7 +3,12 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Check, Copy } from "lucide-react";
+import "katex/dist/katex.min.css";
 
 interface CodeBlockProps {
   language?: string;
@@ -24,8 +29,8 @@ function CodeBlock({ language, value }: CodeBlockProps) {
   };
 
   return (
-    <div className="my-2.5 overflow-hidden rounded-xl border border-gray-200 bg-gray-900 text-gray-100 shadow-xs">
-      <div className="flex items-center justify-between border-b border-gray-800 bg-gray-950/80 px-3.5 py-1.5 text-[11px] text-gray-400">
+    <div className="my-2.5 overflow-hidden rounded-xl border border-gray-800 bg-gray-950 text-gray-100 shadow-xs">
+      <div className="flex items-center justify-between border-b border-gray-800 bg-gray-900/90 px-3.5 py-1.5 text-[11px] text-gray-400">
         <span className="font-mono lowercase">{language || "text"}</span>
         <button
           type="button"
@@ -45,10 +50,26 @@ function CodeBlock({ language, value }: CodeBlockProps) {
           )}
         </button>
       </div>
-      <div className="overflow-x-auto p-3 text-[12px] leading-relaxed font-mono">
-        <pre>
-          <code>{value}</code>
-        </pre>
+      <div className="overflow-x-auto text-[12px] leading-relaxed font-mono">
+        <SyntaxHighlighter
+          language={language || "text"}
+          style={vscDarkPlus}
+          customStyle={{
+            margin: 0,
+            padding: "0.75rem 0.875rem",
+            background: "transparent",
+            fontSize: "12px",
+            lineHeight: "1.5",
+          }}
+          codeTagProps={{
+            style: {
+              fontFamily:
+                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+            },
+          }}
+        >
+          {value}
+        </SyntaxHighlighter>
       </div>
     </div>
   );
@@ -62,7 +83,8 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
   return (
     <div className="prose prose-sm max-w-none text-inherit">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[[rehypeKatex, { output: "htmlAndMathml", throwOnError: false }]]}
         components={{
           table: ({ children }) => (
             <div className="my-2.5 overflow-x-auto rounded-lg border border-gray-200">
