@@ -8,13 +8,16 @@ import {
     Patch,
     Post,
     Req,
+    Res,
     UnauthorizedException,
     UseGuards,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response as ExpressResponse } from 'express';
+import { pipeUIMessageStreamToResponse } from 'ai';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { CreateChatSessionDto } from './dto/create-chat-session.dto.js';
 import { UpdateChatSessionDto } from './dto/update-chat-session.dto.js';
+import { ChatStreamDto } from './dto/chat-stream.dto.js';
 import { ChatAgentService } from './chat-agent.service.js';
 
 @Controller('chat-agent')
@@ -76,5 +79,36 @@ export class ChatAgentController {
         @Param('id', new ParseUUIDPipe()) id: string
     ) {
         return this.chatAgentService.deleteChatSession(this.getUserId(req), id);
+    }
+
+    @Post('sessions/:id/chat')
+    async streamChat(
+        @Req() req: Request,
+        @Res() response: ExpressResponse,
+        @Param('id', new ParseUUIDPipe()) id: string,
+        @Body() data: ChatStreamDto
+    ) {
+        const userId = this.getUserId(req);
+        const abortController = new AbortController();
+
+        req.on('close', () => {
+            abortController.abort();
+        });
+
+        const result = await this.chatAgentService.handleChatStream(
+            userId,
+            id,
+            data.messages,
+            abortController.signal
+        );
+
+        await pipeUIMessageStreamToResponse({
+            response,
+            stream: result.toUIMessageStream({
+                onError: () => {
+                    return 'AI chat stream encountered an error';
+                },
+            }),
+        });
     }
 }

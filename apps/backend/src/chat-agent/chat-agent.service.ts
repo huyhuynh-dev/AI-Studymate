@@ -1,11 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { UIMessage } from 'ai';
 import { ChatAgentRepoService } from '../repo/chat-agent-repo/chat-agent-repo.service.js';
+import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { CreateChatSessionDto } from './dto/create-chat-session.dto.js';
 import { UpdateChatSessionDto } from './dto/update-chat-session.dto.js';
 
 @Injectable()
 export class ChatAgentService {
-    constructor(private readonly chatAgentRepo: ChatAgentRepoService) { }
+    constructor(
+        private readonly chatAgentRepo: ChatAgentRepoService,
+        private readonly chatAgentAiService: ChatAgentAiService,
+    ) { }
 
     async createChatSession(
         userId: string,
@@ -48,5 +53,64 @@ export class ChatAgentService {
 
     async deleteChatSession(userId: string, chatSessionId: string) {
         return this.chatAgentRepo.deleteChatSession(chatSessionId, userId);
+    }
+
+    // ── 1. Lưu tin nhắn vào Database ──
+    async saveMessage(
+        chatSessionId: string,
+        role: 'user' | 'assistant',
+        content: string,
+        sourceChunks?: string[]
+    ) {
+        return this.chatAgentRepo.createMessage({
+            chat_session_id: chatSessionId,
+            role,
+            content,
+            source_chunks: sourceChunks,
+        });
+    }
+
+    // ── 2. Kích hoạt luồng Stream AI qua ChatAgentAiService ──
+    async executeAiChatStream(
+        chatSessionId: string,
+        messages: UIMessage[],
+        abortSignal?: AbortSignal
+    ) {
+        return this.chatAgentAiService.executeChatStream(
+            messages,
+            async ({ responseMessages, text }) => {
+                const assistantContent =
+                    responseMessages && responseMessages.length > 0
+                        ? JSON.stringify(responseMessages)
+                        : text;
+
+                await this.saveMessage(chatSessionId, 'assistant', assistantContent);
+            },
+            abortSignal
+        );
+    }
+
+    // ── 3. Function tổng hợp điều phối toàn bộ chu trình Chat ──
+    async handleChatStream(
+        userId: string,
+        chatSessionId: string,
+        messages: UIMessage[],
+        abortSignal?: AbortSignal
+    ) {
+        // a. Xác thực quyền truy cập phiên của người dùng
+        await this.getChatSessionById(userId, chatSessionId);
+
+        // b. Lưu tin nhắn mới nhất của user vào Database
+        const lastUserMessage = messages[messages.length - 1];
+        if (lastUserMessage && lastUserMessage.role === 'user') {
+            const userContent = lastUserMessage.parts
+                ? JSON.stringify(lastUserMessage.parts)
+                : '';
+
+            await this.saveMessage(chatSessionId, 'user', userContent);
+        }
+
+        // c. Khởi tạo luồng sinh văn bản từ AI
+        return this.executeAiChatStream(chatSessionId, messages, abortSignal);
     }
 }

@@ -6,7 +6,8 @@ export type AiTask =
     | 'EMBEDDING'
     | 'VISION_ANALYZE'
     | 'SUMMARIZE'
-    | 'BLOCKNOTE_EDITOR';
+    | 'BLOCKNOTE_EDITOR'
+    | 'CHAT_AGENT';
 
 type TaskModel = EmbeddingModel | LanguageModel;
 
@@ -29,6 +30,7 @@ const TASK_MODELS: Record<AiTask, TaskModel> = {
     VISION_ANALYZE: google('gemini-3.5-flash-lite'),
     SUMMARIZE: google('gemini-3.8-flash'),
     BLOCKNOTE_EDITOR: google('gemini-3.5-flash-lite'),
+    CHAT_AGENT: google('gemini-3.5-flash'),
 };
 
 export function getModelForTask(task: 'EMBEDDING'): EmbeddingModel;

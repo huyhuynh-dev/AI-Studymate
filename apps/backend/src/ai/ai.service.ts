@@ -65,4 +65,19 @@ export class AiService {
     });
   }
 
+  streamTextForTask(
+    task: Exclude<AiTask, 'EMBEDDING'>,
+    options: Omit<
+      Parameters<typeof aiStreamText>[0],
+      'model' | 'prompt' | 'messages'
+    > & {
+      messages: NonNullable<Parameters<typeof aiStreamText>[0]['messages']>;
+    },
+  ) {
+    return aiStreamText({
+      ...options,
+      model: getModelForTask(task),
+    });
+  }
+
 }

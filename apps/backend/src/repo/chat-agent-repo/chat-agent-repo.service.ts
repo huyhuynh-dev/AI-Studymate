@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
-import { ChatSession, Prisma } from '../../generated/prisma/client.js';
+import { ChatSession, Message, Prisma } from '../../generated/prisma/client.js';
 
 type ChatSessionData = Pick<
     Prisma.ChatSessionUncheckedCreateInput,
@@ -141,6 +141,22 @@ export class ChatAgentRepoService {
         } catch (error) {
             this.rethrowNotFound(error);
         }
+    }
+
+    async createMessage(data: {
+        chat_session_id: string;
+        role: string;
+        content: string;
+        source_chunks?: string[];
+    }): Promise<Message> {
+        return this.prisma.message.create({
+            data: {
+                chat_session_id: data.chat_session_id,
+                role: data.role,
+                content: data.content,
+                source_chunks: data.source_chunks ?? [],
+            },
+        });
     }
 
     private notFound(): NotFoundException {
