@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useMemo, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useChatSessions } from "@/hooks/useChatSessions";
@@ -76,13 +77,24 @@ export interface RightSidebarProps {
 // ─────────────────────────────────────────────
 
 export default function RightSidebar({
-  conversationId,
+  conversationId: propConversationId,
   contextTitle = "Trang 12 – Giáo trình CTDL",
   isCollapsed = false,
   onToggleCollapse,
   onSendMessage,
   className = "",
 }: RightSidebarProps) {
+  // Tự động trích xuất conversationId từ URL params (/home/[subjectId]/[conversationId]) nếu prop không truyền vào
+  const params = useParams();
+  const routeConversationId =
+    typeof params?.conversationId === "string"
+      ? params.conversationId
+      : Array.isArray(params?.conversationId)
+        ? params.conversationId[0]
+        : null;
+
+  const conversationId = propConversationId || routeConversationId;
+
   // ── Chat state (activeChatId = id của ChatSession đang mở) ──
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const activeChatIdRef = useRef<string | null>(null);
@@ -128,8 +140,10 @@ export default function RightSidebar({
     return new DefaultChatTransport({
       prepareSendMessagesRequest: ({ messages }) => {
         const id = activeChatIdRef.current;
+        const targetApi = `/api/proxy/chat-agent/sessions/${id}/chat`;
+        console.log("[RightSidebar] prepareSendMessagesRequest -> Target API:", targetApi, "Messages:", messages);
         return {
-          url: `/api/proxy/chat-agent/sessions/${id}/chat`,
+          api: targetApi,
           body: { messages },
         };
       },
@@ -141,9 +155,20 @@ export default function RightSidebar({
     setMessages,
     sendMessage: aiSendMessage,
     status,
+    error: chatError,
   } = useChat({
     transport,
+    onError: (err) => {
+      console.error("[RightSidebar] useChat onError:", err);
+    },
+    onFinish: ({ message }) => {
+      console.log("[RightSidebar] useChat onFinish -> Tin nhắn AI nhận về thành công:", message);
+    },
   });
+
+  if (chatError) {
+    console.warn("[RightSidebar] Trạng thái chatError:", chatError);
+  }
 
   const isSending =
     status === "submitted" || status === "streaming" || isCreatingSession;
@@ -253,21 +278,34 @@ export default function RightSidebar({
       try {
         if (isNewChat && conversationId) {
           setIsCreatingSession(true);
-          const created = await createSession(text.slice(0, 50));
-          if (created?.id) {
-            sessionId = created.id;
-            activeChatIdRef.current = created.id;
-            setActiveChatId(created.id);
+          try {
+            const created = await createSession(text.slice(0, 50));
+            if (created?.id) {
+              sessionId = created.id;
+              activeChatIdRef.current = created.id;
+              setActiveChatId(created.id);
+            }
+          } catch (createError) {
+            console.error("Lỗi khi tạo ChatSession trên server:", createError);
           }
         }
 
         if (!sessionId) {
-          console.warn("Không thể gửi tin nhắn do chưa có ChatSession");
+          console.warn(
+            "Không thể gửi tin nhắn do chưa có ChatSession. conversationId:",
+            conversationId
+          );
           return;
         }
 
         setInputValue("");
         clearFiles();
+
+        console.log("[RightSidebar] Chuẩn bị gửi tin nhắn AI:", {
+          text,
+          sessionId,
+          conversationId,
+        });
 
         onSendMessage?.(text, sessionId, {
           model: modelConfig.modelId,
@@ -276,7 +314,9 @@ export default function RightSidebar({
           attachedFiles,
         });
 
+        console.log("[RightSidebar] Kích hoạt aiSendMessage({ text })...");
         await aiSendMessage({ text });
+        console.log("[RightSidebar] aiSendMessage đã gọi xong.");
       } catch (error) {
         console.error("Lỗi khi gửi tin nhắn:", error);
       } finally {

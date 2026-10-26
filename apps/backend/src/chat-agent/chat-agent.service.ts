@@ -63,7 +63,18 @@ export class ChatAgentService {
             let parts: UIMessage['parts'] = [];
             try {
                 const parsed = JSON.parse(msg.content);
-                parts = Array.isArray(parsed) ? parsed : [{ type: 'text', text: msg.content }];
+                if (Array.isArray(parsed)) {
+                    // Xử lý nếu dữ liệu bị lồng trong ResponseMessage: [{ role: 'assistant', content: [...] }]
+                    if (parsed.length > 0 && parsed[0]?.role && Array.isArray(parsed[0]?.content)) {
+                        parts = parsed[0].content;
+                    } else {
+                        parts = parsed;
+                    }
+                } else if (typeof parsed === 'string') {
+                    parts = [{ type: 'text', text: parsed }];
+                } else {
+                    parts = [{ type: 'text', text: msg.content }];
+                }
             } catch {
                 parts = [{ type: 'text', text: msg.content }];
             }
@@ -83,6 +94,7 @@ export class ChatAgentService {
         content: string,
         sourceChunks?: string[]
     ) {
+        console.log(`[ChatAgentService] saveMessage: sessionId=${chatSessionId}, role=${role}, length=${content?.length}`);
         return this.chatAgentRepo.createMessage({
             chat_session_id: chatSessionId,
             role,
@@ -97,15 +109,25 @@ export class ChatAgentService {
         messages: UIMessage[],
         abortSignal?: AbortSignal
     ) {
+        console.log(`[ChatAgentService] executeAiChatStream: starting AI stream for session ${chatSessionId}...`);
         return this.chatAgentAiService.executeChatStream(
             messages,
             async ({ responseMessages, text }) => {
-                const assistantContent =
-                    responseMessages && responseMessages.length > 0
-                        ? JSON.stringify(responseMessages)
-                        : text;
+                console.log(`[ChatAgentService] executeAiChatStream onFinish: text length=${text?.length}, responseMessages count=${responseMessages?.length}`);
+                
+                // Trích xuất đúng mảng UIMessagePart để lưu vào DB
+                let assistantParts: any[] = [];
+                if (responseMessages && responseMessages.length > 0) {
+                    const firstMsg = responseMessages[0];
+                    if (Array.isArray(firstMsg?.content)) {
+                        assistantParts = firstMsg.content;
+                    }
+                }
+                if (assistantParts.length === 0 && text) {
+                    assistantParts = [{ type: 'text', text }];
+                }
 
-                await this.saveMessage(chatSessionId, 'assistant', assistantContent);
+                await this.saveMessage(chatSessionId, 'assistant', JSON.stringify(assistantParts));
             },
             abortSignal
         );
@@ -118,16 +140,19 @@ export class ChatAgentService {
         messages: UIMessage[],
         abortSignal?: AbortSignal
     ) {
+        console.log(`[ChatAgentService] handleChatStream: verifying session ${chatSessionId} for user ${userId}...`);
         // a. Xác thực quyền truy cập phiên của người dùng
         await this.getChatSessionById(userId, chatSessionId);
 
         // b. Lưu tin nhắn mới nhất của user vào Database
         const lastUserMessage = messages[messages.length - 1];
+        console.log(`[ChatAgentService] lastUserMessage role=${lastUserMessage?.role}`);
         if (lastUserMessage && lastUserMessage.role === 'user') {
             const userContent = lastUserMessage.parts
                 ? JSON.stringify(lastUserMessage.parts)
                 : '';
 
+            console.log(`[ChatAgentService] Saving user message for session ${chatSessionId}...`);
             await this.saveMessage(chatSessionId, 'user', userContent);
         }
 

@@ -18,19 +18,28 @@ export const AiMessage = React.memo(function AiMessage({
 }: AiMessageProps) {
   const parts = message.parts;
 
+  // Chuẩn hóa parts để hỗ trợ cả định dạng phẳng lẫn lồng nhau
+  const normalizedParts = useMemo(() => {
+    if (!parts || parts.length === 0) return [];
+    if (parts.length > 0 && (parts[0] as any)?.role && Array.isArray((parts[0] as any)?.content)) {
+      return (parts[0] as any).content;
+    }
+    return parts;
+  }, [parts]);
+
   // Trích xuất toàn bộ text để dùng cho hành động Sao chép
   const fullText = useMemo(() => {
-    if (parts && parts.length > 0) {
-      return parts
-        .filter((p) => p.type === "text")
-        .map((p) => p.text)
+    if (normalizedParts && normalizedParts.length > 0) {
+      return normalizedParts
+        .filter((p: any) => p.type === "text" || typeof p.text === "string")
+        .map((p: any) => p.text || "")
         .join("\n\n");
     }
     return message.content || "";
-  }, [parts, message.content]);
+  }, [normalizedParts, message.content]);
 
   const hasCitation =
-    message.hasCitation || (parts && parts.some((p) => p.type === "source"));
+    message.hasCitation || (normalizedParts && normalizedParts.some((p: any) => p.type === "source"));
 
   return (
     <div className="space-y-2">
@@ -53,10 +62,10 @@ export const AiMessage = React.memo(function AiMessage({
       {/* Nội dung */}
       <div className="space-y-3 rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 p-3.5 text-[13px] leading-relaxed text-gray-800">
         {/* Render theo Typed Parts (chuẩn Vercel AI SDK 6) */}
-        {parts && parts.length > 0 ? (
-          parts.map((part, index) => {
-            if (part.type === "text") {
-              return <MarkdownRenderer key={index} content={part.text} />;
+        {normalizedParts && normalizedParts.length > 0 ? (
+          normalizedParts.map((part: any, index: number) => {
+            if (part.type === "text" || typeof part.text === "string") {
+              return <MarkdownRenderer key={index} content={part.text || ""} />;
             }
 
             if (part.type === "reasoning") {

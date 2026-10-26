@@ -18,12 +18,14 @@ export class ChatAgentAiService {
     systemPrompt: string = CHAT_AGENT_SYSTEM_PROMPT,
   ) {
     const modelMessages = await convertToModelMessages(messages);
+    console.log(`[ChatAgentAiService] convertToModelMessages: input count=${messages.length}, output count=${modelMessages.length}`);
 
     return this.aiService.streamTextForTask('CHAT_AGENT', {
       system: systemPrompt,
       messages: modelMessages,
       abortSignal,
       onFinish: async (event) => {
+        console.log(`[ChatAgentAiService] onFinish: text="${event.text?.slice(0, 50)}...", finishReason=${event.finishReason}`);
         await onFinish({
           responseMessages: event.response?.messages,
           text: event.text,

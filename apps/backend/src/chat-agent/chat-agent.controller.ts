@@ -97,26 +97,37 @@ export class ChatAgentController {
         @Body() data: ChatStreamDto
     ) {
         const userId = this.getUserId(req);
+        console.log(`[ChatAgentController] POST sessions/${id}/chat - User: ${userId}, Messages count: ${data?.messages?.length}`);
+
         const abortController = new AbortController();
 
         req.on('close', () => {
+            console.log(`[ChatAgentController] Client closed connection for session ${id}`);
             abortController.abort();
         });
 
-        const result = await this.chatAgentService.handleChatStream(
-            userId,
-            id,
-            data.messages,
-            abortController.signal
-        );
+        try {
+            const result = await this.chatAgentService.handleChatStream(
+                userId,
+                id,
+                data.messages,
+                abortController.signal
+            );
 
-        await pipeUIMessageStreamToResponse({
-            response,
-            stream: result.toUIMessageStream({
-                onError: () => {
-                    return 'AI chat stream encountered an error';
-                },
-            }),
-        });
+            await pipeUIMessageStreamToResponse({
+                response,
+                stream: result.toUIMessageStream({
+                    onError: (error) => {
+                        console.error(`[ChatAgentController] Stream onError for session ${id}:`, error);
+                        return 'AI chat stream encountered an error';
+                    },
+                }),
+            });
+        } catch (error) {
+            console.error(`[ChatAgentController] Error in streamChat for session ${id}:`, error);
+            if (!response.headersSent) {
+                response.status(500).json({ error: (error as Error).message });
+            }
+        }
     }
 }
