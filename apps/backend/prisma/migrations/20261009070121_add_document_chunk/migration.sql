@@ -1,2 +1,2 @@
 -- DropIndex
-DROP INDEX "document_chunks_embedding_idx";
+DROP INDEX IF EXISTS "document_chunks_embedding_idx";

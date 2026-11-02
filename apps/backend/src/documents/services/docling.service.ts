@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 export interface DoclingChunkResult {
     index: number;
+    pageNumbers: number[];
     content: string;
 }
 
@@ -117,7 +118,7 @@ export class DoclingService {
      * Phân mảnh văn bản Markdown theo thuật toán HybridChunker của Docling Server
      * @param markdown Nội dung văn bản Markdown
      * @param fileName Tên tệp giả định (mặc định document.md)
-     * @returns Danh sách các chunk có index và content đã chuẩn hóa
+     * @returns Danh sách các chunk có index, số trang và content đã chuẩn hóa
      */
     async chunkMarkdownHybrid(markdown: string, fileName = 'document.md'): Promise<DoclingChunkResult[]> {
         if (!markdown || markdown.trim().length === 0) {
@@ -181,6 +182,14 @@ export class DoclingService {
             .filter((c: any) => typeof c.text === 'string' && c.text.trim().length > 0)
             .map((c: any, defaultIdx: number) => ({
                 index: typeof c.chunk_index === 'number' ? c.chunk_index : defaultIdx,
+                pageNumbers: Array.isArray(c.page_numbers)
+                    ? c.page_numbers.filter(
+                        (page: unknown): page is number =>
+                            typeof page === 'number' &&
+                            Number.isInteger(page) &&
+                            page > 0,
+                    )
+                    : [],
                 content: c.text.trim(),
             }));
     }

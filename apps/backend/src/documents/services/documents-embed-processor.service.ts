@@ -10,6 +10,7 @@ import { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.s
 import { DocumentChunksRepoService } from '../../repo/document-chunks-repo/document-chunks-repo.service.js';
 import { EmbeddingService } from '../../ai/embedding.service.js';
 import { DoclingService } from './docling.service.js';
+import type { DoclingChunkResult } from './docling.service.js';
 import {
   DOCUMENT_EMBEDDING_QUEUE_NAME,
   DocumentEmbeddingJobData,
@@ -139,7 +140,7 @@ export class DocumentsEmbedProcessorService
       });
 
       // Bước 2: Chia nhỏ raw_text thành các chunks bằng Docling HybridChunker (ưu tiên)
-      let chunks: Array<{ index: number; content: string }> = [];
+      let chunks: DoclingChunkResult[] = [];
       try {
         this.logger.log(
           `Đang chia nhỏ văn bản tài liệu [${documentId}] bằng Docling HybridChunker...`,
@@ -155,7 +156,10 @@ export class DocumentsEmbedProcessorService
         this.logger.warn(
           `Docling HybridChunker thất bại cho tài liệu [${documentId}]: ${chunkErr.message}. Kích hoạt Fallback chunkText thủ công...`,
         );
-        chunks = chunkText(rawText);
+        chunks = chunkText(rawText).map((chunk) => ({
+          ...chunk,
+          pageNumbers: [],
+        }));
         this.logger.log(
           `Fallback chunkText hoàn tất: sinh ${chunks.length} chunks cho tài liệu [${documentId}]`,
         );
@@ -175,6 +179,7 @@ export class DocumentsEmbedProcessorService
 
       const chunksWithEmbeddings = chunks.map((chunk, idx) => ({
         chunkIndex: chunk.index,
+        pageNumbers: chunk.pageNumbers,
         content: chunk.content,
         embedding: embeddings[idx].values,
       }));

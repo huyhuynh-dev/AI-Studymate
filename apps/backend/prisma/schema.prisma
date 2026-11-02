@@ -56,28 +56,28 @@ model Conversation {
   subject Subject @relation(fields: [subject_id], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  documents    Document[]
+  documents     Document[]
   chat_sessions ChatSession[]
-  summaries    Summary[]
+  summaries     Summary[]
 
   @@map("conversations")
 }
 
 model Document {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversation_id String   @db.Uuid
-  user_id         String   @db.Uuid
-  file_name       String   @db.VarChar(500)
-  mime_type       String   @db.VarChar(100)
-  file_size       BigInt   @db.BigInt // bytes
-  storage_key     String   @db.VarChar(1000) // key trên R2/MinIO
-  raw_text        String?  @db.Text // text đã extract
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id  String   @db.Uuid
+  user_id          String   @db.Uuid
+  file_name        String   @db.VarChar(500)
+  mime_type        String   @db.VarChar(100)
+  file_size        BigInt   @db.BigInt // bytes
+  storage_key      String   @db.VarChar(1000) // key trên R2/MinIO
+  raw_text         String?  @db.Text // text đã extract
   processing_error String?  @db.Text
-  uploaded_at     DateTime @default(now()) @db.Timestamptz(6)
-  ocr_status      String   @default("pending") @db.VarChar(20) // 'pending'|'processing'|'done'|'failed'
-  embed_status    String   @default("pending") @db.VarChar(20) // 'pending'|'processing'|'done'|'failed'
-  created_at      DateTime @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  uploaded_at      DateTime @default(now()) @db.Timestamptz(6)
+  ocr_status       String   @default("pending") @db.VarChar(20) // 'pending'|'processing'|'done'|'failed'
+  embed_status     String   @default("pending") @db.VarChar(20) // 'pending'|'processing'|'done'|'failed'
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   conversation Conversation    @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
   user         User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -88,12 +88,13 @@ model Document {
 }
 
 model DocumentChunk {
-  id          String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  document_id String                      @db.Uuid
-  chunk_index Int
-  content     String                      @db.Text
-  embedding   Unsupported("vector(768)")? // pgvector; Gemini text-embedding-004 = 768 dims
-  created_at  DateTime                    @default(now()) @db.Timestamptz(6)
+  id           String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id  String                      @db.Uuid
+  chunk_index  Int
+  page_numbers Int[]                       @default([])
+  content      String                      @db.Text
+  embedding    Unsupported("vector(768)")? // pgvector; Gemini text-embedding-004 = 768 dims
+  created_at   DateTime                    @default(now()) @db.Timestamptz(6)
 
   document Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
 
@@ -103,10 +104,10 @@ model DocumentChunk {
 }
 
 model ChatSession {
-  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversation_id String       @db.Uuid
-  title           String       @db.VarChar(255)
-  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String   @db.Uuid
+  title           String   @db.VarChar(255)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
 
   conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
   messages     Message[]
@@ -116,12 +117,12 @@ model ChatSession {
 }
 
 model Message {
-  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  chat_session_id String     @db.Uuid
-  role           String      @db.VarChar(20) // 'user' | 'assistant'
-  content        String      @db.Text
-  source_chunks  String[]    @db.Uuid // chunk IDs dùng làm context
-  created_at     DateTime    @default(now()) @db.Timestamptz(6)
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  chat_session_id String   @db.Uuid
+  role            String   @db.VarChar(20) // 'user' | 'assistant'
+  content         String   @db.Text
+  source_chunks   String[] @db.Uuid // chunk IDs dùng làm context
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
 
   chat_session ChatSession @relation(fields: [chat_session_id], references: [id], onDelete: Cascade)
 
@@ -130,17 +131,17 @@ model Message {
 }
 
 model Summary {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversation_id String    @db.Uuid
-  document_id     String?   @db.Uuid // NULL = tóm tắt toàn bộ conversation
-  title           String    @db.VarChar(255)
-  content_json    Json      @db.JsonB // BlockNote JSON format
-  pdf_storage_key String?   @db.VarChar(1000) // key PDF đã export, NULL nếu chưa export
-  created_at      DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String   @db.Uuid
+  document_id     String?  @db.Uuid // NULL = tóm tắt toàn bộ conversation
+  title           String   @db.VarChar(255)
+  content_json    Json     @db.JsonB // BlockNote JSON format
+  pdf_storage_key String?  @db.VarChar(1000) // key PDF đã export, NULL nếu chưa export
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
-  document     Document?     @relation(fields: [document_id], references: [id], onDelete: SetNull)
+  document     Document?    @relation(fields: [document_id], references: [id], onDelete: SetNull)
 
   @@index([conversation_id])
   @@index([document_id])

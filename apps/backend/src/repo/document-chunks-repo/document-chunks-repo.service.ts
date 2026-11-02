@@ -134,7 +134,12 @@ export class DocumentChunksRepoService {
      */
     async replaceChunksWithEmbeddings(
         documentId: string,
-        chunks: Array<{ chunkIndex: number; content: string; embedding: number[] }>
+        chunks: Array<{
+            chunkIndex: number;
+            pageNumbers: number[];
+            content: string;
+            embedding: number[];
+        }>
     ): Promise<number> {
         for (const chunk of chunks) {
             if (
@@ -156,11 +161,12 @@ export class DocumentChunksRepoService {
                 const vector = `[${chunk.embedding.join(',')}]`;
                 await tx.$executeRaw(
                     Prisma.sql`
-                        INSERT INTO "document_chunks" ("id", "document_id", "chunk_index", "content", "embedding", "created_at")
+                        INSERT INTO "document_chunks" ("id", "document_id", "chunk_index", "page_numbers", "content", "embedding", "created_at")
                         VALUES (
                             gen_random_uuid(),
                             ${documentId}::uuid,
                             ${chunk.chunkIndex},
+                            ${chunk.pageNumbers}::integer[],
                             ${chunk.content},
                             ${vector}::vector,
                             NOW()

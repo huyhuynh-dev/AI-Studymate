@@ -133,11 +133,13 @@ describe('DoclingService', () => {
                             {
                                 filename: 'test.md',
                                 chunk_index: 0,
+                                page_numbers: [1],
                                 text: 'Section 1\nContent paragraph 1',
                             },
                             {
                                 filename: 'test.md',
                                 chunk_index: 1,
+                                page_numbers: [2, 3],
                                 text: 'Section 2\nContent paragraph 2',
                             },
                         ],
@@ -149,12 +151,40 @@ describe('DoclingService', () => {
             expect(chunks).toHaveLength(2);
             expect(chunks[0]).toEqual({
                 index: 0,
+                pageNumbers: [1],
                 content: 'Section 1\nContent paragraph 1',
             });
             expect(chunks[1]).toEqual({
                 index: 1,
+                pageNumbers: [2, 3],
                 content: 'Section 2\nContent paragraph 2',
             });
+        });
+
+        it('should default missing or invalid page numbers to an empty array', async () => {
+            global.fetch = vi.fn()
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => ({ task_id: 'chunk-task-pages' }),
+                } as Response)
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => ({ task_status: 'success' }),
+                } as Response)
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => ({
+                        chunks: [
+                            { chunk_index: 0, text: 'No page metadata' },
+                            { chunk_index: 1, page_numbers: [2, '3', 0], text: 'Mixed metadata' },
+                        ],
+                    }),
+                } as Response);
+
+            await expect(service.chunkMarkdownHybrid('content')).resolves.toEqual([
+                { index: 0, pageNumbers: [], content: 'No page metadata' },
+                { index: 1, pageNumbers: [2], content: 'Mixed metadata' },
+            ]);
         });
     });
 });
