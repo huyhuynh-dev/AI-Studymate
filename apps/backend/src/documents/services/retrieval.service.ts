@@ -49,6 +49,36 @@ export interface RetrievedChunk {
   keywordRank: number | null;
 }
 
+export interface AvailableDocumentItem {
+  documentId: string;
+  fileName: string;
+  uploadedAt: Date;
+}
+
+export interface GetDocumentsFullContentParams {
+  userId: string;
+  conversationId: string;
+  /**
+   * Danh sách documentId cụ thể do LLM truyền vào khi người dùng yêu cầu tóm tắt/đọc tài liệu A, B, C
+   */
+  documentIds?: string[];
+  /**
+   * Đặt là true khi người dùng yêu cầu tóm tắt hoặc tổng hợp toàn bộ tài liệu có trong cuộc trò chuyện
+   */
+  fetchAllDocuments?: boolean;
+  /**
+   * Danh sách documentId được người dùng đính kèm trong khung chat (ưu tiên nếu không chỉ định documentIds)
+   */
+  preferredDocumentIds?: string[];
+}
+
+export interface DocumentFullContent {
+  documentId: string;
+  fileName: string;
+  rawText: string;
+  characterCount: number;
+}
+
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -60,6 +90,158 @@ export class RetrievalService {
     private readonly prisma: PrismaService,
     private readonly embeddingService: EmbeddingService,
   ) {}
+
+  private extractValidUuids(ids?: string[]): string[] {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return [];
+    }
+    return Array.from(
+      new Set(
+        ids
+          .filter((id) => typeof id === 'string')
+          .map((id) => id.trim())
+          .filter((id) => UUID_REGEX.test(id)),
+      ),
+    );
+  }
+
+  /**
+   * Lấy danh mục tài liệu khả dụng (đã hoàn tất trích xuất văn bản OCR) trong cuộc trò chuyện
+   * để cung cấp cho System Prompt của LLM biết tên tài liệu nào ứng với documentId nào.
+   */
+  async getAvailableDocumentsCatalog(
+    userId: string,
+    conversationId: string,
+  ): Promise<AvailableDocumentItem[]> {
+    const documents = await this.prisma.document.findMany({
+      where: {
+        conversation_id: conversationId,
+        user_id: userId,
+        ocr_status: 'done',
+      },
+      select: {
+        id: true,
+        file_name: true,
+        uploaded_at: true,
+      },
+      orderBy: {
+        uploaded_at: 'asc',
+      },
+    });
+
+    return documents.map((doc) => ({
+      documentId: doc.id,
+      fileName: doc.file_name,
+      uploadedAt: doc.uploaded_at,
+    }));
+  }
+
+  /**
+   * Truy xuất toàn bộ nội dung văn bản (raw_text) của một, một nhóm hoặc tất cả tài liệu
+   * thuộc cuộc trò chuyện, phục vụ các yêu cầu tóm tắt hoặc câu hỏi tổng quan.
+   */
+  async getDocumentsFullContent(
+    params: GetDocumentsFullContentParams,
+  ): Promise<DocumentFullContent[]> {
+    const {
+      userId,
+      conversationId,
+      documentIds = [],
+      fetchAllDocuments = false,
+      preferredDocumentIds = [],
+    } = params;
+
+    const validRequestedIds = this.extractValidUuids(documentIds);
+    const validPreferredIds = this.extractValidUuids(preferredDocumentIds);
+
+    // Trường hợp 1: Yêu cầu lấy toàn bộ tài liệu trong cuộc trò chuyện
+    if (fetchAllDocuments) {
+      this.logger.log(
+        `[RetrievalService] Lấy toàn bộ raw_text của tất cả tài liệu trong conversation [${conversationId}]`,
+      );
+      return this.queryDocumentsRawText(userId, conversationId);
+    }
+
+    // Trường hợp 2: LLM chỉ định danh sách documentIds cụ thể (ví dụ tài liệu A, B, C)
+    if (validRequestedIds.length > 0) {
+      this.logger.log(
+        `[RetrievalService] Lấy raw_text cho ${validRequestedIds.length} tài liệu được chỉ định trong conversation [${conversationId}]`,
+      );
+      const requestedDocs = await this.queryDocumentsRawText(
+        userId,
+        conversationId,
+        validRequestedIds,
+      );
+      if (requestedDocs.length > 0) {
+        return requestedDocs;
+      }
+
+      this.logger.warn(
+        `[RetrievalService] Không tìm thấy tài liệu khớp với documentIds được chỉ định, chuyển sang phạm vi mặc định của conversation [${conversationId}]`,
+      );
+    }
+
+    // Trường hợp 3: Người dùng có đính kèm tài liệu trong khung chat -> ưu tiên lấy tài liệu đính kèm
+    if (validPreferredIds.length > 0) {
+      this.logger.log(
+        `[RetrievalService] Ưu tiên lấy raw_text cho ${validPreferredIds.length} tài liệu đính kèm trong conversation [${conversationId}]`,
+      );
+      const preferredDocs = await this.queryDocumentsRawText(
+        userId,
+        conversationId,
+        validPreferredIds,
+      );
+      if (preferredDocs.length > 0) {
+        return preferredDocs;
+      }
+    }
+
+    // Trường hợp 4: Fallback lấy toàn bộ tài liệu trong cuộc trò chuyện
+    return this.queryDocumentsRawText(userId, conversationId);
+  }
+
+  private async queryDocumentsRawText(
+    userId: string,
+    conversationId: string,
+    targetDocumentIds?: string[],
+  ): Promise<DocumentFullContent[]> {
+    const docs = await this.prisma.document.findMany({
+      where: {
+        conversation_id: conversationId,
+        user_id: userId,
+        ocr_status: 'done',
+        raw_text: {
+          not: null,
+        },
+        ...(targetDocumentIds && targetDocumentIds.length > 0
+          ? { id: { in: targetDocumentIds } }
+          : {}),
+      },
+      select: {
+        id: true,
+        file_name: true,
+        raw_text: true,
+      },
+      orderBy: {
+        uploaded_at: 'asc',
+      },
+    });
+
+    const results: DocumentFullContent[] = [];
+    for (const doc of docs) {
+      const trimmedText = doc.raw_text?.trim() || '';
+      if (!trimmedText) continue;
+
+      results.push({
+        documentId: doc.id,
+        fileName: doc.file_name,
+        rawText: trimmedText,
+        characterCount: trimmedText.length,
+      });
+    }
+
+    return results;
+  }
 
   /**
    * Làm sạch và giới hạn mảng từ khóa (tối đa 5 từ khóa), sau đó ghép thành
@@ -136,13 +318,7 @@ export class RetrievalService {
     const vectorString = `[${embeddingValues.join(',')}]`;
 
     // Lọc các UUID hợp lệ từ danh sách tài liệu đính kèm (nếu có)
-    const validPreferredDocIds = Array.from(
-      new Set(
-        preferredDocumentIds.filter(
-          (id) => typeof id === 'string' && UUID_REGEX.test(id.trim()),
-        ),
-      ),
-    );
+    const validPreferredDocIds = this.extractValidUuids(preferredDocumentIds);
 
     // Bước 2: Ưu tiên tìm kiếm trên các tài liệu được đính kèm trước (nếu có)
     if (validPreferredDocIds.length > 0) {

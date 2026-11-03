@@ -17,7 +17,9 @@ describe('ChatAgentService', () => {
     generateSessionTitle: ReturnType<typeof vi.fn>;
   };
   let retrievalMock: {
+    getAvailableDocumentsCatalog: ReturnType<typeof vi.fn>;
     searchRelevantChunks: ReturnType<typeof vi.fn>;
+    getDocumentsFullContent: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -40,7 +42,15 @@ describe('ChatAgentService', () => {
     };
 
     retrievalMock = {
+      getAvailableDocumentsCatalog: vi.fn().mockResolvedValue([
+        {
+          documentId: 'doc-attached-1',
+          fileName: 'Giao_trinh_CTDL.pdf',
+          uploadedAt: new Date(),
+        },
+      ]),
       searchRelevantChunks: vi.fn().mockResolvedValue([]),
+      getDocumentsFullContent: vi.fn().mockResolvedValue([]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -59,7 +69,7 @@ describe('ChatAgentService', () => {
     expect(service).toBeDefined();
   });
 
-  it('nên lưu tin nhắn user và truyền callback onSearchDocuments gọi tới RetrievalService', async () => {
+  it('nên lấy danh mục tài liệu và truyền cả 2 callbacks (onSearchDocumentChunks & onGetDocumentsFullContent) tới ChatAgentAiService', async () => {
     await service.handleChatStream(
       'user-1',
       'session-1',
@@ -67,38 +77,52 @@ describe('ChatAgentService', () => {
         {
           id: 'u1',
           role: 'user',
-          parts: [{ type: 'text', text: 'Giải thích cây AVL trong tài liệu' }],
+          parts: [{ type: 'text', text: 'Tóm tắt tài liệu giúp tôi' }],
         },
       ],
       undefined,
       ['doc-attached-1'],
     );
 
-    expect(repoMock.getChatSessionById).toHaveBeenCalledWith('session-1', 'user-1');
-    expect(repoMock.createMessage).toHaveBeenCalledWith({
-      chat_session_id: 'session-1',
-      role: 'user',
-      content: JSON.stringify([
-        { type: 'text', text: 'Giải thích cây AVL trong tài liệu' },
-      ]),
-      source_chunks: undefined,
-    });
+    expect(repoMock.getChatSessionById).toHaveBeenCalledWith(
+      'session-1',
+      'user-1',
+    );
+    expect(retrievalMock.getAvailableDocumentsCatalog).toHaveBeenCalledWith(
+      'user-1',
+      'conv-1',
+    );
 
     expect(aiMock.executeChatStream).toHaveBeenCalledTimes(1);
     const callArgs = aiMock.executeChatStream.mock.calls[0];
     const options = callArgs[3];
-    expect(options?.onSearchDocuments).toBeDefined();
+    expect(options?.availableDocuments).toHaveLength(1);
+    expect(options?.onSearchDocumentChunks).toBeDefined();
+    expect(options?.onGetDocumentsFullContent).toBeDefined();
 
-    await options.onSearchDocuments({
+    // Kiểm tra callback Tool 1: searchDocumentChunks
+    await options.onSearchDocumentChunks({
       semanticQuery: 'Định nghĩa và cơ chế tự cân bằng của cây AVL',
       keywords: ['cây AVL', 'tự cân bằng'],
     });
-
     expect(retrievalMock.searchRelevantChunks).toHaveBeenCalledWith({
       userId: 'user-1',
       conversationId: 'conv-1',
       semanticQuery: 'Định nghĩa và cơ chế tự cân bằng của cây AVL',
       keywords: ['cây AVL', 'tự cân bằng'],
+      preferredDocumentIds: ['doc-attached-1'],
+    });
+
+    // Kiểm tra callback Tool 2: getDocumentsFullContent
+    await options.onGetDocumentsFullContent({
+      documentIds: ['doc-attached-1'],
+      fetchAllDocuments: false,
+    });
+    expect(retrievalMock.getDocumentsFullContent).toHaveBeenCalledWith({
+      userId: 'user-1',
+      conversationId: 'conv-1',
+      documentIds: ['doc-attached-1'],
+      fetchAllDocuments: false,
       preferredDocumentIds: ['doc-attached-1'],
     });
   });

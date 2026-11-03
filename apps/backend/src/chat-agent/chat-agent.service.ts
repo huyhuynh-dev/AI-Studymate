@@ -141,9 +141,22 @@ export class ChatAgentService {
     console.log(
       `[ChatAgentService] executeAiChatStream: starting AI stream for session ${chatSessionId}...`,
     );
+
+    const availableDocuments = ragContext
+      ? await this.retrievalService.getAvailableDocumentsCatalog(
+          ragContext.userId,
+          ragContext.conversationId,
+        )
+      : undefined;
+
     return this.chatAgentAiService.executeChatStream(
       messages,
-      async ({ responseMessages, assistantParts: extractedParts, sourceChunkIds, text }) => {
+      async ({
+        responseMessages,
+        assistantParts: extractedParts,
+        sourceChunkIds,
+        text,
+      }) => {
         console.log(
           `[ChatAgentService] executeAiChatStream onFinish: text length=${text?.length}, responseMessages count=${responseMessages?.length}, sourceChunkIds=${sourceChunkIds?.length ?? 0}`,
         );
@@ -152,7 +165,11 @@ export class ChatAgentService {
           ? extractedParts
           : [];
 
-        if (assistantParts.length === 0 && responseMessages && responseMessages.length > 0) {
+        if (
+          assistantParts.length === 0 &&
+          responseMessages &&
+          responseMessages.length > 0
+        ) {
           const firstMsg = responseMessages[0];
           if (Array.isArray(firstMsg?.content)) {
             assistantParts = firstMsg.content;
@@ -172,12 +189,26 @@ export class ChatAgentService {
       abortSignal,
       ragContext
         ? {
-            onSearchDocuments: async ({ semanticQuery, keywords }) => {
+            availableDocuments,
+            attachedDocumentIds: ragContext.attachedDocumentIds,
+            onSearchDocumentChunks: async ({ semanticQuery, keywords }) => {
               return this.retrievalService.searchRelevantChunks({
                 userId: ragContext.userId,
                 conversationId: ragContext.conversationId,
                 semanticQuery,
                 keywords,
+                preferredDocumentIds: ragContext.attachedDocumentIds,
+              });
+            },
+            onGetDocumentsFullContent: async ({
+              documentIds,
+              fetchAllDocuments,
+            }) => {
+              return this.retrievalService.getDocumentsFullContent({
+                userId: ragContext.userId,
+                conversationId: ragContext.conversationId,
+                documentIds,
+                fetchAllDocuments,
                 preferredDocumentIds: ragContext.attachedDocumentIds,
               });
             },
@@ -217,7 +248,7 @@ export class ChatAgentService {
     // c. Tự động sinh tiêu đề ngầm (Fire-and-forget Asynchronous Fast LLM)
     this.triggerAutoHeaderAsync(userId, chatSessionId, messages);
 
-    // d. Khởi tạo luồng sinh văn bản từ AI kèm ngữ cảnh RAG
+    // d. Khởi tạo luồng sinh văn bản từ AI kèm ngữ cảnh RAG (2 Tools)
     return this.executeAiChatStream(chatSessionId, messages, abortSignal, {
       userId,
       conversationId: chatSession.conversation_id,

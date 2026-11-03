@@ -5,7 +5,10 @@ import { EmbeddingService } from '../../ai/embedding.service.js';
 
 describe('RetrievalService', () => {
   let service: RetrievalService;
-  let prismaMock: { $queryRaw: ReturnType<typeof vi.fn> };
+  let prismaMock: {
+    $queryRaw: ReturnType<typeof vi.fn>;
+    document: { findMany: ReturnType<typeof vi.fn> };
+  };
   let embeddingMock: { embedSingle: ReturnType<typeof vi.fn> };
 
   const dummyVector = Array.from({ length: 768 }, (_, i) =>
@@ -14,10 +17,14 @@ describe('RetrievalService', () => {
   const validUserId = '11111111-1111-4111-8111-111111111111';
   const validConversationId = '22222222-2222-4222-8222-222222222222';
   const validDocId = '33333333-3333-4333-8333-333333333333';
+  const validDocId2 = '44444444-4444-4444-8444-444444444444';
 
   beforeEach(() => {
     prismaMock = {
       $queryRaw: vi.fn().mockResolvedValue([]),
+      document: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
     };
     embeddingMock = {
       embedSingle: vi.fn().mockResolvedValue(dummyVector),
@@ -61,6 +68,130 @@ describe('RetrievalService', () => {
 
     it('nên trả về chuỗi rỗng nếu mảng từ khóa rỗng', () => {
       expect(service.buildPgroongaOrQuery([])).toBe('');
+    });
+  });
+
+  describe('getAvailableDocumentsCatalog', () => {
+    it('nên trả về danh mục các tài liệu đã hoàn tất OCR trong conversation', async () => {
+      const now = new Date();
+      prismaMock.document.findMany.mockResolvedValueOnce([
+        {
+          id: validDocId,
+          file_name: 'Chuong_1.pdf',
+          uploaded_at: now,
+        },
+      ]);
+
+      const catalog = await service.getAvailableDocumentsCatalog(
+        validUserId,
+        validConversationId,
+      );
+
+      expect(prismaMock.document.findMany).toHaveBeenCalledWith({
+        where: {
+          conversation_id: validConversationId,
+          user_id: validUserId,
+          ocr_status: 'done',
+        },
+        select: {
+          id: true,
+          file_name: true,
+          uploaded_at: true,
+        },
+        orderBy: {
+          uploaded_at: 'asc',
+        },
+      });
+      expect(catalog).toEqual([
+        {
+          documentId: validDocId,
+          fileName: 'Chuong_1.pdf',
+          uploadedAt: now,
+        },
+      ]);
+    });
+  });
+
+  describe('getDocumentsFullContent', () => {
+    it('nên lấy toàn bộ tài liệu trong conversation khi fetchAllDocuments = true', async () => {
+      prismaMock.document.findMany.mockResolvedValueOnce([
+        {
+          id: validDocId,
+          file_name: 'Tai_lieu_A.pdf',
+          raw_text: 'Nội dung đầy đủ của tài liệu A',
+        },
+        {
+          id: validDocId2,
+          file_name: 'Tai_lieu_B.pdf',
+          raw_text: 'Nội dung đầy đủ của tài liệu B',
+        },
+      ]);
+
+      const docs = await service.getDocumentsFullContent({
+        userId: validUserId,
+        conversationId: validConversationId,
+        fetchAllDocuments: true,
+      });
+
+      expect(docs).toHaveLength(2);
+      expect(docs[0]).toEqual({
+        documentId: validDocId,
+        fileName: 'Tai_lieu_A.pdf',
+        rawText: 'Nội dung đầy đủ của tài liệu A',
+        characterCount: 'Nội dung đầy đủ của tài liệu A'.length,
+      });
+    });
+
+    it('nên lấy đúng các tài liệu được chỉ định trong documentIds', async () => {
+      prismaMock.document.findMany.mockResolvedValueOnce([
+        {
+          id: validDocId,
+          file_name: 'Tai_lieu_A.pdf',
+          raw_text: 'Nội dung tài liệu A',
+        },
+      ]);
+
+      const docs = await service.getDocumentsFullContent({
+        userId: validUserId,
+        conversationId: validConversationId,
+        documentIds: [validDocId],
+      });
+
+      expect(prismaMock.document.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: { in: [validDocId] },
+          }),
+        }),
+      );
+      expect(docs).toHaveLength(1);
+      expect(docs[0].documentId).toBe(validDocId);
+    });
+
+    it('nên ưu tiên lấy tài liệu đính kèm (preferredDocumentIds) nếu không chỉ định documentIds', async () => {
+      prismaMock.document.findMany.mockResolvedValueOnce([
+        {
+          id: validDocId2,
+          file_name: 'Slide_Dinh_Kem.pdf',
+          raw_text: 'Nội dung slide đính kèm',
+        },
+      ]);
+
+      const docs = await service.getDocumentsFullContent({
+        userId: validUserId,
+        conversationId: validConversationId,
+        preferredDocumentIds: [validDocId2],
+      });
+
+      expect(prismaMock.document.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: { in: [validDocId2] },
+          }),
+        }),
+      );
+      expect(docs).toHaveLength(1);
+      expect(docs[0].fileName).toBe('Slide_Dinh_Kem.pdf');
     });
   });
 

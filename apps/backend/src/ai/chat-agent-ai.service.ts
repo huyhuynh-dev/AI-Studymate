@@ -1,27 +1,38 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   convertToModelMessages,
-  jsonSchema,
   stepCountIs,
   tool,
 } from 'ai';
+import { z } from 'zod';
 import type { UIMessage } from 'ai';
 import { AiService } from './ai.service.js';
-import type { RetrievedChunk } from '../documents/services/retrieval.service.js';
+import type {
+  AvailableDocumentItem,
+  DocumentFullContent,
+  RetrievedChunk,
+} from '../documents/services/retrieval.service.js';
 
 export const CHAT_AGENT_SYSTEM_PROMPT =
   'Bạn là trợ lý học tập AI thông minh của nền tảng AI StudyMate. ' +
   'Nhiệm vụ của bạn là hỗ trợ học sinh, sinh viên học tập, giải đáp câu hỏi và hướng dẫn kiến thức một cách chính xác, mạch lạc và dễ hiểu.\n\n' +
-  'QUY TẮC TRA CỨU TÀI LIỆU (RAG - HYBRID SEARCH):\n' +
-  '1. Bạn được cung cấp công cụ `searchDocuments` để tìm kiếm ngữ cảnh trong các tài liệu do người dùng tải lên cuộc trò chuyện.\n' +
-  '2. Khi người dùng đặt câu hỏi về bài học, tài liệu, khái niệm, bài tập hoặc yêu cầu tóm tắt/giải thích kiến thức, hãy LUÔN gọi công cụ `searchDocuments` trước khi trả lời.\n' +
-  '3. Cách truyền tham số khi gọi `searchDocuments`:\n' +
-  '   - `semanticQuery`: Viết một câu văn, đoạn mô tả hoặc câu hỏi đầy đủ, giàu ngữ cảnh ngữ nghĩa dựa trên ý định của người dùng (dùng cho truy vấn Vector pgvector).\n' +
-  '   - `keywords`: Một mảng chứa tối đa 5 từ khóa, thuật ngữ chuyên ngành, tên riêng hoặc cụm từ cốt lõi ngắn gọn nhất (dùng cho truy vấn từ khóa PGRoonga trên bảng document_chunks).\n' +
-  '4. Sau khi nhận được danh sách các đoạn trích (chunks) từ công cụ:\n' +
-  '   - Tổng hợp câu trả lời dựa sát trên nội dung tài liệu tìm được.\n' +
-  '   - Trích dẫn nguồn rõ ràng trong câu trả lời (ví dụ: *(Nguồn: Tên_tài_liệu - Trang X)*).\n' +
-  '   - Nếu kết quả tìm kiếm không có thông tin liên quan đến câu hỏi, hãy thông báo rõ rằng không tìm thấy trong tài liệu đã tải lên trước khi giải thích bằng kiến thức chung của bạn.\n\n' +
+  'QUY TẮC LỰA CHỌN VÀ SỬ DỤNG CÔNG CỤ TRUY XUẤT TÀI LIỆU:\n' +
+  'Bạn được trang bị 2 công cụ chuyên biệt để lấy ngữ cảnh từ tài liệu của người dùng. Hãy phân tích kỹ câu hỏi để chọn đúng công cụ:\n\n' +
+  '1. Công cụ `getDocumentsFullContent` (Dùng cho câu hỏi TỔNG QUAN / TÓM TẮT TOÀN VĂN):\n' +
+  '   - Khi nào sử dụng: Khi người dùng yêu cầu tóm tắt tài liệu, hỏi nội dung tổng quát, bố cục các chương mục, ý chính của toàn bài, hoặc yêu cầu tổng hợp/so sánh toàn bộ nội dung của một, một vài tài liệu (A, B, C) hay tất cả tài liệu trong cuộc trò chuyện.\n' +
+  '   - Cách truyền tham số:\n' +
+  '     + Nếu người dùng nêu tên tài liệu cụ thể (ví dụ tài liệu A, B): Đối chiếu với "DANH MỤC TÀI LIỆU HIỆN CÓ" bên dưới để truyền đúng mảng `documentIds` tương ứng.\n' +
+  '     + Nếu người dùng đính kèm tài liệu và yêu cầu tóm tắt tài liệu đó: Truyền `documentIds` của các tài liệu đang đính kèm.\n' +
+  '     + Nếu người dùng yêu cầu tóm tắt/tổng hợp TOÀN BỘ tài liệu trong hệ thống (hoặc hỏi chung mà không chỉ định tệp nào và không đính kèm tệp): Đặt `fetchAllDocuments: true`.\n\n' +
+  '2. Công cụ `searchDocumentChunks` (Dùng cho câu hỏi CỤ THỂ / TRA CỨU CHI TIẾT - HYBRID SEARCH RAG):\n' +
+  '   - Khi nào sử dụng: Khi người dùng hỏi về một khái niệm, thuật ngữ, định nghĩa, công thức, ví dụ hoặc chi tiết cụ thể nằm trong tài liệu.\n' +
+  '   - Cách truyền tham số:\n' +
+  '     + `semanticQuery`: Viết một câu văn, đoạn mô tả hoặc câu hỏi đầy đủ, giàu ngữ cảnh ngữ nghĩa dựa trên ý định của người dùng (phục vụ truy vấn Vector pgvector).\n' +
+  '     + `keywords`: Một mảng chứa tối đa 5 từ khóa, thuật ngữ chuyên ngành, tên riêng hoặc cụm từ cốt lõi ngắn gọn nhất (phục vụ truy vấn từ khóa PGRoonga trên bảng document_chunks).\n\n' +
+  '3. Nguyên tắc trả lời sau khi nhận Context từ công cụ:\n' +
+  '   - Tổng hợp câu trả lời bám sát vào nội dung tài liệu thu được.\n' +
+  '   - Luôn trích dẫn nguồn rõ ràng (ví dụ: *(Nguồn: Tên_tài_liệu - Trang X)* đối với đoạn trích, hoặc *(Nguồn: Tên_tài_liệu)* đối với toàn văn).\n' +
+  '   - Nếu tài liệu không có thông tin liên quan đến câu hỏi, hãy thông báo rõ rằng không tìm thấy trong tài liệu đã tải lên trước khi giải thích bằng kiến thức chung của bạn.\n\n' +
   'QUY TẮC ĐỊNH DẠNG NỘI DUNG:\n' +
   '1. Công thức toán học (LaTeX):\n' +
   '   - Dùng cú pháp `$ ... $` cho các ký hiệu hoặc công thức nội dòng (inline math). Ví dụ: `$O(1)$`, `$O(n \\log n)$`, `$x \\in \\mathbb{R}$`.\n' +
@@ -47,23 +58,24 @@ export const AUTO_HEADER_SYSTEM_PROMPT =
   '• KHÔNG ĐƯỢC định nghĩa từ khóa (Ví dụ người dùng hỏi "X là gì", tuyệt đối không được viết "X là những đoạn...", mà phải đặt tiêu đề là "Khái niệm về X").\n' +
   '• KHÔNG ĐƯỢC hành văn thành một câu đầy đủ có chủ ngữ vị ngữ, chỉ được dùng CỤM DANH TỪ.';
 
-export interface SearchDocumentsToolInput {
+// ── Interfaces cho Tool 1: searchDocumentChunks ──
+export interface SearchDocumentChunksToolInput {
   semanticQuery: string;
   keywords: string[];
 }
 
-export interface SearchDocumentsSourceSummary {
+export interface SearchDocumentChunksSourceSummary {
   documentId: string;
   fileName: string;
   pageNumbers: number[];
   chunkCount: number;
 }
 
-export interface SearchDocumentsToolOutput {
+export interface SearchDocumentChunksToolOutput {
   semanticQuery: string;
   keywords: string[];
   totalChunks: number;
-  sources: SearchDocumentsSourceSummary[];
+  sources: SearchDocumentChunksSourceSummary[];
   chunks: Array<{
     rank: number;
     id: string;
@@ -76,9 +88,33 @@ export interface SearchDocumentsToolOutput {
   }>;
 }
 
-export type DocumentSearchCallback = (
-  input: SearchDocumentsToolInput,
+export type SearchDocumentChunksCallback = (
+  input: SearchDocumentChunksToolInput,
 ) => Promise<RetrievedChunk[]>;
+
+// ── Interfaces cho Tool 2: getDocumentsFullContent ──
+export interface GetDocumentsFullContentToolInput {
+  documentIds?: string[];
+  fetchAllDocuments?: boolean;
+}
+
+export interface DocumentFullContentSummaryItem {
+  documentId: string;
+  fileName: string;
+  characterCount: number;
+}
+
+export interface GetDocumentsFullContentToolOutput {
+  requestedDocumentIds: string[];
+  fetchAllDocuments: boolean;
+  totalDocuments: number;
+  documents: DocumentFullContentSummaryItem[];
+  fullContents: DocumentFullContent[];
+}
+
+export type GetDocumentsFullContentCallback = (
+  input: GetDocumentsFullContentToolInput,
+) => Promise<DocumentFullContent[]>;
 
 @Injectable()
 export class ChatAgentAiService {
@@ -86,37 +122,68 @@ export class ChatAgentAiService {
 
   constructor(private readonly aiService: AiService) {}
 
-  private buildSearchDocumentsTool(
-    onSearchDocuments: DocumentSearchCallback,
+  /**
+   * Bổ sung Danh mục tài liệu khả dụng trong cuộc trò chuyện vào System Prompt
+   * để LLM biết chính xác documentId của từng tài liệu khi cần gọi getDocumentsFullContent.
+   */
+  buildSystemPromptWithDocumentCatalog(
+    basePrompt: string,
+    availableDocuments?: AvailableDocumentItem[],
+    attachedDocumentIds?: string[],
+  ): string {
+    if (!availableDocuments || availableDocuments.length === 0) {
+      return (
+        basePrompt +
+        '\n\nTRẠNG THÁI TÀI LIỆU CỦA CUỘC TRÒ CHUYỆN:\n' +
+        '- Hiện chưa có tài liệu nào hoàn tất xử lý văn bản trong cuộc trò chuyện này.'
+      );
+    }
+
+    const attachedSet = new Set(attachedDocumentIds ?? []);
+    const catalogLines = availableDocuments.map((doc, idx) => {
+      const isAttached = attachedSet.has(doc.documentId);
+      const attachedLabel = isAttached
+        ? ' [ĐANG ĐƯỢC NGƯỜI DÙNG ĐÍNH KÈM TRONG TIN NHẮN NÀY]'
+        : '';
+      return `${idx + 1}. Tên tài liệu: "${doc.fileName}" | documentId: "${doc.documentId}"${attachedLabel}`;
+    });
+
+    return (
+      basePrompt +
+      '\n\nDANH MỤC TÀI LIỆU HIỆN CÓ TRONG CUỘC TRÒ CHUYỆN (Dùng `documentId` dưới đây khi gọi `getDocumentsFullContent`):\n' +
+      catalogLines.join('\n')
+    );
+  }
+
+  /**
+   * Tool 1: Tìm kiếm các đoạn trích (chunks) bằng Hybrid Search (pgvector + PGRoonga + RRF)
+   * phục vụ các câu hỏi chi tiết, thuật ngữ, khái niệm cụ thể.
+   */
+  private buildSearchDocumentChunksTool(
+    onSearchDocumentChunks: SearchDocumentChunksCallback,
     collectedChunkIds: Set<string>,
-    toolOutputsByCallId: Map<string, SearchDocumentsToolOutput>,
+    chunkToolOutputsByCallId: Map<string, SearchDocumentChunksToolOutput>,
   ) {
     return tool({
       description:
-        'Tìm kiếm ngữ cảnh trong tài liệu của người dùng bằng phương pháp Hybrid Search (pgvector + PGRoonga kết hợp thuật toán xếp hạng RRF). Trả về danh sách tối đa 20 đoạn trích (chunks) liên quan nhất.',
-      inputSchema: jsonSchema<SearchDocumentsToolInput>({
-        type: 'object',
-        properties: {
-          semanticQuery: {
-            type: 'string',
-            description:
-              'Câu văn, đoạn mô tả hoặc câu hỏi giàu ngữ cảnh ngữ nghĩa được tổng hợp từ câu hỏi của người dùng, dùng để tạo vector embedding và tìm kiếm tương đồng ngữ nghĩa (Vector Search).',
-          },
-          keywords: {
-            type: 'array',
-            items: { type: 'string' },
-            maxItems: 5,
-            description:
-              'Mảng danh sách các từ khóa, thuật ngữ chuyên môn hoặc cụm từ quan trọng (tối đa 5 từ khóa) dùng để tìm kiếm toàn văn PGRoonga trên cột content của bảng document_chunks.',
-          },
-        },
-        required: ['semanticQuery', 'keywords'],
-        additionalProperties: false,
+        'Tìm kiếm các đoạn trích (chunks) cụ thể trong tài liệu bằng Hybrid Search (pgvector + PGRoonga kết hợp thuật toán RRF). Sử dụng công cụ này cho các câu hỏi cụ thể về khái niệm, thuật ngữ, định nghĩa, công thức hoặc chi tiết trong tài liệu. Trả về tối đa 20 chunks liên quan nhất.',
+      inputSchema: z.object({
+        semanticQuery: z
+          .string()
+          .describe(
+            'Câu văn, đoạn mô tả hoặc câu hỏi giàu ngữ cảnh ngữ nghĩa được tổng hợp từ câu hỏi của người dùng, dùng để tạo vector embedding và tìm kiếm tương đồng ngữ nghĩa (Vector Search).',
+          ),
+        keywords: z
+          .array(z.string())
+          .max(5)
+          .describe(
+            'Mảng danh sách các từ khóa, thuật ngữ chuyên môn hoặc cụm từ quan trọng (tối đa 5 từ khóa) dùng để tìm kiếm toàn văn PGRoonga trên cột content của bảng document_chunks.',
+          ),
       }),
       execute: async (
         { semanticQuery, keywords },
         { toolCallId },
-      ): Promise<SearchDocumentsToolOutput> => {
+      ): Promise<SearchDocumentChunksToolOutput> => {
         const safeKeywords = Array.isArray(keywords)
           ? keywords
               .filter((k) => typeof k === 'string' && k.trim().length > 0)
@@ -125,22 +192,20 @@ export class ChatAgentAiService {
           : [];
 
         this.logger.log(
-          `[searchDocuments] Executing tool (callId=${toolCallId}): semanticQuery="${semanticQuery}", keywords=${JSON.stringify(safeKeywords)}`,
+          `[searchDocumentChunks] Executing tool (callId=${toolCallId}): semanticQuery="${semanticQuery}", keywords=${JSON.stringify(safeKeywords)}`,
         );
 
-        const retrievedChunks = await onSearchDocuments({
+        const retrievedChunks = await onSearchDocumentChunks({
           semanticQuery: semanticQuery || '',
           keywords: safeKeywords,
         });
 
-        // Lưu lại ID của các chunks đã truy xuất để ghi nhận vào cột source_chunks
         for (const chunk of retrievedChunks) {
           if (chunk.id) {
             collectedChunkIds.add(chunk.id);
           }
         }
 
-        // Nhóm thông tin tài liệu nguồn để hiển thị gọn gàng trên UI
         const sourceMap = new Map<
           string,
           {
@@ -170,7 +235,7 @@ export class ChatAgentAiService {
           }
         }
 
-        const sources: SearchDocumentsSourceSummary[] = Array.from(
+        const sources: SearchDocumentChunksSourceSummary[] = Array.from(
           sourceMap.values(),
         ).map((s) => ({
           documentId: s.documentId,
@@ -179,7 +244,7 @@ export class ChatAgentAiService {
           chunkCount: s.chunkCount,
         }));
 
-        const output: SearchDocumentsToolOutput = {
+        const output: SearchDocumentChunksToolOutput = {
           semanticQuery,
           keywords: safeKeywords,
           totalChunks: retrievedChunks.length,
@@ -197,7 +262,7 @@ export class ChatAgentAiService {
         };
 
         if (toolCallId) {
-          toolOutputsByCallId.set(toolCallId, output);
+          chunkToolOutputsByCallId.set(toolCallId, output);
         }
 
         return output;
@@ -229,6 +294,96 @@ export class ChatAgentAiService {
     });
   }
 
+  /**
+   * Tool 2: Lấy toàn bộ nội dung văn bản (raw_text) của một, một nhóm hoặc tất cả tài liệu
+   * phục vụ các yêu cầu tóm tắt tài liệu hoặc câu hỏi tổng quan.
+   */
+  private buildGetDocumentsFullContentTool(
+    onGetDocumentsFullContent: GetDocumentsFullContentCallback,
+    fullContentOutputsByCallId: Map<string, GetDocumentsFullContentToolOutput>,
+  ) {
+    return tool({
+      description:
+        'Lấy toàn bộ nội dung văn bản (raw_text) của một tài liệu, một nhóm tài liệu (A, B, C) hoặc toàn bộ tài liệu trong cuộc trò chuyện. Sử dụng công cụ này khi người dùng yêu cầu tóm tắt tài liệu, hỏi bố cục tổng quan, các chương mục chính hoặc câu hỏi bao quát toàn bộ tài liệu.',
+      inputSchema: z.object({
+        documentIds: z
+          .array(z.string())
+          .optional()
+          .describe(
+            'Mảng danh sách các documentId của những tài liệu cụ thể cần đọc toàn bộ nội dung raw_text (dựa trên Danh mục tài liệu hiện có). Để trống nếu muốn lấy theo tài liệu đính kèm hoặc lấy toàn bộ.',
+          ),
+        fetchAllDocuments: z
+          .boolean()
+          .optional()
+          .describe(
+            'Đặt là true khi người dùng yêu cầu tóm tắt hoặc tổng hợp kiến thức từ TOÀN BỘ tài liệu có trong cuộc trò chuyện.',
+          ),
+      }),
+      execute: async (
+        { documentIds, fetchAllDocuments },
+        { toolCallId },
+      ): Promise<GetDocumentsFullContentToolOutput> => {
+        const safeDocumentIds = Array.isArray(documentIds)
+          ? documentIds
+              .filter((id) => typeof id === 'string' && id.trim().length > 0)
+              .map((id) => id.trim())
+          : [];
+        const shouldFetchAll = Boolean(fetchAllDocuments);
+
+        this.logger.log(
+          `[getDocumentsFullContent] Executing tool (callId=${toolCallId}): documentIds=${JSON.stringify(safeDocumentIds)}, fetchAllDocuments=${shouldFetchAll}`,
+        );
+
+        const fullContents = await onGetDocumentsFullContent({
+          documentIds: safeDocumentIds,
+          fetchAllDocuments: shouldFetchAll,
+        });
+
+        const documentsSummary: DocumentFullContentSummaryItem[] =
+          fullContents.map((doc) => ({
+            documentId: doc.documentId,
+            fileName: doc.fileName,
+            characterCount: doc.characterCount,
+          }));
+
+        const output: GetDocumentsFullContentToolOutput = {
+          requestedDocumentIds: safeDocumentIds,
+          fetchAllDocuments: shouldFetchAll,
+          totalDocuments: fullContents.length,
+          documents: documentsSummary,
+          fullContents,
+        };
+
+        if (toolCallId) {
+          fullContentOutputsByCallId.set(toolCallId, output);
+        }
+
+        return output;
+      },
+      toModelOutput: ({ output }) => {
+        if (!output.fullContents || output.fullContents.length === 0) {
+          return {
+            type: 'text',
+            value:
+              'Không tìm thấy nội dung văn bản (raw_text) của tài liệu nào trong cuộc trò chuyện.',
+          };
+        }
+
+        const formattedDocuments = output.fullContents
+          .map(
+            (doc, idx) =>
+              `=== TÀI LIỆU #${idx + 1}: "${doc.fileName}" (documentId: ${doc.documentId} | Độ dài: ${doc.characterCount} ký tự) ===\n${doc.rawText}`,
+          )
+          .join('\n\n========================================\n\n');
+
+        return {
+          type: 'text',
+          value: `Đã tải toàn bộ nội dung của ${output.totalDocuments} tài liệu:\n\n${formattedDocuments}`,
+        };
+      },
+    });
+  }
+
   async executeChatStream(
     messages: UIMessage[],
     onFinish: (result: {
@@ -240,39 +395,63 @@ export class ChatAgentAiService {
     abortSignal?: AbortSignal,
     options?: {
       systemPrompt?: string;
-      onSearchDocuments?: DocumentSearchCallback;
+      availableDocuments?: AvailableDocumentItem[];
+      attachedDocumentIds?: string[];
+      onSearchDocumentChunks?: SearchDocumentChunksCallback;
+      onGetDocumentsFullContent?: GetDocumentsFullContentCallback;
     },
   ) {
-    const systemPrompt = options?.systemPrompt ?? CHAT_AGENT_SYSTEM_PROMPT;
-    const collectedChunkIds = new Set<string>();
-    const toolOutputsByCallId = new Map<string, SearchDocumentsToolOutput>();
+    const basePrompt = options?.systemPrompt ?? CHAT_AGENT_SYSTEM_PROMPT;
+    const finalSystemPrompt = this.buildSystemPromptWithDocumentCatalog(
+      basePrompt,
+      options?.availableDocuments,
+      options?.attachedDocumentIds,
+    );
 
-    const tools = options?.onSearchDocuments
-      ? {
-          searchDocuments: this.buildSearchDocumentsTool(
-            options.onSearchDocuments,
-            collectedChunkIds,
-            toolOutputsByCallId,
-          ),
-        }
-      : undefined;
+    const collectedChunkIds = new Set<string>();
+    const chunkToolOutputsByCallId = new Map<
+      string,
+      SearchDocumentChunksToolOutput
+    >();
+    const fullContentOutputsByCallId = new Map<
+      string,
+      GetDocumentsFullContentToolOutput
+    >();
+
+    const tools: Record<string, any> = {};
+    if (options?.onSearchDocumentChunks) {
+      tools.searchDocumentChunks = this.buildSearchDocumentChunksTool(
+        options.onSearchDocumentChunks,
+        collectedChunkIds,
+        chunkToolOutputsByCallId,
+      );
+    }
+    if (options?.onGetDocumentsFullContent) {
+      tools.getDocumentsFullContent = this.buildGetDocumentsFullContentTool(
+        options.onGetDocumentsFullContent,
+        fullContentOutputsByCallId,
+      );
+    }
+
+    const activeTools = Object.keys(tools).length > 0 ? tools : undefined;
 
     const modelMessages = await convertToModelMessages(messages);
     this.logger.log(
-      `[ChatAgentAiService] convertToModelMessages: input count=${messages.length}, output count=${modelMessages.length}, toolsEnabled=${Boolean(tools)}`,
+      `[ChatAgentAiService] convertToModelMessages: input count=${messages.length}, output count=${modelMessages.length}, activeTools=${activeTools ? Object.keys(activeTools).join(',') : 'none'}`,
     );
 
     return this.aiService.streamTextForTask('CHAT_AGENT', {
-      system: systemPrompt,
+      system: finalSystemPrompt,
       messages: modelMessages,
-      tools,
+      tools: activeTools,
       stopWhen: stepCountIs(5),
       abortSignal,
       onFinish: async (event) => {
         const responseMessages = event.response?.messages ?? [];
         const assistantParts = this.extractAssistantUIParts(
           responseMessages,
-          toolOutputsByCallId,
+          chunkToolOutputsByCallId,
+          fullContentOutputsByCallId,
           event.text,
         );
 
@@ -296,7 +475,8 @@ export class ChatAgentAiService {
    */
   private extractAssistantUIParts(
     responseMessages: any[],
-    toolOutputsByCallId: Map<string, SearchDocumentsToolOutput>,
+    chunkToolOutputsByCallId: Map<string, SearchDocumentChunksToolOutput>,
+    fullContentOutputsByCallId: Map<string, GetDocumentsFullContentToolOutput>,
     fallbackText?: string,
   ): any[] {
     const parts: any[] = [];
@@ -318,22 +498,39 @@ export class ChatAgentAiService {
             });
           }
         } else if (contentPart.type === 'tool-call') {
-          const toolName = contentPart.toolName || 'searchDocuments';
+          const toolName = contentPart.toolName || 'searchDocumentChunks';
           const toolCallId = contentPart.toolCallId;
-          const toolOutput = toolCallId
-            ? toolOutputsByCallId.get(toolCallId)
-            : undefined;
 
-          // Khi lưu vào DB, lược bỏ nội dung thô của 20 chunks trong phần UI part để tiết kiệm dung lượng,
-          // chỉ giữ lại metadata (semanticQuery, keywords, totalChunks, sources) phục vụ hiển thị UI
-          const lightweightOutput = toolOutput
-            ? {
-                semanticQuery: toolOutput.semanticQuery,
-                keywords: toolOutput.keywords,
-                totalChunks: toolOutput.totalChunks,
-                sources: toolOutput.sources,
-              }
-            : undefined;
+          let lightweightOutput: Record<string, unknown> | undefined;
+
+          if (
+            toolName === 'searchDocumentChunks' ||
+            toolName === 'searchDocuments'
+          ) {
+            const chunkOutput = toolCallId
+              ? chunkToolOutputsByCallId.get(toolCallId)
+              : undefined;
+            if (chunkOutput) {
+              lightweightOutput = {
+                semanticQuery: chunkOutput.semanticQuery,
+                keywords: chunkOutput.keywords,
+                totalChunks: chunkOutput.totalChunks,
+                sources: chunkOutput.sources,
+              };
+            }
+          } else if (toolName === 'getDocumentsFullContent') {
+            const fullOutput = toolCallId
+              ? fullContentOutputsByCallId.get(toolCallId)
+              : undefined;
+            if (fullOutput) {
+              lightweightOutput = {
+                requestedDocumentIds: fullOutput.requestedDocumentIds,
+                fetchAllDocuments: fullOutput.fetchAllDocuments,
+                totalDocuments: fullOutput.totalDocuments,
+                documents: fullOutput.documents,
+              };
+            }
+          }
 
           parts.push({
             type: `tool-${toolName}`,

@@ -59,9 +59,13 @@ export const AiMessage = React.memo(function AiMessage({
       normalizedParts.some(
         (p: any) =>
           p.type === "source" ||
-          (p.type === "tool-searchDocuments" &&
+          ((p.type === "tool-searchDocumentChunks" ||
+            p.type === "tool-searchDocuments") &&
             p.state === "output-available" &&
-            (p.output?.totalChunks ?? 0) > 0)
+            (p.output?.totalChunks ?? 0) > 0) ||
+          (p.type === "tool-getDocumentsFullContent" &&
+            p.state === "output-available" &&
+            (p.output?.totalDocuments ?? 0) > 0)
       ));
 
   return (
@@ -115,11 +119,13 @@ export const AiMessage = React.memo(function AiMessage({
               );
             }
 
-            // Hiển thị Tool tìm kiếm ngữ cảnh tài liệu (Chuẩn Vercel AI SDK v6: tool-searchDocuments)
+            // 1. Hiển thị Tool 1: Tìm kiếm đoạn trích cụ thể (searchDocumentChunks / searchDocuments)
             if (
+              part.type === "tool-searchDocumentChunks" ||
               part.type === "tool-searchDocuments" ||
               (part.type === "dynamic-tool" &&
-                part.toolName === "searchDocuments")
+                (part.toolName === "searchDocumentChunks" ||
+                  part.toolName === "searchDocuments"))
             ) {
               const state: string = part.state || "input-available";
               const isRunning =
@@ -154,7 +160,7 @@ export const AiMessage = React.memo(function AiMessage({
                       <>
                         <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-indigo-600" />
                         <span className="text-indigo-700">
-                          Đang tìm kiếm ngữ cảnh trong tài liệu…
+                          Đang tìm kiếm đoạn trích trong tài liệu…
                         </span>
                       </>
                     )}
@@ -172,7 +178,7 @@ export const AiMessage = React.memo(function AiMessage({
                       <>
                         <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
                         <span className="text-red-600">
-                          Lỗi khi tra cứu tài liệu
+                          Lỗi khi tra cứu đoạn trích tài liệu
                         </span>
                       </>
                     )}
@@ -228,6 +234,110 @@ export const AiMessage = React.memo(function AiMessage({
                                 {src.pageNumbers && src.pageNumbers.length > 0
                                   ? `Trang ${src.pageNumbers.join(", ")}`
                                   : `${src.chunkCount} đoạn`}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              );
+            }
+
+            // 2. Hiển thị Tool 2: Đọc toàn bộ nội dung tài liệu (getDocumentsFullContent)
+            if (
+              part.type === "tool-getDocumentsFullContent" ||
+              (part.type === "dynamic-tool" &&
+                part.toolName === "getDocumentsFullContent")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isError = state === "output-error";
+              const isDone = state === "output-available";
+
+              const fetchAllDocuments = Boolean(
+                part.input?.fetchAllDocuments ?? part.output?.fetchAllDocuments
+              );
+              const totalDocuments: number = part.output?.totalDocuments ?? 0;
+              const documents: Array<{
+                documentId: string;
+                fileName: string;
+                characterCount: number;
+              }> = Array.isArray(part.output?.documents)
+                ? part.output.documents
+                : [];
+
+              return (
+                <details
+                  key={index}
+                  className="group my-2 rounded-xl border border-indigo-100 bg-white p-2.5 text-xs text-gray-700 shadow-2xs"
+                >
+                  <summary className="flex cursor-pointer items-center gap-2 font-medium select-none">
+                    {isRunning && (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-indigo-600" />
+                        <span className="text-indigo-700">
+                          Đang đọc toàn bộ nội dung tài liệu…
+                        </span>
+                      </>
+                    )}
+                    {isDone && (
+                      <>
+                        <BookOpen className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                        <span className="text-gray-900">
+                          {totalDocuments > 0
+                            ? `Đã đọc toàn bộ nội dung ${totalDocuments} tài liệu`
+                            : "Đã kiểm tra tài liệu (chưa có văn bản trích xuất)"}
+                        </span>
+                      </>
+                    )}
+                    {isError && (
+                      <>
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
+                        <span className="text-red-600">
+                          Lỗi khi đọc toàn bộ nội dung tài liệu
+                        </span>
+                      </>
+                    )}
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform group-open:rotate-180" />
+                  </summary>
+
+                  <div className="mt-2.5 space-y-2 border-t border-gray-100 pt-2 text-[11px]">
+                    <div>
+                      <span className="font-semibold text-gray-600">
+                        Chế độ đọc:{" "}
+                      </span>
+                      <span className="text-gray-800">
+                        {fetchAllDocuments
+                          ? "Toàn bộ tài liệu trong cuộc trò chuyện"
+                          : "Tài liệu được chỉ định / đính kèm"}
+                      </span>
+                    </div>
+
+                    {isDone && documents.length > 0 && (
+                      <div className="space-y-1 pt-0.5">
+                        <div className="font-semibold text-gray-600">
+                          Tài liệu đã nạp ({documents.length} tệp):
+                        </div>
+                        <ul className="space-y-1">
+                          {documents.map((doc) => (
+                            <li
+                              key={doc.documentId}
+                              className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2 py-1 text-gray-700"
+                            >
+                              <div className="flex min-w-0 items-center gap-1.5">
+                                <FileText className="h-3 w-3 shrink-0 text-indigo-500" />
+                                <span className="truncate font-medium">
+                                  {doc.fileName}
+                                </span>
+                              </div>
+                              <span className="shrink-0 text-[10px] text-gray-500">
+                                {Number(doc.characterCount || 0).toLocaleString(
+                                  "vi-VN"
+                                )}{" "}
+                                ký tự
                               </span>
                             </li>
                           ))}
