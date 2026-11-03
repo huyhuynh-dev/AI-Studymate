@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AiService } from './ai.service.js';
+import { AiModelFactory } from './ai-model.factory.js';
 
 describe('AiService', () => {
   let service: AiService;
@@ -8,6 +9,10 @@ describe('AiService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AiService,
+        {
+          provide: AiModelFactory,
+          useValue: {},
+        },
       ],
     }).compile();
 

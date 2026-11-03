@@ -1,18 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { embedMany as aiEmbedMany } from 'ai';
-import { getModelForTask } from './providers/ai-provider.config.js';
+import { AiModelFactory } from './ai-model.factory.js';
 import {
   generateText as aiGenerateText,
   streamText as aiStreamText,
 } from 'ai';
-import type { AiTask } from './providers/ai-provider.config.js';
+import type { AiTask } from './ai-model.factory.js';
 
 @Injectable()
 export class AiService {
 
+  constructor(private readonly aiModelFactory: AiModelFactory) {}
+
   embedMany(values: string[]) {
     return aiEmbedMany({
-      model: getModelForTask('EMBEDDING'),
+      model: this.aiModelFactory.getModelForTask('EMBEDDING'),
       values,
       providerOptions: {
         google: {
@@ -26,7 +28,7 @@ export class AiService {
     messages: NonNullable<Parameters<typeof aiGenerateText>[0]['messages']>,
   ) {
     return aiGenerateText({
-      model: getModelForTask('VISION_ANALYZE'),
+      model: this.aiModelFactory.getModelForTask('VISION_ANALYZE'),
       messages,
     });
   }
@@ -37,7 +39,7 @@ export class AiService {
   ) {
     if (task === 'SUMMARIZE') {
       return aiGenerateText({
-        model: getModelForTask(task),
+        model: this.aiModelFactory.getModelForTask(task),
         messages,
         providerOptions: {
           google: { responseMimeType: 'application/json' },
@@ -47,7 +49,7 @@ export class AiService {
 
     if (task === 'AUTO_HEADER') {
       return aiGenerateText({
-        model: getModelForTask(task),
+        model: this.aiModelFactory.getModelForTask(task),
         messages,
         temperature: 0.1,
         providerOptions: {
@@ -59,7 +61,7 @@ export class AiService {
     }
 
     return aiGenerateText({
-      model: getModelForTask(task),
+      model: this.aiModelFactory.getModelForTask(task),
       messages,
     });
   }
@@ -74,7 +76,7 @@ export class AiService {
   ) {
     return aiStreamText({
       ...options,
-      model: getModelForTask('BLOCKNOTE_EDITOR'),
+      model: this.aiModelFactory.getModelForTask('BLOCKNOTE_EDITOR'),
     });
   }
 
@@ -89,7 +91,7 @@ export class AiService {
   ) {
     return aiStreamText({
       ...options,
-      model: getModelForTask(task),
+      model: this.aiModelFactory.getModelForTask(task),
     });
   }
 
