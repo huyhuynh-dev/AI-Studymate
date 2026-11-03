@@ -11,6 +11,11 @@ export interface UpdateChatSessionParams {
   title: string;
 }
 
+export interface GenerateSuggestionsParams {
+  lastAssistantResponse: string;
+  lastUserQuestion?: string;
+}
+
 export const chatSessionsApi = {
   /**
    * Lấy danh sách các phiên trò chuyện thuộc một Conversation.
@@ -81,5 +86,22 @@ export const chatSessionsApi = {
    */
   async delete(id: string): Promise<void> {
     await axiosClient.delete(`/chat-agent/sessions/${id}`);
+  },
+
+  /**
+   * Sinh 2-3 câu hỏi gợi ý tiếp nối (Follow-up Questions) sau khi AI trả lời xong.
+   * POST /api/proxy/chat-agent/sessions/{id}/suggestions
+   */
+  async generateSuggestions(
+    sessionId: string,
+    params: GenerateSuggestionsParams
+  ): Promise<string[]> {
+    const response = await axiosClient.post<{ suggestions: string[] }>(
+      `/chat-agent/sessions/${sessionId}/suggestions`,
+      params
+    );
+    return Array.isArray(response.data?.suggestions)
+      ? response.data.suggestions
+      : [];
   },
 };

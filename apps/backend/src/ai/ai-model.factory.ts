@@ -47,6 +47,7 @@ export class AiModelFactory {
             baseURL: this.configService.get<string>('PROVIDER_BASE_URL')
                 ?? 'http://localhost:20128/v1',
             includeUsage: true,
+            supportsStructuredOutputs: true,
         });
 
         // Ollama Provider

@@ -1,17 +1,16 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Copy, Lightbulb, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Check, Copy, ThumbsDown, ThumbsUp } from "lucide-react";
 
 interface MessageActionsProps {
   content: string;
-  onFollowUp?: (prompt: string) => void;
 }
 
 const actionBase =
   "flex cursor-pointer items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium transition-colors";
 
-export function MessageActions({ content, onFollowUp }: MessageActionsProps) {
+export function MessageActions({ content }: MessageActionsProps) {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -80,17 +79,6 @@ export function MessageActions({ content, onFollowUp }: MessageActionsProps) {
       >
         <ThumbsDown className="h-3 w-3" />
       </button>
-
-      {onFollowUp && (
-        <button
-          type="button"
-          onClick={() => onFollowUp("Tạo câu hỏi tiếp nối")}
-          className={`${actionBase} border-indigo-100 bg-indigo-50/70 text-indigo-700 hover:bg-indigo-100`}
-        >
-          <Lightbulb className="h-3 w-3" />
-          <span>Tạo câu hỏi tiếp nối</span>
-        </button>
-      )}
     </div>
   );
 }

@@ -102,11 +102,17 @@ export default function RightSidebar({
 
   // Lưu danh sách documentIds được đính kèm cho lượt gửi tin nhắn hiện tại
   const pendingAttachedDocIdsRef = useRef<string[]>([]);
+  // Lưu câu hỏi gần nhất của người dùng để làm ngữ cảnh phụ trợ khi sinh câu hỏi gợi ý
+  const lastUserQuestionRef = useRef<string>("");
 
   const [inputValue, setInputValue] = useState("");
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [, setIsLoadingMessages] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ChatSessionItem | null>(null);
+
+  // ── Follow-up Suggestions state ──
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
 
   // ── Model / reasoning ──
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
@@ -181,10 +187,49 @@ export default function RightSidebar({
     transport,
     onError: (err) => {
       console.error("[RightSidebar] useChat onError:", err);
+      setIsLoadingSuggestions(false);
     },
-    onFinish: ({ message }) => {
+    onFinish: async ({ message }) => {
       console.log("[RightSidebar] useChat onFinish -> Tin nhắn AI nhận về thành công:", message);
       refreshSessions();
+
+      // Tự động sinh 2-3 câu hỏi gợi ý tiếp nối sau khi AI trả lời xong
+      const currentSessionId = activeChatIdRef.current;
+      if (message.role === "assistant" && currentSessionId) {
+        const assistantText = Array.isArray(message.parts)
+          ? message.parts
+              .filter((p: any) => p.type === "text" && typeof p.text === "string")
+              .map((p: any) => p.text)
+              .join("\n\n")
+              .trim()
+          : "";
+
+        if (assistantText) {
+          setIsLoadingSuggestions(true);
+          try {
+            const generated = await chatSessionsApi.generateSuggestions(
+              currentSessionId,
+              {
+                lastAssistantResponse: assistantText,
+                lastUserQuestion: lastUserQuestionRef.current || undefined,
+              }
+            );
+            // Đảm bảo người dùng vẫn đang mở đúng phiên chat này trước khi hiển thị gợi ý
+            if (activeChatIdRef.current === currentSessionId) {
+              setSuggestions(generated);
+            }
+          } catch (suggestionErr) {
+            console.warn(
+              "[RightSidebar] Lỗi khi tạo câu hỏi gợi ý:",
+              suggestionErr
+            );
+          } finally {
+            if (activeChatIdRef.current === currentSessionId) {
+              setIsLoadingSuggestions(false);
+            }
+          }
+        }
+      }
     },
   });
 
@@ -240,6 +285,9 @@ export default function RightSidebar({
     setActiveChatId(null);
     activeChatIdRef.current = null;
     pendingAttachedDocIdsRef.current = [];
+    lastUserQuestionRef.current = "";
+    setSuggestions([]);
+    setIsLoadingSuggestions(false);
     setMessages([]);
     setInputValue("");
     clearFiles();
@@ -257,6 +305,8 @@ export default function RightSidebar({
     async (id: string) => {
       setActiveChatId(id);
       activeChatIdRef.current = id;
+      setSuggestions([]);
+      setIsLoadingSuggestions(false);
       try {
         setIsLoadingMessages(true);
         const history = await chatSessionsApi.getMessages(id);
@@ -294,6 +344,11 @@ export default function RightSidebar({
     async (rawText: string) => {
       const text = rawText.trim();
       if ((!text && attachedFiles.length === 0) || isSending) return;
+
+      // Xóa ngay các câu hỏi gợi ý cũ khi người dùng gửi câu hỏi mới hoặc bấm chọn gợi ý
+      setSuggestions([]);
+      setIsLoadingSuggestions(false);
+      lastUserQuestionRef.current = text;
 
       let sessionId = activeChatIdRef.current;
       const isNewChat = !sessionId;
@@ -409,8 +464,12 @@ export default function RightSidebar({
       ) : (
         <MessageList
           messages={messages as unknown as ChatMessage[]}
-          onFollowUp={setInputValue}
           isLoading={isSending}
+          suggestions={suggestions}
+          isLoadingSuggestions={isLoadingSuggestions}
+          onSelectSuggestion={(selectedSuggestion) =>
+            void sendMessage(selectedSuggestion)
+          }
         />
       )}
 

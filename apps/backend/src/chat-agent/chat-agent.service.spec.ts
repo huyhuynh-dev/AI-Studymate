@@ -39,6 +39,10 @@ describe('ChatAgentService', () => {
         toUIMessageStream: vi.fn(),
       }),
       generateSessionTitle: vi.fn().mockResolvedValue('Tiêu đề tự động'),
+      generateFollowUpSuggestions: vi.fn().mockResolvedValue([
+        'Phép xoay trái cây AVL thực hiện khi nào?',
+        'Độ phức tạp chèn phần tử vào cây AVL là bao nhiêu?',
+      ]),
     };
 
     retrievalMock = {
@@ -124,6 +128,32 @@ describe('ChatAgentService', () => {
       documentIds: ['doc-attached-1'],
       fetchAllDocuments: false,
       preferredDocumentIds: ['doc-attached-1'],
+    });
+  });
+
+  it('nên xác thực quyền truy cập phiên và gọi generateFollowUpSuggestions từ ChatAgentAiService', async () => {
+    const result = await service.generateFollowUpSuggestions(
+      'user-1',
+      'session-1',
+      {
+        lastAssistantResponse: 'Cây AVL là cây nhị phân tìm kiếm tự cân bằng.',
+        lastUserQuestion: 'Cây AVL là gì?',
+      },
+    );
+
+    expect(repoMock.getChatSessionById).toHaveBeenCalledWith(
+      'session-1',
+      'user-1',
+    );
+    expect(aiMock.generateFollowUpSuggestions).toHaveBeenCalledWith(
+      'Cây AVL là cây nhị phân tìm kiếm tự cân bằng.',
+      'Cây AVL là gì?',
+    );
+    expect(result).toEqual({
+      suggestions: [
+        'Phép xoay trái cây AVL thực hiện khi nào?',
+        'Độ phức tạp chèn phần tử vào cây AVL là bao nhiêu?',
+      ],
     });
   });
 });

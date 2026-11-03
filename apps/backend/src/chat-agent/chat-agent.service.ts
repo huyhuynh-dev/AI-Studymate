@@ -5,6 +5,7 @@ import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
 import { CreateChatSessionDto } from './dto/create-chat-session.dto.js';
 import { UpdateChatSessionDto } from './dto/update-chat-session.dto.js';
+import { GenerateSuggestionsDto } from './dto/generate-suggestions.dto.js';
 
 @Injectable()
 export class ChatAgentService {
@@ -65,6 +66,20 @@ export class ChatAgentService {
 
   async deleteChatSession(userId: string, chatSessionId: string) {
     return this.chatAgentRepo.deleteChatSession(chatSessionId, userId);
+  }
+
+  async generateFollowUpSuggestions(
+    userId: string,
+    chatSessionId: string,
+    data: GenerateSuggestionsDto,
+  ): Promise<{ suggestions: string[] }> {
+    await this.getChatSessionById(userId, chatSessionId);
+    const suggestions =
+      await this.chatAgentAiService.generateFollowUpSuggestions(
+        data.lastAssistantResponse,
+        data.lastUserQuestion,
+      );
+    return { suggestions };
   }
 
   async getMessagesBySessionId(

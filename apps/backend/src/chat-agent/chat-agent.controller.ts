@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { CreateChatSessionDto } from './dto/create-chat-session.dto.js';
 import { UpdateChatSessionDto } from './dto/update-chat-session.dto.js';
 import { ChatStreamDto } from './dto/chat-stream.dto.js';
+import { GenerateSuggestionsDto } from './dto/generate-suggestions.dto.js';
 import { ChatAgentService } from './chat-agent.service.js';
 
 @Controller('chat-agent')
@@ -94,6 +95,19 @@ export class ChatAgentController {
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
     return this.chatAgentService.deleteChatSession(this.getUserId(req), id);
+  }
+
+  @Post('sessions/:id/suggestions')
+  async generateSuggestions(
+    @Req() req: Request,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() data: GenerateSuggestionsDto,
+  ) {
+    return this.chatAgentService.generateFollowUpSuggestions(
+      this.getUserId(req),
+      id,
+      data,
+    );
   }
 
   @Post('sessions/:id/chat')

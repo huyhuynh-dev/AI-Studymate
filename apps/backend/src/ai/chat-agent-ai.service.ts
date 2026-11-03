@@ -58,6 +58,14 @@ export const AUTO_HEADER_SYSTEM_PROMPT =
   '• KHÔNG ĐƯỢC định nghĩa từ khóa (Ví dụ người dùng hỏi "X là gì", tuyệt đối không được viết "X là những đoạn...", mà phải đặt tiêu đề là "Khái niệm về X").\n' +
   '• KHÔNG ĐƯỢC hành văn thành một câu đầy đủ có chủ ngữ vị ngữ, chỉ được dùng CỤM DANH TỪ.';
 
+export const FOLLOW_UP_SUGGESTIONS_SYSTEM_PROMPT =
+  'Bạn là chuyên gia gợi ý hội thoại học tập trên nền tảng AI StudyMate. ' +
+  'Dựa vào câu trả lời vừa rồi của AI (và câu hỏi trước đó của người học nếu có), hãy tạo ra 2 đến 3 câu hỏi gợi ý nối tiếp (follow-up questions) giúp người học tiếp tục khám phá, đào sâu kiến thức hoặc làm rõ chủ đề vừa thảo luận.\n' +
+  'QUY TẮC BẮT BUỘC:\n' +
+  '1. Câu hỏi phải ngắn gọn (tối đa 80 ký tự), tự nhiên, rõ ràng bằng tiếng Việt.\n' +
+  '2. Phải neo trực tiếp vào khái niệm, ví dụ hoặc nội dung vừa được AI trình bày.\n' +
+  '3. Tuyệt đối tránh các câu gợi ý chung chung như "Hãy giải thích thêm", "Cho biết thêm thông tin".';
+
 // ── Interfaces cho Tool 1: searchDocumentChunks ──
 export interface SearchDocumentChunksToolInput {
   semanticQuery: string;
@@ -615,6 +623,63 @@ export class ChatAgentAiService {
         `[ChatAgentAiService] generateSessionTitle error: ${error?.message}`,
       );
       return '';
+    }
+  }
+
+  /**
+   * Sinh 2-3 câu hỏi gợi ý tiếp nối (Follow-up Questions) dựa trên câu trả lời vừa hoàn tất của AI,
+   * sử dụng generateObject với Zod Schema và model của task CHAT_AGENT.
+   */
+  async generateFollowUpSuggestions(
+    lastAssistantResponse: string,
+    lastUserQuestion?: string,
+  ): Promise<string[]> {
+    const trimmedResponse = lastAssistantResponse?.trim() || '';
+    if (!trimmedResponse) return [];
+
+    try {
+      const promptParts: string[] = [];
+      if (lastUserQuestion && lastUserQuestion.trim()) {
+        promptParts.push(
+          `Câu hỏi trước đó của người học:\n"${lastUserQuestion.trim().slice(0, 500)}"`,
+        );
+      }
+      promptParts.push(
+        `Câu trả lời vừa rồi của AI:\n"${trimmedResponse.slice(0, 3000)}"`,
+      );
+
+      const { object } = await this.aiService.generateObjectForTask(
+        'CHAT_AGENT',
+        {
+          schema: z.object({
+            suggestions: z
+              .array(z.string().max(90))
+              .min(2)
+              .max(3)
+              .describe(
+                'Danh sách từ 2 đến 3 câu hỏi tiếp theo ngắn gọn, tự nhiên và bám sát nội dung vừa trả lời',
+              ),
+          }),
+          system: FOLLOW_UP_SUGGESTIONS_SYSTEM_PROMPT,
+          prompt: promptParts.join('\n\n'),
+        },
+      );
+
+      const rawSuggestions = (object as { suggestions?: string[] })?.suggestions;
+      if (!Array.isArray(rawSuggestions)) {
+        return [];
+      }
+
+      return rawSuggestions
+        .filter((item) => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0)
+        .slice(0, 3);
+    } catch (error: any) {
+      this.logger.warn(
+        `[ChatAgentAiService] generateFollowUpSuggestions error: ${error?.message}`,
+      );
+      return [];
     }
   }
 }

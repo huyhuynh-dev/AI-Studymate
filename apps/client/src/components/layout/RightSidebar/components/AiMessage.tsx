@@ -20,12 +20,10 @@ import { MessageActions } from "./MessageActions";
 
 interface AiMessageProps {
   message: ChatMessage;
-  onFollowUp?: (prompt: string) => void;
 }
 
 export const AiMessage = React.memo(function AiMessage({
   message,
-  onFollowUp,
 }: AiMessageProps) {
   const parts = message.parts;
 
@@ -423,7 +421,7 @@ export const AiMessage = React.memo(function AiMessage({
         )}
       </div>
 
-      <MessageActions content={fullText} onFollowUp={onFollowUp} />
+      <MessageActions content={fullText} />
     </div>
   );
 });
