@@ -31,7 +31,7 @@ const TASK_MODELS: Record<AiTask, TaskModel> = {
     VISION_ANALYZE: google('gemini-3.5-flash-lite'),
     SUMMARIZE: google('gemini-3.8-flash'),
     BLOCKNOTE_EDITOR: google('gemini-3.5-flash-lite'),
-    CHAT_AGENT: google('gemini-3.5-flash'),
+    CHAT_AGENT: google('gemini-3.8-flash'),
     AUTO_HEADER: ollama('qwen3.5:0.8b'),
 };
 

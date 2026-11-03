@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type ChangeEvent } from "react";
-import type { AttachedFile } from "../types";
+import type { AttachedFile, WorkspaceDoc } from "../types";
 import { createId } from "../utils";
 
 /**
@@ -36,11 +36,30 @@ export function useAttachments() {
   const openWorkspaceModal = useCallback(() => setIsWorkspaceModalOpen(true), []);
   const closeWorkspaceModal = useCallback(() => setIsWorkspaceModalOpen(false), []);
 
-  const addWorkspaceDoc = useCallback((docName: string) => {
-    setFiles((prev) => [
-      ...prev,
-      { id: createId("ws"), name: docName, source: "workspace" },
-    ]);
+  const addWorkspaceDoc = useCallback((docOrName: WorkspaceDoc | string) => {
+    setFiles((prev) => {
+      if (typeof docOrName === "string") {
+        return [
+          ...prev,
+          { id: createId("ws"), name: docOrName, source: "workspace" },
+        ];
+      }
+
+      // Tránh thêm trùng lặp cùng một tài liệu Workspace
+      if (prev.some((f) => f.source === "workspace" && f.documentId === docOrName.id)) {
+        return prev;
+      }
+
+      return [
+        ...prev,
+        {
+          id: docOrName.id,
+          documentId: docOrName.id,
+          name: docOrName.file_name,
+          source: "workspace",
+        },
+      ];
+    });
   }, []);
 
   const removeFile = useCallback((fileId: string) => {

@@ -100,6 +100,9 @@ export default function RightSidebar({
   const activeChatIdRef = useRef<string | null>(null);
   activeChatIdRef.current = activeChatId;
 
+  // Lưu danh sách documentIds được đính kèm cho lượt gửi tin nhắn hiện tại
+  const pendingAttachedDocIdsRef = useRef<string[]>([]);
+
   const [inputValue, setInputValue] = useState("");
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [, setIsLoadingMessages] = useState(false);
@@ -146,11 +149,23 @@ export default function RightSidebar({
     return new DefaultChatTransport({
       prepareSendMessagesRequest: ({ messages }) => {
         const id = activeChatIdRef.current;
+        const attachedDocumentIds = pendingAttachedDocIdsRef.current;
+        pendingAttachedDocIdsRef.current = [];
         const targetApi = `/api/proxy/chat-agent/sessions/${id}/chat`;
-        console.log("[RightSidebar] prepareSendMessagesRequest -> Target API:", targetApi, "Messages:", messages);
+        console.log(
+          "[RightSidebar] prepareSendMessagesRequest -> Target API:",
+          targetApi,
+          "Messages:",
+          messages,
+          "AttachedDocumentIds:",
+          attachedDocumentIds
+        );
         return {
           api: targetApi,
-          body: { messages },
+          body: {
+            messages,
+            ...(attachedDocumentIds.length > 0 ? { attachedDocumentIds } : {}),
+          },
         };
       },
     });
@@ -224,6 +239,7 @@ export default function RightSidebar({
   const handleNewChat = useCallback(() => {
     setActiveChatId(null);
     activeChatIdRef.current = null;
+    pendingAttachedDocIdsRef.current = [];
     setMessages([]);
     setInputValue("");
     clearFiles();
@@ -305,6 +321,12 @@ export default function RightSidebar({
           return;
         }
 
+        // Trích xuất danh sách documentId từ các tài liệu Workspace đính kèm trước khi clearFiles
+        const workspaceDocIds = attachedFiles
+          .filter((f) => f.source === "workspace" && f.documentId)
+          .map((f) => f.documentId as string);
+        pendingAttachedDocIdsRef.current = workspaceDocIds;
+
         setInputValue("");
         clearFiles();
 
@@ -312,6 +334,7 @@ export default function RightSidebar({
           text,
           sessionId,
           conversationId,
+          workspaceDocIds,
         });
 
         onSendMessage?.(text, sessionId, {
@@ -346,6 +369,7 @@ export default function RightSidebar({
       onSendMessage,
       modelConfig,
       aiSendMessage,
+      refreshSessions,
     ]
   );
 

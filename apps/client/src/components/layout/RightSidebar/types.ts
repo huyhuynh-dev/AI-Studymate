@@ -12,6 +12,8 @@ export interface AttachedFile {
   name: string;
   size?: number;
   source: "local" | "workspace";
+  /** UUID thực của tài liệu trong CSDL (khi source = "workspace") */
+  documentId?: string;
   /** File gốc (chỉ có với source = "local") – dùng khi cần upload thật */
   file?: File;
 }

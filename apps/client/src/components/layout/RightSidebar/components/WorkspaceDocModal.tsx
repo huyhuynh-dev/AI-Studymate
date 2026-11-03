@@ -7,7 +7,7 @@ import type { WorkspaceDoc } from "../types";
 interface WorkspaceDocModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (docName: string) => void;
+  onSelect: (doc: WorkspaceDoc) => void;
   availableDocs: WorkspaceDoc[];
 }
 
@@ -59,7 +59,7 @@ export function WorkspaceDocModal({
         </div>
 
         <p className="text-xs text-gray-500">
-          AI sẽ đọc nội dung tài liệu bạn chọn để trả lời chính xác hơn.
+          AI sẽ ưu tiên đọc nội dung tài liệu bạn chọn để trả lời chính xác hơn.
         </p>
 
         {availableDocs.length === 0 && (
@@ -77,7 +77,7 @@ export function WorkspaceDocModal({
               key={doc.id}
               type="button"
               onClick={() => {
-                onSelect(doc.file_name);
+                onSelect(doc);
                 onClose();
               }}
               className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-gray-50/60 p-2.5 text-left text-xs text-gray-800 transition-colors hover:border-indigo-200 hover:bg-indigo-50/60"
