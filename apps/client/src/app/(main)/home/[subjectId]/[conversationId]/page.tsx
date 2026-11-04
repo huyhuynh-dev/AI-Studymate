@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, use } from "react";
-import { Share2, MoreHorizontal } from "lucide-react";
+import { Share2, MoreHorizontal, Sparkles } from "lucide-react";
 import ConversationHeaderRoutes from "@/components/conversations/ConversationHeaderRoutes";
 import ConversationHeaderTabs, { TabKey } from "@/components/conversations/ConversationHeaderTabs";
 import DocumentsTab from "@/components/conversations/DocumentsTab";
@@ -25,7 +25,13 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   const { subjectId, conversationId } = resolvedParams;
 
   const [activeTab, setActiveTab] = useState<TabKey>("documents");
-  const { isFocusMode, isViewingDocument, setFocusMode } = useFocusMode();
+  const {
+    isFocusMode,
+    isViewingDocument,
+    setFocusMode,
+    isRightSidebarCollapsed,
+    toggleRightSidebar,
+  } = useFocusMode();
 
   // Lấy dữ liệu môn học và danh sách cuộc hội thoại thực tế
   const { subjects } = useSubjects();
@@ -86,7 +92,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           badgeText="Phiên mới"
         />
 
-        {/* Các nút hành động bên phải: Chia sẻ & Thêm tùy chọn */}
+        {/* Các nút hành động bên phải: Chia sẻ, Tùy chọn & Trợ lý StudyMate AI */}
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -102,6 +108,26 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={toggleRightSidebar}
+              aria-label="Trợ lý StudyMate AI"
+              className={`flex h-9 w-9 items-center justify-center rounded-xl border shadow-xs transition-all active:scale-[0.98] cursor-pointer ${
+                !isRightSidebarCollapsed
+                  ? "border-indigo-200 bg-indigo-50 text-indigo-600 shadow-indigo-100/50"
+                  : "border-gray-100 bg-white text-gray-600 hover:border-indigo-100 hover:bg-indigo-50/50 hover:text-indigo-600"
+              }`}
+            >
+              <Sparkles className="h-4 w-4 text-indigo-600 transition-transform group-hover:scale-110" />
+            </button>
+            {/* Dark Tooltip khi hover */}
+            <div className="pointer-events-none absolute right-0 top-full mt-2 hidden group-hover:flex items-center z-50 animate-in fade-in-50 zoom-in-95 duration-100">
+              <div className="rounded-lg bg-white/95 backdrop-blur-sm border border-slate-200/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-md shadow-slate-200/50 whitespace-nowrap">
+                {isRightSidebarCollapsed ? "Mở Trợ lý StudyMate AI" : "Thu gọn Trợ lý StudyMate AI"}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Settings,
   PanelLeftClose,
+  PanelLeftOpen,
   MoreVertical,
   Edit3,
   Trash2,
@@ -114,6 +115,11 @@ export default function LeftSidebar({
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingSubject, setDeletingSubject] = useState<Subject | null>(null);
+  const [railTooltip, setRailTooltip] = useState<{ text: string; top: number } | null>(null);
+
+  useEffect(() => {
+    setRailTooltip(null);
+  }, [isCollapsed]);
 
   // State menu 3 chấm (Fixed Floating Action Menu)
   const [menuAnchor, setMenuAnchor] = useState<{
@@ -239,11 +245,119 @@ export default function LeftSidebar({
   return (
     <aside
       className={`flex h-full flex-col justify-between border-r border-gray-100 bg-white select-none transition-all duration-300 ease-in-out ${isCollapsed
-        ? "w-0 p-0 border-r-0 overflow-hidden opacity-0 pointer-events-none"
+        ? "w-12 px-1 py-3 items-center"
         : "w-72 p-4 opacity-100"
         } ${className}`.trim()}
     >
-      {/* ── Top & Main Content ── */}
+      {isCollapsed ? (
+        <div className="flex h-full w-full flex-col justify-between items-center py-1">
+          {/* Cụm 1: Trên cùng - Mở rộng & Tạo nhanh không gian */}
+          <div className="flex flex-col items-center gap-1.5 shrink-0">
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                aria-label="Mở rộng sidebar"
+                onMouseEnter={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setRailTooltip({ text: "Mở rộng thanh bên", top: rect.top + rect.height / 2 });
+                }}
+                onMouseLeave={() => setRailTooltip(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleOpenCreateModal}
+              aria-label="Tạo không gian học tập mới"
+              onMouseEnter={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setRailTooltip({ text: "Tạo không gian mới", top: rect.top + rect.height / 2 });
+              }}
+              onMouseLeave={() => setRailTooltip(null)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 transition-colors cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Cụm 2: Ở giữa - Danh sách Thư mục không gian học tập kèm màu sắc và Dark Tooltip */}
+          <div className="flex-1 w-full min-h-0 flex flex-col items-center gap-1.5 py-2.5 overflow-y-auto overflow-x-hidden no-scrollbar">
+            {subjects.map((subject) => {
+              const isActive = activeId === subject.id;
+              const subjectColor = subject.color || "#4F46E5";
+
+              return (
+                <button
+                  key={subject.id}
+                  type="button"
+                  onClick={() => handleSubjectClick(subject)}
+                  aria-label={subject.name}
+                  onMouseEnter={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setRailTooltip({ text: subject.name, top: rect.top + rect.height / 2 });
+                  }}
+                  onMouseLeave={() => setRailTooltip(null)}
+                  className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-indigo-50 text-indigo-900 shadow-xs ring-1 ring-indigo-200"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  }`}
+                >
+                  {isActive ? (
+                    <FolderOpen
+                      className="h-4 w-4 transition-transform"
+                      style={{ color: subjectColor }}
+                    />
+                  ) : (
+                    <Folder
+                      className="h-4 w-4 transition-transform"
+                      style={{ color: subjectColor }}
+                    />
+                  )}
+                  {/* Chấm màu nhận diện nhỏ ở góc */}
+                  <span
+                    className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full ring-1 ring-white"
+                    style={{ backgroundColor: subjectColor }}
+                  />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Cụm 3: Ở cuối - Avatar người dùng (Profile & Settings) */}
+          <div className="flex flex-col items-center pt-2.5 border-t border-gray-100 shrink-0 w-full">
+            <button
+              type="button"
+              onClick={onSettingsClick}
+              aria-label="Cài đặt"
+              onMouseEnter={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setRailTooltip({ text: "Cài đặt", top: rect.top + rect.height / 2 });
+              }}
+              onMouseLeave={() => setRailTooltip(null)}
+              className="relative h-8 w-8 overflow-hidden rounded-full border border-gray-200 hover:ring-2 hover:ring-indigo-500 hover:ring-offset-1 transition-all cursor-pointer"
+            >
+              <Image
+                src={
+                  user.avatarUrl ||
+                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+                }
+                alt={user.name}
+                width={32}
+                height={32}
+                unoptimized
+                className="h-full w-full object-cover"
+              />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* ── Top & Main Content ── */}
       <div className="flex-1 min-h-0 flex flex-col space-y-4 overflow-y-auto pr-0.5">
         {/* Section Header: Workspace Title + Add Folder + Collapse */}
         <div className="flex items-center justify-between px-1">
@@ -494,6 +608,9 @@ export default function LeftSidebar({
         </button>
       </div>
 
+      </>
+      )}
+
       {/* ── Fixed Floating Action Menu ── */}
       {menuAnchor && (
         <div
@@ -547,6 +664,21 @@ export default function LeftSidebar({
         }}
         onConfirm={handleConfirmDelete}
       />
+      {/* ── Soft Dark Tooltip cho chế độ Rail (Floating Pill) ── */}
+      {isCollapsed && railTooltip && (
+        <div
+          style={{
+            position: "fixed",
+            top: `${railTooltip.top}px`,
+            left: "56px",
+          }}
+          className="z-50 -translate-y-1/2 pointer-events-none animate-in fade-in-50 zoom-in-95 duration-100"
+        >
+          <div className="rounded-lg bg-white/95 backdrop-blur-sm border border-slate-200/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-md shadow-slate-200/50 whitespace-nowrap">
+            {railTooltip.text}
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

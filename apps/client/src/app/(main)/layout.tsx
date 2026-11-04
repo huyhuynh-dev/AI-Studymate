@@ -2,14 +2,19 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { LeftSidebar, RightSidebar, FocusModeProvider, useFocusMode } from "@/components/layout";
-import { PanelLeftOpen, PanelRightOpen, Sparkles } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
-    const [isRightCollapsed, setIsRightCollapsed] = useState(false);
 
-    const { isFocusMode, isViewingDocument, setFocusMode, setIsViewingDocument } = useFocusMode();
+    const {
+        isFocusMode,
+        isViewingDocument,
+        setFocusMode,
+        setIsViewingDocument,
+        isRightSidebarCollapsed,
+        setIsRightSidebarCollapsed,
+    } = useFocusMode();
     const pathname = usePathname();
 
     // Extract subjectId from path: /home/{subjectId}/...
@@ -21,8 +26,12 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         return null;
     }, [pathname]);
 
-    // The RightSidebar is shown on /home routes.
-    const showRightSidebar = Boolean(pathname?.startsWith("/home"));
+    // RightSidebar chỉ xuất hiện ở cấp độ Conversation (/home/{subjectId}/{conversationId})
+    const showRightSidebar = useMemo(() => {
+        if (!pathname) return false;
+        const segments = pathname.split("/").filter(Boolean);
+        return segments[0] === "home" && segments.length >= 3;
+    }, [pathname]);
 
     // Thoát Focus Mode khi chuyển route
     useEffect(() => {
@@ -31,7 +40,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     }, [pathname, setFocusMode, setIsViewingDocument]);
 
     const effectiveLeftCollapsed = isLeftCollapsed || isFocusMode;
-    const effectiveRightCollapsed = isRightCollapsed || !showRightSidebar;
+    const effectiveRightCollapsed = isRightSidebarCollapsed || !showRightSidebar || isFocusMode;
 
     return (
         <div className="flex h-screen w-full flex-col overflow-hidden bg-white">
@@ -47,21 +56,6 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     </React.Suspense>
                 </aside>
 
-                {/* Left Sidebar Toggle Button */}
-                {effectiveLeftCollapsed && !isFocusMode && (
-                    <div className="absolute top-4 left-4 z-20">
-                        <button
-                            type="button"
-                            onClick={() => setIsLeftCollapsed(false)}
-                            title="Mở Không gian học tập"
-                            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white/95 px-3 py-2 text-xs font-semibold text-gray-700 shadow-md backdrop-blur-sm hover:bg-gray-50 hover:text-indigo-600 transition-all cursor-pointer"
-                        >
-                            <PanelLeftOpen className="h-4 w-4 text-indigo-600" />
-                            <span>Không gian học tập</span>
-                        </button>
-                    </div>
-                )}
-
                 {/* Center Content Area */}
                 <main
                     className={`relative flex-1 bg-slate-50/50 transition-all duration-300 ease-in-out ${
@@ -76,22 +70,6 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     <div className={`min-h-full w-full flex flex-col ${isFocusMode ? "h-full" : ""}`}>
                         {children}
                     </div>
-
-                    {/* Right Sidebar Toggle Button */}
-                    {showRightSidebar && effectiveRightCollapsed && (
-                        <div className="absolute top-4 right-4 z-20">
-                            <button
-                                type="button"
-                                onClick={() => setIsRightCollapsed(false)}
-                                title="Mở Trợ lý StudyMate AI"
-                                className="flex items-center gap-1.5 rounded-xl border border-indigo-100 bg-white/95 px-3 py-2 text-xs font-semibold text-indigo-600 shadow-md backdrop-blur-sm hover:bg-indigo-50 transition-all cursor-pointer"
-                            >
-                                <Sparkles className="h-4 w-4" />
-                                <span>StudyMate AI</span>
-                                <PanelRightOpen className="h-4 w-4 ml-0.5" />
-                            </button>
-                        </div>
-                    )}
                 </main>
 
                 {/* Contextual Right Sidebar Area */}
@@ -99,7 +77,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     <aside className="z-20 shrink-0">
                         <RightSidebar
                             isCollapsed={effectiveRightCollapsed}
-                            onToggleCollapse={() => setIsRightCollapsed(!effectiveRightCollapsed)}
+                            onToggleCollapse={() => setIsRightSidebarCollapsed(!effectiveRightCollapsed)}
                             subjectId={currentSubjectId}
                         />
                     </aside>

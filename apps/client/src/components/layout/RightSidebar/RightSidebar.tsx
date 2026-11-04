@@ -428,6 +428,11 @@ export default function RightSidebar({
     ]
   );
 
+  // Chỉ xuất hiện ở cấp độ Conversation (khi có conversationId hợp lệ)
+  if (!conversationId) {
+    return null;
+  }
+
   return (
     <aside
       aria-hidden={isCollapsed}
