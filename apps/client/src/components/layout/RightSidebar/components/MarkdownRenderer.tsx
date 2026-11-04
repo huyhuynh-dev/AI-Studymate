@@ -135,7 +135,7 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
               {children}
             </ol>
           ),
-          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          li: ({ children }) => <li className="leading-[1.3] my-1">{children}</li>,
           blockquote: ({ children }) => (
             <blockquote className="my-2 border-l-2 border-indigo-400 pl-3 italic text-gray-600">
               {children}
@@ -152,7 +152,7 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
             </a>
           ),
           p: ({ children }) => (
-            <p className="my-1.5 first:mt-0 last:mb-0 leading-relaxed whitespace-pre-wrap break-words">
+            <p className="my-[6pt] first:mt-0 last:mb-0 leading-[1.3] whitespace-pre-wrap break-words">
               {children}
             </p>
           ),

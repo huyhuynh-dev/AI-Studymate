@@ -89,7 +89,7 @@ export const AiMessage = React.memo(function AiMessage({
       </div>
 
       {/* Nội dung */}
-      <div className="space-y-3 rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 p-3.5 text-[13px] leading-relaxed text-gray-800">
+      <div className="space-y-2.5 rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-3.5 py-2 text-[13px] leading-[1.3] text-gray-800">
         {/* Render theo Typed Parts (chuẩn Vercel AI SDK 6) */}
         {normalizedParts && normalizedParts.length > 0 ? (
           normalizedParts.map((part: any, index: number) => {

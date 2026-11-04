@@ -79,7 +79,7 @@ export interface RightSidebarProps {
 
 export default function RightSidebar({
   conversationId: propConversationId,
-  contextTitle = "Trang 12 – Giáo trình CTDL",
+  contextTitle,
   isCollapsed = false,
   onToggleCollapse,
   onSendMessage,
@@ -513,7 +513,7 @@ export default function RightSidebar({
       }}
       className={`${
         isFullscreen
-          ? "fixed inset-0 z-50 flex h-screen w-screen flex-col border-none bg-white select-none animate-in fade-in-50 duration-150"
+          ? "fixed inset-0 z-50 flex h-screen w-screen flex-col border-none bg-white select-none animate-in fade-in-50 duration-150 overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           : `relative flex h-full flex-col border-l border-gray-100 bg-white select-none ${
               isDragging ? "transition-none" : "transition-all duration-300 ease-in-out"
             } ${
@@ -571,7 +571,7 @@ export default function RightSidebar({
       <div
         className={`flex flex-1 flex-col min-h-0 overflow-hidden ${
           isFullscreen ? "max-w-4xl mx-auto w-full px-4" : "w-full"
-        }`}
+        } [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden`}
       >
         {chatState === "empty" ? (
           <EmptyState onPromptSelect={(prompt) => void sendMessage(prompt)} />

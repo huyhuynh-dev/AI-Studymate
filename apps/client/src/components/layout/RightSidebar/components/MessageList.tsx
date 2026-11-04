@@ -39,7 +39,7 @@ export function MessageList({
 
   return (
     // select-text: cho phép bôi đen / sao chép nội dung dù <aside> đang để select-none
-    <div className="min-h-0 flex-1 select-text space-y-5 overflow-y-auto px-4 py-4">
+    <div className="min-h-0 flex-1 select-text space-y-5 overflow-y-auto px-4 py-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
       {messages.map((msg, index) => {
         const isLastAssistantMessage =
           msg.role !== "user" &&

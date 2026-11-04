@@ -1,8 +1,7 @@
 import {
-  CalendarDays,
+  BookOpen,
   HelpCircle,
-  Lightbulb,
-  Network,
+  Layers,
   type LucideIcon,
 } from "lucide-react";
 import type {
@@ -51,10 +50,9 @@ export const EFFORT_LEVELS: EffortOption[] = [
 ];
 
 export const STARTER_PROMPTS: { icon: LucideIcon; label: string }[] = [
-  { icon: Lightbulb, label: "Tóm tắt 3 ý chính của tài liệu" },
-  { icon: Network, label: "Giải thích cơ chế cây BST" },
-  { icon: HelpCircle, label: "Tạo 5 câu trắc nghiệm nhanh" },
-  { icon: CalendarDays, label: "Lập lộ trình ôn tập tuần này" },
+  { icon: BookOpen, label: "Tóm tắt tài liệu" },
+  { icon: Layers, label: "Tạo Flashcard" },
+  { icon: HelpCircle, label: "Tạo Quiz" },
 ];
 
 // ─────────────────────────────────────────────

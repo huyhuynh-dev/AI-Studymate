@@ -38,7 +38,7 @@ export const UserMessage = React.memo(function UserMessage({
       )}
 
       {textContent && (
-        <div className="max-w-[90%] whitespace-pre-wrap break-words rounded-2xl rounded-tr-sm bg-indigo-600 px-3.5 py-2.5 text-[13px] leading-relaxed text-white">
+        <div className="max-w-[90%] whitespace-pre-wrap break-words rounded-2xl rounded-tr-sm bg-indigo-600 px-3.5 py-1.5 text-[13px] leading-[1.3] text-white">
           {textContent}
         </div>
       )}
