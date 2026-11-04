@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
-  embedMany as aiEmbedMany,
-  generateText as aiGenerateText,
-  streamText as aiStreamText,
+  embedMany,
+  generateText,
+  streamText,
   Output,
 } from 'ai';
 import { AiModelFactory } from './ai-model.factory.js';
@@ -10,10 +10,10 @@ import type { AiTask } from './ai-model.factory.js';
 
 @Injectable()
 export class AiService {
-  constructor(private readonly aiModelFactory: AiModelFactory) {}
+  constructor(private readonly aiModelFactory: AiModelFactory) { }
 
   embedMany(values: string[]) {
-    return aiEmbedMany({
+    return embedMany({
       model: this.aiModelFactory.getModelForTask('EMBEDDING'),
       values,
       providerOptions: {
@@ -25,9 +25,9 @@ export class AiService {
   }
 
   generateText(
-    messages: NonNullable<Parameters<typeof aiGenerateText>[0]['messages']>,
+    messages: NonNullable<Parameters<typeof generateText>[0]['messages']>,
   ) {
-    return aiGenerateText({
+    return generateText({
       model: this.aiModelFactory.getModelForTask('VISION_ANALYZE'),
       messages,
     });
@@ -35,10 +35,10 @@ export class AiService {
 
   generateTextForTask(
     task: Exclude<AiTask, 'EMBEDDING'>,
-    messages: NonNullable<Parameters<typeof aiGenerateText>[0]['messages']>,
+    messages: NonNullable<Parameters<typeof generateText>[0]['messages']>,
   ) {
     if (task === 'SUMMARIZE') {
-      return aiGenerateText({
+      return generateText({
         model: this.aiModelFactory.getModelForTask(task),
         messages,
         providerOptions: {
@@ -48,7 +48,7 @@ export class AiService {
     }
 
     if (task === 'AUTO_HEADER') {
-      return aiGenerateText({
+      return generateText({
         model: this.aiModelFactory.getModelForTask(task),
         messages,
         temperature: 0.1,
@@ -60,7 +60,7 @@ export class AiService {
       });
     }
 
-    return aiGenerateText({
+    return generateText({
       model: this.aiModelFactory.getModelForTask(task),
       messages,
     });
@@ -75,7 +75,7 @@ export class AiService {
       temperature?: number;
     },
   ): Promise<{ object: T }> {
-    const result = await aiGenerateText({
+    const result = await generateText({
       model: this.aiModelFactory.getModelForTask(task),
       output: Output.object({
         schema: options.schema as any,
@@ -89,13 +89,13 @@ export class AiService {
 
   streamText(
     options: Omit<
-      Parameters<typeof aiStreamText>[0],
+      Parameters<typeof streamText>[0],
       'model' | 'prompt' | 'messages'
     > & {
-      messages: NonNullable<Parameters<typeof aiStreamText>[0]['messages']>;
+      messages: NonNullable<Parameters<typeof streamText>[0]['messages']>;
     },
   ) {
-    return aiStreamText({
+    return streamText({
       ...options,
       model: this.aiModelFactory.getModelForTask('BLOCKNOTE_EDITOR'),
     });
@@ -104,13 +104,13 @@ export class AiService {
   streamTextForTask(
     task: Exclude<AiTask, 'EMBEDDING'>,
     options: Omit<
-      Parameters<typeof aiStreamText>[0],
+      Parameters<typeof streamText>[0],
       'model' | 'prompt' | 'messages'
     > & {
-      messages: NonNullable<Parameters<typeof aiStreamText>[0]['messages']>;
+      messages: NonNullable<Parameters<typeof streamText>[0]['messages']>;
     },
   ) {
-    return aiStreamText({
+    return streamText({
       ...options,
       model: this.aiModelFactory.getModelForTask(task),
     });

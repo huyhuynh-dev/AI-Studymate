@@ -11,8 +11,11 @@
   "dependencies": {
     "@ai-sdk/google": "^3.0.99",
     "@ai-sdk/react": "^4.0.157",
+    "@blocknote/code-block": "0.56.0",
     "@blocknote/core": "^0.56.0",
+    "@blocknote/diagram-block": "0.56.0",
     "@blocknote/mantine": "^0.56.0",
+    "@blocknote/math-block": "0.56.0",
     "@blocknote/react": "^0.56.0",
     "@blocknote/xl-ai": "^0.56.0",
     "@embedpdf/core": "^2.15.1",
