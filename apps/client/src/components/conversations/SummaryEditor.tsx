@@ -12,7 +12,7 @@ import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import "@blocknote/xl-ai/style.css";
 // import "@blocknote/math-block/style.css";
-import { BlockNoteSchema, createCodeBlockSpec } from "@blocknote/core";
+import { BlockNoteSchema, createCodeBlockSpec, combineByGroup } from "@blocknote/core";
 import { codeBlockOptions, syntaxHighlighter } from "@blocknote/code-block";
 import {
   createReactMathBlockSpec,
@@ -59,13 +59,14 @@ const FormattingToolbarWithAI = () => (
   </FormattingToolbar>
 );
 
-// Slash menu items with AI, Math, and Diagram options added
-const getSlashMenuItemsWithAI = (editor: any) => [
-  ...getDefaultReactSlashMenuItems(editor),
-  ...getMathSlashMenuItems(editor),
-  ...getDiagramSlashMenuItems(editor),
-  ...getAISlashMenuItems(editor),
-];
+// Slash menu items with AI, Math, and Diagram options combined by group to prevent duplicate category keys
+const getSlashMenuItemsWithAI = (editor: any) =>
+  combineByGroup(
+    getDefaultReactSlashMenuItems(editor),
+    getMathSlashMenuItems(editor),
+    getDiagramSlashMenuItems(editor),
+    getAISlashMenuItems(editor)
+  );
 
 /**
  * Chuẩn hóa phần tử inline content (text hoặc link) để bảo đảm tuân thủ nghiêm ngặt ProseMirror Schema
