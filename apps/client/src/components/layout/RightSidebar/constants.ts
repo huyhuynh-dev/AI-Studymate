@@ -1,7 +1,10 @@
 import {
   BookOpen,
+  Brain,
   HelpCircle,
   Layers,
+  Scale,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import type {
@@ -17,25 +20,34 @@ export const ASSISTANT_NAME = "StudyMate AI";
 
 export const AVAILABLE_MODELS: AIModelItem[] = [
   {
-    id: "gpt-4o-mini",
-    name: "GPT-4o Mini",
-    desc: "Nhanh và hiệu quả cho tác vụ thường ngày",
+    id: "studymate-flash",
+    name: "StudyMate Flash",
+    desc: "Phản hồi tức thì cho tra cứu nhanh",
   },
   {
-    id: "gpt-4o",
-    name: "GPT-4o",
-    desc: "Mạnh mẽ nhất cho tác vụ phức tạp",
+    id: "studymate-pro",
+    name: "StudyMate Pro",
+    desc: "Tối ưu cho tóm tắt và tạo bài tập",
   },
   {
-    id: "gpt-4-1-mini",
-    name: "GPT-4.1 Mini",
-    desc: "Cân bằng giữa tốc độ và khả năng",
+    id: "studymate-deep",
+    name: "StudyMate Deep",
+    desc: "Suy luận chuyên sâu và giải bài toán khó",
   },
-  {
-    id: "claude-3-5-sonnet",
-    name: "Claude 3.5 Sonnet",
-    desc: "Phân tích chuyên sâu & lập trình xuất sắc",
-  },
+];
+
+export interface PriorityOption {
+  key: "fast" | "balanced" | "deep";
+  label: string;
+  icon: LucideIcon;
+  effort: EffortLevel;
+  thinking: boolean;
+}
+
+export const PRIORITY_OPTIONS: PriorityOption[] = [
+  { key: "fast", label: "Nhanh", icon: Zap, effort: "low", thinking: false },
+  { key: "balanced", label: "Cân bằng", icon: Scale, effort: "medium", thinking: false },
+  { key: "deep", label: "Suy luận sâu", icon: Brain, effort: "high", thinking: true },
 ];
 
 export const DEFAULT_MODEL_ID = AVAILABLE_MODELS[0].id;
