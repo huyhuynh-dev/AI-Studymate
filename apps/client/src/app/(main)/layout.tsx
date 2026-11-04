@@ -58,7 +58,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 
                 {/* Center Content Area */}
                 <main
-                    className={`relative flex-1 bg-slate-50/50 transition-all duration-300 ease-in-out ${
+                    className={`relative flex-1 bg-slate-50/50 transition-[padding] duration-300 ease-in-out ${
                         isFocusMode
                             ? "p-0 overflow-hidden"
                             : isViewingDocument

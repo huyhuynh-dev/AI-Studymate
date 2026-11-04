@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Maximize2, Minimize2 } from "lucide-react";
 import type { ChatSessionItem } from "../types";
 import { HistoryMenu } from "./HistoryMenu";
 import { IconButton } from "./IconButton";
@@ -15,6 +15,8 @@ interface ChatHeaderProps {
   onRenameChat: (id: string, newTitle: string) => Promise<void>;
   onRequestDeleteChat: (session: ChatSessionItem) => void;
   onNewChat: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
   /** Nếu không truyền, nút đóng sẽ được ẩn */
   onClose?: () => void;
 }
@@ -28,6 +30,8 @@ export function ChatHeader({
   onRenameChat,
   onRequestDeleteChat,
   onNewChat,
+  isFullscreen = false,
+  onToggleFullscreen,
   onClose,
 }: ChatHeaderProps) {
   return (
@@ -52,6 +56,18 @@ export function ChatHeader({
         <IconButton label="Tạo đoạn chat mới" onClick={onNewChat}>
           <Plus className="h-4 w-4" />
         </IconButton>
+        {onToggleFullscreen && (
+          <IconButton
+            label={isFullscreen ? "Thu nhỏ về mặc định (ESC)" : "Phóng to toàn màn hình"}
+            onClick={onToggleFullscreen}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </IconButton>
+        )}
         {onClose && (
           <IconButton label="Thu gọn trợ lý AI" onClick={onClose}>
             <X className="h-4 w-4" />

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -109,6 +110,73 @@ export default function RightSidebar({
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [, setIsLoadingMessages] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ChatSessionItem | null>(null);
+
+  // ── Resizable & Fullscreen states ──
+  const [sidebarWidth, setSidebarWidth] = useState<number>(384);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Xử lý bắt đầu kéo chuột dãn chiều rộng
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const maxWidth = Math.floor(window.innerWidth * 0.6);
+      const minWidth = 320;
+      const newWidth = Math.min(maxWidth, Math.max(minWidth, window.innerWidth - e.clientX));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+  }, [isDragging]);
+
+  // Hỗ trợ phím ESC để thoát nhanh toàn màn hình
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsFullscreen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
+
+  // Đảm bảo chiều rộng không vượt quá 60% khi resize cửa sổ
+  useEffect(() => {
+    const handleResize = () => {
+      const maxWidth = Math.floor(window.innerWidth * 0.6);
+      setSidebarWidth((prev) => Math.min(prev, Math.max(320, maxWidth)));
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // ── Follow-up Suggestions state ──
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -433,15 +501,44 @@ export default function RightSidebar({
     return null;
   }
 
-  return (
+  const sidebarContent = (
     <aside
       aria-hidden={isCollapsed}
-      className={`flex h-full flex-col border-l border-gray-100 bg-white select-none transition-all duration-300 ease-in-out ${
-        isCollapsed
-          ? "w-0 border-l-0 overflow-hidden opacity-0 pointer-events-none"
-          : "w-80 md:w-96 opacity-100"
+      style={{
+        width: isFullscreen
+          ? "100vw"
+          : isCollapsed
+            ? 0
+            : `${sidebarWidth}px`,
+      }}
+      className={`${
+        isFullscreen
+          ? "fixed inset-0 z-50 flex h-screen w-screen flex-col border-none bg-white select-none animate-in fade-in-50 duration-150"
+          : `relative flex h-full flex-col border-l border-gray-100 bg-white select-none ${
+              isDragging ? "transition-none" : "transition-all duration-300 ease-in-out"
+            } ${
+              isCollapsed
+                ? "w-0 border-l-0 overflow-hidden opacity-0 pointer-events-none"
+                : "opacity-100"
+            }`
       } ${className}`.trim()}
     >
+      {/* Thanh kéo dãn chiều rộng bên trái (ẩn khi đang fullscreen hoặc collapsed) */}
+      {!isCollapsed && !isFullscreen && (
+        <div
+          onMouseDown={handleMouseDown}
+          title="Kéo sang trái/phải để thay đổi kích thước (Tối đa 60%)"
+          className="group absolute -left-1.5 top-0 bottom-0 z-40 w-3 cursor-col-resize select-none touch-none flex items-center justify-center hover:bg-transparent"
+        >
+          <div
+            className={`h-full w-1 transition-colors duration-150 ${
+              isDragging
+                ? "bg-indigo-600 shadow-xs"
+                : "bg-transparent group-hover:bg-indigo-400/80"
+            }`}
+          />
+        </div>
+      )}
       {/* Input ẩn để chọn tệp từ thiết bị */}
       <input
         type="file"
@@ -461,42 +558,55 @@ export default function RightSidebar({
         onRenameChat={handleRenameChat}
         onRequestDeleteChat={setPendingDelete}
         onNewChat={handleNewChat}
-        onClose={onToggleCollapse}
-      />
-
-      {chatState === "empty" ? (
-        <EmptyState onPromptSelect={(prompt) => void sendMessage(prompt)} />
-      ) : (
-        <MessageList
-          messages={messages as unknown as ChatMessage[]}
-          isLoading={isSending}
-          suggestions={suggestions}
-          isLoadingSuggestions={isLoadingSuggestions}
-          onSelectSuggestion={(selectedSuggestion) =>
-            void sendMessage(selectedSuggestion)
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+        onClose={() => {
+          if (isFullscreen) {
+            setIsFullscreen(false);
           }
-        />
-      )}
-
-      <ChatComposer
-        value={inputValue}
-        onChange={setInputValue}
-        onSend={() => void sendMessage(inputValue)}
-        disabled={isSending}
-        placeholder={
-          chatState === "empty"
-            ? "Hỏi AI bất cứ điều gì về tài liệu…"
-            : "Hỏi tiếp về đoạn chat này…"
-        }
-        attachedFiles={attachedFiles}
-        onRemoveFile={removeFile}
-        onSelectLocalFile={openLocalPicker}
-        onSelectWorkspaceDoc={openWorkspaceModal}
-        modelConfig={modelConfig}
-        onModelConfigChange={updateModelConfig}
-        contextLabel={shortContext}
-        contextTitle={contextTitle}
+          onToggleCollapse?.();
+        }}
       />
+
+      <div
+        className={`flex flex-1 flex-col min-h-0 overflow-hidden ${
+          isFullscreen ? "max-w-4xl mx-auto w-full px-4" : "w-full"
+        }`}
+      >
+        {chatState === "empty" ? (
+          <EmptyState onPromptSelect={(prompt) => void sendMessage(prompt)} />
+        ) : (
+          <MessageList
+            messages={messages as unknown as ChatMessage[]}
+            isLoading={isSending}
+            suggestions={suggestions}
+            isLoadingSuggestions={isLoadingSuggestions}
+            onSelectSuggestion={(selectedSuggestion) =>
+              void sendMessage(selectedSuggestion)
+            }
+          />
+        )}
+
+        <ChatComposer
+          value={inputValue}
+          onChange={setInputValue}
+          onSend={() => void sendMessage(inputValue)}
+          disabled={isSending}
+          placeholder={
+            chatState === "empty"
+              ? "Hỏi AI bất cứ điều gì về tài liệu…"
+              : "Hỏi tiếp về đoạn chat này…"
+          }
+          attachedFiles={attachedFiles}
+          onRemoveFile={removeFile}
+          onSelectLocalFile={openLocalPicker}
+          onSelectWorkspaceDoc={openWorkspaceModal}
+          modelConfig={modelConfig}
+          onModelConfigChange={updateModelConfig}
+          contextLabel={shortContext}
+          contextTitle={contextTitle}
+        />
+      </div>
 
       <WorkspaceDocModal
         isOpen={isWorkspaceModalOpen}
@@ -512,6 +622,21 @@ export default function RightSidebar({
       />
     </aside>
   );
+
+  if (isFullscreen && mounted && typeof document !== "undefined") {
+    return (
+      <>
+        {/* Placeholder trong layout flow để không gián đoạn giao diện nền */}
+        <div
+          style={{ width: `${sidebarWidth}px` }}
+          className="shrink-0 h-full border-l border-gray-100 bg-white"
+        />
+        {createPortal(sidebarContent, document.body)}
+      </>
+    );
+  }
+
+  return sidebarContent;
 }
 
 export { RightSidebar };
