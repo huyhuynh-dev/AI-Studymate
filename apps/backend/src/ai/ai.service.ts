@@ -1,18 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { embedMany as aiEmbedMany } from 'ai';
-import { getModelForTask } from './providers/ai-provider.config.js';
 import {
-  generateText as aiGenerateText,
-  streamText as aiStreamText,
+  embedMany,
+  generateText,
+  streamText,
+  Output,
 } from 'ai';
-import type { AiTask } from './providers/ai-provider.config.js';
+import { AiModelFactory } from './ai-model.factory.js';
+import type { AiTask } from './ai-model.factory.js';
 
 @Injectable()
 export class AiService {
+  constructor(private readonly aiModelFactory: AiModelFactory) { }
 
   embedMany(values: string[]) {
-    return aiEmbedMany({
-      model: getModelForTask('EMBEDDING'),
+    return embedMany({
+      model: this.aiModelFactory.getModelForTask('EMBEDDING'),
       values,
       providerOptions: {
         google: {
@@ -23,21 +25,21 @@ export class AiService {
   }
 
   generateText(
-    messages: NonNullable<Parameters<typeof aiGenerateText>[0]['messages']>,
+    messages: NonNullable<Parameters<typeof generateText>[0]['messages']>,
   ) {
-    return aiGenerateText({
-      model: getModelForTask('VISION_ANALYZE'),
+    return generateText({
+      model: this.aiModelFactory.getModelForTask('VISION_ANALYZE'),
       messages,
     });
   }
 
   generateTextForTask(
     task: Exclude<AiTask, 'EMBEDDING'>,
-    messages: NonNullable<Parameters<typeof aiGenerateText>[0]['messages']>,
+    messages: NonNullable<Parameters<typeof generateText>[0]['messages']>,
   ) {
     if (task === 'SUMMARIZE') {
-      return aiGenerateText({
-        model: getModelForTask(task),
+      return generateText({
+        model: this.aiModelFactory.getModelForTask(task),
         messages,
         providerOptions: {
           google: { responseMimeType: 'application/json' },
@@ -45,24 +47,97 @@ export class AiService {
       });
     }
 
-    return aiGenerateText({
-      model: getModelForTask(task),
+    if (task === 'AUTO_HEADER') {
+      return generateText({
+        model: this.aiModelFactory.getModelForTask(task),
+        messages,
+        temperature: 0.1,
+        providerOptions: {
+          ollama: {
+            think: false,
+          },
+        },
+      });
+    }
+
+    return generateText({
+      model: this.aiModelFactory.getModelForTask(task),
       messages,
     });
   }
 
+  async generateObjectForTask<T = unknown>(
+    task: Exclude<AiTask, 'EMBEDDING'>,
+    options: {
+      schema: unknown;
+      prompt: string;
+      system?: string;
+      temperature?: number;
+      modelName?: string;
+    },
+  ): Promise<{ object: T }> {
+    const model = options.modelName
+      ? this.aiModelFactory.getChatAgentModel(options.modelName)
+      : this.aiModelFactory.getModelForTask(task);
+
+    const result = await generateText({
+      model,
+      output: Output.object({
+        schema: options.schema as any,
+      }),
+      prompt: options.prompt,
+      system: options.system,
+      temperature: options.temperature,
+    });
+    return { object: result.output as T };
+  }
+
   streamText(
     options: Omit<
-      Parameters<typeof aiStreamText>[0],
+      Parameters<typeof streamText>[0],
       'model' | 'prompt' | 'messages'
     > & {
-      messages: NonNullable<Parameters<typeof aiStreamText>[0]['messages']>;
+      messages: NonNullable<Parameters<typeof streamText>[0]['messages']>;
     },
   ) {
-    return aiStreamText({
+    return streamText({
       ...options,
-      model: getModelForTask('BLOCKNOTE_EDITOR'),
+      model: this.aiModelFactory.getModelForTask('BLOCKNOTE_EDITOR'),
     });
   }
 
+  streamTextForTask(
+    task: Exclude<AiTask, 'EMBEDDING'>,
+    options: Omit<
+      Parameters<typeof streamText>[0],
+      'model' | 'prompt' | 'messages'
+    > & {
+      messages: NonNullable<Parameters<typeof streamText>[0]['messages']>;
+    },
+  ) {
+    return streamText({
+      ...options,
+      model: this.aiModelFactory.getModelForTask(task),
+    });
+  }
+
+  streamChatAgent(
+    modelName: string,
+    options: Omit<
+      Parameters<typeof streamText>[0],
+      'model' | 'prompt' | 'messages'
+    > & {
+      messages: NonNullable<Parameters<typeof streamText>[0]['messages']>;
+      temperature?: number;
+      maxOutputTokens?: number;
+    },
+  ) {
+    const { temperature, maxOutputTokens, ...rest } = options;
+    return streamText({
+      ...rest,
+      model: this.aiModelFactory.getChatAgentModel(modelName),
+      temperature,
+      maxOutputTokens,
+    });
+  }
 }

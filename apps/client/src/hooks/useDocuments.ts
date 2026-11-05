@@ -40,7 +40,10 @@ export function useDocuments(conversationId?: string | null) {
 
   const clearError = () => setErrorMessage(null);
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (
+    file: File,
+    onProgress?: (percent: number) => void
+  ) => {
     if (!conversationId) return;
 
     // Validate phía Client
@@ -77,6 +80,7 @@ export function useDocuments(conversationId?: string | null) {
 
       // Bước 2: Tải trực tiếp lên Cloudflare R2
       await documentsApi.uploadToR2(initRes.uploadUrl, file, (percent) => {
+        onProgress?.(percent);
         setUploadQueue((prev) => {
           if (!prev[tempId]) return prev;
           return {
@@ -211,6 +215,7 @@ export function useDocuments(conversationId?: string | null) {
     isUploading: Object.keys(uploadQueue).length > 0,
     errorMessage,
     clearError,
+    uploadFile,
     uploadFiles,
     deleteDocument,
     downloadDocument,

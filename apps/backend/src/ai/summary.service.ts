@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { AiService } from './ai.service.js';
+import {
+    summaryOutputSchema,
+    type SummaryOutput,
+} from './schemas/blocknote.schema.js';
 
 export interface GenerateSummaryOptions {
     documentTexts: Array<{ fileName?: string; text: string }>;
@@ -9,6 +13,7 @@ export interface GenerateSummaryOptions {
     scope: 'conversation' | 'document' | 'section';
     sectionInfo?: string;
     customInstruction?: string;
+    modelName?: string;
 }
 
 export interface SummaryBlock {
@@ -28,10 +33,10 @@ export interface SummaryResult {
 export class SummaryService {
     private readonly logger = new Logger(SummaryService.name);
 
-    constructor(private readonly aiService: AiService) {}
+    constructor(private readonly aiService: AiService) { }
 
     /**
-     * Sinh bản tóm tắt mới bằng AI model gemini-3.6-flash
+     * Sinh bản tóm tắt mới bằng AI với Structured Output (Zod Schema)
      */
     async generateSummary(options: GenerateSummaryOptions): Promise<SummaryResult> {
         // 1. Ghép nội dung tài liệu
@@ -97,65 +102,26 @@ export class SummaryService {
 
         const systemPrompt =
             `Bạn là Trợ lý Học tập AI cao cấp thuộc nền tảng AI StudyMate.\n` +
-            `Nhiệm vụ của bạn là đọc các tài liệu học tập được cung cấp và xây dựng một bản TÓM TẮT HỌC TẬP CHẤT LƯỢNG CAO bằng Tiếng Việt.\n\n` +
-            `QUY ĐỊNH BẮT BUỘC VỀ ĐỊNH DẠNG ĐẦU RA:\n` +
-            `Bạn PHẢI trả về duy nhất một chuỗi JSON hợp lệ (không kèm Markdown code block \`\`\`json ngoài trừ JSON nguyên bản) có cấu trúc:\n` +
-            `{\n` +
-            `  "title": "Tiêu đề bản tóm tắt hấp dẫn, ngắn gọn, phù hợp với nội dung",\n` +
-            `  "blocks": [\n` +
-            `    {\n` +
-            `      "type": "heading",\n` +
-            `      "props": { "level": 1 },\n` +
-            `      "content": [{ "type": "text", "text": "Tiêu đề chính", "styles": {} }]\n` +
-            `    },\n` +
-            `    {\n` +
-            `      "type": "paragraph",\n` +
-            `      "props": {},\n` +
-            `      "content": [\n` +
-            `        { "type": "text", "text": "Đoạn văn mở đầu... ", "styles": {} },\n` +
-            `        { "type": "text", "text": "từ khóa quan trọng", "styles": { "bold": true } }\n` +
-            `      ]\n` +
-            `    },\n` +
-            `    {\n` +
-            `      "type": "heading",\n` +
-            `      "props": { "level": 2 },\n` +
-            `      "content": [{ "type": "text", "text": "1. Khái niệm cốt lõi", "styles": {} }]\n` +
-            `    },\n` +
-            `    {\n` +
-            `      "type": "bulletListItem",\n` +
-            `      "props": {},\n` +
-            `      "content": [{ "type": "text", "text": "Ý chính 1...", "styles": {} }]\n` +
-            `    },\n` +
-            `    {\n` +
-            `      "type": "numberedListItem",\n` +
-            `      "props": {},\n` +
-            `      "content": [{ "type": "text", "text": "Bước 1...", "styles": {} }]\n` +
-            `    }\n` +
-            `  ]\n` +
-            `}\n\n` +
-            `DANH SÁCH TOÀN BỘ CÁC LOẠI BLOCK MÀ BLOCKNOTE HỖ TRỢ:\n` +
-            `Bạn hãy chủ động lựa chọn và kết hợp linh hoạt những loại block phù hợp và tối ưu nhất cho bài học (không nhất thiết phải dùng hết, chỉ dùng khi thấy cần thiết):\n` +
-            `- "heading": Tiêu đề phân cấp. Props: { "level": 1 | 2 | 3, "isToggleable"?: boolean }\n` +
-            `- "paragraph": Đoạn văn diễn giải, mở đầu, tổng kết hoặc giải thích\n` +
-            `- "quote": Khối trích dẫn, nguyên lý bất biến, cảnh báo quan trọng hoặc ghi nhớ nhanh\n` +
-            `- "bulletListItem": Danh sách gạch đầu dòng các ý chính, tính chất hoặc đặc điểm\n` +
-            `- "numberedListItem": Danh sách đánh số thứ tự các bước thực hiện, quy trình hoặc thứ hạng\n` +
-            `- "checkListItem": Danh sách việc cần làm, checklist mục tiêu tự ôn luyện. Props: { "checked": false }\n` +
-            `- "toggleListItem": Mục có thể thu gọn/mở rộng (toggle), rất hữu ích cho dạng câu hỏi kèm gợi ý ẩn hoặc nội dung chi tiết mở rộng\n` +
-            `- "codeBlock": Khối code khi tóm tắt các môn lập trình, thuật toán hoặc câu lệnh. Props: { "language": "javascript" | "python" | "cpp" | "java" | "sql" | "bash" | "html" | ... }, Content: chuỗi code hoặc mảng text\n` +
-            `- "table": Bảng biểu đối chiếu, so sánh các khái niệm, bảng công thức hoặc bảng tra cứu. Cấu trúc:\n` +
-            `  "content": {\n` +
-            `    "type": "tableContent",\n` +
-            `    "rows": [\n` +
-            `      { "cells": ["Tiêu chí", "Khái niệm A", "Khái niệm B"] },\n` +
-            `      { "cells": ["Định nghĩa", "...", "..."] }\n` +
-            `    ]\n` +
-            `  }\n` +
-            `- "image": Khối hình ảnh tham khảo nếu có URL hợp lệ. Props: { "url": "https://...", "caption": "Mô tả ảnh" }\n\n` +
-            `ĐỊNH DẠNG NỘI DUNG NỘI DÒNG (Inline Content):\n` +
-            `- Văn bản có định dạng: { "type": "text", "text": "...", "styles": { "bold"?: boolean, "italic"?: boolean, "underline"?: boolean, "strike"?: boolean, "code"?: boolean, "textColor"?: string, "backgroundColor"?: string } }\n` +
-            `- QUY TẮC QUAN TRỌNG VỀ CODE: Inline code ("code": true) TUYỆT ĐỐI KHÔNG ĐƯỢC kết hợp đồng thời với các style khác ("bold", "italic", "underline", v.v.). Nếu muốn định dạng code thì chỉ để { "code": true }.\n` +
-            `- Đường dẫn liên kết: { "type": "link", "content": "Tên liên kết", "href": "https://..." }\n\n` +
+            `Nhiệm vụ của bạn là đọc các tài liệu học tập được cung cấp và xây dựng một bản TÓM TẮT HỌC TẬP CHẤT LƯỢNG CAO bằng Tiếng Việt theo đúng cấu trúc BlockNote đã định nghĩa.\n\n` +
+            `DANH SÁCH CÁC LOẠI BLOCK MÀ BẠN CÓ THỂ SỬ DỤNG:\n` +
+            `- "heading": Tiêu đề phân cấp (level: 1 | 2 | 3 | 4 | 5 | 6, isToggleable?: boolean).\n` +
+            `- "paragraph": Đoạn văn diễn giải, mở đầu, tổng kết hoặc giải thích.\n` +
+            `- "quote": Khối trích dẫn, nguyên lý bất biến, cảnh báo quan trọng hoặc ghi nhớ nhanh.\n` +
+            `- "bulletListItem": Danh sách gạch đầu dòng các ý chính, tính chất hoặc đặc điểm.\n` +
+            `- "numberedListItem": Danh sách đánh số thứ tự các bước thực hiện, quy trình hoặc thứ hạng (start?: number).\n` +
+            `- "checkListItem": Danh sách việc cần làm, checklist mục tiêu tự ôn luyện (checked: boolean).\n` +
+            `- "toggleListItem": Mục có thể thu gọn/mở rộng (toggle) chứa các block con bên trong children.\n` +
+            `- "codeBlock": Khối code khi tóm tắt các môn lập trình, thuật toán hoặc câu lệnh (language: string).\n` +
+            `- "table": Bảng biểu đối chiếu, so sánh các khái niệm, bảng công thức hoặc bảng tra cứu (bắt buộc có ít nhất 1 hàng dữ liệu).\n` +
+            `- "divider": Khối đường kẻ ngang phân tách các phần lớn.\n` +
+            `- "mathBlock": Công thức toán học LaTeX độc lập.\n` +
+            `- "diagram": Sơ đồ/lưu đồ giải thuật Mermaid độc lập.\n` +
+            `- "image": Khối hình ảnh tham khảo nếu trong tài liệu có URL hợp lệ.\n\n` +
+            `QUY TẮC ĐỊNH DẠNG NỘI DÒNG (Inline Content):\n` +
+            `- Văn bản định dạng: { "type": "text", "text": "...", "styles": { "bold"?: boolean, "italic"?: boolean, "code"?: boolean, ... } }\n` +
+            `- QUY TẮC CODE: Nếu "code": true thì TUYỆT ĐỐI KHÔNG ĐƯỢC kèm theo bất kỳ style nào khác (bold, italic, underline, v.v.).\n` +
+            `- Đường dẫn: { "type": "link", "content": [{ "type": "text", "text": "..." }], "href": "https://..." }\n` +
+            `- Công thức toán nội dòng: { "type": "math", "content": "..." }\n\n` +
             `${styleInstruction}\n` +
             `${lengthInstruction}\n` +
             `${sectionInstruction}\n` +
@@ -168,21 +134,22 @@ export class SummaryService {
         const userPrompt = `Dưới đây là nội dung tài liệu học tập:\n\n${contextText.slice(0, 100000)}\n\nHãy tạo bản tóm tắt học tập theo đúng chỉ dẫn trên.`;
 
         try {
-            this.logger.log(`Đang gọi model SUMMARIZE để sinh tóm tắt (${options.mode}, ${options.length})...`);
-
-            const response = await this.aiService.generateTextForTask(
-                'SUMMARIZE',
-                [
-                    {
-                        role: 'user',
-                        content: `${systemPrompt}\n\n${userPrompt}`,
-                    },
-                ],
+            this.logger.log(
+                `Đang gọi model ${options.modelName || 'SUMMARIZE'} với Structured Output (${options.mode}, ${options.length})...`,
             );
 
-            const text = response.text || '';
-            const parsed = this.parseSummaryJson(text);
-            return parsed;
+            const { object } = await this.aiService.generateObjectForTask<SummaryOutput>(
+                'SUMMARIZE',
+                {
+                    schema: summaryOutputSchema,
+                    system: systemPrompt,
+                    prompt: userPrompt,
+                    temperature: 0.2,
+                    ...(options.modelName ? { modelName: options.modelName } : {}),
+                },
+            );
+
+            return this.ensureBlockNoteCompatibility(object.blocks, object.title);
         } catch (error: any) {
             this.logger.error(`Lỗi sinh tóm tắt: ${error.message}`, error.stack);
             throw new Error(`AI Tóm tắt thất bại: ${error.message}`);
@@ -190,7 +157,7 @@ export class SummaryService {
     }
 
     /**
-     * Tinh chỉnh bản tóm tắt hiện có theo chỉ dẫn của người học
+     * Tinh chỉnh bản tóm tắt hiện có theo chỉ dẫn của người học với Structured Output
      */
     async refineSummary(currentBlocks: any[], instruction: string): Promise<SummaryResult> {
         if (!currentBlocks || !Array.isArray(currentBlocks) || currentBlocks.length === 0) {
@@ -203,12 +170,7 @@ export class SummaryService {
             `HƯỚNG DẪN:\n` +
             `1. Bạn sẽ nhận được cấu trúc JSON hiện tại của bản tóm tắt (danh sách blocks BlockNote) và CHỈ DẪN của người học.\n` +
             `2. Hãy giữ lại cấu trúc và các nội dung có giá trị của bản tóm tắt cũ, đồng thời cập nhật, bổ sung, rút gọn, hoặc diễn đạt lại các khối theo đúng chỉ dẫn của người học.\n` +
-            `3. Trả về DUY NHẤT một chuỗi JSON hợp lệ có định dạng:\n` +
-            `{\n` +
-            `  "title": "Tiêu đề mới (hoặc giữ nguyên nếu phù hợp)",\n` +
-            `  "blocks": [ ...các khối BlockNote đã được tinh chỉnh... ]\n` +
-            `}\n\n` +
-            `Các loại block BlockNote được hỗ trợ: paragraph, heading, quote, bulletListItem, numberedListItem, checkListItem, toggleListItem, codeBlock, table, image, file.`;
+            `3. Tuân thủ định dạng BlockNote chuẩn đã được định nghĩa qua schema.`;
 
         const userPrompt =
             `CHỈ DẪN CỦA NGƯỜI HỌC: "${instruction}"\n\n` +
@@ -217,19 +179,17 @@ export class SummaryService {
         try {
             this.logger.log(`Đang gọi model SUMMARIZE để tinh chỉnh tóm tắt theo chỉ dẫn: "${instruction}"...`);
 
-            const response = await this.aiService.generateTextForTask(
+            const { object } = await this.aiService.generateObjectForTask<SummaryOutput>(
                 'SUMMARIZE',
-                [
-                    {
-                        role: 'user',
-                        content: `${systemPrompt}\n\n${userPrompt}`,
-                    },
-                ],
+                {
+                    schema: summaryOutputSchema,
+                    system: systemPrompt,
+                    prompt: userPrompt,
+                    temperature: 0.2,
+                },
             );
 
-            const text = response.text || '';
-            const parsed = this.parseSummaryJson(text);
-            return parsed;
+            return this.ensureBlockNoteCompatibility(object.blocks, object.title);
         } catch (error: any) {
             this.logger.error(`Lỗi tinh chỉnh tóm tắt: ${error.message}`, error.stack);
             throw new Error(`AI Tinh chỉnh thất bại: ${error.message}`);
@@ -237,164 +197,165 @@ export class SummaryService {
     }
 
     /**
-     * Parse và chuẩn hóa JSON trả về từ Gemini thành cấu trúc BlockNote blocks hợp lệ
+     * Chuẩn hóa và bảo đảm tính tương thích với BlockNote Editor (gọn nhẹ)
+     * - Tự động bổ sung id duy nhất (UUID) cho bất kỳ block nào chưa có
+     * - Loại bỏ các giá trị null phát sinh từ Strict Mode schema
+     * - Xử lý quy tắc ProseMirror code mark: loại bỏ các style khác nếu code: true
+     * - Chuẩn hóa ô bảng (cells) sang mảng inline content nếu nhận được chuỗi text đơn giản
+     * - Đệ quy xử lý các block con trong children
+     * - Cung cấp fallback paragraph mặc định nếu danh sách blocks rỗng
      */
-    private parseSummaryJson(rawText: string): SummaryResult {
-        let cleaned = rawText.trim();
-        // Xóa markdown code fence nếu có
-        if (cleaned.startsWith('```json')) {
-            cleaned = cleaned.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
-        } else if (cleaned.startsWith('```')) {
-            cleaned = cleaned.replace(/^```\s*/i, '').replace(/\s*```$/, '');
+    private ensureBlockNoteCompatibility(
+        rawBlocks: any[],
+        title?: string,
+    ): SummaryResult {
+        const cleanTitle = (typeof title === 'string' && title.trim())
+            ? title.trim()
+            : 'Bản Tóm Tắt Học Tập';
+
+        const safeBlocks = Array.isArray(rawBlocks) ? rawBlocks : [];
+        const validatedBlocks = this.sanitizeBlockList(safeBlocks);
+
+        if (validatedBlocks.length === 0) {
+            validatedBlocks.push({
+                id: randomUUID(),
+                type: 'paragraph',
+                props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+                content: [{ type: 'text', text: 'Bản tóm tắt đang được xử lý hoặc nội dung trống.', styles: {} }],
+                children: [],
+            });
         }
 
-        try {
-            const parsed = JSON.parse(cleaned);
-            const title = typeof parsed.title === 'string' && parsed.title.trim()
-                ? parsed.title.trim()
-                : 'Bản Tóm Tắt Học Tập';
-
-            let blocks: any[] = [];
-            if (Array.isArray(parsed.blocks)) {
-                blocks = parsed.blocks;
-            } else if (Array.isArray(parsed)) {
-                blocks = parsed;
-            }
-
-            // Chuẩn hóa từng block bảo đảm có id và cấu trúc đúng chuẩn BlockNote
-            const normalizedBlocks = this.normalizeBlocks(blocks);
-
-            if (normalizedBlocks.length === 0) {
-                // Fallback nếu không có blocks nào
-                normalizedBlocks.push({
-                    id: randomUUID(),
-                    type: 'paragraph',
-                    props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-                    content: [{ type: 'text', text: cleaned.slice(0, 500), styles: {} }],
-                    children: [],
-                });
-            }
-
-            return {
-                title,
-                blocks: normalizedBlocks,
-            };
-        } catch (err: any) {
-            this.logger.warn(`Không parse được JSON từ AI response, tiến hành fallback Markdown -> Blocks: ${err.message}`);
-            return this.fallbackMarkdownToBlocks(cleaned);
-        }
+        return {
+            title: cleanTitle,
+            blocks: validatedBlocks,
+        };
     }
 
     /**
-     * Chuẩn hóa mảng blocks - Hỗ trợ toàn bộ các loại Block của BlockNote
+     * Duyệt và chuẩn hóa mảng blocks theo quy chuẩn BlockNote
      */
-    private normalizeBlocks(rawBlocks: any[]): SummaryBlock[] {
-        const VALID_BLOCK_TYPES = [
-            'paragraph',
-            'heading',
-            'quote',
-            'bulletListItem',
-            'numberedListItem',
-            'checkListItem',
-            'toggleListItem',
-            'codeBlock',
-            'table',
-            'image',
-            'video',
-            'audio',
-            'file',
-        ];
-
-        return rawBlocks.map((b) => {
-            const blockType = VALID_BLOCK_TYPES.includes(b?.type) ? b.type : 'paragraph';
+    private sanitizeBlockList(blocks: any[]): SummaryBlock[] {
+        return blocks.map((b) => {
             const blockId = (typeof b?.id === 'string' && b.id.trim()) ? b.id : randomUUID();
+            const blockType = typeof b?.type === 'string' ? b.type : 'paragraph';
 
-            const props: Record<string, any> = {
-                ...(typeof b?.props === 'object' && b?.props ? b.props : {}),
-            };
+            // Xóa các props có giá trị null hoặc undefined
+            const rawProps = (typeof b?.props === 'object' && b?.props) ? b.props : {};
+            const props: Record<string, any> = {};
+            for (const [k, v] of Object.entries(rawProps)) {
+                if (v !== null && v !== undefined) {
+                    props[k] = v;
+                }
+            }
 
             if (blockType === 'heading' && !props.level) {
                 props.level = 2;
             }
 
-            // Xử lý nội dung (content) theo từng loại block
+            // Giữ nguyên các loại block chuẩn và extension (mathBlock, diagram, codeBlock, table, ...)
+            let finalType = blockType;
+
             let content: any = undefined;
 
-            if (blockType === 'table') {
-                // Table block format trong BlockNote
-                if (b?.content && typeof b.content === 'object' && Array.isArray(b.content.rows)) {
+            if (finalType === 'table') {
+                const rawRows = b?.content?.rows || b?.rows || [];
+                if (Array.isArray(rawRows) && rawRows.length > 0) {
                     content = {
                         type: 'tableContent',
-                        rows: b.content.rows.map((row: any) => ({
+                        rows: rawRows.map((row: any) => ({
                             cells: Array.isArray(row?.cells)
-                                ? row.cells.map((cell: any) => this.normalizeTableCell(cell))
-                                : [],
-                        })),
-                    };
-                } else if (Array.isArray(b?.rows)) {
-                    content = {
-                        type: 'tableContent',
-                        rows: b.rows.map((row: any) => ({
-                            cells: Array.isArray(row?.cells)
-                                ? row.cells.map((cell: any) => this.normalizeTableCell(cell))
+                                ? row.cells.map((cell: any) => this.sanitizeTableCell(cell))
                                 : [],
                         })),
                     };
                 } else {
-                    content = {
-                        type: 'tableContent',
-                        rows: [],
-                    };
+                    // Bảng rỗng không thể render trong BlockNote -> chuyển thành paragraph
+                    finalType = 'paragraph';
+                    content = [{ type: 'text', text: '', styles: {} }];
                 }
-            } else if (['image', 'video', 'audio', 'file'].includes(blockType)) {
-                // Media blocks lưu thông tin trong props (url, caption, name)
+            } else if (['divider', 'file', 'image', 'video', 'audio'].includes(finalType)) {
                 content = undefined;
+            } else if (['codeBlock', 'mathBlock', 'diagram'].includes(finalType)) {
+                if (typeof b?.content === 'string') {
+                    content = [{ type: 'text', text: b.content, styles: {} }];
+                } else if (Array.isArray(b?.content)) {
+                    content = b.content.map((item: any) => this.sanitizeInlineItem(item));
+                } else {
+                    content = [{ type: 'text', text: '', styles: {} }];
+                }
             } else {
-                // Text-based blocks: paragraph, heading, quote, bulletListItem, numberedListItem, checkListItem, toggleListItem, codeBlock
+                // paragraph, heading, quote, bulletListItem, numberedListItem, checkListItem, toggleListItem
                 if (Array.isArray(b?.content)) {
-                    content = b.content.map((item: any) => this.normalizeInlineItem(item));
+                    content = b.content.map((item: any) => this.sanitizeInlineItem(item));
                 } else if (typeof b?.content === 'string') {
                     content = [{ type: 'text', text: b.content, styles: {} }];
-                } else if (typeof b?.text === 'string') {
-                    content = [{ type: 'text', text: b.text, styles: {} }];
                 } else {
                     content = [{ type: 'text', text: '', styles: {} }];
                 }
             }
 
+            const children = Array.isArray(b?.children) && b.children.length > 0
+                ? this.sanitizeBlockList(b.children)
+                : [];
+
             return {
                 id: blockId,
-                type: blockType,
+                type: finalType,
                 props,
                 content,
-                children: Array.isArray(b?.children) ? this.normalizeBlocks(b.children) : [],
+                children,
             };
         });
     }
 
     /**
-     * Chuẩn hóa phần tử nội dòng (Inline Item: text hoặc link)
+     * Chuẩn hóa phần tử nội dòng (Inline Item: text, link)
      */
-    private normalizeInlineItem(item: any): any {
-        if (typeof item === 'string') {
-            return { type: 'text', text: item, styles: {} };
+    private sanitizeInlineItem(item: any): any {
+        if (!item || typeof item !== 'object') {
+            return { type: 'text', text: typeof item === 'string' ? item : '', styles: {} };
         }
         if (item?.type === 'link') {
+            const rawContent = item.content;
             return {
                 type: 'link',
-                content: typeof item.content === 'string'
-                    ? [{ type: 'text', text: item.content, styles: {} }]
-                    : Array.isArray(item.content)
-                        ? item.content.map((c: any) => (typeof c === 'string' ? { type: 'text', text: c, styles: {} } : c))
-                        : [{ type: 'text', text: String(item.content || ''), styles: {} }],
-                href: item.href || '#',
+                href: typeof item.href === 'string' ? item.href : '#',
+                content: Array.isArray(rawContent)
+                    ? rawContent.map((c: any) => this.sanitizeInlineItem(c))
+                    : [{ type: 'text', text: String(rawContent || ''), styles: {} }],
             };
         }
-        let styles: Record<string, any> = typeof item?.styles === 'object' && item.styles ? { ...item.styles } : {};
-        // QUY TẮC PROSEMIRROR / BLOCKNOTE: Mark 'code' có thuộc tính excludes: "_" (không thể đi cùng bold, italic, strike, underline, v.v.)
-        if (styles.code) {
-            styles = { code: true };
+        if (item?.type === 'math') {
+            return {
+                type: 'math',
+                props: {},
+                content: typeof item.content === 'string'
+                    ? item.content
+                    : (typeof item.text === 'string' ? item.text : ''),
+            };
         }
+
+        const rawStyles: Record<string, any> = (typeof item?.styles === 'object' && item.styles)
+            ? item.styles
+            : {};
+
+        const styles: Record<string, any> = {};
+        for (const [k, v] of Object.entries(rawStyles)) {
+            if (v !== null && v !== undefined && v !== false) {
+                styles[k] = v;
+            }
+        }
+
+        // Quy tắc ProseMirror: code không đi cùng các styles khác (bold, italic, strike, underline)
+        if (styles.code) {
+            return {
+                type: 'text',
+                text: typeof item?.text === 'string' ? item.text : '',
+                styles: { code: true },
+            };
+        }
+
         return {
             type: 'text',
             text: typeof item?.text === 'string' ? item.text : '',
@@ -405,122 +366,21 @@ export class SummaryService {
     /**
      * Chuẩn hóa ô bảng (Table Cell)
      */
-    private normalizeTableCell(cell: any): any[] {
+    private sanitizeTableCell(cell: any): any[] {
         if (Array.isArray(cell)) {
-            return cell.map((item) => this.normalizeInlineItem(item));
+            return cell.map((item) => this.sanitizeInlineItem(item));
         }
         if (typeof cell === 'string') {
             return [{ type: 'text', text: cell, styles: {} }];
         }
         if (cell && typeof cell === 'object') {
-            return [this.normalizeInlineItem(cell)];
+            if (cell.type === 'tableCell') {
+                return Array.isArray(cell.content)
+                    ? cell.content.map((item: any) => this.sanitizeInlineItem(item))
+                    : [{ type: 'text', text: '', styles: {} }];
+            }
+            return [this.sanitizeInlineItem(cell)];
         }
         return [{ type: 'text', text: '', styles: {} }];
-    }
-
-    /**
-     * Fallback chuyển đổi văn bản thô / markdown sang mảng BlockNote blocks
-     */
-    private fallbackMarkdownToBlocks(text: string): SummaryResult {
-        const lines = text.split('\n');
-        const blocks: SummaryBlock[] = [];
-        let title = 'Bản Tóm Tắt Học Tập';
-        let inCodeBlock = false;
-        let codeContent = '';
-        let codeLang = 'javascript';
-
-        for (const line of lines) {
-            const trimmed = line.trim();
-
-            if (trimmed.startsWith('```')) {
-                if (inCodeBlock) {
-                    blocks.push({
-                        id: randomUUID(),
-                        type: 'codeBlock',
-                        props: { language: codeLang },
-                        content: [{ type: 'text', text: codeContent.trim(), styles: {} }],
-                        children: [],
-                    });
-                    inCodeBlock = false;
-                    codeContent = '';
-                } else {
-                    inCodeBlock = true;
-                    codeLang = trimmed.replace(/^```/, '').trim() || 'javascript';
-                    codeContent = '';
-                }
-                continue;
-            }
-
-            if (inCodeBlock) {
-                codeContent += line + '\n';
-                continue;
-            }
-
-            if (!trimmed) continue;
-
-            if (trimmed.startsWith('# ')) {
-                title = trimmed.replace(/^#\s+/, '');
-                blocks.push({
-                    id: randomUUID(),
-                    type: 'heading',
-                    props: { level: 1 },
-                    content: [{ type: 'text', text: title, styles: {} }],
-                    children: [],
-                });
-            } else if (trimmed.startsWith('## ')) {
-                blocks.push({
-                    id: randomUUID(),
-                    type: 'heading',
-                    props: { level: 2 },
-                    content: [{ type: 'text', text: trimmed.replace(/^##\s+/, ''), styles: {} }],
-                    children: [],
-                });
-            } else if (trimmed.startsWith('### ')) {
-                blocks.push({
-                    id: randomUUID(),
-                    type: 'heading',
-                    props: { level: 3 },
-                    content: [{ type: 'text', text: trimmed.replace(/^###\s+/, ''), styles: {} }],
-                    children: [],
-                });
-            } else if (trimmed.startsWith('> ')) {
-                blocks.push({
-                    id: randomUUID(),
-                    type: 'quote',
-                    props: {},
-                    content: [{ type: 'text', text: trimmed.replace(/^>\s+/, ''), styles: {} }],
-                    children: [],
-                });
-            } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-                blocks.push({
-                    id: randomUUID(),
-                    type: 'bulletListItem',
-                    props: {},
-                    content: [{ type: 'text', text: trimmed.replace(/^[-*]\s+/, ''), styles: {} }],
-                    children: [],
-                });
-            } else if (/^\d+\.\s/.test(trimmed)) {
-                blocks.push({
-                    id: randomUUID(),
-                    type: 'numberedListItem',
-                    props: {},
-                    content: [{ type: 'text', text: trimmed.replace(/^\d+\.\s+/, ''), styles: {} }],
-                    children: [],
-                });
-            } else {
-                blocks.push({
-                    id: randomUUID(),
-                    type: 'paragraph',
-                    props: {},
-                    content: [{ type: 'text', text: trimmed, styles: {} }],
-                    children: [],
-                });
-            }
-        }
-
-        return {
-            title,
-            blocks,
-        };
     }
 }

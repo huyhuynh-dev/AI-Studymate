@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 export interface DoclingChunkResult {
     index: number;
+    pageNumbers: number[];
     content: string;
 }
 
@@ -114,10 +115,25 @@ export class DoclingService {
     }
 
     /**
+     * Phân mảnh tài liệu gốc (PDF, DOCX,...) theo thuật toán HybridChunker của Docling Server
+     * @param fileBuffer Dữ liệu binary của tài liệu gốc
+     * @param fileName Tên tệp gốc (dùng để Docling nhận dạng định dạng tệp và layout)
+     * @returns Danh sách các chunk có index, số trang và content đã chuẩn hóa
+     */
+    async chunkDocumentHybrid(fileBuffer: Buffer, fileName: string): Promise<DoclingChunkResult[]> {
+        if (!fileBuffer || fileBuffer.length === 0) {
+            return [];
+        }
+
+        const base64String = fileBuffer.toString('base64');
+        return this.executeHybridChunk(base64String, fileName, `chunk tệp gốc [${fileName}]`);
+    }
+
+    /**
      * Phân mảnh văn bản Markdown theo thuật toán HybridChunker của Docling Server
      * @param markdown Nội dung văn bản Markdown
      * @param fileName Tên tệp giả định (mặc định document.md)
-     * @returns Danh sách các chunk có index và content đã chuẩn hóa
+     * @returns Danh sách các chunk có index, số trang và content đã chuẩn hóa
      */
     async chunkMarkdownHybrid(markdown: string, fileName = 'document.md'): Promise<DoclingChunkResult[]> {
         if (!markdown || markdown.trim().length === 0) {
@@ -127,11 +143,22 @@ export class DoclingService {
         const safeFileName = fileName.endsWith('.md') ? fileName : `${fileName}.md`;
         const base64String = Buffer.from(markdown, 'utf-8').toString('base64');
 
+        return this.executeHybridChunk(base64String, safeFileName, `chunk [${safeFileName}]`);
+    }
+
+    /**
+     * Thực thi tác vụ chunk hybrid bất đồng bộ và lấy kết quả từ Docling Server
+     */
+    private async executeHybridChunk(
+        base64String: string,
+        fileName: string,
+        actionDesc: string,
+    ): Promise<DoclingChunkResult[]> {
         const reqBody = {
             sources: [
                 {
                     kind: 'file',
-                    filename: safeFileName,
+                    filename: fileName,
                     base64_string: base64String,
                 },
             ],
@@ -142,7 +169,7 @@ export class DoclingService {
             },
         };
 
-        this.logger.debug(`Bắt đầu gửi request chunk hybrid async tới Docling Server cho [${safeFileName}]`);
+        this.logger.debug(`Bắt đầu gửi request chunk hybrid async tới Docling Server cho [${fileName}]`);
         const submitRes = await fetch(`${this.baseUrl}/v1/chunk/hybrid/source/async`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -160,8 +187,8 @@ export class DoclingService {
             throw new Error('Docling không trả về task_id hợp lệ cho tác vụ chunk');
         }
 
-        this.logger.debug(`Nhận task_id [${taskId}] cho tác vụ chunk [${safeFileName}], tiến hành polling...`);
-        await this.pollTaskStatus(taskId, `chunk [${safeFileName}]`);
+        this.logger.debug(`Nhận task_id [${taskId}] cho tác vụ ${actionDesc}, tiến hành polling...`);
+        await this.pollTaskStatus(taskId, actionDesc);
 
         // Lấy kết quả Chunks sau khi hoàn tất
         const resultRes = await fetch(`${this.baseUrl}/v1/result/${taskId}`);
@@ -181,6 +208,14 @@ export class DoclingService {
             .filter((c: any) => typeof c.text === 'string' && c.text.trim().length > 0)
             .map((c: any, defaultIdx: number) => ({
                 index: typeof c.chunk_index === 'number' ? c.chunk_index : defaultIdx,
+                pageNumbers: Array.isArray(c.page_numbers)
+                    ? c.page_numbers.filter(
+                        (page: unknown): page is number =>
+                            typeof page === 'number' &&
+                            Number.isInteger(page) &&
+                            page > 0,
+                    )
+                    : [],
                 content: c.text.trim(),
             }));
     }

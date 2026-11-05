@@ -56,6 +56,7 @@ export const ModelName = {
   Conversation: 'Conversation',
   Document: 'Document',
   DocumentChunk: 'DocumentChunk',
+  ChatSession: 'ChatSession',
   Message: 'Message',
   Summary: 'Summary'
 } as const
@@ -143,6 +144,7 @@ export const DocumentChunkScalarFieldEnum = {
   id: 'id',
   document_id: 'document_id',
   chunk_index: 'chunk_index',
+  page_numbers: 'page_numbers',
   content: 'content',
   created_at: 'created_at'
 } as const
@@ -150,11 +152,21 @@ export const DocumentChunkScalarFieldEnum = {
 export type DocumentChunkScalarFieldEnum = (typeof DocumentChunkScalarFieldEnum)[keyof typeof DocumentChunkScalarFieldEnum]
 
 
-export const MessageScalarFieldEnum = {
+export const ChatSessionScalarFieldEnum = {
   id: 'id',
   conversation_id: 'conversation_id',
+  title: 'title',
+  created_at: 'created_at'
+} as const
+
+export type ChatSessionScalarFieldEnum = (typeof ChatSessionScalarFieldEnum)[keyof typeof ChatSessionScalarFieldEnum]
+
+
+export const MessageScalarFieldEnum = {
+  id: 'id',
+  chat_session_id: 'chat_session_id',
   role: 'role',
-  content: 'content',
+  message_json: 'message_json',
   source_chunks: 'source_chunks',
   created_at: 'created_at'
 } as const

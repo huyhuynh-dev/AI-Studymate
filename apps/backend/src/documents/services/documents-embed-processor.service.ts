@@ -6,10 +6,12 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job, Worker } from 'bullmq';
+import { StorageService } from '../../storage/storage.service.js';
 import { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.service.js';
 import { DocumentChunksRepoService } from '../../repo/document-chunks-repo/document-chunks-repo.service.js';
 import { EmbeddingService } from '../../ai/embedding.service.js';
 import { DoclingService } from './docling.service.js';
+import type { DoclingChunkResult } from './docling.service.js';
 import {
   DOCUMENT_EMBEDDING_QUEUE_NAME,
   DocumentEmbeddingJobData,
@@ -26,6 +28,7 @@ export class DocumentsEmbedProcessorService
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly storageService: StorageService,
     private readonly documentsRepo: DocumentsRepoService,
     private readonly documentChunksRepo: DocumentChunksRepoService,
     private readonly embeddingService: EmbeddingService,
@@ -138,27 +141,73 @@ export class DocumentsEmbedProcessorService
         processing_error: null,
       });
 
-      // Bước 2: Chia nhỏ raw_text thành các chunks bằng Docling HybridChunker (ưu tiên)
-      let chunks: Array<{ index: number; content: string }> = [];
-      try {
+      // Bước 2: Chia nhỏ tài liệu thành các chunks
+      let chunks: DoclingChunkResult[] = [];
+      const isImage = doc.mime_type?.startsWith('image/');
+
+      if (isImage) {
+        // Đối với hình ảnh: Là tài liệu đơn trang (Single-page document).
+        // Chunk trực tiếp từ raw_text đã OCR và gán cố định pageNumbers = [1].
         this.logger.log(
-          `Đang chia nhỏ văn bản tài liệu [${documentId}] bằng Docling HybridChunker...`,
+          `Tài liệu [${documentId}] là hình ảnh (${doc.mime_type}), tiến hành chunk từ raw_text và gán trang 1...`,
         );
-        chunks = await this.doclingService.chunkMarkdownHybrid(
-          rawText,
-          doc.file_name,
-        );
+        try {
+          chunks = await this.doclingService.chunkMarkdownHybrid(
+            rawText,
+            doc.file_name,
+          );
+        } catch (chunkErr: any) {
+          this.logger.warn(
+            `Docling chunkMarkdownHybrid thất bại cho ảnh [${documentId}]: ${chunkErr.message}. Kích hoạt Fallback chunkText thủ công...`,
+          );
+          chunks = chunkText(rawText).map((chunk) => ({
+            ...chunk,
+            pageNumbers: [1],
+          }));
+        }
+
+        // Đảm bảo tất cả chunk của ảnh luôn mang pageNumbers = [1]
+        chunks = chunks.map((c) => ({
+          ...c,
+          pageNumbers: [1],
+        }));
+      } else {
+        // Đối với tài liệu văn bản (PDF, DOCX...): Tải buffer gốc từ R2 và chunk trực tiếp qua Docling
         this.logger.log(
-          `Docling HybridChunker hoàn tất: sinh ${chunks.length} chunks cho tài liệu [${documentId}]`,
+          `Tài liệu [${documentId}] là tệp văn bản (${doc.mime_type}), tải buffer từ R2 để chunk trực tiếp qua Docling HybridChunker...`,
         );
-      } catch (chunkErr: any) {
+        try {
+          const buffer = await this.storageService.getObjectBuffer(doc.storage_key);
+          chunks = await this.doclingService.chunkDocumentHybrid(
+            buffer,
+            doc.file_name,
+          );
+          this.logger.log(
+            `Docling HybridChunker từ tệp gốc hoàn tất: sinh ${chunks.length} chunks cho tài liệu [${documentId}]`,
+          );
+        } catch (chunkErr: any) {
+          this.logger.warn(
+            `Docling chunk từ tệp gốc thất bại cho tài liệu [${documentId}]: ${chunkErr.message}. Kích hoạt Fallback chunkText từ raw_text...`,
+          );
+          chunks = chunkText(rawText).map((chunk) => ({
+            ...chunk,
+            pageNumbers: [],
+          }));
+          this.logger.log(
+            `Fallback chunkText hoàn tất: sinh ${chunks.length} chunks cho tài liệu [${documentId}]`,
+          );
+        }
+      }
+
+      // Đảm bảo an toàn: Nếu Docling trả về 0 chunks từ tệp gốc nhưng có raw_text thì kích hoạt fallback chunkText
+      if (chunks.length === 0 && rawText.length > 0) {
         this.logger.warn(
-          `Docling HybridChunker thất bại cho tài liệu [${documentId}]: ${chunkErr.message}. Kích hoạt Fallback chunkText thủ công...`,
+          `Docling trả về 0 chunks cho tài liệu [${documentId}], kích hoạt Fallback chunkText...`,
         );
-        chunks = chunkText(rawText);
-        this.logger.log(
-          `Fallback chunkText hoàn tất: sinh ${chunks.length} chunks cho tài liệu [${documentId}]`,
-        );
+        chunks = chunkText(rawText).map((chunk) => ({
+          ...chunk,
+          pageNumbers: isImage ? [1] : [],
+        }));
       }
 
       if (chunks.length === 0) {
@@ -175,6 +224,7 @@ export class DocumentsEmbedProcessorService
 
       const chunksWithEmbeddings = chunks.map((chunk, idx) => ({
         chunkIndex: chunk.index,
+        pageNumbers: chunk.pageNumbers,
         content: chunk.content,
         embedding: embeddings[idx].values,
       }));

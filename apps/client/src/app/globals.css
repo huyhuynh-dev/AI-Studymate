@@ -31,3 +31,19 @@ body {
 .prose * {
   font-family: var(--font-be-vietnam-pro), sans-serif !important;
 }
+
+/* Bảo đảm font KaTeX không bị ghi đè bởi font chữ thường */
+.katex,
+.katex * {
+  font-family: KaTeX_Main, KaTeX_Math, KaTeX_AMS, KaTeX_Caligraphic, KaTeX_Fraktur, KaTeX_SansSerif, KaTeX_Script, KaTeX_Typewriter, serif !important;
+}
+
+/* Bảo đảm font monospace cho Code không bị ghi đè */
+code,
+pre,
+kbd,
+samp,
+.font-mono,
+.font-mono * {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}

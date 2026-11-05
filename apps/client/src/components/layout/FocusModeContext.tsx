@@ -10,6 +10,10 @@ interface FocusModeContextValue {
   /** Trạng thái đang mở trình xem tài liệu chi tiết (PDF / Ảnh) để tối ưu padding chống Box-in-box */
   isViewingDocument: boolean;
   setIsViewingDocument: (value: boolean) => void;
+  /** Trạng thái thu gọn RightSidebar (Trợ lý AI) */
+  isRightSidebarCollapsed: boolean;
+  setIsRightSidebarCollapsed: (value: boolean) => void;
+  toggleRightSidebar: () => void;
 }
 
 const FocusModeContext = createContext<FocusModeContextValue>({
@@ -18,11 +22,19 @@ const FocusModeContext = createContext<FocusModeContextValue>({
   toggleFocusMode: () => {},
   isViewingDocument: false,
   setIsViewingDocument: () => {},
+  isRightSidebarCollapsed: false,
+  setIsRightSidebarCollapsed: () => {},
+  toggleRightSidebar: () => {},
 });
 
 export function FocusModeProvider({ children }: { children: React.ReactNode }) {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isViewingDocument, setIsViewingDocumentState] = useState(false);
+  const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
+
+  const toggleRightSidebar = useCallback(() => {
+    setIsRightSidebarCollapsed((prev) => !prev);
+  }, []);
 
   const setFocusMode = useCallback((value: boolean) => {
     setIsFocusMode(value);
@@ -46,8 +58,20 @@ export function FocusModeProvider({ children }: { children: React.ReactNode }) {
       toggleFocusMode,
       isViewingDocument,
       setIsViewingDocument,
+      isRightSidebarCollapsed,
+      setIsRightSidebarCollapsed,
+      toggleRightSidebar,
     }),
-    [isFocusMode, setFocusMode, toggleFocusMode, isViewingDocument, setIsViewingDocument]
+    [
+      isFocusMode,
+      setFocusMode,
+      toggleFocusMode,
+      isViewingDocument,
+      setIsViewingDocument,
+      isRightSidebarCollapsed,
+      setIsRightSidebarCollapsed,
+      toggleRightSidebar,
+    ]
   );
 
   return (

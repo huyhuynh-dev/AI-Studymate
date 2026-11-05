@@ -51,6 +51,25 @@ async function handleProxy(
       }
     }
 
+    // Nếu là endpoint chat stream, chuyển tiếp trực tiếp bằng fetch để stream real-time về Client
+    if (targetPath.endsWith('/chat')) {
+      const backendStreamRes = await fetch(url, {
+        method: req.method,
+        headers,
+        body: data ? JSON.stringify(data) : undefined,
+      });
+
+      const responseHeaders = new Headers();
+      backendStreamRes.headers.forEach((val, key) => {
+        responseHeaders.set(key, val);
+      });
+
+      return new Response(backendStreamRes.body, {
+        status: backendStreamRes.status,
+        headers: responseHeaders,
+      });
+    }
+
     // Chuyển tiếp request tới Backend
     const response = await axios({
       method: req.method,

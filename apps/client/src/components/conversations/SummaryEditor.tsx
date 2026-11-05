@@ -11,30 +11,98 @@ import "@mantine/core/styles.css";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import "@blocknote/xl-ai/style.css";
+// import "@blocknote/math-block/style.css";
+import { BlockNoteSchema, createCodeBlockSpec, combineByGroup } from "@blocknote/core";
+import { codeBlockOptions, syntaxHighlighter } from "@blocknote/code-block";
+import {
+  createReactMathBlockSpec,
+  createReactInlineMathSpec,
+  locales as mathLocales,
+  getMathSlashMenuItems,
+} from "@blocknote/math-block";
+import {
+  createReactDiagramBlockSpec,
+  locales as diagramLocales,
+  getDiagramSlashMenuItems,
+} from "@blocknote/diagram-block";
 
 import { DefaultChatTransport } from "ai";
 import {
   AIExtension,
   AIMenuController,
   AIToolbarButton,
+  aiDocumentFormats,
   getAISlashMenuItems,
 } from "@blocknote/xl-ai";
 
 import {
   FormattingToolbar,
   getFormattingToolbarItems,
-  getDefaultReactSlashMenuItems
+  getDefaultReactSlashMenuItems,
 } from "@blocknote/react";
 import { en } from "@blocknote/core/locales";
 import { en as aiEn } from "@blocknote/xl-ai/locales";
 
 interface SummaryEditorProps {
   summaryId: string;
-  initialContent: PartialBlock[];
-  onChange: (blocks: PartialBlock[]) => void;
+  initialContent: any[];
+  onChange: (blocks: any[]) => void;
   editable?: boolean;
   zoomPercent?: number;
 }
+
+/**
+ * Bọc streamToolsProvider chuẩn của BlockNote HTML format:
+ * Khi thao tác "add" đang được stream dở dang (isPossiblyPartial = true), nếu chèn sớm bảng <table>
+ * chưa đóng hết hàng/cột rồi ở chunk kế tiếp gọi updateToReplaceSteps (changeset diff) để thêm cột/hàng,
+ * ProseMirror changeset của @blocknote/xl-ai 0.56.0 sẽ quăng lỗi:
+ * "unexpected, openEnd > 0 and size > 1, this should have been split into two steps".
+ * Giải pháp: đợi từng operation "add" nhận đủ nội dung (!chunk.isPossiblyPartial) rồi chèn 1 lần qua insertBlocks.
+ */
+const createSafeHtmlStreamToolsProvider = () => {
+  const baseProvider = aiDocumentFormats.html.getStreamToolsProvider();
+  return {
+    getStreamTools: (
+      editor: any,
+      selectionInfo?: any,
+      onBlockUpdate?: (blockId: string) => void
+    ) => {
+      const tools = baseProvider.getStreamTools(
+        editor,
+        selectionInfo,
+        onBlockUpdate
+      );
+      return tools.map((tool: any) => {
+        if (tool.name === "add") {
+          return {
+            ...tool,
+            executor: () => {
+              const baseExecutor = tool.executor();
+              return {
+                execute: async (chunk: any, abortSignal?: AbortSignal) => {
+                  if (chunk.operation?.type !== "add") {
+                    return false;
+                  }
+                  if (chunk.isPossiblyPartial) {
+                    return true;
+                  }
+                  return baseExecutor.execute(
+                    {
+                      ...chunk,
+                      isUpdateToPreviousOperation: false,
+                    },
+                    abortSignal
+                  );
+                },
+              };
+            },
+          };
+        }
+        return tool;
+      });
+    },
+  };
+};
 
 // Formatting toolbar with the `AIToolbarButton` added
 const FormattingToolbarWithAI = () => (
@@ -45,12 +113,14 @@ const FormattingToolbarWithAI = () => (
   </FormattingToolbar>
 );
 
-// Slash menu items with the AI option added
-const getSlashMenuItemsWithAI = (editor: BlockNoteEditor) => [
-  ...getDefaultReactSlashMenuItems(editor),
-  // add the default AI slash menu items, or define your own
-  ...getAISlashMenuItems(editor),
-];
+// Slash menu items with AI, Math, and Diagram options combined by group to prevent duplicate category keys
+const getSlashMenuItemsWithAI = (editor: any) =>
+  combineByGroup(
+    getDefaultReactSlashMenuItems(editor),
+    getMathSlashMenuItems(editor),
+    getDiagramSlashMenuItems(editor),
+    getAISlashMenuItems(editor)
+  );
 
 /**
  * Chuẩn hóa phần tử inline content (text hoặc link) để bảo đảm tuân thủ nghiêm ngặt ProseMirror Schema
@@ -61,6 +131,14 @@ function sanitizeInline(item: any): any {
   }
   if (!item || typeof item !== "object") {
     return { type: "text", text: "", styles: {} };
+  }
+
+  // Chuyen doi inline math sang text thong thuong (do editor dung default schema khong co math spec)
+  if (item.type === "math") {
+    return {
+      type: "math",
+      content: typeof item.content === "string" ? item.content : String(item.text || ""),
+    };
   }
 
   if (item.type === "link") {
@@ -80,9 +158,9 @@ function sanitizeInline(item: any): any {
   }
 
   let styles = typeof item.styles === "object" && item.styles ? { ...item.styles } : {};
-  // QUY TẮC BẮT BUỘC CỦA PROSEMIRROR / BLOCKNOTE:
-  // Mark 'code' có cấu hình `excludes: "_"` (loại trừ mọi định dạng khác).
-  // Nếu có cả 'code' lẫn 'bold'/'italic'/'strike'..., ProseMirror sẽ quăng RangeError làm sập trang.
+  // QUY TAC BAT BUOC CUA PROSEMIRROR / BLOCKNOTE:
+  // Mark 'code' co cau hinh excludes: "_" (loai tru moi dinh dang khac).
+  // Neu co ca 'code' lan 'bold'/'italic'/'strike'..., ProseMirror se qu?ng RangeError lam sap trang.
   if (styles.code) {
     styles = { code: true };
   }
@@ -95,37 +173,108 @@ function sanitizeInline(item: any): any {
 }
 
 /**
- * Đệ quy chuẩn hóa từng block và con cháu của nó để ngăn chặn mọi lỗi `initialContent`
+ * Chuẩn hóa một ô bảng. Hỗ trợ cả 2 dạng:
+ * - Mảng inline content (dữ liệu do AI backend sinh ra)
+ * - Object { type: "tableCell", props, content } (dạng editor.document của BlockNote khi autosave)
+ * Tránh làm mất nội dung ô khi nạp lại tài liệu.
+ */
+function sanitizeTableCell(cell: any): any {
+  if (Array.isArray(cell)) {
+    return cell.map(sanitizeInline);
+  }
+  if (cell && typeof cell === "object" && cell.type === "tableCell") {
+    const inner = Array.isArray(cell.content)
+      ? cell.content.map(sanitizeInline)
+      : typeof cell.content === "string"
+        ? [sanitizeInline(cell.content)]
+        : [];
+    return {
+      type: "tableCell",
+      props: typeof cell.props === "object" && cell.props ? { ...cell.props } : {},
+      content: inner,
+    };
+  }
+  return [sanitizeInline(cell)];
+}
+
+/**
+ * Danh sach cac khoi Block chuan duoc ho tro boi BlockNote Default Schema
+ */
+const VALID_DEFAULT_BLOCKS = [
+  "paragraph",
+  "heading",
+  "quote",
+  "bulletListItem",
+  "numberedListItem",
+  "checkListItem",
+  "toggleListItem",
+  "codeBlock",
+  "table",
+  "file",
+  "image",
+  "video",
+  "audio",
+  "divider",
+  "mathBlock",
+  "diagram",
+];
+
+/**
+ * De quy chuan hoa tung block va con chau cua no de ngan chan moi loi initialContent
  */
 function sanitizeBlock(block: any): PartialBlock | null {
   if (!block || typeof block !== "object") {
     return null;
   }
 
-  const type = typeof block.type === "string" ? block.type : "paragraph";
+  let type = typeof block.type === "string" ? block.type : "paragraph";
   const id = typeof block.id === "string" && block.id.trim() ? block.id : undefined;
   const props = typeof block.props === "object" && block.props ? { ...block.props } : {};
 
+  if (!VALID_DEFAULT_BLOCKS.includes(type)) {
+    type = "paragraph";
+  }
+
   let content: any = undefined;
   if (type === "table") {
-    if (block.content && typeof block.content === "object" && Array.isArray(block.content.rows)) {
+    if (
+      block.content &&
+      typeof block.content === "object" &&
+      Array.isArray(block.content.rows) &&
+      block.content.rows.length > 0
+    ) {
       content = {
         type: "tableContent",
+        ...(Array.isArray(block.content.columnWidths)
+          ? { columnWidths: block.content.columnWidths }
+          : {}),
+        ...(typeof block.content.headerRows === "number"
+          ? { headerRows: block.content.headerRows }
+          : {}),
+        ...(typeof block.content.headerCols === "number"
+          ? { headerCols: block.content.headerCols }
+          : {}),
         rows: block.content.rows.map((row: any) => ({
           cells: Array.isArray(row?.cells)
-            ? row.cells.map((cell: any) =>
-              Array.isArray(cell)
-                ? cell.map(sanitizeInline)
-                : [sanitizeInline(cell)]
-            )
+            ? row.cells.map(sanitizeTableCell)
             : [],
         })),
       };
     } else {
-      content = { type: "tableContent", rows: [] };
+      // Bang rong khong the nap vao ProseMirror table plugin -> chuyen sang paragraph
+      type = "paragraph";
+      content = [sanitizeInline("")];
     }
-  } else if (["image", "video", "audio", "file"].includes(type)) {
+  } else if (["image", "video", "audio", "file", "divider"].includes(type)) {
     content = undefined;
+  } else if (["codeBlock", "mathBlock", "diagram"].includes(type)) {
+    if (typeof block.content === "string") {
+      content = [{ type: "text", text: block.content, styles: {} }];
+    } else if (Array.isArray(block.content)) {
+      content = block.content.map(sanitizeInline);
+    } else {
+      content = [{ type: "text", text: "", styles: {} }];
+    }
   } else {
     if (Array.isArray(block.content)) {
       content = block.content.map(sanitizeInline);
@@ -154,6 +303,19 @@ export function sanitizeBlockNoteBlocks(blocks: any[]): PartialBlock[] {
   return blocks.map(sanitizeBlock).filter(Boolean) as PartialBlock[];
 }
 
+
+// Schema m? r?ng h? tr? ??y ?? Math, Diagram, CodeBlock Syntax Highlighting
+const summaryEditorSchema = BlockNoteSchema.create().extend({
+  blockSpecs: {
+    codeBlock: createCodeBlockSpec(codeBlockOptions),
+    mathBlock: createReactMathBlockSpec(),
+    diagram: createReactDiagramBlockSpec(),
+  },
+  inlineContentSpecs: {
+    math: createReactInlineMathSpec(),
+  },
+});
+
 function InnerBlockNoteEditor({
   summaryId,
   initialContent,
@@ -164,8 +326,14 @@ function InnerBlockNoteEditor({
   // Ref đánh dấu AI đang hoạt động (gồm cả Stream và giai đoạn chờ Review Accept/Reject)
   const isAiActiveRef = useRef<boolean>(false);
 
+  // Giữ onChange mới nhất trong ref để các useEffect không bị hủy/đăng ký lại mỗi lần render
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   // Chuẩn bị initial content an toàn cho BlockNote
-  const validInitialBlocks = React.useMemo<PartialBlock[] | undefined>(() => {
+  const validInitialBlocks = React.useMemo<any>(() => {
     if (Array.isArray(initialContent) && initialContent.length > 0) {
       try {
         const sanitized = sanitizeBlockNoteBlocks(initialContent);
@@ -180,13 +348,17 @@ function InnerBlockNoteEditor({
 
   // Create the BlockNote editor with the AI extension
   const editor = useCreateBlockNote({
+    schema: summaryEditorSchema,
     dictionary: {
       ...en,
-      ai: aiEn, // add default translations for the AI extension
+      ai: aiEn,
+      math: mathLocales.en,
+      diagram: diagramLocales.en,
     },
-    // Register the AI extension
     extensions: [
+      syntaxHighlighter,
       AIExtension({
+        streamToolsProvider: createSafeHtmlStreamToolsProvider() as any,
         transport: new DefaultChatTransport({
           // URL to your backend API, see example source in `packages/xl-ai-server/src/routes/regular.ts`
           api: `/api/summaries/${summaryId}/ai-actions`,
@@ -231,14 +403,14 @@ function InnerBlockNoteEditor({
 
       // Khi người dùng bấm Accept hoặc Reject => Menu đóng => Auto-Save lưu nội dung chính thức
       if (isClosed && editor.document) {
-        onChange(editor.document);
+        onChangeRef.current(editor.document);
       }
     });
 
     return () => {
       unsubscribe?.();
     };
-  }, [editor, onChange]);
+  }, [editor]);
 
   // Lắng nghe thay đổi nội dung từ editor (Auto-Save 1 chiều từ Editor -> DB)
   useEffect(() => {
@@ -252,7 +424,7 @@ function InnerBlockNoteEditor({
       }
 
       if (editor.document) {
-        onChange(editor.document);
+        onChangeRef.current(editor.document);
       }
     });
 
@@ -261,7 +433,7 @@ function InnerBlockNoteEditor({
         unsubscribe();
       }
     };
-  }, [editor, onChange]);
+  }, [editor]);
 
   return (
     <div className="w-full flex-1 bg-white min-h-[450px] p-4 sm:p-6 lg:p-8 overflow-y-auto">
@@ -298,7 +470,7 @@ function InnerBlockNoteEditor({
           <SuggestionMenuController
             triggerCharacter="/"
             getItems={async (query) =>
-              filterSuggestionItems(getSlashMenuItemsWithAI(editor), query)
+              filterSuggestionItems(getSlashMenuItemsWithAI(editor as any), query)
             }
           />
         </BlockNoteView>

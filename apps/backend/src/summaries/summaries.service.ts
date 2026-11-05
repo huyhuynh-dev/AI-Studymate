@@ -49,7 +49,7 @@ export class SummariesService {
     }
 
     /**
-     * Tạo tóm tắt mới bằng AI (Model gemini-3.6-flash)
+     * Tạo tóm tắt mới bằng AI
      */
     async createSummary(
         userId: string,
@@ -78,24 +78,54 @@ export class SummariesService {
                 text: d.raw_text!,
             }));
         } else if (dto.scope === SummaryScope.DOCUMENT) {
-            if (!dto.documentId) {
+            const requestedIds = Array.isArray(dto.documentIds) && dto.documentIds.length > 0
+                ? dto.documentIds
+                : dto.documentId
+                    ? [dto.documentId]
+                    : [];
+
+            if (requestedIds.length === 0) {
                 throw new BadRequestException('Vui lòng chọn tài liệu cần tóm tắt');
             }
 
-            const doc = await this.documentsRepo.getDocumentById(dto.documentId, userId);
-            if (!doc) {
-                throw new NotFoundException('Không tìm thấy tài liệu được chỉ định');
-            }
+            if (requestedIds.length === 1) {
+                const doc = await this.documentsRepo.getDocumentById(requestedIds[0], userId);
+                if (!doc) {
+                    throw new NotFoundException('Không tìm thấy tài liệu được chỉ định');
+                }
 
-            if (doc.ocr_status !== 'done' || !doc.raw_text || !doc.raw_text.trim()) {
-                throw new BadRequestException(
-                    'Tài liệu này chưa được trích xuất văn bản hoàn tất (đang xử lý hoặc thất bại). Vui lòng thử lại sau.',
+                if (doc.ocr_status !== 'done' || !doc.raw_text || !doc.raw_text.trim()) {
+                    throw new BadRequestException(
+                        'Tài liệu này chưa được trích xuất văn bản hoàn tất (đang xử lý hoặc thất bại). Vui lòng thử lại sau.',
+                    );
+                }
+
+                targetDocumentId = doc.id;
+                documentTexts = [{ fileName: doc.file_name, text: doc.raw_text }];
+            } else {
+                // Trường hợp người dùng yêu cầu gộp nhiều tài liệu cụ thể (A, B, ...) vào chung 1 bản tóm tắt
+                const fetchedDocs = await Promise.all(
+                    requestedIds.map((id) => this.documentsRepo.getDocumentById(id, userId)),
                 );
-            }
+                const validDocs = fetchedDocs.filter(
+                    (d): d is NonNullable<typeof d> =>
+                        Boolean(d && d.ocr_status === 'done' && d.raw_text && d.raw_text.trim()),
+                );
 
-            targetDocumentId = doc.id;
-            documentTexts = [{ fileName: doc.file_name, text: doc.raw_text }];
+                if (validDocs.length === 0) {
+                    throw new BadRequestException(
+                        'Không tìm thấy tài liệu hợp lệ hoặc các tài liệu được chọn chưa hoàn tất trích xuất văn bản OCR.',
+                    );
+                }
+
+                targetDocumentId = validDocs.length === 1 ? validDocs[0].id : null;
+                documentTexts = validDocs.map((d) => ({
+                    fileName: d.file_name,
+                    text: d.raw_text!,
+                }));
+            }
         } else if (dto.scope === SummaryScope.SECTION) {
+            const sectionDocId = dto.documentId || (Array.isArray(dto.documentIds) ? dto.documentIds[0] : undefined);
             // Vùng chọn cụ thể (trang hoặc văn bản tự nhập)
             if (dto.sectionRange?.customText?.trim()) {
                 documentTexts = [{
@@ -103,8 +133,8 @@ export class SummariesService {
                     text: dto.sectionRange.customText.trim(),
                 }];
                 sectionInfo = 'Văn bản được người dùng trích xuất trực tiếp';
-            } else if (dto.documentId) {
-                const doc = await this.documentsRepo.getDocumentById(dto.documentId, userId);
+            } else if (sectionDocId) {
+                const doc = await this.documentsRepo.getDocumentById(sectionDocId, userId);
                 if (!doc || doc.ocr_status !== 'done' || !doc.raw_text) {
                     throw new BadRequestException('Không tìm thấy tài liệu hợp lệ để trích xuất vùng chọn');
                 }
@@ -130,6 +160,7 @@ export class SummariesService {
             scope: dto.scope,
             sectionInfo,
             customInstruction: dto.customInstruction,
+            ...(dto.modelName ? { modelName: dto.modelName } : {}),
         });
 
         // Lưu bản ghi vào PostgreSQL
