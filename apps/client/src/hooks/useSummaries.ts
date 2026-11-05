@@ -20,6 +20,8 @@ export function useSummaries(conversationId?: string | null) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Lưu thay đổi đang chờ debounce để có thể lưu ngay khi chuyển bản tóm tắt / rời trang
+  const pendingSaveRef = useRef<{ summaryId: string; contentJson: any[]; title?: string } | null>(null);
 
   const { data: summaries = [], error, isLoading, mutate } = useSWR<SummaryItem[]>(
     conversationId ? `/conversations/${conversationId}/summaries` : null,
@@ -78,7 +80,20 @@ export function useSummaries(conversationId?: string | null) {
         clearTimeout(debounceTimerRef.current);
       }
 
+      // Nếu đang chờ lưu của một bản tóm tắt KHÁC thì lưu ngay để không mất dữ liệu
+      const pending = pendingSaveRef.current;
+      if (pending && pending.summaryId !== summaryId) {
+        summariesApi
+          .update(pending.summaryId, {
+            content_json: pending.contentJson,
+            ...(pending.title !== undefined ? { title: pending.title } : {}),
+          })
+          .catch((err) => console.error('Lỗi tự động lưu tóm tắt:', err));
+      }
+      pendingSaveRef.current = { summaryId, contentJson, title };
+
       debounceTimerRef.current = setTimeout(async () => {
+        pendingSaveRef.current = null;
         setAutoSaveStatus('saving');
         try {
           const updatePayload: UpdateSummaryRequest = {
@@ -199,6 +214,17 @@ export function useSummaries(conversationId?: string | null) {
   // Dọn dẹp timer khi unmount
   useEffect(() => {
     return () => {
+      // Lưu ngay thay đổi còn đang chờ debounce để không mất dữ liệu khi rời trang
+      const pending = pendingSaveRef.current;
+      if (pending) {
+        pendingSaveRef.current = null;
+        summariesApi
+          .update(pending.summaryId, {
+            content_json: pending.contentJson,
+            ...(pending.title !== undefined ? { title: pending.title } : {}),
+          })
+          .catch((err) => console.error('Lỗi tự động lưu tóm tắt:', err));
+      }
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
