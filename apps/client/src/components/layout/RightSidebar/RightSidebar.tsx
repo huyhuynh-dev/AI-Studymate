@@ -4,7 +4,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithToolCalls,
+} from "ai";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useDocuments } from "@/hooks/useDocuments";
 import { chatSessionsApi } from "@/services/chatSessions.api";
@@ -257,10 +260,12 @@ export default function RightSidebar({
     messages,
     setMessages,
     sendMessage: aiSendMessage,
+    addToolOutput,
     status,
     error: chatError,
   } = useChat({
     transport,
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onError: (err) => {
       console.error("[RightSidebar] useChat onError:", err);
       setIsLoadingSuggestions(false);
@@ -357,6 +362,22 @@ export default function RightSidebar({
   const shortContext = contextTitle ? contextTitle.split(" – ")[0] : undefined;
 
   // ── Handlers ──
+  const handleOpenSummary = useCallback(
+    (summaryId: string) => {
+      if (!summaryId) return;
+      if (isFullscreen) {
+        setIsFullscreen(false);
+      }
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("studymate:open-summary-id", summaryId);
+        window.dispatchEvent(
+          new CustomEvent("studymate:open-summary", { detail: { summaryId } })
+        );
+      }
+    },
+    [isFullscreen]
+  );
+
   const handleNewChat = useCallback(() => {
     setActiveChatId(null);
     activeChatIdRef.current = null;
@@ -592,6 +613,8 @@ export default function RightSidebar({
             onSelectSuggestion={(selectedSuggestion) =>
               void sendMessage(selectedSuggestion)
             }
+            onAddToolOutput={addToolOutput as any}
+            onOpenSummary={handleOpenSummary}
           />
         )}
 

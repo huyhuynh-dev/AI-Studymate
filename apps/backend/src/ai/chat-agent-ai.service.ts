@@ -15,32 +15,42 @@ import type {
 
 export const CHAT_AGENT_SYSTEM_PROMPT =
   'Bạn là trợ lý học tập AI thông minh của nền tảng AI StudyMate. ' +
-  'Nhiệm vụ của bạn là hỗ trợ học sinh, sinh viên học tập, giải đáp câu hỏi và hướng dẫn kiến thức một cách chính xác, mạch lạc và dễ hiểu.\n\n' +
-  'QUY TẮC LỰA CHỌN VÀ SỬ DỤNG CÔNG CỤ TRUY XUẤT TÀI LIỆU:\n' +
-  'Bạn được trang bị 2 công cụ chuyên biệt để lấy ngữ cảnh từ tài liệu của người dùng. Hãy phân tích kỹ câu hỏi để chọn đúng công cụ:\n\n' +
-  '1. Công cụ `getDocumentsFullContent` (Dùng cho câu hỏi TỔNG QUAN / TÓM TẮT TOÀN VĂN):\n' +
-  '   - Khi nào sử dụng: Khi người dùng yêu cầu tóm tắt tài liệu, hỏi nội dung tổng quát, bố cục các chương mục, ý chính của toàn bài, hoặc yêu cầu tổng hợp/so sánh toàn bộ nội dung của một, một vài tài liệu (A, B, C) hay tất cả tài liệu trong cuộc trò chuyện.\n' +
+  'Nhiệm vụ của bạn là hỗ trợ học sinh, sinh viên học tập, giải đáp câu hỏi, tóm tắt tài liệu và hướng dẫn kiến thức một cách chính xác, mạch lạc và dễ hiểu.\n\n' +
+  'QUY TẮC LỰA CHỌN VÀ SỬ DỤNG CÔNG CỤ (TOOLS):\n' +
+  'Bạn được trang bị 5 công cụ chuyên biệt. Hãy phân tích kỹ ý định của người dùng để chọn đúng công cụ:\n\n' +
+  '1. Công cụ `getConversationDocumentsMetadata` (Server-Side Tool - Tra cứu thông tin cơ bản về tài liệu):\n' +
+  '   - Khi nào sử dụng: Khi người dùng hỏi trong cuộc trò chuyện có bao nhiêu tài liệu, tên từng tài liệu là gì, trạng thái xử lý OCR, độ dài (số ký tự/trang ước tính), hoặc khi bạn cần kiểm tra danh sách tài liệu trước khi tư vấn/tóm tắt.\n\n' +
+  '2. Công cụ `askUserQuestion` (Client-Side Tool - Đặt câu hỏi làm rõ yêu cầu với người dùng):\n' +
+  '   - Khi nào sử dụng: Khi người dùng yêu cầu tóm tắt tài liệu (hoặc yêu cầu học tập) nhưng thông tin còn mơ hồ, chưa rõ ràng. Ví dụ:\n' +
+  '     + Người dùng nói "Tóm tắt tài liệu giúp mình" trong khi cuộc trò chuyện có nhiều tài liệu và chưa đính kèm tệp cụ thể.\n' +
+  '     + Người dùng chọn nhiều tài liệu (ví dụ A và B): Nếu bạn thấy tên/nội dung các tài liệu thuộc cùng một chủ đề liên quan mật thiết, bạn có thể gộp chung hoặc hỏi xác nhận nhẹ; nếu các tài liệu thuộc các chủ đề khác nhau, hãy dùng `askUserQuestion` để hỏi người dùng muốn gộp chung thành 1 bản tóm tắt tổng hợp hay tạo riêng từng bản tóm tắt cho mỗi tài liệu.\n' +
+  '     + Khi cần làm rõ mong muốn của người dùng về định hướng tóm tắt (ví dụ: tóm tắt dàn ý cốt lõi, hồ sơ ôn thi chi tiết hay hỏi-đáp; độ dài ngắn gọn hay chi tiết; hoặc phần nội dung muốn tập trung).\n' +
+  '   - Nguyên tắc quan trọng khi dùng `askUserQuestion`:\n' +
+  '     + Hãy đặt câu hỏi tự nhiên, linh hoạt theo ngữ cảnh thực tế, KHÔNG rập khuôn máy móc.\n' +
+  '     + Luôn cung cấp các phương án gợi ý (`options`) ngắn gọn, sát thực tế để người dùng có thể bấm chọn nhanh, đồng thời cho phép họ tự nhập câu trả lời riêng (`allowCustomInput: true`).\n' +
+  '     + GIỚI HẠN AN TOÀN: Chỉ hỏi từ 1 đến tối đa 3–5 câu hỏi quan trọng nhất trong một lượt. Tuyệt đối tránh việc hỏi lại liên tục nhiều vòng gây mất thời gian của người học.\n' +
+  '     + Nếu người dùng đã nêu yêu cầu rất rõ ràng ngay từ đầu (hoặc yêu cầu "tóm tắt ngay / tóm tắt nhanh" một tài liệu đã xác định), bạn có thể tiến hành gọi `createDocumentSummary` ngay mà không bắt buộc phải hỏi lại.\n\n' +
+  '3. Công cụ `createDocumentSummary` (Server-Side Tool - Khởi tạo bản tóm tắt tài liệu vào Tab Tóm tắt):\n' +
+  '   - Khi nào sử dụng: Khi người dùng yêu cầu TẠO BẢN TÓM TẮT tài liệu (một tài liệu, một nhóm tài liệu A, B, C hoặc toàn bộ tài liệu) và bạn đã có đủ thông tin cần thiết.\n' +
   '   - Cách truyền tham số:\n' +
-  '     + Nếu người dùng nêu tên tài liệu cụ thể (ví dụ tài liệu A, B): Đối chiếu với "DANH MỤC TÀI LIỆU HIỆN CÓ" bên dưới để truyền đúng mảng `documentIds` tương ứng.\n' +
-  '     + Nếu người dùng đính kèm tài liệu và yêu cầu tóm tắt tài liệu đó: Truyền `documentIds` của các tài liệu đang đính kèm.\n' +
-  '     + Nếu người dùng yêu cầu tóm tắt/tổng hợp TOÀN BỘ tài liệu trong hệ thống (hoặc hỏi chung mà không chỉ định tệp nào và không đính kèm tệp): Đặt `fetchAllDocuments: true`.\n\n' +
-  '2. Công cụ `searchDocumentChunks` (Dùng cho câu hỏi CỤ THỂ / TRA CỨU CHI TIẾT - HYBRID SEARCH RAG):\n' +
-  '   - Khi nào sử dụng: Khi người dùng hỏi về một khái niệm, thuật ngữ, định nghĩa, công thức, ví dụ hoặc chi tiết cụ thể nằm trong tài liệu.\n' +
-  '   - Cách truyền tham số:\n' +
-  '     + `semanticQuery`: Viết một câu văn, đoạn mô tả hoặc câu hỏi đầy đủ, giàu ngữ cảnh ngữ nghĩa dựa trên ý định của người dùng (phục vụ truy vấn Vector pgvector).\n' +
-  '     + `keywords`: Một mảng chứa tối đa 5 từ khóa, thuật ngữ chuyên ngành, tên riêng hoặc cụm từ cốt lõi ngắn gọn nhất (phục vụ truy vấn từ khóa PGRoonga trên bảng document_chunks).\n\n' +
-  '3. Nguyên tắc trả lời sau khi nhận Context từ công cụ:\n' +
-  '   - Tổng hợp câu trả lời bám sát vào nội dung tài liệu thu được.\n' +
-  '   - Luôn trích dẫn nguồn rõ ràng (ví dụ: *(Nguồn: Tên_tài_liệu - Trang X)* đối với đoạn trích, hoặc *(Nguồn: Tên_tài_liệu)* đối với toàn văn).\n' +
-  '   - Nếu tài liệu không có thông tin liên quan đến câu hỏi, hãy thông báo rõ rằng không tìm thấy trong tài liệu đã tải lên trước khi giải thích bằng kiến thức chung của bạn.\n\n' +
+  '     + `scope`: Đặt là `"conversation"` nếu tóm tắt toàn bộ tài liệu trong cuộc trò chuyện; đặt là `"document"` nếu tóm tắt một hoặc một nhóm tài liệu cụ thể (kèm mảng `documentIds` tương ứng); đặt là `"section"` nếu tóm tắt theo khoảng trang (`fromPage`, `toPage`).\n' +
+  '     + `mode`: `"key_takeaways"` (Dàn ý cốt lõi), `"study_guide"` (Hồ sơ ôn thi - mặc định), hoặc `"qa_style"` (Hỏi & Đáp).\n' +
+  '     + `length`: `"short"` (Ngắn gọn ~1 trang), `"standard"` (Tiêu chuẩn 2-3 trang - mặc định), hoặc `"detailed"` (Chi tiết).\n' +
+  '     + `customInstruction`: Ghi chú cụ thể về trọng tâm hoặc yêu cầu riêng của người dùng (nếu có).\n' +
+  '     + Lưu ý: Nếu người dùng muốn TÁCH RIÊNG từng bản tóm tắt cho từng tài liệu (ví dụ 1 bản cho tài liệu A, 1 bản cho tài liệu B), hãy gọi `createDocumentSummary` riêng cho từng tài liệu.\n' +
+  '   - Sau khi `createDocumentSummary` thực thi thành công: Hãy thông báo ngắn gọn rằng bản tóm tắt đã được khởi tạo hoàn tất và nhắc người dùng có thể nhấn trực tiếp vào nhãn (badge) tên bản tóm tắt hiển thị ngay bên trên để mở trong Tab Tóm tắt.\n\n' +
+  '4. Công cụ `getDocumentsFullContent` (Dùng khi cần đọc toàn văn `raw_text` để trả lời câu hỏi tổng quan / so sánh trực tiếp trong khung chat mà KHÔNG phải yêu cầu tạo bản lưu Tóm tắt mới).\n\n' +
+  '5. Công cụ `searchDocumentChunks` (Dùng cho câu hỏi CỤ THỂ / TRA CỨU CHI TIẾT - HYBRID SEARCH RAG):\n' +
+  '   - Khi người dùng hỏi về một khái niệm, thuật ngữ, định nghĩa, công thức, ví dụ hoặc chi tiết cụ thể nằm trong tài liệu.\n' +
+  '   - Truyền `semanticQuery` giàu ngữ cảnh và mảng `keywords` (tối đa 5 từ khóa).\n\n' +
+  '6. Nguyên tắc trả lời và trích dẫn:\n' +
+  '   - Tổng hợp câu trả lời bám sát vào nội dung tài liệu thu được và luôn trích dẫn nguồn rõ ràng.\n\n' +
   'QUY TẮC ĐỊNH DẠNG NỘI DUNG:\n' +
   '1. Công thức toán học (LaTeX):\n' +
-  '   - Dùng cú pháp `$ ... $` cho các ký hiệu hoặc công thức nội dòng (inline math). Ví dụ: `$O(1)$`, `$O(n \\log n)$`, `$x \\in \\mathbb{R}$`.\n' +
-  '   - Dùng cú pháp `$$ ... $$` nằm trên các dòng riêng cho công thức dạng khối (block math).\n' +
+  '   - Dùng cú pháp `$ ... $` cho công thức nội dòng (inline math) và `$$ ... $$` trên dòng riêng cho công thức khối (block math).\n' +
   '   - Tuyệt đối KHÔNG sử dụng cú pháp `\\( ... \\)` hoặc `\\[ ... \\]`.\n' +
   '2. Khối mã lập trình (Code Blocks):\n' +
-  '   - Luôn sử dụng 3 dấu backticks kèm theo định danh ngôn ngữ chuẩn (ví dụ: ```cpp, ```python, ```typescript, ```javascript, ```sql, ```json, ```html, v.v.).\n' +
-  '   - Luôn viết code sạch, có chú thích ngắn gọn, súc tích.';
+  '   - Luôn sử dụng 3 dấu backticks kèm định danh ngôn ngữ chuẩn.';
 
 export const AUTO_HEADER_SYSTEM_PROMPT =
   'Bạn là một API tự động đặt tên nhãn (Label) cho luồng trò chuyện.\n' +
@@ -124,6 +134,68 @@ export type GetDocumentsFullContentCallback = (
   input: GetDocumentsFullContentToolInput,
 ) => Promise<DocumentFullContent[]>;
 
+// ── Interfaces cho Tool 3: getConversationDocumentsMetadata ──
+export interface DocumentMetadataItem {
+  documentId: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  ocrStatus: string;
+  characterCount: number;
+  estimatedPages: number;
+  isAttached: boolean;
+  uploadedAt: string;
+}
+
+export interface GetConversationDocumentsMetadataToolOutput {
+  totalDocuments: number;
+  readyDocumentsCount: number;
+  attachedDocumentIds: string[];
+  documents: DocumentMetadataItem[];
+}
+
+export type GetConversationDocumentsMetadataCallback =
+  () => Promise<GetConversationDocumentsMetadataToolOutput>;
+
+// ── Interfaces cho Tool 4: askUserQuestion (Client-Side Tool) ──
+export interface AskUserQuestionItem {
+  id: string;
+  question: string;
+  options?: string[];
+  allowMultiple?: boolean;
+  allowCustomInput?: boolean;
+}
+
+export interface AskUserQuestionToolInput {
+  contextMessage?: string;
+  questions: AskUserQuestionItem[];
+}
+
+// ── Interfaces cho Tool 5: createDocumentSummary ──
+export interface CreateDocumentSummaryToolInput {
+  scope: 'conversation' | 'document' | 'section';
+  documentIds?: string[];
+  mode?: 'key_takeaways' | 'study_guide' | 'qa_style';
+  length?: 'short' | 'standard' | 'detailed';
+  customInstruction?: string;
+  fromPage?: number;
+  toPage?: number;
+}
+
+export interface CreateDocumentSummaryToolOutput {
+  summaryId: string;
+  title: string;
+  scope: 'conversation' | 'document' | 'section';
+  mode: 'key_takeaways' | 'study_guide' | 'qa_style';
+  length: 'short' | 'standard' | 'detailed';
+  documentNames: string[];
+  createdAt: string;
+}
+
+export type CreateDocumentSummaryCallback = (
+  input: CreateDocumentSummaryToolInput,
+) => Promise<CreateDocumentSummaryToolOutput>;
+
 @Injectable()
 export class ChatAgentAiService {
   private readonly logger = new Logger(ChatAgentAiService.name);
@@ -131,8 +203,8 @@ export class ChatAgentAiService {
   constructor(private readonly aiService: AiService) {}
 
   /**
-   * Bổ sung Danh mục tài liệu khả dụng trong cuộc trò chuyện vào System Prompt
-   * để LLM biết chính xác documentId của từng tài liệu khi cần gọi getDocumentsFullContent.
+   * Bổ sung Danh mục tài liệu khả dụng siêu gọn trong cuộc trò chuyện vào System Prompt
+   * để LLM biết nhanh tên file và documentId, kết hợp với tool getConversationDocumentsMetadata khi cần chi tiết.
    */
   buildSystemPromptWithDocumentCatalog(
     basePrompt: string,
@@ -143,7 +215,7 @@ export class ChatAgentAiService {
       return (
         basePrompt +
         '\n\nTRẠNG THÁI TÀI LIỆU CỦA CUỘC TRÒ CHUYỆN:\n' +
-        '- Hiện chưa có tài liệu nào hoàn tất xử lý văn bản trong cuộc trò chuyện này.'
+        '- Hiện chưa có tài liệu nào hoàn tất xử lý văn bản trong cuộc trò chuyện này (có thể dùng `getConversationDocumentsMetadata` để kiểm tra xem có tài liệu nào đang xử lý OCR hay không).'
       );
     }
 
@@ -158,14 +230,13 @@ export class ChatAgentAiService {
 
     return (
       basePrompt +
-      '\n\nDANH MỤC TÀI LIỆU HIỆN CÓ TRONG CUỘC TRÒ CHUYỆN (Dùng `documentId` dưới đây khi gọi `getDocumentsFullContent`):\n' +
+      `\n\nDANH MỤC TÀI LIỆU SẴN SÀNG TRONG CUỘC TRÒ CHUYỆN (${availableDocuments.length} tài liệu - Dùng \`documentId\` dưới đây khi gọi công cụ, hoặc gọi \`getConversationDocumentsMetadata\` để xem thông tin chi tiết):\n` +
       catalogLines.join('\n')
     );
   }
 
   /**
    * Tool 1: Tìm kiếm các đoạn trích (chunks) bằng Hybrid Search (pgvector + PGRoonga + RRF)
-   * phục vụ các câu hỏi chi tiết, thuật ngữ, khái niệm cụ thể.
    */
   private buildSearchDocumentChunksTool(
     onSearchDocumentChunks: SearchDocumentChunksCallback,
@@ -174,8 +245,7 @@ export class ChatAgentAiService {
     maxChunks: number = 15,
   ) {
     return tool({
-      description:
-        `Tìm kiếm các đoạn trích (chunks) cụ thể trong tài liệu bằng Hybrid Search (pgvector + PGRoonga kết hợp thuật toán RRF). Sử dụng công cụ này cho các câu hỏi cụ thể về khái niệm, thuật ngữ, định nghĩa, công thức hoặc chi tiết trong tài liệu. Trả về tối đa ${maxChunks} chunks liên quan nhất.`,
+      description: `Tìm kiếm các đoạn trích (chunks) cụ thể trong tài liệu bằng Hybrid Search (pgvector + PGRoonga kết hợp thuật toán RRF). Sử dụng công cụ này cho các câu hỏi cụ thể về khái niệm, thuật ngữ, định nghĩa, công thức hoặc chi tiết trong tài liệu. Trả về tối đa ${maxChunks} chunks liên quan nhất.`,
       inputSchema: z.object({
         semanticQuery: z
           .string()
@@ -277,7 +347,7 @@ export class ChatAgentAiService {
         return output;
       },
       toModelOutput: ({ output }) => {
-        if (!output.chunks || output.chunks.length === 0) {
+        if (!output?.chunks || output.chunks.length === 0) {
           return {
             type: 'text',
             value:
@@ -304,8 +374,7 @@ export class ChatAgentAiService {
   }
 
   /**
-   * Tool 2: Lấy toàn bộ nội dung văn bản (raw_text) của một, một nhóm hoặc tất cả tài liệu
-   * phục vụ các yêu cầu tóm tắt tài liệu hoặc câu hỏi tổng quan.
+   * Tool 2: Lấy toàn bộ nội dung văn bản (raw_text) của tài liệu để trả lời câu hỏi tổng quan trong khung chat
    */
   private buildGetDocumentsFullContentTool(
     onGetDocumentsFullContent: GetDocumentsFullContentCallback,
@@ -313,19 +382,19 @@ export class ChatAgentAiService {
   ) {
     return tool({
       description:
-        'Lấy toàn bộ nội dung văn bản (raw_text) của một tài liệu, một nhóm tài liệu (A, B, C) hoặc toàn bộ tài liệu trong cuộc trò chuyện. Sử dụng công cụ này khi người dùng yêu cầu tóm tắt tài liệu, hỏi bố cục tổng quan, các chương mục chính hoặc câu hỏi bao quát toàn bộ tài liệu.',
+        'Lấy toàn bộ nội dung văn bản (raw_text) của một tài liệu, một nhóm tài liệu hoặc toàn bộ tài liệu trong cuộc trò chuyện để trả lời câu hỏi tổng quan/so sánh trực tiếp trong khung chat. Lưu ý: Nếu người dùng yêu cầu TẠO BẢN TÓM TẮT tài liệu lưu vào hệ thống, hãy ưu tiên sử dụng công cụ `createDocumentSummary`.',
       inputSchema: z.object({
         documentIds: z
           .array(z.string())
           .optional()
           .describe(
-            'Mảng danh sách các documentId của những tài liệu cụ thể cần đọc toàn bộ nội dung raw_text (dựa trên Danh mục tài liệu hiện có). Để trống nếu muốn lấy theo tài liệu đính kèm hoặc lấy toàn bộ.',
+            'Mảng danh sách các documentId của những tài liệu cụ thể cần đọc toàn bộ nội dung raw_text.',
           ),
         fetchAllDocuments: z
           .boolean()
           .optional()
           .describe(
-            'Đặt là true khi người dùng yêu cầu tóm tắt hoặc tổng hợp kiến thức từ TOÀN BỘ tài liệu có trong cuộc trò chuyện.',
+            'Đặt là true khi cần đọc toàn bộ tài liệu có trong cuộc trò chuyện.',
           ),
       }),
       execute: async (
@@ -370,7 +439,7 @@ export class ChatAgentAiService {
         return output;
       },
       toModelOutput: ({ output }) => {
-        if (!output.fullContents || output.fullContents.length === 0) {
+        if (!output?.fullContents || output.fullContents.length === 0) {
           return {
             type: 'text',
             value:
@@ -393,6 +462,190 @@ export class ChatAgentAiService {
     });
   }
 
+  /**
+   * Tool 3: Lấy thông tin Metadata cơ bản (siêu nhẹ) của toàn bộ tài liệu trong Conversation (Server-Side Tool)
+   */
+  private buildGetConversationDocumentsMetadataTool(
+    onGetDocumentsMetadata: GetConversationDocumentsMetadataCallback,
+    metadataOutputsByCallId: Map<
+      string,
+      GetConversationDocumentsMetadataToolOutput
+    >,
+  ) {
+    return tool({
+      description:
+        'Lấy thông tin metadata cơ bản (số lượng tài liệu, tên file, định dạng, trạng thái OCR, độ dài ký tự, số trang ước tính, trạng thái đính kèm) của tất cả tài liệu hiện có trong cuộc trò chuyện.',
+      inputSchema: z.object({}),
+      execute: async (
+        _input,
+        { toolCallId },
+      ): Promise<GetConversationDocumentsMetadataToolOutput> => {
+        this.logger.log(
+          `[getConversationDocumentsMetadata] Executing tool (callId=${toolCallId})`,
+        );
+        const output = await onGetDocumentsMetadata();
+        if (toolCallId) {
+          metadataOutputsByCallId.set(toolCallId, output);
+        }
+        return output;
+      },
+      toModelOutput: ({ output }) => {
+        if (!output || !output.documents || output.documents.length === 0) {
+          return {
+            type: 'text',
+            value:
+              'Cuộc trò chuyện này hiện chưa có tài liệu nào được tải lên.',
+          };
+        }
+
+        const lines = output.documents.map(
+          (doc, idx) =>
+            `${idx + 1}. "${doc.fileName}" | documentId: "${doc.documentId}" | Loại: ${doc.mimeType} | Trạng thái OCR: ${doc.ocrStatus} | Độ dài: ${doc.characterCount} ký tự (~${doc.estimatedPages} trang)${doc.isAttached ? ' [ĐANG ĐÍNH KÈM]' : ''}`,
+        );
+
+        return {
+          type: 'text',
+          value:
+            `Tổng số tài liệu: ${output.totalDocuments} (Đã sẵn sàng OCR: ${output.readyDocumentsCount}).\nDanh sách chi tiết:\n` +
+            lines.join('\n'),
+        };
+      },
+    });
+  }
+
+  /**
+   * Tool 4: Đặt câu hỏi tương tác với người dùng và chờ phản hồi (Client-Side Tool - KHÔNG có hàm execute)
+   */
+  private buildAskUserQuestionTool() {
+    return tool({
+      description:
+        'Đặt từ 1 đến tối đa 5 câu hỏi cho người dùng để làm rõ yêu cầu (ví dụ: chọn tài liệu cần tóm tắt, chọn gộp chung hay tách riêng các tài liệu khác chủ đề, chọn phong cách/độ dài hoặc định hướng tóm tắt) và chờ người dùng trả lời trên giao diện trước khi xử lý tiếp.',
+      inputSchema: z.object({
+        contextMessage: z
+          .string()
+          .optional()
+          .describe(
+            'Lời dẫn ngắn gọn, thân thiện giải thích vì sao bạn cần hỏi thêm thông tin từ người dùng.',
+          ),
+        questions: z
+          .array(
+            z.object({
+              id: z
+                .string()
+                .describe(
+                  'Mã định danh ngắn gọn của câu hỏi (ví dụ: "target_docs", "merge_strategy", "summary_style").',
+                ),
+              question: z
+                .string()
+                .describe('Nội dung câu hỏi rõ ràng bằng tiếng Việt dành cho người dùng.'),
+              options: z
+                .array(z.string())
+                .optional()
+                .describe(
+                  'Danh sách các phương án gợi ý sẵn để người dùng bấm chọn nhanh trên giao diện.',
+                ),
+              allowMultiple: z
+                .boolean()
+                .optional()
+                .describe(
+                  'Đặt là true nếu cho phép người dùng chọn nhiều phương án cùng lúc (mặc định: false).',
+                ),
+              allowCustomInput: z
+                .boolean()
+                .optional()
+                .describe(
+                  'Đặt là true để cho phép người dùng nhập câu trả lời tự do ngoài các phương án gợi ý (mặc định: true).',
+                ),
+            }),
+          )
+          .min(1)
+          .max(5)
+          .describe('Danh sách từ 1 đến tối đa 5 câu hỏi cần người dùng phản hồi.'),
+      }),
+    });
+  }
+
+  /**
+   * Tool 5: Tạo bản tóm tắt tài liệu chính thức vào hệ thống (Server-Side Tool)
+   */
+  private buildCreateDocumentSummaryTool(
+    onCreateDocumentSummary: CreateDocumentSummaryCallback,
+    summaryOutputsByCallId: Map<string, CreateDocumentSummaryToolOutput>,
+  ) {
+    return tool({
+      description:
+        'Khởi tạo bản tóm tắt tài liệu học tập bằng AI và lưu trực tiếp vào Tab Tóm tắt của cuộc trò chuyện. Sử dụng công cụ này khi người dùng yêu cầu tóm tắt một tài liệu, một nhóm tài liệu hoặc toàn bộ tài liệu.',
+      inputSchema: z.object({
+        scope: z
+          .enum(['conversation', 'document', 'section'])
+          .describe(
+            'Phạm vi tóm tắt: "conversation" (toàn bộ tài liệu trong cuộc trò chuyện), "document" (một hoặc một nhóm tài liệu cụ thể chỉ định qua documentIds), "section" (một khoảng trang cụ thể).',
+          ),
+        documentIds: z
+          .array(z.string())
+          .optional()
+          .describe(
+            'Danh sách UUID của các tài liệu cần tóm tắt (bắt buộc khi scope là "document" hoặc "section"). Nếu truyền nhiều documentIds, nội dung các tài liệu này sẽ được tổng hợp chung vào 1 bản tóm tắt.',
+          ),
+        mode: z
+          .enum(['key_takeaways', 'study_guide', 'qa_style'])
+          .optional()
+          .default('study_guide')
+          .describe(
+            'Phong cách bản tóm tắt: "key_takeaways" (Dàn ý cốt lõi), "study_guide" (Hồ sơ ôn thi chi tiết), "qa_style" (Hỏi & Đáp).',
+          ),
+        length: z
+          .enum(['short', 'standard', 'detailed'])
+          .optional()
+          .default('standard')
+          .describe(
+            'Độ dài mong muốn: "short" (Ngắn gọn ~1 trang), "standard" (Tiêu chuẩn 2-3 trang), "detailed" (Chi tiết).',
+          ),
+        customInstruction: z
+          .string()
+          .optional()
+          .describe(
+            'Yêu cầu hoặc chỉ dẫn bổ sung từ người dùng (ví dụ: tập trung vào phần nào, trình bày ra sao...).',
+          ),
+        fromPage: z
+          .number()
+          .optional()
+          .describe('Trang bắt đầu (chỉ dùng khi scope="section").'),
+        toPage: z
+          .number()
+          .optional()
+          .describe('Trang kết thúc (chỉ dùng khi scope="section").'),
+      }),
+      execute: async (
+        input,
+        { toolCallId },
+      ): Promise<CreateDocumentSummaryToolOutput> => {
+        this.logger.log(
+          `[createDocumentSummary] Executing tool (callId=${toolCallId}): scope=${input.scope}, documentIds=${JSON.stringify(input.documentIds)}, mode=${input.mode}, length=${input.length}`,
+        );
+
+        const output = await onCreateDocumentSummary(input);
+        if (toolCallId) {
+          summaryOutputsByCallId.set(toolCallId, output);
+        }
+        return output;
+      },
+      toModelOutput: ({ output }) => {
+        if (!output?.summaryId) {
+          return {
+            type: 'text',
+            value: 'Không thể khởi tạo bản tóm tắt.',
+          };
+        }
+
+        return {
+          type: 'text',
+          value: `Đã tạo bản tóm tắt thành công!\n- Tên bản tóm tắt: "${output.title}"\n- Mã bản tóm tắt (summaryId): "${output.summaryId}"\n- Phạm vi: ${output.scope} (${(output.documentNames || []).join(', ') || 'Toàn bộ tài liệu'})\n- Phong cách: ${output.mode} | Độ dài: ${output.length}`,
+        };
+      },
+    });
+  }
+
   async executeChatStream(
     messages: UIMessage[],
     onFinish: (result: {
@@ -408,6 +661,8 @@ export class ChatAgentAiService {
       attachedDocumentIds?: string[];
       onSearchDocumentChunks?: SearchDocumentChunksCallback;
       onGetDocumentsFullContent?: GetDocumentsFullContentCallback;
+      onGetDocumentsMetadata?: GetConversationDocumentsMetadataCallback;
+      onCreateDocumentSummary?: CreateDocumentSummaryCallback;
       chatConfig?: {
         modelName: string;
         temperature: number;
@@ -439,8 +694,19 @@ export class ChatAgentAiService {
       string,
       GetDocumentsFullContentToolOutput
     >();
+    const metadataOutputsByCallId = new Map<
+      string,
+      GetConversationDocumentsMetadataToolOutput
+    >();
+    const summaryOutputsByCallId = new Map<
+      string,
+      CreateDocumentSummaryToolOutput
+    >();
 
-    const tools: Record<string, any> = {};
+    const tools: Record<string, any> = {
+      askUserQuestion: this.buildAskUserQuestionTool(),
+    };
+
     if (options?.onSearchDocumentChunks) {
       tools.searchDocumentChunks = this.buildSearchDocumentChunksTool(
         options.onSearchDocumentChunks,
@@ -453,6 +719,19 @@ export class ChatAgentAiService {
       tools.getDocumentsFullContent = this.buildGetDocumentsFullContentTool(
         options.onGetDocumentsFullContent,
         fullContentOutputsByCallId,
+      );
+    }
+    if (options?.onGetDocumentsMetadata) {
+      tools.getConversationDocumentsMetadata =
+        this.buildGetConversationDocumentsMetadataTool(
+          options.onGetDocumentsMetadata,
+          metadataOutputsByCallId,
+        );
+    }
+    if (options?.onCreateDocumentSummary) {
+      tools.createDocumentSummary = this.buildCreateDocumentSummaryTool(
+        options.onCreateDocumentSummary,
+        summaryOutputsByCallId,
       );
     }
 
@@ -477,6 +756,8 @@ export class ChatAgentAiService {
           responseMessages,
           chunkToolOutputsByCallId,
           fullContentOutputsByCallId,
+          metadataOutputsByCallId,
+          summaryOutputsByCallId,
           event.text,
         );
 
@@ -502,9 +783,29 @@ export class ChatAgentAiService {
     responseMessages: any[],
     chunkToolOutputsByCallId: Map<string, SearchDocumentChunksToolOutput>,
     fullContentOutputsByCallId: Map<string, GetDocumentsFullContentToolOutput>,
+    metadataOutputsByCallId: Map<
+      string,
+      GetConversationDocumentsMetadataToolOutput
+    >,
+    summaryOutputsByCallId: Map<string, CreateDocumentSummaryToolOutput>,
     fallbackText?: string,
   ): any[] {
     const parts: any[] = [];
+
+    // Tập hợp các toolCallId đã có tool-result trong responseMessages
+    const completedToolResultsByCallId = new Map<string, unknown>();
+    for (const msg of responseMessages) {
+      if (msg?.role === 'tool' && Array.isArray(msg.content)) {
+        for (const item of msg.content) {
+          if (item?.type === 'tool-result' && item.toolCallId) {
+            completedToolResultsByCallId.set(
+              item.toolCallId,
+              item.output ?? item.result,
+            );
+          }
+        }
+      }
+    }
 
     for (const msg of responseMessages) {
       if (msg?.role !== 'assistant' || !Array.isArray(msg.content)) {
@@ -525,6 +826,22 @@ export class ChatAgentAiService {
         } else if (contentPart.type === 'tool-call') {
           const toolName = contentPart.toolName || 'searchDocumentChunks';
           const toolCallId = contentPart.toolCallId;
+
+          // Client-Side Tool: askUserQuestion (khi dừng chờ người dùng trả lời thì chưa có kết quả)
+          if (toolName === 'askUserQuestion') {
+            const hasResult =
+              toolCallId && completedToolResultsByCallId.has(toolCallId);
+            parts.push({
+              type: 'tool-askUserQuestion',
+              toolCallId,
+              state: hasResult ? 'output-available' : 'input-available',
+              input: contentPart.input,
+              ...(hasResult
+                ? { output: completedToolResultsByCallId.get(toolCallId) }
+                : {}),
+            });
+            continue;
+          }
 
           let lightweightOutput: Record<string, unknown> | undefined;
 
@@ -553,6 +870,33 @@ export class ChatAgentAiService {
                 fetchAllDocuments: fullOutput.fetchAllDocuments,
                 totalDocuments: fullOutput.totalDocuments,
                 documents: fullOutput.documents,
+              };
+            }
+          } else if (toolName === 'getConversationDocumentsMetadata') {
+            const metaOutput = toolCallId
+              ? metadataOutputsByCallId.get(toolCallId)
+              : undefined;
+            if (metaOutput) {
+              lightweightOutput = {
+                totalDocuments: metaOutput.totalDocuments,
+                readyDocumentsCount: metaOutput.readyDocumentsCount,
+                attachedDocumentIds: metaOutput.attachedDocumentIds,
+                documents: metaOutput.documents,
+              };
+            }
+          } else if (toolName === 'createDocumentSummary') {
+            const summaryOutput = toolCallId
+              ? summaryOutputsByCallId.get(toolCallId)
+              : undefined;
+            if (summaryOutput) {
+              lightweightOutput = {
+                summaryId: summaryOutput.summaryId,
+                title: summaryOutput.title,
+                scope: summaryOutput.scope,
+                mode: summaryOutput.mode,
+                length: summaryOutput.length,
+                documentNames: summaryOutput.documentNames,
+                createdAt: summaryOutput.createdAt,
               };
             }
           }
@@ -644,8 +988,7 @@ export class ChatAgentAiService {
   }
 
   /**
-   * Sinh 2-3 câu hỏi gợi ý tiếp nối (Follow-up Questions) dựa trên câu trả lời vừa hoàn tất của AI,
-   * sử dụng generateObject với Zod Schema và model của task CHAT_AGENT.
+   * Sinh 2-3 câu hỏi gợi ý tiếp nối (Follow-up Questions) dựa trên câu trả lời vừa hoàn tất của AI
    */
   async generateFollowUpSuggestions(
     lastAssistantResponse: string,

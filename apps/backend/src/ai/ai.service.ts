@@ -73,10 +73,15 @@ export class AiService {
       prompt: string;
       system?: string;
       temperature?: number;
+      modelName?: string;
     },
   ): Promise<{ object: T }> {
+    const model = options.modelName
+      ? this.aiModelFactory.getChatAgentModel(options.modelName)
+      : this.aiModelFactory.getModelForTask(task);
+
     const result = await generateText({
-      model: this.aiModelFactory.getModelForTask(task),
+      model,
       output: Output.object({
         schema: options.schema as any,
       }),

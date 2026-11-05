@@ -12,6 +12,12 @@ interface MessageListProps {
   suggestions?: string[];
   isLoadingSuggestions?: boolean;
   onSelectSuggestion?: (suggestion: string) => void;
+  onAddToolOutput?: (params: {
+    tool: string;
+    toolCallId: string;
+    output: unknown;
+  }) => void;
+  onOpenSummary?: (summaryId: string) => void;
 }
 
 export function MessageList({
@@ -20,6 +26,8 @@ export function MessageList({
   suggestions = [],
   isLoadingSuggestions = false,
   onSelectSuggestion,
+  onAddToolOutput,
+  onOpenSummary,
 }: MessageListProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -51,7 +59,11 @@ export function MessageList({
             {msg.role === "user" ? (
               <UserMessage message={msg} />
             ) : (
-              <AiMessage message={msg} />
+              <AiMessage
+                message={msg}
+                onAddToolOutput={onAddToolOutput}
+                onOpenSummary={onOpenSummary}
+              />
             )}
 
             {/* Hiển thị Follow-up Pill Chips ngay bên dưới tin nhắn Assistant cuối cùng */}

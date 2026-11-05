@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import type { UIMessage } from 'ai';
 import { ChatAgentRepoService } from '../repo/chat-agent-repo/chat-agent-repo.service.js';
+import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
+import { SummariesService } from '../summaries/summaries.service.js';
+import {
+  SummaryLength,
+  SummaryMode,
+  SummaryScope,
+} from '../summaries/dto/create-summary.dto.js';
 import { CreateChatSessionDto } from './dto/create-chat-session.dto.js';
 import { UpdateChatSessionDto } from './dto/update-chat-session.dto.js';
 import { GenerateSuggestionsDto } from './dto/generate-suggestions.dto.js';
@@ -58,6 +65,8 @@ export class ChatAgentService {
     private readonly chatAgentRepo: ChatAgentRepoService,
     private readonly chatAgentAiService: ChatAgentAiService,
     private readonly retrievalService: RetrievalService,
+    @Optional() private readonly summariesService?: SummariesService,
+    @Optional() private readonly documentsRepo?: DocumentsRepoService,
   ) {}
 
   async createChatSession(
@@ -137,7 +146,7 @@ export class ChatAgentService {
       userId,
     );
 
-    return rawMessages.map((msg) => {
+    const parsedMessages: UIMessage[] = rawMessages.map((msg) => {
       let parts: UIMessage['parts'] = [];
       try {
         const parsed = JSON.parse(msg.content);
@@ -167,6 +176,35 @@ export class ChatAgentService {
         parts,
       };
     });
+
+    // Gộp các bản ghi assistant liên tiếp phát sinh từ chu trình Human-in-the-loop (askUserQuestion -> addToolOutput)
+    const consolidated: UIMessage[] = [];
+    for (const current of parsedMessages) {
+      const prev = consolidated[consolidated.length - 1];
+      if (prev && prev.role === 'assistant' && current.role === 'assistant') {
+        const prevCallIds = new Set(
+          (prev.parts || [])
+            .map((p: any) => p?.toolCallId)
+            .filter((id): id is string => typeof id === 'string'),
+        );
+        const currentCallIds = new Set(
+          (current.parts || [])
+            .map((p: any) => p?.toolCallId)
+            .filter((id): id is string => typeof id === 'string'),
+        );
+
+        const isContinuation = Array.from(prevCallIds).some((id) =>
+          currentCallIds.has(id),
+        );
+        if (isContinuation) {
+          consolidated[consolidated.length - 1] = current;
+          continue;
+        }
+      }
+      consolidated.push(current);
+    }
+
+    return consolidated;
   }
 
   // ── 1. Lưu tin nhắn vào Database ──
@@ -214,6 +252,15 @@ export class ChatAgentService {
         )
       : undefined;
 
+    // Kiểm tra nếu tin nhắn cuối cùng là assistant (tức là lượt chạy tiếp nối sau khi user trả lời Client-Side Tool askUserQuestion)
+    const lastInputMessage = messages[messages.length - 1];
+    const previousAssistantParts: any[] =
+      lastInputMessage &&
+      lastInputMessage.role === 'assistant' &&
+      Array.isArray(lastInputMessage.parts)
+        ? lastInputMessage.parts
+        : [];
+
     return this.chatAgentAiService.executeChatStream(
       messages,
       async ({
@@ -244,10 +291,15 @@ export class ChatAgentService {
           assistantParts = [{ type: 'text', text }];
         }
 
+        const finalPartsToSave =
+          previousAssistantParts.length > 0
+            ? [...previousAssistantParts, ...assistantParts]
+            : assistantParts;
+
         await this.saveMessage(
           chatSessionId,
           'assistant',
-          JSON.stringify(assistantParts),
+          JSON.stringify(finalPartsToSave),
           sourceChunkIds,
         );
       },
@@ -279,6 +331,152 @@ export class ChatAgentService {
                 preferredDocumentIds: ragContext.attachedDocumentIds,
               });
             },
+            onGetDocumentsMetadata: async () => {
+              const attachedSet = new Set(ragContext.attachedDocumentIds ?? []);
+              if (this.documentsRepo) {
+                const docs =
+                  await this.documentsRepo.getAllDocumentsByConversationId(
+                    ragContext.conversationId,
+                    ragContext.userId,
+                  );
+                const mapped = docs.map((doc) => {
+                  const charCount = doc.raw_text
+                    ? doc.raw_text.trim().length
+                    : 0;
+                  return {
+                    documentId: doc.id,
+                    fileName: doc.file_name,
+                    mimeType: doc.mime_type,
+                    fileSize: Number(doc.file_size || 0),
+                    ocrStatus: doc.ocr_status,
+                    characterCount: charCount,
+                    estimatedPages:
+                      charCount > 0
+                        ? Math.max(1, Math.round(charCount / 1800))
+                        : 0,
+                    isAttached: attachedSet.has(doc.id),
+                    uploadedAt:
+                      doc.uploaded_at instanceof Date
+                        ? doc.uploaded_at.toISOString()
+                        : String(doc.uploaded_at),
+                  };
+                });
+                return {
+                  totalDocuments: mapped.length,
+                  readyDocumentsCount: mapped.filter(
+                    (d) => d.ocrStatus === 'done',
+                  ).length,
+                  attachedDocumentIds: ragContext.attachedDocumentIds ?? [],
+                  documents: mapped,
+                };
+              }
+
+              const fallbackDocs = (availableDocuments ?? []).map((doc) => ({
+                documentId: doc.documentId,
+                fileName: doc.fileName,
+                mimeType: 'application/pdf',
+                fileSize: 0,
+                ocrStatus: 'done',
+                characterCount: 0,
+                estimatedPages: 1,
+                isAttached: attachedSet.has(doc.documentId),
+                uploadedAt:
+                  doc.uploadedAt instanceof Date
+                    ? doc.uploadedAt.toISOString()
+                    : String(doc.uploadedAt),
+              }));
+
+              return {
+                totalDocuments: fallbackDocs.length,
+                readyDocumentsCount: fallbackDocs.length,
+                attachedDocumentIds: ragContext.attachedDocumentIds ?? [],
+                documents: fallbackDocs,
+              };
+            },
+            onCreateDocumentSummary: async (input) => {
+              if (!this.summariesService) {
+                throw new Error('SummariesService chưa được khởi tạo');
+              }
+
+              const requestedDocIds =
+                Array.isArray(input.documentIds) && input.documentIds.length > 0
+                  ? input.documentIds
+                  : ragContext.attachedDocumentIds &&
+                      ragContext.attachedDocumentIds.length > 0
+                    ? ragContext.attachedDocumentIds
+                    : availableDocuments && availableDocuments.length === 1
+                      ? [availableDocuments[0].documentId]
+                      : [];
+
+              const scopeEnum =
+                input.scope === 'document'
+                  ? SummaryScope.DOCUMENT
+                  : input.scope === 'section'
+                    ? SummaryScope.SECTION
+                    : SummaryScope.CONVERSATION;
+
+              const modeEnum =
+                input.mode === 'key_takeaways'
+                  ? SummaryMode.KEY_TAKEAWAYS
+                  : input.mode === 'qa_style'
+                    ? SummaryMode.QA_STYLE
+                    : SummaryMode.STUDY_GUIDE;
+
+              const lengthEnum =
+                input.length === 'short'
+                  ? SummaryLength.SHORT
+                  : input.length === 'detailed'
+                    ? SummaryLength.DETAILED
+                    : SummaryLength.STANDARD;
+
+              const created = await this.summariesService.createSummary(
+                ragContext.userId,
+                ragContext.conversationId,
+                {
+                  scope: scopeEnum,
+                  documentId: requestedDocIds[0],
+                  documentIds:
+                    requestedDocIds.length > 0 ? requestedDocIds : undefined,
+                  mode: modeEnum,
+                  length: lengthEnum,
+                  customInstruction: input.customInstruction,
+                  sectionRange:
+                    input.fromPage || input.toPage
+                      ? {
+                          fromPage: input.fromPage,
+                          toPage: input.toPage,
+                        }
+                      : undefined,
+                  modelName: config.modelName,
+                },
+              );
+
+              const catalogMap = new Map(
+                (availableDocuments ?? []).map((d) => [
+                  d.documentId,
+                  d.fileName,
+                ]),
+              );
+              const documentNames =
+                scopeEnum === SummaryScope.CONVERSATION
+                  ? (availableDocuments ?? []).map((d) => d.fileName)
+                  : requestedDocIds
+                      .map((id) => catalogMap.get(id))
+                      .filter((name): name is string => Boolean(name));
+
+              return {
+                summaryId: created.id,
+                title: created.title,
+                scope: input.scope,
+                mode: input.mode || 'study_guide',
+                length: input.length || 'standard',
+                documentNames,
+                createdAt:
+                  created.created_at instanceof Date
+                    ? created.created_at.toISOString()
+                    : String(created.created_at),
+              };
+            },
           }
         : { chatConfig: config },
     );
@@ -302,12 +500,12 @@ export class ChatAgentService {
     // a. Xác thực quyền truy cập phiên của người dùng và lấy conversation_id
     const chatSession = await this.getChatSessionById(userId, chatSessionId);
 
-    // b. Lưu tin nhắn mới nhất của user vào Database
-    const lastUserMessage = messages[messages.length - 1];
-    console.log(`[ChatAgentService] lastUserMessage role=${lastUserMessage?.role}`);
-    if (lastUserMessage && lastUserMessage.role === 'user') {
-      const userContent = lastUserMessage.parts
-        ? JSON.stringify(lastUserMessage.parts)
+    // b. Lưu tin nhắn mới nhất của user vào Database (chỉ lưu khi tin nhắn cuối là của user)
+    const lastMessage = messages[messages.length - 1];
+    console.log(`[ChatAgentService] lastMessage role=${lastMessage?.role}`);
+    if (lastMessage && lastMessage.role === 'user') {
+      const userContent = lastMessage.parts
+        ? JSON.stringify(lastMessage.parts)
         : '';
 
       console.log(
@@ -319,7 +517,7 @@ export class ChatAgentService {
     // c. Tự động sinh tiêu đề ngầm (Fire-and-forget Asynchronous Fast LLM)
     this.triggerAutoHeaderAsync(userId, chatSessionId, messages);
 
-    // d. Khởi tạo luồng sinh văn bản từ AI kèm ngữ cảnh RAG (2 Tools)
+    // d. Khởi tạo luồng sinh văn bản từ AI kèm ngữ cảnh RAG & Summary Tools
     return this.executeAiChatStream(
       chatSessionId,
       messages,

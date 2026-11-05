@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, useEffect, use } from "react";
 import { Share2, MoreHorizontal, Sparkles } from "lucide-react";
 import ConversationHeaderRoutes from "@/components/conversations/ConversationHeaderRoutes";
 import ConversationHeaderTabs, { TabKey } from "@/components/conversations/ConversationHeaderTabs";
@@ -25,6 +25,10 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   const { subjectId, conversationId } = resolvedParams;
 
   const [activeTab, setActiveTab] = useState<TabKey>("documents");
+  const [summaryOpenRequest, setSummaryOpenRequest] = useState<{
+    summaryId: string;
+    nonce: number;
+  } | null>(null);
   const {
     isFocusMode,
     isViewingDocument,
@@ -32,6 +36,30 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     isRightSidebarCollapsed,
     toggleRightSidebar,
   } = useFocusMode();
+
+  // Lắng nghe sự kiện mở trực tiếp bản tóm tắt từ Badge trong RightSidebar AI Chat
+  useEffect(() => {
+    const handleOpenSummaryEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ summaryId?: string }>;
+      const targetId =
+        customEvent.detail?.summaryId ||
+        (typeof window !== "undefined"
+          ? window.sessionStorage.getItem("studymate:open-summary-id") || ""
+          : "");
+      if (targetId) {
+        setActiveTab("summary");
+        setSummaryOpenRequest({ summaryId: targetId, nonce: Date.now() });
+      }
+    };
+
+    window.addEventListener("studymate:open-summary", handleOpenSummaryEvent);
+    return () => {
+      window.removeEventListener(
+        "studymate:open-summary",
+        handleOpenSummaryEvent
+      );
+    };
+  }, []);
 
   // Lấy dữ liệu môn học và danh sách cuộc hội thoại thực tế
   const { subjects } = useSubjects();
@@ -180,8 +208,10 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
           {activeTab === "summary" && (
             <SummaryTab
+              key={summaryOpenRequest ? `summary-${summaryOpenRequest.nonce}` : "summary-default"}
               conversationId={conversationId}
               documents={documents}
+              initialSummaryId={summaryOpenRequest?.summaryId}
               onUploadDocument={handleGoToDocuments}
               className="w-full flex-1"
             />

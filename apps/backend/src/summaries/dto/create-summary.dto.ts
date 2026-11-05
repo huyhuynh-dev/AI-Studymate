@@ -1,4 +1,5 @@
 import {
+    IsArray,
     IsEnum,
     IsNotEmpty,
     IsOptional,
@@ -49,6 +50,11 @@ export class CreateSummaryDto {
     @IsUUID('4', { message: 'documentId phải là UUID hợp lệ' })
     documentId?: string;
 
+    @IsOptional()
+    @IsArray()
+    @IsUUID('4', { each: true, message: 'Mỗi documentId trong danh sách phải là UUID hợp lệ' })
+    documentIds?: string[];
+
     @IsNotEmpty({ message: 'Kiểu tóm tắt (mode) không được để trống' })
     @IsEnum(SummaryMode, {
         message: 'Mode phải là key_takeaways, study_guide hoặc qa_style',
@@ -69,4 +75,8 @@ export class CreateSummaryDto {
     @IsOptional()
     @IsString()
     customInstruction?: string;
+
+    @IsOptional()
+    @IsString()
+    modelName?: string;
 }

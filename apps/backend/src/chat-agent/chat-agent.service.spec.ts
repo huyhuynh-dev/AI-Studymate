@@ -2,8 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ChatAgentService } from './chat-agent.service.js';
 import { ChatAgentRepoService } from '../repo/chat-agent-repo/chat-agent-repo.service.js';
+import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
+import { SummariesService } from '../summaries/summaries.service.js';
 
 describe('ChatAgentService', () => {
   let service: ChatAgentService;
@@ -21,6 +23,12 @@ describe('ChatAgentService', () => {
     getAvailableDocumentsCatalog: ReturnType<typeof vi.fn>;
     searchRelevantChunks: ReturnType<typeof vi.fn>;
     getDocumentsFullContent: ReturnType<typeof vi.fn>;
+  };
+  let summariesMock: {
+    createSummary: ReturnType<typeof vi.fn>;
+  };
+  let documentsRepoMock: {
+    getAllDocumentsByConversationId: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -58,12 +66,39 @@ describe('ChatAgentService', () => {
       getDocumentsFullContent: vi.fn().mockResolvedValue([]),
     };
 
+    summariesMock = {
+      createSummary: vi.fn().mockResolvedValue({
+        id: 'summary-uuid-1',
+        conversation_id: 'conv-1',
+        document_id: 'doc-attached-1',
+        title: 'Tóm tắt Giáo trình Cấu trúc dữ liệu',
+        content_json: [],
+        created_at: new Date('2026-11-05T10:00:00Z'),
+      }),
+    };
+
+    documentsRepoMock = {
+      getAllDocumentsByConversationId: vi.fn().mockResolvedValue([
+        {
+          id: 'doc-attached-1',
+          file_name: 'Giao_trinh_CTDL.pdf',
+          mime_type: 'application/pdf',
+          file_size: 102400,
+          ocr_status: 'done',
+          raw_text: 'Nội dung mẫu giáo trình CTDL '.repeat(100),
+          uploaded_at: new Date('2026-11-05T09:00:00Z'),
+        },
+      ]),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ChatAgentService,
         { provide: ChatAgentRepoService, useValue: repoMock },
         { provide: ChatAgentAiService, useValue: aiMock },
         { provide: RetrievalService, useValue: retrievalMock },
+        { provide: SummariesService, useValue: summariesMock },
+        { provide: DocumentsRepoService, useValue: documentsRepoMock },
       ],
     }).compile();
 
@@ -74,7 +109,7 @@ describe('ChatAgentService', () => {
     expect(service).toBeDefined();
   });
 
-  it('nên lấy danh mục tài liệu và truyền cả 2 callbacks (onSearchDocumentChunks & onGetDocumentsFullContent) tới ChatAgentAiService', async () => {
+  it('nên lấy danh mục tài liệu và truyền đầy đủ các callbacks (RAG & Summary Tools) tới ChatAgentAiService', async () => {
     await service.handleChatStream(
       'user-1',
       'session-1',
@@ -104,6 +139,8 @@ describe('ChatAgentService', () => {
     expect(options?.availableDocuments).toHaveLength(1);
     expect(options?.onSearchDocumentChunks).toBeDefined();
     expect(options?.onGetDocumentsFullContent).toBeDefined();
+    expect(options?.onGetDocumentsMetadata).toBeDefined();
+    expect(options?.onCreateDocumentSummary).toBeDefined();
 
     // Kiểm tra callback Tool 1: searchDocumentChunks
     await options.onSearchDocumentChunks({
@@ -131,6 +168,40 @@ describe('ChatAgentService', () => {
       fetchAllDocuments: false,
       preferredDocumentIds: ['doc-attached-1'],
     });
+
+    // Kiểm tra callback Tool 3: getConversationDocumentsMetadata
+    const metadataResult = await options.onGetDocumentsMetadata();
+    expect(
+      documentsRepoMock.getAllDocumentsByConversationId,
+    ).toHaveBeenCalledWith('conv-1', 'user-1');
+    expect(metadataResult.totalDocuments).toBe(1);
+    expect(metadataResult.readyDocumentsCount).toBe(1);
+    expect(metadataResult.documents[0].fileName).toBe('Giao_trinh_CTDL.pdf');
+    expect(metadataResult.documents[0].isAttached).toBe(true);
+
+    // Kiểm tra callback Tool 5: createDocumentSummary (sử dụng đúng model đang chọn)
+    const summaryResult = await options.onCreateDocumentSummary({
+      scope: 'document',
+      documentIds: ['doc-attached-1'],
+      mode: 'study_guide',
+      length: 'standard',
+      customInstruction: 'Tập trung vào cây AVL',
+    });
+    expect(summariesMock.createSummary).toHaveBeenCalledWith(
+      'user-1',
+      'conv-1',
+      expect.objectContaining({
+        scope: 'document',
+        documentId: 'doc-attached-1',
+        documentIds: ['doc-attached-1'],
+        mode: 'study_guide',
+        length: 'standard',
+        customInstruction: 'Tập trung vào cây AVL',
+        modelName: 'cx/gpt-6-luna-medium',
+      }),
+    );
+    expect(summaryResult.summaryId).toBe('summary-uuid-1');
+    expect(summaryResult.title).toBe('Tóm tắt Giáo trình Cấu trúc dữ liệu');
   });
 
   it('nên xác thực quyền truy cập phiên và gọi generateFollowUpSuggestions từ ChatAgentAiService', async () => {

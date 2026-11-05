@@ -13,6 +13,7 @@ export interface GenerateSummaryOptions {
     scope: 'conversation' | 'document' | 'section';
     sectionInfo?: string;
     customInstruction?: string;
+    modelName?: string;
 }
 
 export interface SummaryBlock {
@@ -133,7 +134,9 @@ export class SummaryService {
         const userPrompt = `Dưới đây là nội dung tài liệu học tập:\n\n${contextText.slice(0, 100000)}\n\nHãy tạo bản tóm tắt học tập theo đúng chỉ dẫn trên.`;
 
         try {
-            this.logger.log(`Đang gọi model SUMMARIZE với Structured Output (${options.mode}, ${options.length})...`);
+            this.logger.log(
+                `Đang gọi model ${options.modelName || 'SUMMARIZE'} với Structured Output (${options.mode}, ${options.length})...`,
+            );
 
             const { object } = await this.aiService.generateObjectForTask<SummaryOutput>(
                 'SUMMARIZE',
@@ -142,6 +145,7 @@ export class SummaryService {
                     system: systemPrompt,
                     prompt: userPrompt,
                     temperature: 0.2,
+                    ...(options.modelName ? { modelName: options.modelName } : {}),
                 },
             );
 

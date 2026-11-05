@@ -29,6 +29,8 @@ const SummaryEditor = dynamic(() => import("./SummaryEditor"), {
 export interface SummaryTabProps {
   conversationId?: string;
   documents?: DocumentItem[];
+  /** ID của bản tóm tắt cần mở trực tiếp (ví dụ khi người dùng nhấn vào Badge trong khung chat AI) */
+  initialSummaryId?: string;
   /** Callback khi bấm nút "Tải tài liệu để AI tóm tắt" */
   onUploadDocument?: () => void;
   /** Callback khi bấm nút "Nhập ghi chú hoặc dán văn bản" */
@@ -42,6 +44,7 @@ const ZOOM_STEPS = [75, 90, 100, 115, 130, 150, 175];
 export default function SummaryTab({
   conversationId,
   documents = [],
+  initialSummaryId,
   onUploadDocument,
   onInputText,
   className = "",
@@ -74,6 +77,30 @@ export default function SummaryTab({
     renameSummary,
     deleteSummary,
   } = useSummaries(conversationId);
+
+  // Tự động mở chi tiết bản tóm tắt khi được điều hướng từ Badge trong AI Chat
+  useEffect(() => {
+    if (isSummariesLoading || summaries.length === 0) return;
+
+    const storedId =
+      typeof window !== "undefined"
+        ? window.sessionStorage.getItem("studymate:open-summary-id")
+        : null;
+    const targetId = initialSummaryId || storedId;
+
+    if (targetId && summaries.some((s) => s.id === targetId)) {
+      setSelectedSummaryId(targetId);
+      setViewMode("detail");
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem("studymate:open-summary-id");
+      }
+    }
+  }, [
+    initialSummaryId,
+    isSummariesLoading,
+    summaries,
+    setSelectedSummaryId,
+  ]);
 
   // Đồng bộ trạng thái xem chi tiết tóm tắt với FocusModeContext để tối ưu layout Box-in-box
   useEffect(() => {
