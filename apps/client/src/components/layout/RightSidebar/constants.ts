@@ -61,8 +61,16 @@ export const EFFORT_LEVELS: EffortOption[] = [
   { key: "max", label: "Tối đa" },
 ];
 
-export const STARTER_PROMPTS: { icon: LucideIcon; label: string }[] = [
-  { icon: BookOpen, label: "Tóm tắt tài liệu" },
+export const STARTER_PROMPTS: {
+  icon: LucideIcon;
+  label: string;
+  prompt?: string;
+}[] = [
+  {
+    icon: BookOpen,
+    label: "Tóm tắt tài liệu",
+    prompt: "Hãy tóm tắt tài liệu có trong phiên học hiện tại",
+  },
   { icon: Layers, label: "Tạo Flashcard" },
   { icon: HelpCircle, label: "Tạo Quiz" },
 ];

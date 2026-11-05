@@ -29,6 +29,7 @@ export interface ChatMessage {
   citation?: string;
   hasCitation?: boolean;
   attachedFiles?: string[];
+  metadata?: Record<string, any>;
   bullets?: { title: string; desc: string }[];
 }
 

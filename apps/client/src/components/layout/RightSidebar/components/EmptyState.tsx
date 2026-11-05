@@ -7,7 +7,7 @@ interface EmptyStateProps {
   onPromptSelect?: (prompt: string) => void;
 }
 
-export function EmptyState({ onPromptSelect: _onPromptSelect }: EmptyStateProps) {
+export function EmptyState({ onPromptSelect }: EmptyStateProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-4 py-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex flex-col items-center gap-3 text-center">
@@ -29,11 +29,15 @@ export function EmptyState({ onPromptSelect: _onPromptSelect }: EmptyStateProps)
       </div>
 
       <div className="flex w-full flex-col items-center gap-2">
-        {STARTER_PROMPTS.map(({ icon: Icon, label }) => (
+        {STARTER_PROMPTS.map(({ icon: Icon, label, prompt }) => (
           <button
             key={label}
             type="button"
-            onClick={() => {}}
+            onClick={() => {
+              if (prompt) {
+                onPromptSelect?.(prompt);
+              }
+            }}
             className="flex w-full max-w-75 cursor-pointer items-center gap-2.5 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-left text-xs font-medium text-gray-700 transition-colors hover:border-indigo-200 hover:bg-indigo-50/60 hover:text-indigo-900 active:scale-[0.99]"
           >
             <Icon className="h-4 w-4 shrink-0 text-indigo-500" />

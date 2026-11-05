@@ -17,7 +17,6 @@ import { ChatHeader } from "./components/ChatHeader";
 import { ConfirmDeleteDialog } from "./components/ConfirmDeleteDialog";
 import { EmptyState } from "./components/EmptyState";
 import { MessageList } from "./components/MessageList";
-import { WorkspaceDocModal } from "./components/WorkspaceDocModal";
 import {
   DEFAULT_EFFORT,
   DEFAULT_MODEL_ID,
@@ -205,10 +204,8 @@ export default function RightSidebar({
     inputRef: fileInputRef,
     openLocalPicker,
     handleLocalInputChange,
-    isWorkspaceModalOpen,
-    openWorkspaceModal,
-    closeWorkspaceModal,
     addWorkspaceDoc,
+    addWorkspaceDocs,
     removeFile,
     clearFiles,
   } = useAttachments();
@@ -478,6 +475,7 @@ export default function RightSidebar({
           .filter((f) => f.source === "workspace" && f.documentId)
           .map((f) => f.documentId as string);
         pendingAttachedDocIdsRef.current = workspaceDocIds;
+        const attachedNames = attachedFiles.map((f) => f.name);
 
         setInputValue("");
         clearFiles();
@@ -497,7 +495,29 @@ export default function RightSidebar({
         });
 
         console.log("[RightSidebar] Kích hoạt aiSendMessage({ text })...");
-        await aiSendMessage({ text });
+        const sendPromise = aiSendMessage({
+          text,
+          metadata: { attachedFiles: attachedNames },
+        } as any);
+
+        if (attachedNames.length > 0) {
+          setMessages((prev) => {
+            const lastUserIdx = prev.map((m) => m.role).lastIndexOf("user");
+            if (lastUserIdx === -1) return prev;
+            const updated = [...prev];
+            updated[lastUserIdx] = {
+              ...updated[lastUserIdx],
+              attachedFiles: attachedNames,
+              metadata: {
+                ...(updated[lastUserIdx] as any)?.metadata,
+                attachedFiles: attachedNames,
+              },
+            } as any;
+            return updated;
+          });
+        }
+
+        await sendPromise;
         console.log("[RightSidebar] aiSendMessage đã gọi xong.");
 
         // Nếu là phiên mới, sau 1.2s kích hoạt tải lại tiêu đề mới do Ollama cập nhật ngầm
@@ -625,26 +645,20 @@ export default function RightSidebar({
           disabled={isSending}
           placeholder={
             chatState === "empty"
-              ? "Hỏi AI bất cứ điều gì về tài liệu…"
-              : "Hỏi tiếp về đoạn chat này…"
+              ? "Hỏi AI bất cứ điều gì về tài liệu…\nGõ @ để gắn tài liệu"
+              : "Hỏi tiếp về đoạn chat này…\nGõ @ để gắn tài liệu"
           }
           attachedFiles={attachedFiles}
           onRemoveFile={removeFile}
           onSelectLocalFile={openLocalPicker}
-          onSelectWorkspaceDoc={openWorkspaceModal}
+          availableDocs={documents}
+          onSelectWorkspaceDoc={addWorkspaceDoc}
           modelConfig={modelConfig}
           onModelConfigChange={updateModelConfig}
           contextLabel={shortContext}
           contextTitle={contextTitle}
         />
       </div>
-
-      <WorkspaceDocModal
-        isOpen={isWorkspaceModalOpen}
-        onClose={closeWorkspaceModal}
-        onSelect={addWorkspaceDoc}
-        availableDocs={documents}
-      />
 
       <ConfirmDeleteDialog
         session={pendingDelete}

@@ -4,11 +4,10 @@ import { createId } from "../utils";
 
 /**
  * Quản lý tệp đính kèm: tệp từ thiết bị (qua <input type="file"> ẩn)
- * và tài liệu chọn từ Không gian học tập (qua modal).
+ * và tài liệu chọn từ Không gian học tập (qua Popover nhúng hoặc Mention @).
  */
 export function useAttachments() {
   const [files, setFiles] = useState<AttachedFile[]>([]);
-  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const openLocalPicker = useCallback(() => {
@@ -32,9 +31,6 @@ export function useAttachments() {
     },
     []
   );
-
-  const openWorkspaceModal = useCallback(() => setIsWorkspaceModalOpen(true), []);
-  const closeWorkspaceModal = useCallback(() => setIsWorkspaceModalOpen(false), []);
 
   const addWorkspaceDoc = useCallback((docOrName: WorkspaceDoc | string) => {
     setFiles((prev) => {
@@ -62,6 +58,28 @@ export function useAttachments() {
     });
   }, []);
 
+  const addWorkspaceDocs = useCallback((docs: WorkspaceDoc[]) => {
+    setFiles((prev) => {
+      const existingDocIds = new Set(
+        prev
+          .filter((f) => f.source === "workspace" && f.documentId)
+          .map((f) => f.documentId)
+      );
+
+      const toAdd: AttachedFile[] = docs
+        .filter((doc) => !existingDocIds.has(doc.id))
+        .map((doc) => ({
+          id: doc.id,
+          documentId: doc.id,
+          name: doc.file_name,
+          source: "workspace",
+        }));
+
+      if (toAdd.length === 0) return prev;
+      return [...prev, ...toAdd];
+    });
+  }, []);
+
   const removeFile = useCallback((fileId: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
   }, []);
@@ -73,10 +91,8 @@ export function useAttachments() {
     inputRef,
     openLocalPicker,
     handleLocalInputChange,
-    isWorkspaceModalOpen,
-    openWorkspaceModal,
-    closeWorkspaceModal,
     addWorkspaceDoc,
+    addWorkspaceDocs,
     removeFile,
     clearFiles,
   };
