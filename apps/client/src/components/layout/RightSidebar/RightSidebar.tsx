@@ -215,6 +215,7 @@ export default function RightSidebar({
     inputRef: fileInputRef,
     openLocalPicker,
     handleLocalInputChange,
+    uploadLocalFiles,
     addWorkspaceDoc,
     addWorkspaceDocs,
     removeFile,
@@ -653,6 +654,7 @@ export default function RightSidebar({
           attachedFiles={attachedFiles}
           onRemoveFile={removeFile}
           onSelectLocalFile={openLocalPicker}
+          onPasteFiles={uploadLocalFiles}
           availableDocs={documents}
           onSelectWorkspaceDoc={addWorkspaceDoc}
           modelConfig={modelConfig}

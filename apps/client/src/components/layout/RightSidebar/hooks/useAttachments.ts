@@ -23,13 +23,9 @@ export function useAttachments(options?: UseAttachmentsOptions) {
     inputRef.current?.click();
   }, []);
 
-  const handleLocalInputChange = useCallback(
-    async (e: ChangeEvent<HTMLInputElement>) => {
-      const selected = e.target.files;
-      if (!selected || selected.length === 0) return;
-
-      const fileList = Array.from(selected);
-      e.target.value = ""; // cho phép chọn lại cùng một tệp
+  const uploadLocalFiles = useCallback(
+    async (fileList: File[]) => {
+      if (!fileList || fileList.length === 0) return;
 
       if (!uploadFile) {
         const added: AttachedFile[] = fileList.map((f) => ({
@@ -110,6 +106,18 @@ export function useAttachments(options?: UseAttachmentsOptions) {
     [uploadFile]
   );
 
+  const handleLocalInputChange = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const selected = e.target.files;
+      if (!selected || selected.length === 0) return;
+
+      const fileList = Array.from(selected);
+      e.target.value = ""; // cho phép chọn lại cùng một tệp
+      await uploadLocalFiles(fileList);
+    },
+    [uploadLocalFiles]
+  );
+
   const addWorkspaceDoc = useCallback((docOrName: WorkspaceDoc | string) => {
     setFiles((prev) => {
       if (typeof docOrName === "string") {
@@ -169,6 +177,7 @@ export function useAttachments(options?: UseAttachmentsOptions) {
     inputRef,
     openLocalPicker,
     handleLocalInputChange,
+    uploadLocalFiles,
     addWorkspaceDoc,
     addWorkspaceDocs,
     removeFile,

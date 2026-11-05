@@ -21,6 +21,7 @@ interface ChatComposerProps {
   attachedFiles: AttachedFile[];
   onRemoveFile: (id: string) => void;
   onSelectLocalFile: () => void;
+  onPasteFiles?: (files: File[]) => void;
   availableDocs?: WorkspaceDoc[];
   onSelectWorkspaceDoc: (doc: WorkspaceDoc) => void;
 
@@ -45,6 +46,7 @@ export function ChatComposer({
   attachedFiles,
   onRemoveFile,
   onSelectLocalFile,
+  onPasteFiles,
   availableDocs = [],
   onSelectWorkspaceDoc,
   modelConfig,
@@ -201,6 +203,18 @@ export function ChatComposer({
     }
   };
 
+  // 3. Xử lý dán tệp (Ctrl + V) từ Clipboard hoặc File Explorer
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const clipboardFiles = e.clipboardData?.files;
+    if (clipboardFiles && clipboardFiles.length > 0) {
+      const filesArray = Array.from(clipboardFiles);
+      if (filesArray.length > 0) {
+        e.preventDefault();
+        onPasteFiles?.(filesArray);
+      }
+    }
+  };
+
   const hasChips = Boolean(contextLabel) || attachedFiles.length > 0;
 
   return (
@@ -277,6 +291,7 @@ export function ChatComposer({
           value={value}
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           rows={2}
           placeholder={placeholder}
           aria-label="Nhập câu hỏi"
