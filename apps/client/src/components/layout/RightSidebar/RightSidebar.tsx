@@ -198,6 +198,17 @@ export default function RightSidebar({
     []
   );
 
+  // ── Data hooks ──
+  const {
+    chatSessions,
+    isLoading,
+    createSession,
+    updateSession,
+    deleteSession,
+    refresh: refreshSessions,
+  } = useChatSessions(conversationId);
+  const { documents, uploadFile } = useDocuments(conversationId);
+
   // ── Attachments ──
   const {
     files: attachedFiles,
@@ -208,18 +219,7 @@ export default function RightSidebar({
     addWorkspaceDocs,
     removeFile,
     clearFiles,
-  } = useAttachments();
-
-  // ── Data hooks ──
-  const {
-    chatSessions,
-    isLoading,
-    createSession,
-    updateSession,
-    deleteSession,
-    refresh: refreshSessions,
-  } = useChatSessions(conversationId);
-  const { documents } = useDocuments(conversationId);
+  } = useAttachments({ uploadFile });
 
   // ── Vercel AI SDK useChat ──
   const transport = useMemo(() => {
@@ -472,10 +472,12 @@ export default function RightSidebar({
 
         // Trích xuất danh sách documentId từ các tài liệu Workspace đính kèm trước khi clearFiles
         const workspaceDocIds = attachedFiles
-          .filter((f) => f.source === "workspace" && f.documentId)
+          .filter((f) => f.source === "workspace" && f.documentId && f.status !== "error")
           .map((f) => f.documentId as string);
         pendingAttachedDocIdsRef.current = workspaceDocIds;
-        const attachedNames = attachedFiles.map((f) => f.name);
+        const attachedNames = attachedFiles
+          .filter((f) => f.status !== "error")
+          .map((f) => f.name);
 
         setInputValue("");
         clearFiles();

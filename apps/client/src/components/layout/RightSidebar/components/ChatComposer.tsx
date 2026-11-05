@@ -68,8 +68,12 @@ export function ChatComposer({
   const closeMention = useCallback(() => setMentionState(null), []);
   useClickOutside(mentionContainerRef, closeMention, mentionState?.isOpen ?? false);
 
+  const isAnyFileUploading = attachedFiles.some((f) => f.status === "uploading");
+
   const canSend =
-    (value.trim().length > 0 || attachedFiles.length > 0) && !disabled;
+    (value.trim().length > 0 || attachedFiles.length > 0) &&
+    !disabled &&
+    !isAnyFileUploading;
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -296,7 +300,11 @@ export function ChatComposer({
               onClick={onSend}
               disabled={!canSend}
               aria-label="Gửi tin nhắn"
-              title="Gửi (Enter)"
+              title={
+                isAnyFileUploading
+                  ? "Đang tải tệp lên, vui lòng chờ..."
+                  : "Gửi (Enter)"
+              }
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all ${
                 canSend
                   ? "cursor-pointer bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 active:scale-95"

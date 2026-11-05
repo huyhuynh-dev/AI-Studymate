@@ -16,6 +16,12 @@ export interface AttachedFile {
   documentId?: string;
   /** File gốc (chỉ có với source = "local") – dùng khi cần upload thật */
   file?: File;
+  /** Trạng thái tải lên tệp từ thiết bị */
+  status?: "uploading" | "ready" | "error";
+  /** Tiến trình tải lên (0 - 100%) */
+  progress?: number;
+  /** Thông báo lỗi nếu quá trình tải tệp thất bại */
+  errorMessage?: string;
 }
 
 export type MessageRole = "user" | "ai" | "assistant" | "system";
