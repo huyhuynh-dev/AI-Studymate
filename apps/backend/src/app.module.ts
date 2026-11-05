@@ -19,6 +19,7 @@ import { StorageModule } from './storage/storage.module.js';
 import { AiModule } from './ai/ai.module.js';
 import { SummariesModule } from './summaries/summaries.module.js';
 import { ChatAgentModule } from './chat-agent/chat-agent.module.js';
+import { DeckFlashcardModule } from './deck-flashcard/deck-flashcard.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -54,6 +55,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     AiModule,
     SummariesModule,
     ChatAgentModule,
+    DeckFlashcardModule,
   ],
   controllers: [AppController],
   providers: [
