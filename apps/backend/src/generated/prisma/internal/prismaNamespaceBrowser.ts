@@ -54,6 +54,8 @@ export const ModelName = {
   User: 'User',
   Subject: 'Subject',
   Conversation: 'Conversation',
+  FlashcardDeck: 'FlashcardDeck',
+  Flashcard: 'Flashcard',
   Document: 'Document',
   DocumentChunk: 'DocumentChunk',
   ChatSession: 'ChatSession',
@@ -118,6 +120,40 @@ export const ConversationScalarFieldEnum = {
 } as const
 
 export type ConversationScalarFieldEnum = (typeof ConversationScalarFieldEnum)[keyof typeof ConversationScalarFieldEnum]
+
+
+export const FlashcardDeckScalarFieldEnum = {
+  id: 'id',
+  conversation_id: 'conversation_id',
+  user_id: 'user_id',
+  name: 'name',
+  description: 'description',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type FlashcardDeckScalarFieldEnum = (typeof FlashcardDeckScalarFieldEnum)[keyof typeof FlashcardDeckScalarFieldEnum]
+
+
+export const FlashcardScalarFieldEnum = {
+  id: 'id',
+  deck_id: 'deck_id',
+  card_type: 'card_type',
+  front_text: 'front_text',
+  back_text: 'back_text',
+  image_url: 'image_url',
+  audio_url: 'audio_url',
+  state: 'state',
+  repetitions: 'repetitions',
+  interval: 'interval',
+  ease_factor: 'ease_factor',
+  due_date: 'due_date',
+  last_reviewed_at: 'last_reviewed_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type FlashcardScalarFieldEnum = (typeof FlashcardScalarFieldEnum)[keyof typeof FlashcardScalarFieldEnum]
 
 
 export const DocumentScalarFieldEnum = {

@@ -9,7 +9,19 @@
 * 🟢 You can import this file directly.
 */
 
+export const CardTypeEnum = {
+  basic: 'basic',
+  cloze: 'cloze',
+  type_in: 'type_in'
+} as const
+
+export type CardTypeEnum = (typeof CardTypeEnum)[keyof typeof CardTypeEnum]
 
 
-// This file is empty because there are no enums in the schema.
-export {}
+export const CardStateEnum = {
+  new: 'new',
+  learning: 'learning',
+  review: 'review'
+} as const
+
+export type CardStateEnum = (typeof CardStateEnum)[keyof typeof CardStateEnum]

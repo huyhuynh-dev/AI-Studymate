@@ -57,6 +57,16 @@ export type Subject = Prisma.SubjectModel
  */
 export type Conversation = Prisma.ConversationModel
 /**
+ * Model FlashcardDeck
+ * 
+ */
+export type FlashcardDeck = Prisma.FlashcardDeckModel
+/**
+ * Model Flashcard
+ * 
+ */
+export type Flashcard = Prisma.FlashcardModel
+/**
  * Model Document
  * 
  */
