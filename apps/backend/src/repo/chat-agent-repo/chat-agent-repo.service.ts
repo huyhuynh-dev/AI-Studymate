@@ -143,20 +143,38 @@ export class ChatAgentRepoService {
         }
     }
 
-    async createMessage(data: {
+    async upsertMessage(data: {
+        id: string;
         chat_session_id: string;
         role: string;
-        content: string;
+        message_json: Prisma.InputJsonValue;
         source_chunks?: string[];
     }): Promise<Message> {
-        return this.prisma.message.create({
-            data: {
+        return this.prisma.message.upsert({
+            where: { id: data.id },
+            update: {
+                role: data.role,
+                message_json: data.message_json,
+                source_chunks: data.source_chunks ?? [],
+            },
+            create: {
+                id: data.id,
                 chat_session_id: data.chat_session_id,
                 role: data.role,
-                content: data.content,
+                message_json: data.message_json,
                 source_chunks: data.source_chunks ?? [],
             },
         });
+    }
+
+    async createMessage(data: {
+        id: string;
+        chat_session_id: string;
+        role: string;
+        message_json: Prisma.InputJsonValue;
+        source_chunks?: string[];
+    }): Promise<Message> {
+        return this.upsertMessage(data);
     }
 
     async getMessagesBySessionId(

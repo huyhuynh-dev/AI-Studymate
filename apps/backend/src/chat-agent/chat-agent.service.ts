@@ -146,81 +146,40 @@ export class ChatAgentService {
       userId,
     );
 
-    const parsedMessages: UIMessage[] = rawMessages.map((msg) => {
-      let parts: UIMessage['parts'] = [];
-      try {
-        const parsed = JSON.parse(msg.content);
-        if (Array.isArray(parsed)) {
-          // Xử lý nếu dữ liệu bị lồng trong ResponseMessage: [{ role: 'assistant', content: [...] }]
-          if (
-            parsed.length > 0 &&
-            parsed[0]?.role &&
-            Array.isArray(parsed[0]?.content)
-          ) {
-            parts = parsed[0].content;
-          } else {
-            parts = parsed;
-          }
-        } else if (typeof parsed === 'string') {
-          parts = [{ type: 'text', text: parsed }];
-        } else {
-          parts = [{ type: 'text', text: msg.content }];
-        }
-      } catch {
-        parts = [{ type: 'text', text: msg.content }];
-      }
-
+    return rawMessages.map((msg) => {
+      const msgJson = msg.message_json as unknown as UIMessage;
       return {
-        id: msg.id,
-        role: msg.role as 'user' | 'assistant',
-        parts,
+        ...msgJson,
+        id: msgJson?.id || msg.id,
+        role: (msgJson?.role || msg.role) as 'user' | 'assistant',
+        parts: msgJson?.parts ?? [],
       };
     });
-
-    // Gộp các bản ghi assistant liên tiếp phát sinh từ chu trình Human-in-the-loop (askUserQuestion -> addToolOutput)
-    const consolidated: UIMessage[] = [];
-    for (const current of parsedMessages) {
-      const prev = consolidated[consolidated.length - 1];
-      if (prev && prev.role === 'assistant' && current.role === 'assistant') {
-        const prevCallIds = new Set(
-          (prev.parts || [])
-            .map((p: any) => p?.toolCallId)
-            .filter((id): id is string => typeof id === 'string'),
-        );
-        const currentCallIds = new Set(
-          (current.parts || [])
-            .map((p: any) => p?.toolCallId)
-            .filter((id): id is string => typeof id === 'string'),
-        );
-
-        const isContinuation = Array.from(prevCallIds).some((id) =>
-          currentCallIds.has(id),
-        );
-        if (isContinuation) {
-          consolidated[consolidated.length - 1] = current;
-          continue;
-        }
-      }
-      consolidated.push(current);
-    }
-
-    return consolidated;
   }
 
-  // ── 1. Lưu tin nhắn vào Database ──
-  async saveMessage(
+  // ── 1. Lưu tin nhắn vào Database dưới dạng JsonB (UIMessage) ──
+  async saveUIMessage(
     chatSessionId: string,
-    role: 'user' | 'assistant',
-    content: string,
+    message: UIMessage,
     sourceChunks?: string[],
   ) {
     console.log(
-      `[ChatAgentService] saveMessage: sessionId=${chatSessionId}, role=${role}, length=${content?.length}, sourceChunks=${sourceChunks?.length ?? 0}`,
+      `[ChatAgentService] saveUIMessage: sessionId=${chatSessionId}, id=${message.id}, role=${message.role}, sourceChunks=${sourceChunks?.length ?? 0}`,
     );
-    return this.chatAgentRepo.createMessage({
+    if (typeof this.chatAgentRepo.upsertMessage === 'function') {
+      return this.chatAgentRepo.upsertMessage({
+        id: message.id,
+        chat_session_id: chatSessionId,
+        role: message.role,
+        message_json: message as any,
+        source_chunks: sourceChunks,
+      });
+    }
+    return (this.chatAgentRepo as any).createMessage({
+      id: message.id,
       chat_session_id: chatSessionId,
-      role,
-      content,
+      role: message.role,
+      message_json: message as any,
       source_chunks: sourceChunks,
     });
   }
@@ -252,56 +211,28 @@ export class ChatAgentService {
         )
       : undefined;
 
-    // Kiểm tra nếu tin nhắn cuối cùng là assistant (tức là lượt chạy tiếp nối sau khi user trả lời Client-Side Tool askUserQuestion)
-    const lastInputMessage = messages[messages.length - 1];
-    const previousAssistantParts: any[] =
-      lastInputMessage &&
-      lastInputMessage.role === 'assistant' &&
-      Array.isArray(lastInputMessage.parts)
-        ? lastInputMessage.parts
-        : [];
-
     return this.chatAgentAiService.executeChatStream(
       messages,
       async ({
-        responseMessages,
-        assistantParts: extractedParts,
+        assistantUIMessage,
         sourceChunkIds,
         text,
       }) => {
         console.log(
-          `[ChatAgentService] executeAiChatStream onFinish: text length=${text?.length}, responseMessages count=${responseMessages?.length}, sourceChunkIds=${sourceChunkIds?.length ?? 0}`,
+          `[ChatAgentService] executeAiChatStream onFinish: text length=${text?.length}, parts count=${assistantUIMessage?.parts?.length}, sourceChunkIds=${sourceChunkIds?.length ?? 0}`,
         );
-
-        let assistantParts: any[] = Array.isArray(extractedParts)
-          ? extractedParts
-          : [];
 
         if (
-          assistantParts.length === 0 &&
-          responseMessages &&
-          responseMessages.length > 0
+          assistantUIMessage &&
+          Array.isArray(assistantUIMessage.parts) &&
+          assistantUIMessage.parts.length > 0
         ) {
-          const firstMsg = responseMessages[0];
-          if (Array.isArray(firstMsg?.content)) {
-            assistantParts = firstMsg.content;
-          }
+          await this.saveUIMessage(
+            chatSessionId,
+            assistantUIMessage,
+            sourceChunkIds,
+          );
         }
-        if (assistantParts.length === 0 && text) {
-          assistantParts = [{ type: 'text', text }];
-        }
-
-        const finalPartsToSave =
-          previousAssistantParts.length > 0
-            ? [...previousAssistantParts, ...assistantParts]
-            : assistantParts;
-
-        await this.saveMessage(
-          chatSessionId,
-          'assistant',
-          JSON.stringify(finalPartsToSave),
-          sourceChunkIds,
-        );
       },
       abortSignal,
       ragContext
@@ -500,27 +431,38 @@ export class ChatAgentService {
     // a. Xác thực quyền truy cập phiên của người dùng và lấy conversation_id
     const chatSession = await this.getChatSessionById(userId, chatSessionId);
 
-    // b. Lưu tin nhắn mới nhất của user vào Database (chỉ lưu khi tin nhắn cuối là của user)
-    const lastMessage = messages[messages.length - 1];
-    console.log(`[ChatAgentService] lastMessage role=${lastMessage?.role}`);
-    if (lastMessage && lastMessage.role === 'user') {
-      const userContent = lastMessage.parts
-        ? JSON.stringify(lastMessage.parts)
-        : '';
+    // b. Xác thực toàn bộ mảng tin nhắn UIMessage[] theo schemas công cụ
+    const validatedMessages =
+      typeof this.chatAgentAiService?.validateIncomingMessages === 'function'
+        ? await this.chatAgentAiService.validateIncomingMessages(messages)
+        : messages;
 
-      console.log(
-        `[ChatAgentService] Saving user message for session ${chatSessionId}...`,
-      );
-      await this.saveMessage(chatSessionId, 'user', userContent);
+    // c. Lưu tin nhắn vào Database dưới dạng JsonB:
+    // - Nếu tin nhắn cuối là của user: lưu user message vào DB
+    // - Nếu tin nhắn cuối là của assistant (Human-in-the-loop: user vừa gửi output cho client-side tool askUserQuestion):
+    //   cập nhật lại tin nhắn assistant đó trong DB
+    const lastMessage = validatedMessages[validatedMessages.length - 1];
+    if (lastMessage) {
+      if (lastMessage.role === 'user') {
+        console.log(
+          `[ChatAgentService] Saving user message for session ${chatSessionId}...`,
+        );
+        await this.saveUIMessage(chatSessionId, lastMessage);
+      } else if (lastMessage.role === 'assistant') {
+        console.log(
+          `[ChatAgentService] Updating assistant message (tool output) for session ${chatSessionId}...`,
+        );
+        await this.saveUIMessage(chatSessionId, lastMessage);
+      }
     }
 
-    // c. Tự động sinh tiêu đề ngầm (Fire-and-forget Asynchronous Fast LLM)
-    this.triggerAutoHeaderAsync(userId, chatSessionId, messages);
+    // d. Tự động sinh tiêu đề ngầm (Fire-and-forget Asynchronous Fast LLM)
+    this.triggerAutoHeaderAsync(userId, chatSessionId, validatedMessages);
 
-    // d. Khởi tạo luồng sinh văn bản từ AI kèm ngữ cảnh RAG & Summary Tools
+    // e. Khởi tạo luồng sinh văn bản từ AI kèm ngữ cảnh RAG & Summary Tools
     return this.executeAiChatStream(
       chatSessionId,
-      messages,
+      validatedMessages,
       abortSignal,
       {
         userId,

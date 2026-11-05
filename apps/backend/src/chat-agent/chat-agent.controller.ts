@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response as ExpressResponse } from 'express';
-import { pipeUIMessageStreamToResponse } from 'ai';
+import { pipeUIMessageStreamToResponse, TypeValidationError } from 'ai';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { CreateChatSessionDto } from './dto/create-chat-session.dto.js';
 import { UpdateChatSessionDto } from './dto/update-chat-session.dto.js';
@@ -162,7 +162,11 @@ export class ChatAgentController {
         error,
       );
       if (!response.headersSent) {
-        response.status(500).json({ error: (error as Error).message });
+        const isValidationErr =
+          error instanceof TypeValidationError ||
+          (error as any)?.name === 'TypeValidationError';
+        const statusCode = isValidationErr ? 400 : 500;
+        response.status(statusCode).json({ error: (error as Error).message });
       }
     }
   }

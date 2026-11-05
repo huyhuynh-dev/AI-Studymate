@@ -405,7 +405,11 @@ export default function RightSidebar({
       try {
         setIsLoadingMessages(true);
         const history = await chatSessionsApi.getMessages(id);
-        setMessages(history);
+        const normalized = (history || []).map((m: any) => ({
+          ...m,
+          attachedFiles: m.attachedFiles || m.metadata?.attachedFiles,
+        }));
+        setMessages(normalized);
       } catch (err) {
         console.error("Lỗi khi tải lịch sử tin nhắn:", err);
       } finally {

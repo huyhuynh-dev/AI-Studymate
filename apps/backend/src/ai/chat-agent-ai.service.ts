@@ -1,8 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   convertToModelMessages,
+  generateId,
   stepCountIs,
   tool,
+  validateUIMessages,
+  TypeValidationError,
 } from 'ai';
 import { z } from 'zod';
 import type { UIMessage } from 'ai';
@@ -201,6 +204,65 @@ export class ChatAgentAiService {
   private readonly logger = new Logger(ChatAgentAiService.name);
 
   constructor(private readonly aiService: AiService) {}
+
+  /**
+   * Tạo danh mục công cụ phục vụ xác thực mảng tin nhắn UIMessage[]
+   */
+  getValidationTools(): Record<string, any> {
+    return {
+      askUserQuestion: this.buildAskUserQuestionTool(),
+      searchDocumentChunks: tool({
+        description: 'Tìm kiếm các đoạn trích trong tài liệu',
+        inputSchema: z.object({
+          semanticQuery: z.string(),
+          keywords: z.array(z.string()).max(5),
+        }),
+      }),
+      getDocumentsFullContent: tool({
+        description: 'Lấy toàn bộ nội dung văn bản của tài liệu',
+        inputSchema: z.object({
+          documentIds: z.array(z.string()).optional(),
+          fetchAllDocuments: z.boolean().optional(),
+        }),
+      }),
+      getConversationDocumentsMetadata: tool({
+        description: 'Lấy thông tin metadata tài liệu trong cuộc trò chuyện',
+        inputSchema: z.object({}),
+      }),
+      createDocumentSummary: tool({
+        description: 'Khởi tạo bản tóm tắt tài liệu',
+        inputSchema: z.object({
+          scope: z.enum(['conversation', 'document', 'section']),
+          documentIds: z.array(z.string()).optional(),
+          mode: z.enum(['key_takeaways', 'study_guide', 'qa_style']).optional(),
+          length: z.enum(['short', 'standard', 'detailed']).optional(),
+          customInstruction: z.string().optional(),
+          fromPage: z.number().optional(),
+          toPage: z.number().optional(),
+        }),
+      }),
+    };
+  }
+
+  /**
+   * Xác thực mảng tin nhắn UIMessage[] theo chuẩn Vercel AI SDK v6
+   */
+  async validateIncomingMessages(messages: UIMessage[]): Promise<UIMessage[]> {
+    try {
+      const tools = this.getValidationTools();
+      return await validateUIMessages({
+        messages,
+        tools,
+      });
+    } catch (error) {
+      if (error instanceof TypeValidationError) {
+        this.logger.error(
+          `[ChatAgentAiService] validateIncomingMessages failed: ${error.message}`,
+        );
+      }
+      throw error;
+    }
+  }
 
   /**
    * Bổ sung Danh mục tài liệu khả dụng siêu gọn trong cuộc trò chuyện vào System Prompt
@@ -653,6 +715,7 @@ export class ChatAgentAiService {
       assistantParts: any[];
       sourceChunkIds: string[];
       text: string;
+      assistantUIMessage: UIMessage;
     }) => Promise<void>,
     abortSignal?: AbortSignal,
     options?: {
@@ -742,7 +805,7 @@ export class ChatAgentAiService {
       `[ChatAgentAiService] convertToModelMessages: input count=${messages.length}, output count=${modelMessages.length}, activeTools=${activeTools ? Object.keys(activeTools).join(',') : 'none'}, model=${chatConfig.modelName}, temp=${chatConfig.temperature}, maxTokens=${chatConfig.maxOutputTokens}, topK=${chatConfig.topK}`,
     );
 
-    return this.aiService.streamChatAgent(chatConfig.modelName, {
+    const streamResult = this.aiService.streamChatAgent(chatConfig.modelName, {
       system: finalSystemPrompt,
       messages: modelMessages,
       tools: activeTools,
@@ -765,14 +828,28 @@ export class ChatAgentAiService {
           `[ChatAgentAiService] onFinish: text="${event.text?.slice(0, 50)}...", finishReason=${event.finishReason}, partsCount=${assistantParts.length}, sourceChunks=${collectedChunkIds.size}`,
         );
 
+        const assistantMessageId = event.response?.id || generateId();
+        const assistantUIMessage: UIMessage = {
+          id: assistantMessageId,
+          role: 'assistant',
+          parts: assistantParts,
+        };
+
         await onFinish({
           responseMessages,
           assistantParts,
           sourceChunkIds: Array.from(collectedChunkIds),
           text: event.text,
+          assistantUIMessage,
         });
       },
     });
+
+    if (typeof (streamResult as any)?.consumeStream === 'function') {
+      (streamResult as any).consumeStream();
+    }
+
+    return streamResult;
   }
 
   /**

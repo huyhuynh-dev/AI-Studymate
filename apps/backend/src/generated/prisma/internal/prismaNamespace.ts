@@ -1144,7 +1144,7 @@ export const MessageScalarFieldEnum = {
   id: 'id',
   chat_session_id: 'chat_session_id',
   role: 'role',
-  content: 'content',
+  message_json: 'message_json',
   source_chunks: 'source_chunks',
   created_at: 'created_at'
 } as const

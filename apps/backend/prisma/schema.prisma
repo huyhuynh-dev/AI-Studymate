@@ -117,10 +117,10 @@ model ChatSession {
 }
 
 model Message {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id              String   @id @db.VarChar(255)
   chat_session_id String   @db.Uuid
   role            String   @db.VarChar(20) // 'user' | 'assistant'
-  content         String   @db.Text
+  message_json    Json     @db.JsonB
   source_chunks   String[] @db.Uuid // chunk IDs dùng làm context
   created_at      DateTime @default(now()) @db.Timestamptz(6)
 
