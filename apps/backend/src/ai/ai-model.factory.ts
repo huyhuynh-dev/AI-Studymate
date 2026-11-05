@@ -24,6 +24,7 @@ type TaskModel = EmbeddingModel | LanguageModel;
 
 @Injectable()
 export class AiModelFactory {
+    private readonly provider: ReturnType<typeof createOpenAICompatible>;
     private readonly taskModels: Record<AiTask, TaskModel>;
 
     constructor(
@@ -41,7 +42,7 @@ export class AiModelFactory {
         });
 
         // OpenAI Compatible Provider
-        const provider = createOpenAICompatible({
+        this.provider = createOpenAICompatible({
             name: 'providerName',
             apiKey: this.configService.get<string>('PROVIDER_API_KEY'),
             baseURL: this.configService.get<string>('PROVIDER_BASE_URL')
@@ -69,14 +70,18 @@ export class AiModelFactory {
 
             VISION_ANALYZE: google('gemini-3.5-flash-lite'),
 
-            SUMMARIZE: provider('cx/gpt-6-luna'),
+            SUMMARIZE: this.provider('cx/gpt-6-luna'),
 
-            BLOCKNOTE_EDITOR: provider('cx/gpt-6-luna'),
+            BLOCKNOTE_EDITOR: this.provider('cx/gpt-6-luna'),
 
-            CHAT_AGENT: provider('cx/gpt-6-luna'),
+            CHAT_AGENT: this.provider('cx/gpt-6-luna-medium'),
 
             AUTO_HEADER: ollama('qwen3.5:0.8b'),
         };
+    }
+
+    getChatAgentModel(modelName: string): LanguageModel {
+        return this.provider(modelName);
     }
 
     getModelForTask(task: 'EMBEDDING'): EmbeddingModel;

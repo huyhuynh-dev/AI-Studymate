@@ -171,10 +171,11 @@ export class ChatAgentAiService {
     onSearchDocumentChunks: SearchDocumentChunksCallback,
     collectedChunkIds: Set<string>,
     chunkToolOutputsByCallId: Map<string, SearchDocumentChunksToolOutput>,
+    maxChunks: number = 15,
   ) {
     return tool({
       description:
-        'Tìm kiếm các đoạn trích (chunks) cụ thể trong tài liệu bằng Hybrid Search (pgvector + PGRoonga kết hợp thuật toán RRF). Sử dụng công cụ này cho các câu hỏi cụ thể về khái niệm, thuật ngữ, định nghĩa, công thức hoặc chi tiết trong tài liệu. Trả về tối đa 20 chunks liên quan nhất.',
+        `Tìm kiếm các đoạn trích (chunks) cụ thể trong tài liệu bằng Hybrid Search (pgvector + PGRoonga kết hợp thuật toán RRF). Sử dụng công cụ này cho các câu hỏi cụ thể về khái niệm, thuật ngữ, định nghĩa, công thức hoặc chi tiết trong tài liệu. Trả về tối đa ${maxChunks} chunks liên quan nhất.`,
       inputSchema: z.object({
         semanticQuery: z
           .string()
@@ -407,8 +408,21 @@ export class ChatAgentAiService {
       attachedDocumentIds?: string[];
       onSearchDocumentChunks?: SearchDocumentChunksCallback;
       onGetDocumentsFullContent?: GetDocumentsFullContentCallback;
+      chatConfig?: {
+        modelName: string;
+        temperature: number;
+        maxOutputTokens: number;
+        topK: number;
+      };
     },
   ) {
+    const chatConfig = options?.chatConfig ?? {
+      modelName: 'cx/gpt-6-luna-medium',
+      temperature: 0.5,
+      maxOutputTokens: 2048,
+      topK: 15,
+    };
+
     const basePrompt = options?.systemPrompt ?? CHAT_AGENT_SYSTEM_PROMPT;
     const finalSystemPrompt = this.buildSystemPromptWithDocumentCatalog(
       basePrompt,
@@ -432,6 +446,7 @@ export class ChatAgentAiService {
         options.onSearchDocumentChunks,
         collectedChunkIds,
         chunkToolOutputsByCallId,
+        chatConfig.topK,
       );
     }
     if (options?.onGetDocumentsFullContent) {
@@ -445,13 +460,15 @@ export class ChatAgentAiService {
 
     const modelMessages = await convertToModelMessages(messages);
     this.logger.log(
-      `[ChatAgentAiService] convertToModelMessages: input count=${messages.length}, output count=${modelMessages.length}, activeTools=${activeTools ? Object.keys(activeTools).join(',') : 'none'}`,
+      `[ChatAgentAiService] convertToModelMessages: input count=${messages.length}, output count=${modelMessages.length}, activeTools=${activeTools ? Object.keys(activeTools).join(',') : 'none'}, model=${chatConfig.modelName}, temp=${chatConfig.temperature}, maxTokens=${chatConfig.maxOutputTokens}, topK=${chatConfig.topK}`,
     );
 
-    return this.aiService.streamTextForTask('CHAT_AGENT', {
+    return this.aiService.streamChatAgent(chatConfig.modelName, {
       system: finalSystemPrompt,
       messages: modelMessages,
       tools: activeTools,
+      temperature: chatConfig.temperature,
+      maxOutputTokens: chatConfig.maxOutputTokens,
       stopWhen: stepCountIs(5),
       abortSignal,
       onFinish: async (event) => {

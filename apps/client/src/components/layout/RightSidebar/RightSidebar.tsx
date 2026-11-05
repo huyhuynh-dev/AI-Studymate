@@ -186,8 +186,11 @@ export default function RightSidebar({
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
     modelId: DEFAULT_MODEL_ID,
     effort: DEFAULT_EFFORT,
-    thinking: true,
+    thinking: false,
   });
+  const modelConfigRef = useRef<ModelConfig>(modelConfig);
+  modelConfigRef.current = modelConfig;
+
   const updateModelConfig = useCallback(
     (patch: Partial<ModelConfig>) => setModelConfig((prev) => ({ ...prev, ...patch })),
     []
@@ -225,6 +228,7 @@ export default function RightSidebar({
         const id = activeChatIdRef.current;
         const attachedDocumentIds = pendingAttachedDocIdsRef.current;
         pendingAttachedDocIdsRef.current = [];
+        const currentConfig = modelConfigRef.current;
         const targetApi = `/api/proxy/chat-agent/sessions/${id}/chat`;
         console.log(
           "[RightSidebar] prepareSendMessagesRequest -> Target API:",
@@ -232,13 +236,17 @@ export default function RightSidebar({
           "Messages:",
           messages,
           "AttachedDocumentIds:",
-          attachedDocumentIds
+          attachedDocumentIds,
+          "ModelConfig:",
+          currentConfig
         );
         return {
           api: targetApi,
           body: {
             messages,
             ...(attachedDocumentIds.length > 0 ? { attachedDocumentIds } : {}),
+            modelId: currentConfig.modelId,
+            effort: currentConfig.effort,
           },
         };
       },

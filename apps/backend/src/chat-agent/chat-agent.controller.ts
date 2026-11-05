@@ -119,7 +119,7 @@ export class ChatAgentController {
   ) {
     const userId = this.getUserId(req);
     console.log(
-      `[ChatAgentController] POST sessions/${id}/chat - User: ${userId}, Messages count: ${data?.messages?.length}, Attached docs: ${data?.attachedDocumentIds?.length ?? 0}`,
+      `[ChatAgentController] POST sessions/${id}/chat - User: ${userId}, Messages: ${data?.messages?.length}, Attached docs: ${data?.attachedDocumentIds?.length ?? 0}, ModelId: ${data?.modelId ?? 'default'}, Effort: ${data?.effort ?? 'default'}`,
     );
 
     const abortController = new AbortController();
@@ -138,6 +138,10 @@ export class ChatAgentController {
         data.messages,
         abortController.signal,
         data.attachedDocumentIds,
+        {
+          modelId: data.modelId,
+          effort: data.effort,
+        },
       );
 
       await pipeUIMessageStreamToResponse({

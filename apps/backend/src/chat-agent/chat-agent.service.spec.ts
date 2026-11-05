@@ -15,6 +15,7 @@ describe('ChatAgentService', () => {
   let aiMock: {
     executeChatStream: ReturnType<typeof vi.fn>;
     generateSessionTitle: ReturnType<typeof vi.fn>;
+    generateFollowUpSuggestions: ReturnType<typeof vi.fn>;
   };
   let retrievalMock: {
     getAvailableDocumentsCatalog: ReturnType<typeof vi.fn>;
@@ -115,6 +116,7 @@ describe('ChatAgentService', () => {
       semanticQuery: 'Định nghĩa và cơ chế tự cân bằng của cây AVL',
       keywords: ['cây AVL', 'tự cân bằng'],
       preferredDocumentIds: ['doc-attached-1'],
+      topK: 15,
     });
 
     // Kiểm tra callback Tool 2: getDocumentsFullContent
@@ -154,6 +156,70 @@ describe('ChatAgentService', () => {
         'Phép xoay trái cây AVL thực hiện khi nào?',
         'Độ phức tạp chèn phần tử vào cây AVL là bao nhiêu?',
       ],
+    });
+  });
+
+  it('nên định tuyến đúng Model và tham số khi người dùng chọn Flash + Nhanh', async () => {
+    await service.handleChatStream(
+      'user-1',
+      'session-1',
+      [
+        {
+          id: 'u1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'Tra cứu nhanh' }],
+        },
+      ],
+      undefined,
+      [],
+      {
+        modelId: 'studymate-flash',
+        effort: 'low',
+      },
+    );
+
+    expect(aiMock.executeChatStream).toHaveBeenCalled();
+    const calls = aiMock.executeChatStream.mock.calls;
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall).toBeDefined();
+    const options = lastCall?.[3];
+    expect(options?.chatConfig).toEqual({
+      modelName: 'cx/gpt-5.6-luna-low',
+      temperature: 0.2,
+      maxOutputTokens: 1024,
+      topK: 10,
+    });
+  });
+
+  it('nên định tuyến đúng Model và tham số khi người dùng chọn Pro + Suy luận sâu', async () => {
+    await service.handleChatStream(
+      'user-1',
+      'session-1',
+      [
+        {
+          id: 'u1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'Giải bài tập khó' }],
+        },
+      ],
+      undefined,
+      [],
+      {
+        modelId: 'studymate-pro',
+        effort: 'high',
+      },
+    );
+
+    expect(aiMock.executeChatStream).toHaveBeenCalled();
+    const proCalls = aiMock.executeChatStream.mock.calls;
+    const proLastCall = proCalls[proCalls.length - 1];
+    expect(proLastCall).toBeDefined();
+    const proOptions = proLastCall?.[3];
+    expect(proOptions?.chatConfig).toEqual({
+      modelName: 'cx/gpt-5.6-terra-high',
+      temperature: 0.2,
+      maxOutputTokens: 4096,
+      topK: 20,
     });
   });
 });

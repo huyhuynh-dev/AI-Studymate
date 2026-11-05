@@ -7,6 +7,51 @@ import { CreateChatSessionDto } from './dto/create-chat-session.dto.js';
 import { UpdateChatSessionDto } from './dto/update-chat-session.dto.js';
 import { GenerateSuggestionsDto } from './dto/generate-suggestions.dto.js';
 
+export interface ResolvedChatConfig {
+  modelName: string;
+  temperature: number;
+  maxOutputTokens: number;
+  topK: number;
+}
+
+export function resolveChatConfig(
+  modelId?: string,
+  effort?: string,
+): ResolvedChatConfig {
+  // 1. Phân giải base model
+  let baseModel = 'cx/gpt-6-luna'; // Default: StudyMate Standar
+  if (modelId === 'studymate-flash') {
+    baseModel = 'cx/gpt-5.6-luna';
+  } else if (modelId === 'studymate-pro') {
+    baseModel = 'cx/gpt-5.6-terra';
+  }
+
+  // 2. Phân giải effort & params
+  let suffix = '-medium';
+  let temperature = 0.5;
+  let maxOutputTokens = 2048;
+  let topK = 15;
+
+  if (effort === 'low') {
+    suffix = '-low';
+    temperature = 0.2;
+    maxOutputTokens = 1024;
+    topK = 10;
+  } else if (effort === 'high' || effort === 'extra' || effort === 'max') {
+    suffix = '-high';
+    temperature = 0.2;
+    maxOutputTokens = 4096;
+    topK = 20;
+  }
+
+  return {
+    modelName: `${baseModel}${suffix}`,
+    temperature,
+    maxOutputTokens,
+    topK,
+  };
+}
+
 @Injectable()
 export class ChatAgentService {
   constructor(
@@ -152,9 +197,14 @@ export class ChatAgentService {
       conversationId: string;
       attachedDocumentIds?: string[];
     },
+    chatOptions?: {
+      modelId?: string;
+      effort?: string;
+    },
   ) {
+    const config = resolveChatConfig(chatOptions?.modelId, chatOptions?.effort);
     console.log(
-      `[ChatAgentService] executeAiChatStream: starting AI stream for session ${chatSessionId}...`,
+      `[ChatAgentService] executeAiChatStream: session=${chatSessionId}, model=${config.modelName}, temp=${config.temperature}, maxTokens=${config.maxOutputTokens}, topK=${config.topK}`,
     );
 
     const availableDocuments = ragContext
@@ -206,6 +256,7 @@ export class ChatAgentService {
         ? {
             availableDocuments,
             attachedDocumentIds: ragContext.attachedDocumentIds,
+            chatConfig: config,
             onSearchDocumentChunks: async ({ semanticQuery, keywords }) => {
               return this.retrievalService.searchRelevantChunks({
                 userId: ragContext.userId,
@@ -213,6 +264,7 @@ export class ChatAgentService {
                 semanticQuery,
                 keywords,
                 preferredDocumentIds: ragContext.attachedDocumentIds,
+                topK: config.topK,
               });
             },
             onGetDocumentsFullContent: async ({
@@ -228,7 +280,7 @@ export class ChatAgentService {
               });
             },
           }
-        : undefined,
+        : { chatConfig: config },
     );
   }
 
@@ -239,6 +291,10 @@ export class ChatAgentService {
     messages: UIMessage[],
     abortSignal?: AbortSignal,
     attachedDocumentIds?: string[],
+    chatOptions?: {
+      modelId?: string;
+      effort?: string;
+    },
   ) {
     console.log(
       `[ChatAgentService] handleChatStream: verifying session ${chatSessionId} for user ${userId}...`,
@@ -264,11 +320,17 @@ export class ChatAgentService {
     this.triggerAutoHeaderAsync(userId, chatSessionId, messages);
 
     // d. Khởi tạo luồng sinh văn bản từ AI kèm ngữ cảnh RAG (2 Tools)
-    return this.executeAiChatStream(chatSessionId, messages, abortSignal, {
-      userId,
-      conversationId: chatSession.conversation_id,
-      attachedDocumentIds,
-    });
+    return this.executeAiChatStream(
+      chatSessionId,
+      messages,
+      abortSignal,
+      {
+        userId,
+        conversationId: chatSession.conversation_id,
+        attachedDocumentIds,
+      },
+      chatOptions,
+    );
   }
 
   private triggerAutoHeaderAsync(

@@ -115,4 +115,24 @@ export class AiService {
       model: this.aiModelFactory.getModelForTask(task),
     });
   }
+
+  streamChatAgent(
+    modelName: string,
+    options: Omit<
+      Parameters<typeof streamText>[0],
+      'model' | 'prompt' | 'messages'
+    > & {
+      messages: NonNullable<Parameters<typeof streamText>[0]['messages']>;
+      temperature?: number;
+      maxOutputTokens?: number;
+    },
+  ) {
+    const { temperature, maxOutputTokens, ...rest } = options;
+    return streamText({
+      ...rest,
+      model: this.aiModelFactory.getChatAgentModel(modelName),
+      temperature,
+      maxOutputTokens,
+    });
+  }
 }

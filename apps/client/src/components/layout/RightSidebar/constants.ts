@@ -25,13 +25,13 @@ export const AVAILABLE_MODELS: AIModelItem[] = [
     desc: "Phản hồi tức thì cho tra cứu nhanh",
   },
   {
-    id: "studymate-pro",
-    name: "StudyMate Pro",
-    desc: "Tối ưu cho tóm tắt và tạo bài tập",
+    id: "studymate-standar",
+    name: "StudyMate Standar",
+    desc: "Tối ưu cho hội thoại học tập và bài tập",
   },
   {
-    id: "studymate-deep",
-    name: "StudyMate Deep",
+    id: "studymate-pro",
+    name: "StudyMate Pro",
     desc: "Suy luận chuyên sâu và giải bài toán khó",
   },
 ];
@@ -50,7 +50,7 @@ export const PRIORITY_OPTIONS: PriorityOption[] = [
   { key: "deep", label: "Suy luận sâu", icon: Brain, effort: "high", thinking: true },
 ];
 
-export const DEFAULT_MODEL_ID = AVAILABLE_MODELS[0].id;
+export const DEFAULT_MODEL_ID = "studymate-standar";
 export const DEFAULT_EFFORT: EffortLevel = "medium";
 
 export const EFFORT_LEVELS: EffortOption[] = [

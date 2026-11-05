@@ -9,4 +9,12 @@ export class ChatStreamDto {
   @IsArray()
   @IsString({ each: true })
   attachedDocumentIds?: string[];
+
+  @IsOptional()
+  @IsString()
+  modelId?: string;
+
+  @IsOptional()
+  @IsString()
+  effort?: string;
 }
