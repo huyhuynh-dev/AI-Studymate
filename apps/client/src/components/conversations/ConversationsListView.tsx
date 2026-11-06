@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Folder, Search, Plus, ChevronRight, Loader2 } from "lucide-react";
+import Link from "next/link";
+import {
+  Folder,
+  Search,
+  Plus,
+  ArrowLeft,
+  ArrowUpRight,
+  MoreVertical,
+  MessageSquare,
+  Sparkles,
+} from "lucide-react";
 import ConversationUpsertModal from "./ConversationUpsertModal";
 import DeleteConversationModal from "./DeleteConversationModal";
 import ConversationContextMenu, { ContextMenuPosition } from "./ConversationContextMenu";
@@ -45,10 +55,11 @@ export default function ConversationsListView({
 }: ConversationsListViewProps) {
   const router = useRouter();
 
-  // Lấy tên môn học từ hook useSubjects
+  // Lấy thông tin môn học từ hook useSubjects
   const { subjects } = useSubjects();
   const currentSubject = subjects.find((s) => s.id === subjectId);
-  const displayTitle = externalTitle || currentSubject?.name || "Không Gian\nHọc Tập";
+  const displayTitle = externalTitle || currentSubject?.name || "Không gian học tập";
+  const subjectColor = currentSubject?.color || "#4F46E5";
 
   const {
     conversations: apiConversations,
@@ -138,15 +149,20 @@ export default function ConversationsListView({
     };
   }, [focusedConversationId]);
 
-  // Click vào cuộc hội thoại -> Focus vào item đó
+  // Click vào cuộc hội thoại -> Chuyển hướng hoặc chọn
   const handleConversationClick = (conversation: ConversationItem) => {
     setFocusedConversationId(conversation.id);
     onSelectConversation?.(conversation);
+    onNavigate?.(conversation);
+    if (subjectId) {
+      router.push(`/home/${subjectId}/${conversation.id}`);
+    }
   };
 
-  // Right-click vào cuộc hội thoại -> Focus và hiện Menu thao tác
+  // Right-click hoặc bấm nút 3 chấm vào cuộc hội thoại
   const handleContextMenu = (e: React.MouseEvent, conversation: ConversationItem) => {
     e.preventDefault();
+    e.stopPropagation();
     setFocusedConversationId(conversation.id);
     setContextMenu({
       isOpen: true,
@@ -192,67 +208,97 @@ export default function ConversationsListView({
     totalConversationsCount ?? totalSessionsCount ?? conversations.length;
 
   return (
-    <div className={`w-full max-w-4xl mx-auto p-4 sm:p-6 bg-white ${className}`}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-100">
-        {/* Left: Folder Icon & Title */}
+    <div className={`w-full flex flex-col select-none ${className}`.trim()}>
+      {/* ── Breadcrumb Back Navigation ── */}
+      <div className="mb-4">
+        <Link
+          href="/home"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#777587] hover:text-[#4F46E5] dark:text-[#9DA3AF] dark:hover:text-[#818CF8] transition-colors cursor-pointer group"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
+          <span>Tất cả không gian học tập</span>
+        </Link>
+      </div>
+
+      {/* ── Apple Large Title Section Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-6 border-b border-[#E5EEFF] dark:border-white/[0.08]">
+        {/* Left: Monogram/Folder + Title & Stats */}
         <div className="flex items-center gap-3.5">
           <div
-            className="flex items-center justify-center w-12 h-12 rounded-2xl shrink-0"
+            className="flex items-center justify-center w-12 h-12 rounded-2xl shadow-xs shrink-0 transition-transform hover:scale-105 duration-200"
             style={{
-              backgroundColor: currentSubject?.color ? `${currentSubject.color}15` : "#EEF2FF",
-              color: currentSubject?.color || "#4F46E5",
+              backgroundColor: `${subjectColor}16`,
+              border: `1px solid ${subjectColor}28`,
+              color: subjectColor,
             }}
           >
             <Folder className="w-6 h-6 stroke-[1.8]" />
           </div>
           <div className="text-left">
-            <h1 className="text-xl font-bold text-gray-900 leading-tight whitespace-pre-line">
-              {displayTitle}
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-400 font-normal mt-0.5">
-              {displayCount > 0 ? `${displayCount} phiên học` : "Không có phiên học nào"}
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#0B1C30] dark:text-[#EFF0F6] tracking-tight leading-tight">
+                {displayTitle}
+              </h1>
+              <span className="tabular-nums text-xs font-semibold text-[#4F46E5] dark:text-[#818CF8] bg-[#EEF2FF] dark:bg-[#4F46E5]/20 border border-[#C7D2FE] dark:border-[#4F46E5]/30 px-2.5 py-0.5 rounded-full shadow-2xs">
+                {displayCount} phiên học
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-[#777587] dark:text-[#9DA3AF] font-normal mt-0.5">
+              Quản lý các phiên hội thoại, ghi chú và tài liệu học tập
             </p>
           </div>
         </div>
 
-        {/* Right: Search & Create Session Button */}
-        <div className="flex items-center gap-3">
-          {/* Search Bar */}
-          <div className="relative flex-1 sm:w-60">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        {/* Right: Spotlight Search & Primary CTA */}
+        <div className="flex items-center gap-2.5 self-start sm:self-auto w-full sm:w-auto">
+          {/* Search Input */}
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#777587] pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={handleSearchChange}
               placeholder="Tìm kiếm phiên học..."
-              className="w-full pl-9 pr-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 bg-white border border-gray-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+              className="w-full pl-9 pr-3.5 py-2 text-sm text-[#0B1C30] dark:text-[#EFF0F6] placeholder-[#777587] bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.1] rounded-xl outline-none focus:border-[#4F46E5] focus:ring-3 focus:ring-[#4F46E5]/15 transition-all shadow-2xs"
             />
           </div>
 
-          {/* Create Session Button */}
+          {/* Primary CTA (Rule of 1 Primary Action) */}
           <button
             type="button"
             onClick={handleOpenCreateModal}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-[#4845E4] hover:bg-[#3d3bc9] active:bg-[#3432b3] text-white rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#4F46E5] hover:bg-[#3525CD] active:scale-[0.98] text-white rounded-xl shadow-md shadow-[#4F46E5]/20 hover:shadow-[#4F46E5]/30 text-sm font-semibold transition-all shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span className="text-xs sm:text-sm font-semibold leading-tight text-center">
-              Tạo phiên<br className="hidden sm:inline" /> học
-            </span>
+            <span className="whitespace-nowrap">Tạo phiên học</span>
           </button>
         </div>
       </div>
 
-      {/* Conversations List */}
-      <div className="mt-6 flex flex-col gap-3">
+      {/* ── Conversations List Rows ── */}
+      <div className="flex flex-col gap-3">
+        {/* 1. Loading Skeleton */}
         {isLoading ? (
-          <div className="py-12 flex justify-center text-gray-400">
-            <Loader2 className="w-6 h-6 animate-spin" />
+          <div className="space-y-3 animate-pulse">
+            {[1, 2, 3].map((idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.08]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-[#EFF4FF] dark:bg-white/[0.06]" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-48 rounded bg-[#E5EEFF] dark:bg-white/[0.08]" />
+                    <div className="h-3 w-32 rounded bg-[#EFF4FF] dark:bg-white/[0.04]" />
+                  </div>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-[#EFF4FF] dark:bg-white/[0.06]" />
+              </div>
+            ))}
           </div>
         ) : !subjectId ? (
-          <div className="py-12 text-center text-sm text-gray-400 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-            Vui lòng chọn một Không gian học tập.
+          <div className="py-16 text-center text-sm text-[#777587] dark:text-neutral-400 bg-white dark:bg-[#12151C] rounded-2xl border border-dashed border-[#E5EEFF] dark:border-white/[0.1]">
+            Vui lòng chọn một Không gian học tập để xem danh sách phiên học.
           </div>
         ) : filteredConversations.length > 0 ? (
           filteredConversations.map((conversation) => {
@@ -267,60 +313,100 @@ export default function ConversationsListView({
                 data-session-item="true"
                 onClick={() => handleConversationClick(conversation)}
                 onContextMenu={(e) => handleContextMenu(e, conversation)}
-                className={`flex items-center justify-between px-5 py-3.5 sm:py-4 bg-white border rounded-2xl cursor-pointer select-none
-                  transform transition-all duration-200 ease-out hover:scale-[1.015] hover:shadow-md
+                className={`group relative flex items-center justify-between p-4 sm:p-4.5 rounded-2xl cursor-pointer select-none
+                  transition-all duration-200 ease-out border shadow-xs hover:-translate-y-0.5
                   ${
                     isFocused
-                      ? "border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-50/15 shadow-sm"
-                      : "border-gray-200/80 shadow-2xs hover:border-gray-300"
+                      ? "bg-[#EEF2FF] dark:bg-white/[0.08] border-[#4F46E5] ring-2 ring-[#4F46E5]/20 shadow-sm"
+                      : "bg-white dark:bg-[#12151C] border-[#E5EEFF] dark:border-white/[0.08] hover:border-[#C7C4D8] dark:hover:border-white/[0.18] hover:shadow-[0_8px_20px_-4px_rgba(79,70,229,0.08)]"
                   }`}
               >
-                {/* Status Indicator & Title */}
+                {/* Left: Squircle Icon + Title & Metadata */}
                 <div className="flex items-center gap-3.5 min-w-0 pr-3">
-                  <span
-                    className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all duration-200 ${
-                      isFocused
-                        ? "bg-emerald-500 ring-2 ring-emerald-500/20"
-                        : conversation.isActive
-                        ? "bg-emerald-500 ring-2 ring-emerald-500/20"
-                        : "bg-gray-300"
-                    }`}
-                  />
-                  <span
-                    className={`text-sm sm:text-base font-semibold truncate transition-colors ${
-                      isFocused ? "text-indigo-950 font-bold" : "text-gray-800"
-                    }`}
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105 duration-200"
+                    style={{
+                      backgroundColor: `${subjectColor}14`,
+                      border: `1px solid ${subjectColor}25`,
+                      color: subjectColor,
+                    }}
                   >
-                    {conversation.title}
-                  </span>
+                    <MessageSquare className="h-5 w-5 stroke-[1.8]" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <h3
+                      className={`text-[15px] font-bold truncate tracking-tight transition-colors ${
+                        isFocused
+                          ? "text-[#4F46E5] dark:text-[#818CF8]"
+                          : "text-[#0B1C30] dark:text-[#EFF0F6] group-hover:text-[#4F46E5] dark:group-hover:text-[#818CF8]"
+                      }`}
+                    >
+                      {conversation.title}
+                    </h3>
+                    <p className="text-xs text-[#777587] dark:text-[#9DA3AF] mt-0.5 truncate">
+                      Phiên hội thoại AI & tài liệu ôn tập
+                    </p>
+                  </div>
                 </div>
 
-                {/* Dấu ">" dành cho chuyển hướng */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onNavigate?.(conversation);
-                    if (subjectId) {
-                      router.push(`/home/${subjectId}/${conversationId}`);
-                    }
-                  }}
-                  className="p-1 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
-                  title="Chuyển hướng đến phiên học"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                {/* Right: Quick Action Menu Button + Circular Enter Button */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* 3-dots Context Menu Button */}
+                  <button
+                    type="button"
+                    aria-label={`Tùy chọn cho ${conversation.title}`}
+                    onClick={(e) => handleContextMenu(e, conversation)}
+                    className="h-8 w-8 rounded-lg flex items-center justify-center text-[#777587] dark:text-[#9DA3AF] opacity-60 group-hover:opacity-100 hover:bg-[#EEF2FF] dark:hover:bg-white/[0.1] hover:text-[#4F46E5] dark:hover:text-white transition-all cursor-pointer"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+
+                  {/* Circular Navigation Affordance Button */}
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-200 shadow-2xs group-hover:scale-105 ${
+                      isFocused
+                        ? "bg-[#4F46E5] border-[#4F46E5] text-white"
+                        : "bg-[#F8F9FF] dark:bg-white/[0.06] border-[#E5EEFF] dark:border-white/[0.1] text-[#777587] group-hover:bg-[#4F46E5] group-hover:border-[#4F46E5] group-hover:text-white"
+                    }`}
+                  >
+                    <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.2 group-hover:-translate-y-0.2" />
+                  </div>
+                </div>
               </div>
             );
           })
         ) : (
-          <div className="py-12 text-center text-sm text-gray-400 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-            Không tìm thấy phiên học nào phù hợp.
+          /* Empty Search or No Sessions State */
+          <div className="py-16 text-center bg-white dark:bg-[#12151C] rounded-2xl border border-dashed border-[#E5EEFF] dark:border-white/[0.1] p-8 space-y-3">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF2FF] dark:bg-white/[0.06] text-[#4F46E5] dark:text-[#818CF8]">
+              <Sparkles className="h-6 w-6 stroke-[1.8]" />
+            </div>
+            <div>
+              <p className="text-base font-bold text-[#0B1C30] dark:text-[#EFF0F6]">
+                {searchQuery ? "Không tìm thấy phiên học nào" : "Chưa có phiên học nào"}
+              </p>
+              <p className="text-xs text-[#777587] dark:text-[#9DA3AF] mt-1 max-w-sm mx-auto">
+                {searchQuery
+                  ? "Thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc để xem toàn bộ danh sách."
+                  : "Bắt đầu bằng cách tạo một phiên học mới để cùng AI ôn tập và giải bài tập."}
+              </p>
+            </div>
+            {!searchQuery && (
+              <button
+                type="button"
+                onClick={handleOpenCreateModal}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] hover:bg-[#3525CD] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all active:scale-98 cursor-pointer mt-2"
+              >
+                <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+                <span>Tạo phiên học đầu tiên</span>
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* Context Menu khi Right Click */}
+      {/* ── Apple macOS Context Menu ── */}
       <ConversationContextMenu
         isOpen={contextMenu.isOpen}
         position={contextMenu.position}
@@ -329,7 +415,7 @@ export default function ConversationsListView({
         onDelete={handleOpenDeleteModal}
       />
 
-      {/* Modal Tạo mới / Chỉnh sửa */}
+      {/* ── Modal Tạo mới / Chỉnh sửa Phiên học ── */}
       <ConversationUpsertModal
         isOpen={upsertModal.isOpen}
         mode={upsertModal.mode}
@@ -345,7 +431,7 @@ export default function ConversationsListView({
         }}
       />
 
-      {/* Modal Xác nhận Xóa */}
+      {/* ── Modal Xác nhận Xóa Phiên học ── */}
       <DeleteConversationModal
         isOpen={deleteModal.isOpen}
         conversationTitle={deleteModal.conversation?.title}
