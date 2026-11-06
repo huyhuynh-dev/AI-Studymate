@@ -17,7 +17,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     } = useFocusMode();
     const pathname = usePathname();
 
-    // Extract subjectId from path: /home/{subjectId}/...
+    // Trích xuất subjectId từ URL: /home/{subjectId}/...
     const currentSubjectId = useMemo(() => {
         if (!pathname) return null;
         const parts = pathname.split("/");
@@ -50,7 +50,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                 <aside className="z-20 shrink-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]">
                     <React.Suspense
                         fallback={
-                            <div className="w-68 h-full bg-white dark:bg-[#12151C] border-r border-[#E5EEFF] dark:border-white/[0.08] animate-pulse" />
+                            <div className="w-68 h-full bg-white dark:bg-[#12151C] border-r border-black/[0.06] dark:border-white/[0.08] animate-pulse" />
                         }
                     >
                         <LeftSidebar
@@ -66,12 +66,22 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                         isFocusMode
                             ? "p-0 overflow-hidden bg-white dark:bg-[#090B10]"
                             : isViewingDocument
-                              ? "p-3 sm:p-4 overflow-y-auto"
-                              : "p-5 sm:p-8 lg:p-10 overflow-y-auto"
+                              ? "p-2 sm:p-3 overflow-y-auto"
+                              : showRightSidebar
+                                ? "p-3.5 sm:p-5 lg:p-6 overflow-y-auto"
+                                : "p-5 sm:p-8 lg:p-10 overflow-y-auto"
                     }`}
                 >
                     {/* Inner content wrapper with maximum focus and fluid readability */}
-                    <div className={`min-h-full w-full flex flex-col ${isFocusMode ? "h-full" : "max-w-7xl mx-auto"}`}>
+                    <div
+                        className={`min-h-full w-full flex flex-col ${
+                            isFocusMode
+                                ? "h-full"
+                                : showRightSidebar
+                                  ? "w-full max-w-[1600px] mx-auto"
+                                  : "max-w-7xl mx-auto"
+                        }`}
+                    >
                         {children}
                     </div>
                 </main>

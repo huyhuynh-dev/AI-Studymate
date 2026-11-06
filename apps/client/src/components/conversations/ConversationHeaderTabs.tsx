@@ -21,14 +21,17 @@ export interface ConversationHeaderTabsProps {
     className?: string;
 }
 
-/** Icon tài liệu (PDF) dạng filled màu Indigo với các đường sọc trắng như trong thiết kế */
+/** Icon tài liệu (PDF) phong cách Apple với vector sắc sảo */
 function DocumentPdfSolidIcon({ isActive = false }: { isActive?: boolean }) {
-    const fillColor = isActive ? "#4F46E5" : "#6B7280";
-    const foldColor = isActive ? "#3730A3" : "#4B5563";
+    const fillColor = isActive ? "currentColor" : "currentColor";
 
     return (
         <svg
-            className="h-4.5 w-4.5 shrink-0"
+            className={`h-4.5 w-4.5 shrink-0 transition-colors ${
+                isActive
+                    ? "text-[#4F46E5] dark:text-[#818CF8]"
+                    : "text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
+            }`}
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -37,11 +40,12 @@ function DocumentPdfSolidIcon({ isActive = false }: { isActive?: boolean }) {
             <path
                 d="M4 4C4 2.89543 4.89543 2 6 2H14L20 8V20C20 21.1046 19.1046 22 18 22H6C4.89543 22 4 21.1046 4 20V4Z"
                 fill={fillColor}
+                fillOpacity={isActive ? "0.9" : "0.75"}
             />
             <path
                 d="M14 2V7C14 7.55228 14.4477 8 15 8H20"
-                fill={foldColor}
-                opacity="0.4"
+                fill={fillColor}
+                fillOpacity="0.4"
             />
             <line
                 x1="7.5"
@@ -102,30 +106,21 @@ export default function ConversationHeaderTabs({
     ];
 
     const renderIcon = (tabId: TabKey, isActive: boolean) => {
+        const iconClasses = `h-4.5 w-4.5 shrink-0 transition-colors ${
+            isActive
+                ? "text-[#4F46E5] dark:text-[#818CF8]"
+                : "text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
+        }`;
+
         switch (tabId) {
             case "documents":
                 return <DocumentPdfSolidIcon isActive={isActive} />;
             case "summary":
-                return (
-                    <Sparkles
-                        className={`h-4.5 w-4.5 shrink-0 transition-colors ${isActive ? "text-[#4F46E5]" : "text-gray-700"
-                            }`}
-                    />
-                );
+                return <Sparkles className={iconClasses} />;
             case "flashcard":
-                return (
-                    <PlayingCards
-                        className={`h-4.5 w-4.5 shrink-0 transition-colors ${isActive ? "text-[#4F46E5]" : "text-gray-700"
-                            }`}
-                    />
-                );
+                return <PlayingCards className={iconClasses} />;
             case "quiz":
-                return (
-                    <FileQuestion
-                        className={`h-4.5 w-4.5 shrink-0 transition-colors ${isActive ? "text-[#4F46E5]" : "text-gray-700"
-                            }`}
-                    />
-                );
+                return <FileQuestion className={iconClasses} />;
             default:
                 return null;
         }
@@ -133,10 +128,10 @@ export default function ConversationHeaderTabs({
 
     return (
         <div
-            className={`w-full rounded-t-2xl sm:rounded-t-3xl border-b border-gray-100 bg-white px-4 sm:px-6 select-none ${className}`}
+            className={`w-full rounded-t-[20px] sm:rounded-t-[24px] border-b border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#12151C] px-3 sm:px-6 select-none ${className}`}
         >
             <nav
-                className="flex items-center gap-6 sm:gap-8 overflow-x-auto scrollbar-none"
+                className="flex items-center gap-2 sm:gap-6 overflow-x-auto scrollbar-none"
                 aria-label="Conversation Header Tabs"
             >
                 {tabs.map((tab) => {
@@ -147,10 +142,11 @@ export default function ConversationHeaderTabs({
                             key={tab.id}
                             type="button"
                             onClick={() => handleTabClick(tab.id)}
-                            className={`group relative flex items-center gap-2 py-3.5 text-sm sm:text-[15px] font-medium whitespace-nowrap transition-colors cursor-pointer ${isActive
-                                ? "text-[#4F46E5] font-semibold"
-                                : "text-gray-700 hover:text-gray-900"
-                                }`}
+                            className={`group relative flex items-center gap-2 px-3 py-3.5 text-sm sm:text-[14.5px] font-medium whitespace-nowrap transition-all duration-200 rounded-t-xl cursor-pointer ${
+                                isActive
+                                    ? "text-[#4F46E5] dark:text-[#818CF8] font-semibold"
+                                    : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-black/[0.02] dark:hover:bg-white/[0.03]"
+                            }`}
                         >
                             {/* Tab Icon */}
                             {renderIcon(tab.id, isActive)}
@@ -158,16 +154,16 @@ export default function ConversationHeaderTabs({
                             {/* Tab Label */}
                             <span>{tab.label}</span>
 
-                            {/* Badge (e.g. Sắp có) */}
+                            {/* Apple Capsule Badge (e.g. Sắp có) */}
                             {tab.badge && (
-                                <span className="ml-1 inline-flex items-center rounded-full bg-[#EBF0FD] px-2 py-0.5 text-xs font-normal text-[#4F46E5]">
+                                <span className="ml-0.5 inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/50 dark:border-indigo-800/40 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
                                     {tab.badge}
                                 </span>
                             )}
 
-                            {/* Active Indicator Underline */}
+                            {/* Apple Active Indicator: pill underline cong mềm mại */}
                             {isActive && (
-                                <span className="absolute -bottom-px left-0 right-0 h-[2.5px] rounded-full bg-[#4F46E5]" />
+                                <span className="absolute -bottom-px left-2 right-2 h-[2.5px] rounded-full bg-[#4F46E5] dark:bg-[#818CF8] shadow-[0_1px_4px_rgba(79,70,229,0.3)] dark:shadow-[0_1px_6px_rgba(129,140,248,0.4)]" />
                             )}
                         </button>
                     );

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -45,47 +45,48 @@ export default function ConversationHeaderRoutes({
 
     return (
         <div
-            className={`flex flex-wrap items-center gap-2.5 sm:gap-3 text-sm select-none ${className}`}
+            className={`flex flex-wrap items-center gap-2 sm:gap-2.5 text-sm select-none ${className}`}
         >
-            {/* Nút Quay lại */}
+            {/* Nút Quay lại phong cách Apple Navigation Bar */}
             <button
                 type="button"
                 onClick={handleBack}
-                className="inline-flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-xs transition-all hover:bg-gray-50 hover:text-gray-900 active:scale-[0.98] cursor-pointer"
+                aria-label="Quay lại"
+                className="group inline-flex items-center gap-1.5 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 backdrop-blur-md px-3 py-1.5 text-xs sm:text-sm font-medium text-neutral-700 dark:text-neutral-300 shadow-2xs transition-all duration-200 hover:bg-neutral-100/80 dark:hover:bg-white/[0.08] hover:text-neutral-900 dark:hover:text-white active:scale-95 cursor-pointer"
             >
-                <ArrowLeft className="h-4 w-4 text-gray-700" />
+                <ChevronLeft className="h-4 w-4 text-neutral-500 dark:text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200 transition-colors" />
                 <span>Quay lại</span>
             </button>
 
-            {/* Dấu phân cách 1 */}
-            <span className="text-gray-300 font-light" aria-hidden="true">
-                /
-            </span>
+            {/* Dấu phân cách Apple Chevron */}
+            <ChevronRight className="h-3.5 w-3.5 text-neutral-300 dark:text-neutral-600 shrink-0" aria-hidden="true" />
 
-            {/* Tên môn học */}
+            {/* Tên môn học / Không gian học tập */}
             {subjectHref ? (
                 <Link
                     href={subjectHref}
-                    className="font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                    className="font-medium text-neutral-600 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors truncate max-w-[140px] sm:max-w-[200px]"
                 >
                     {subjectName}
                 </Link>
             ) : (
-                <span className="font-medium text-gray-700">{subjectName}</span>
+                <span className="font-medium text-neutral-600 dark:text-neutral-400 truncate max-w-[140px] sm:max-w-[200px]">
+                    {subjectName}
+                </span>
             )}
 
-            {/* Dấu phân cách 2 */}
-            <span className="text-gray-300 font-light" aria-hidden="true">
-                /
-            </span>
+            {/* Dấu phân cách Apple Chevron */}
+            <ChevronRight className="h-3.5 w-3.5 text-neutral-300 dark:text-neutral-600 shrink-0" aria-hidden="true" />
 
             {/* Tiêu đề phiên học */}
-            <span className="font-semibold text-gray-900">{sessionTitle}</span>
+            <span className="font-semibold text-neutral-900 dark:text-neutral-100 truncate max-w-[160px] sm:max-w-[280px]">
+                {sessionTitle}
+            </span>
 
-            {/* Huy hiệu trạng thái (e.g. Phiên mới) */}
+            {/* Huy hiệu trạng thái Apple Capsule Pill */}
             {badgeText && (
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#A7F3D0]/70 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 shrink-0">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
                     <span>{badgeText}</span>
                 </div>
             )}

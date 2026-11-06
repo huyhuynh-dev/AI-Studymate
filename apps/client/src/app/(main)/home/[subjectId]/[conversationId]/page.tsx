@@ -100,19 +100,19 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
   return (
     <div
-      className={`flex flex-1 min-h-full w-full flex-col transition-all duration-300 ease-in-out ${
-        isFocusMode ? "h-full gap-0" : isDocumentViewerActive ? "gap-2.5" : "gap-4"
+      className={`flex flex-1 min-h-full w-full flex-col transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        isFocusMode ? "h-full gap-0" : isDocumentViewerActive ? "gap-2 sm:gap-2.5" : "gap-3 sm:gap-4"
       }`}
     >
       {/* Hàng Header điều hướng: Breadcrumb bên trái & Các nút chức năng bên phải — Trượt lên & Ẩn đi khi vào Focus Mode */}
       <div
-        className={`flex shrink-0 flex-wrap items-center justify-between gap-3 transition-all duration-300 ease-in-out overflow-hidden ${
+        className={`flex shrink-0 flex-wrap items-center justify-between gap-3 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden ${
           isFocusMode
             ? "max-h-0 -translate-y-4 opacity-0 pointer-events-none"
             : "max-h-16 translate-y-0 opacity-100"
         }`}
       >
-        {/* Component: Breadcrumb điều hướng */}
+        {/* Component: Breadcrumb điều hướng Apple */}
         <ConversationHeaderRoutes
           subjectName={subjectName}
           subjectHref={`/home/${subjectId}`}
@@ -120,38 +120,42 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           badgeText="Phiên mới"
         />
 
-        {/* Các nút hành động bên phải: Chia sẻ, Tùy chọn & Trợ lý StudyMate AI */}
-        <div className="flex items-center gap-2">
+        {/* Các nút hành động bên phải phong cách Apple Toolbar Pill Buttons */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             type="button"
             title="Chia sẻ"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] text-[#464555] dark:text-[#EFF0F6] shadow-2xs transition-all hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] hover:text-[#0B1C30] active:scale-[0.98] cursor-pointer"
+            aria-label="Chia sẻ"
+            className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 backdrop-blur-md text-neutral-600 dark:text-neutral-300 shadow-2xs transition-all duration-200 hover:bg-neutral-100/80 dark:hover:bg-white/[0.08] hover:text-neutral-900 dark:hover:text-white active:scale-95 cursor-pointer"
           >
             <Share2 className="h-4 w-4" />
           </button>
           <button
             type="button"
             title="Tùy chọn khác"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] text-[#464555] dark:text-[#EFF0F6] shadow-2xs transition-all hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] hover:text-[#0B1C30] active:scale-[0.98] cursor-pointer"
+            aria-label="Tùy chọn khác"
+            className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 backdrop-blur-md text-neutral-600 dark:text-neutral-300 shadow-2xs transition-all duration-200 hover:bg-neutral-100/80 dark:hover:bg-white/[0.08] hover:text-neutral-900 dark:hover:text-white active:scale-95 cursor-pointer"
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
+
+          {/* Nút bật/tắt Trợ lý AI StudyMate */}
           <div className="relative group">
             <button
               type="button"
               onClick={toggleRightSidebar}
               aria-label="Trợ lý StudyMate AI"
-              className={`flex h-9 w-9 items-center justify-center rounded-xl border shadow-xs transition-all active:scale-[0.98] cursor-pointer ${
+              className={`flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-full border transition-all duration-200 active:scale-95 cursor-pointer ${
                 !isRightSidebarCollapsed
-                  ? "border-[#C7D2FE] dark:border-[#4F46E5]/40 bg-[#EEF2FF] dark:bg-[#4F46E5]/20 text-[#4F46E5] dark:text-[#818CF8]"
-                  : "border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] text-[#464555] dark:text-neutral-400 hover:border-[#C7D2FE] hover:bg-[#EEF2FF]/60 hover:text-[#4F46E5]"
+                  ? "border-indigo-300 dark:border-indigo-500/40 bg-indigo-50 dark:bg-indigo-950/40 text-[#4F46E5] dark:text-[#818CF8] shadow-xs"
+                  : "border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 backdrop-blur-md text-neutral-600 dark:text-neutral-400 hover:border-indigo-200 dark:hover:border-indigo-800/40 hover:bg-indigo-50/50 hover:text-[#4F46E5]"
               }`}
             >
-              <Sparkles className="h-4 w-4 text-[#4F46E5] dark:text-[#818CF8] transition-transform group-hover:scale-110" />
+              <Sparkles className="h-4 w-4 text-[#4F46E5] dark:text-[#818CF8] transition-transform duration-200 group-hover:scale-110" />
             </button>
             {/* Apple Floating Tooltip khi hover */}
-            <div className="pointer-events-none absolute right-0 top-full mt-2 hidden group-hover:flex items-center z-50 animate-in fade-in-50 zoom-in-95 duration-100">
-              <div className="rounded-lg bg-[#0B1C30]/95 dark:bg-white/95 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-white dark:text-[#0B1C30] shadow-xl whitespace-nowrap">
+            <div className="pointer-events-none absolute right-0 top-full mt-2 hidden group-hover:flex items-center z-50 animate-in fade-in-50 zoom-in-95 duration-150">
+              <div className="rounded-full bg-[#0B1C30]/90 dark:bg-white/95 backdrop-blur-md px-3 py-1 text-xs font-medium text-white dark:text-[#0B1C30] shadow-xl whitespace-nowrap">
                 {isRightSidebarCollapsed ? "Mở Trợ lý StudyMate AI" : "Thu gọn Trợ lý StudyMate AI"}
               </div>
             </div>
@@ -159,20 +163,20 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         </div>
       </div>
 
-      {/* Container chính: Thẻ chứa Tabs & Nội dung (Tự động xoá viền & bo góc khi vào Focus Mode) */}
+      {/* Container chính: Thẻ chứa Tabs & Nội dung với Apple Concentric Radii */}
       <div
-        className={`flex flex-1 flex-col bg-white dark:bg-[#12151C] overflow-hidden transition-all duration-300 ease-in-out ${
+        className={`flex flex-1 flex-col bg-white dark:bg-[#12151C] overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           isFocusMode
             ? "min-h-0 rounded-none border-0 shadow-none"
-            : "rounded-2xl sm:rounded-3xl border border-[#E5EEFF] dark:border-white/[0.08] shadow-xs"
+            : "rounded-[20px] sm:rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs"
         }`}
       >
         {/* Component: Thanh Tab điều hướng — Trượt lên & Ẩn đi khi vào Focus Mode */}
         <div
-          className={`relative z-10 shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
+          className={`relative z-10 shrink-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden ${
             isFocusMode
               ? "max-h-0 -translate-y-4 opacity-0 border-b-0 pointer-events-none"
-              : "max-h-20 translate-y-0 opacity-100 border-b border-[#E5EEFF] dark:border-white/[0.08]"
+              : "max-h-20 translate-y-0 opacity-100"
           }`}
         >
           <ConversationHeaderTabs
@@ -181,7 +185,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           />
         </div>
 
-        {/* Khu vực nội dung Tab (Loại bỏ padding thừa khi đang xem PDF/Ảnh để giải quyết Box-in-box Syndrome) */}
+        {/* Khu vực nội dung Tab */}
         <div
           className={`relative flex flex-1 flex-col overflow-hidden transition-all duration-200 ${
             isFocusMode ? "min-h-0" : ""
