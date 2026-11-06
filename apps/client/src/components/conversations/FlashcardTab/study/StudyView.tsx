@@ -15,7 +15,7 @@ import { StudyHeader } from "./StudyHeader";
 interface Props {
   initialIds: string[];
   cards: Flashcard[];
-  onPersist: (card: Flashcard) => void;
+  onPersist: (card: Flashcard, rating: Rating) => void;
   onEditCard: (card: Flashcard) => void;
   onExit: () => void;
   onStudyExtra: () => void;

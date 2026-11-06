@@ -6,13 +6,13 @@ import { applyRating } from "../utils/srs";
 
 /**
  * Quản lý hàng đợi một phiên học.
- * - queue chỉ giữ id; nội dung luôn lấy từ `cards` (store) nên sửa thẻ giữa phiên được cập nhật ngay.
+ * - queue chỉ giữ id; nội dung luôn lấy từ `cards` (store/api) nên sửa thẻ giữa phiên được cập nhật ngay.
  * - Thẻ "Quên" được đưa xuống cuối hàng đợi để học lại trong cùng phiên.
  */
 export function useStudySession(
   initialIds: string[],
   cards: Flashcard[],
-  persist: (card: Flashcard) => void
+  persist: (card: Flashcard, rating: Rating) => void
 ) {
   const [queue, setQueue] = useState(initialIds);
   const [total] = useState(initialIds.length);
@@ -28,12 +28,15 @@ export function useStudySession(
   const remaining = { new: 0, learning: 0, review: 0 };
   queue.forEach((id) => {
     const c = cards.find((x) => x.id === id);
-    if (c) remaining[c.status] += 1;
+    if (c) {
+      const statusKey = c.status === "relearning" ? "learning" : c.status;
+      remaining[statusKey] = (remaining[statusKey] || 0) + 1;
+    }
   });
 
   const rate = (rating: Rating) => {
     if (!current) return;
-    persist(applyRating(current, rating));
+    persist(applyRating(current, rating), rating);
     setAnswers((n) => n + 1);
     if (rating === "good" || rating === "easy") setGoodAnswers((n) => n + 1);
     setRevealed(false);

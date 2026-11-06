@@ -8,12 +8,11 @@ import { DecksEmptyState } from "./decks/DecksEmptyState";
 import { DecksView } from "./decks/DecksView";
 import { DeckDetailView } from "./detail/DeckDetailView";
 import { CardEditorModal } from "./editor/CardEditorModal";
-import { useFlashcardStore } from "./hooks/useFlashcardStore";
 import { useDecks } from "@/hooks/useDecks";
+import { useFlashcards } from "@/hooks/useFlashcards";
 import { StudyView } from "./study/StudyView";
 import type { AiConfig, CardDraft, Deck, DeckStats, Flashcard } from "./types";
 import { AmbientGlow, ConfirmDialog, cx } from "./ui";
-import { getDeckStats } from "./utils/srs";
 
 export interface FlashcardsTabProps {
   conversationId?: string;
@@ -34,8 +33,7 @@ export default function FlashcardsTab({
   hasDocuments = true,
   className,
 }: FlashcardsTabProps) {
-  const { decks, isLoading: isDecksLoading, createDeck, updateDeck, deleteDeck } = useDecks(conversationId);
-  const store = useFlashcardStore();
+  const { decks, isLoading: isDecksLoading, createDeck, updateDeck, deleteDeck, refreshDecks } = useDecks(conversationId);
   const [view, setView] = useState<View>({ name: "decks" });
   const [deckForm, setDeckForm] = useState<{ open: boolean; deck: Deck | null }>({ open: false, deck: null });
   const [deckToDelete, setDeckToDelete] = useState<Deck | null>(null);
@@ -43,25 +41,44 @@ export default function FlashcardsTab({
   const [cardToDelete, setCardToDelete] = useState<Flashcard | null>(null);
   const [ai, setAi] = useState<AiTarget | null>(null);
 
+  const activeDeckId = view.name !== "decks" ? view.deckId : undefined;
+  const {
+    cards: deckCards,
+    createCard,
+    createCards,
+    updateCard,
+    deleteCard,
+    reviewCard,
+  } = useFlashcards(activeDeckId);
+
   const statsByDeck = useMemo(() => {
     const map: Record<string, DeckStats> = {};
     for (const d of decks) {
       if (d.stats) {
         map[d.id] = d.stats;
       } else {
-        map[d.id] = getDeckStats(store.cards.filter((c) => c.deckId === d.id));
+        map[d.id] = {
+          total: 0,
+          new: 0,
+          learning: 0,
+          review: 0,
+          dueToday: 0,
+        };
       }
     }
     return map;
-  }, [decks, store.cards]);
+  }, [decks]);
 
   const activeDeck = view.name !== "decks" ? decks.find((d) => d.id === view.deckId) : undefined;
-  const deckCards = activeDeck ? store.cards.filter((c) => c.deckId === activeDeck.id) : [];
 
   /* ---------- handlers ---------- */
   const openAi = (target: AiTarget) => (hasDocuments ? setAi(target) : onUploadDocument?.());
   const startStudy = (deckId: string, mode: "due" | "extra") => setView({ name: "study", deckId, mode, nonce: Date.now() });
-  const smartStudy = (deckId: string) => startStudy(deckId, statsByDeck[deckId]?.dueToday > 0 ? "due" : "extra");
+  const smartStudy = (deckId: string) => {
+    const deckStats = statsByDeck[deckId];
+    const mode = deckStats && deckStats.dueToday > 0 ? "due" : "extra";
+    startStudy(deckId, mode);
+  };
 
   const submitDeck = async (v: { name: string; description: string }) => {
     if (deckForm.deck) {
@@ -69,11 +86,16 @@ export default function FlashcardsTab({
     } else {
       await createDeck(v);
     }
+    refreshDecks();
   };
 
-  const saveCard = (draft: CardDraft) => {
-    if (cardEditor.card) store.updateCard(cardEditor.card.id, draft);
-    else store.addCard(cardEditor.deckId, draft);
+  const saveCard = async (draft: CardDraft) => {
+    if (cardEditor.card) {
+      await updateCard(cardEditor.card.id, draft);
+    } else {
+      await createCard(draft);
+    }
+    refreshDecks();
   };
 
   const generateAi = async (cfg: AiConfig) => {
@@ -85,11 +107,13 @@ export default function FlashcardsTab({
         description: "Được tạo tự động từ tài liệu của bạn.",
       });
       if (createdDeck) {
-        store.addCards(createdDeck.id, drafts);
+        await createCards(drafts);
+        refreshDecks();
         setView({ name: "detail", deckId: createdDeck.id });
       }
     } else {
-      store.addCards(ai.deckId, drafts);
+      await createCards(drafts);
+      refreshDecks();
     }
   };
 
@@ -98,30 +122,58 @@ export default function FlashcardsTab({
     await deleteDeck(deckToDelete.id);
     if (view.name !== "decks" && view.deckId === deckToDelete.id) setView({ name: "decks" });
     setDeckToDelete(null);
+    refreshDecks();
+  };
+
+  const confirmDeleteCard = async () => {
+    if (!cardToDelete) return;
+    await deleteCard(cardToDelete.id);
+    setCardToDelete(null);
+    refreshDecks();
   };
 
   /* ---------- màn hình hiện tại ---------- */
   let content;
   if (view.name === "study" && activeDeck) {
-    const ids = (view.mode === "due" ? deckCards.filter((c) => c.dueInDays <= 0) : deckCards).map((c) => c.id);
+    const dueCards = deckCards.filter((c) => c.dueInDays <= 0);
+    const studyCards = view.mode === "due" && dueCards.length > 0 ? dueCards : deckCards;
+    const ids = studyCards.map((c) => c.id);
+
     content = (
       <StudyView
         key={`${view.deckId}-${view.mode}-${view.nonce}`}
         initialIds={ids}
-        cards={store.cards}
-        onPersist={(c) => store.updateCard(c.id, c)}
+        cards={deckCards}
+        onPersist={async (c, rating) => {
+          await reviewCard(c.id, rating);
+          refreshDecks();
+        }}
         onEditCard={(card) => setCardEditor({ open: true, card, deckId: card.deckId })}
-        onExit={() => setView({ name: "detail", deckId: activeDeck.id })}
+        onExit={() => {
+          refreshDecks();
+          setView({ name: "detail", deckId: activeDeck.id });
+        }}
         onStudyExtra={() => startStudy(activeDeck.id, "extra")}
       />
     );
   } else if (view.name === "detail" && activeDeck) {
+    const fallbackStats: DeckStats = {
+      total: deckCards.length,
+      new: deckCards.filter((c) => c.status === "new").length,
+      learning: deckCards.filter((c) => c.status === "learning" || c.status === "relearning").length,
+      review: deckCards.filter((c) => c.status === "review").length,
+      dueToday: deckCards.filter((c) => c.dueInDays <= 0).length,
+    };
+
     content = (
       <DeckDetailView
         deck={activeDeck}
         cards={deckCards}
-        stats={statsByDeck[activeDeck.id]}
-        onBack={() => setView({ name: "decks" })}
+        stats={statsByDeck[activeDeck.id] || activeDeck.stats || fallbackStats}
+        onBack={() => {
+          refreshDecks();
+          setView({ name: "decks" });
+        }}
         onEditDeck={() => setDeckForm({ open: true, deck: activeDeck })}
         onStudy={() => smartStudy(activeDeck.id)}
         onAddCard={() => setCardEditor({ open: true, card: null, deckId: activeDeck.id })}
@@ -205,10 +257,7 @@ export default function FlashcardsTab({
         title="Xóa thẻ này?"
         description="Thẻ và tiến độ học của nó sẽ bị xóa vĩnh viễn."
         confirmLabel="Xóa thẻ"
-        onConfirm={() => {
-          if (cardToDelete) store.deleteCard(cardToDelete.id);
-          setCardToDelete(null);
-        }}
+        onConfirm={confirmDeleteCard}
         onClose={() => setCardToDelete(null)}
       />
     </div>
