@@ -27,13 +27,13 @@ export type AggregateFlashcard = {
 }
 
 export type FlashcardAvgAggregateOutputType = {
-  repetitions: number | null
+  step_index: number | null
   interval: number | null
   ease_factor: number | null
 }
 
 export type FlashcardSumAggregateOutputType = {
-  repetitions: number | null
+  step_index: number | null
   interval: number | null
   ease_factor: number | null
 }
@@ -47,7 +47,7 @@ export type FlashcardMinAggregateOutputType = {
   image_url: string | null
   audio_url: string | null
   state: $Enums.CardStateEnum | null
-  repetitions: number | null
+  step_index: number | null
   interval: number | null
   ease_factor: number | null
   due_date: Date | null
@@ -65,7 +65,7 @@ export type FlashcardMaxAggregateOutputType = {
   image_url: string | null
   audio_url: string | null
   state: $Enums.CardStateEnum | null
-  repetitions: number | null
+  step_index: number | null
   interval: number | null
   ease_factor: number | null
   due_date: Date | null
@@ -83,7 +83,7 @@ export type FlashcardCountAggregateOutputType = {
   image_url: number
   audio_url: number
   state: number
-  repetitions: number
+  step_index: number
   interval: number
   ease_factor: number
   due_date: number
@@ -95,13 +95,13 @@ export type FlashcardCountAggregateOutputType = {
 
 
 export type FlashcardAvgAggregateInputType = {
-  repetitions?: true
+  step_index?: true
   interval?: true
   ease_factor?: true
 }
 
 export type FlashcardSumAggregateInputType = {
-  repetitions?: true
+  step_index?: true
   interval?: true
   ease_factor?: true
 }
@@ -115,7 +115,7 @@ export type FlashcardMinAggregateInputType = {
   image_url?: true
   audio_url?: true
   state?: true
-  repetitions?: true
+  step_index?: true
   interval?: true
   ease_factor?: true
   due_date?: true
@@ -133,7 +133,7 @@ export type FlashcardMaxAggregateInputType = {
   image_url?: true
   audio_url?: true
   state?: true
-  repetitions?: true
+  step_index?: true
   interval?: true
   ease_factor?: true
   due_date?: true
@@ -151,7 +151,7 @@ export type FlashcardCountAggregateInputType = {
   image_url?: true
   audio_url?: true
   state?: true
-  repetitions?: true
+  step_index?: true
   interval?: true
   ease_factor?: true
   due_date?: true
@@ -256,7 +256,7 @@ export type FlashcardGroupByOutputType = {
   image_url: string | null
   audio_url: string | null
   state: $Enums.CardStateEnum
-  repetitions: number
+  step_index: number
   interval: number
   ease_factor: number
   due_date: Date
@@ -297,7 +297,7 @@ export type FlashcardWhereInput = {
   image_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
   audio_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
   state?: Prisma.EnumCardStateEnumFilter<"Flashcard"> | $Enums.CardStateEnum
-  repetitions?: Prisma.IntFilter<"Flashcard"> | number
+  step_index?: Prisma.IntFilter<"Flashcard"> | number
   interval?: Prisma.IntFilter<"Flashcard"> | number
   ease_factor?: Prisma.FloatFilter<"Flashcard"> | number
   due_date?: Prisma.DateTimeFilter<"Flashcard"> | Date | string
@@ -316,7 +316,7 @@ export type FlashcardOrderByWithRelationInput = {
   image_url?: Prisma.SortOrderInput | Prisma.SortOrder
   audio_url?: Prisma.SortOrderInput | Prisma.SortOrder
   state?: Prisma.SortOrder
-  repetitions?: Prisma.SortOrder
+  step_index?: Prisma.SortOrder
   interval?: Prisma.SortOrder
   ease_factor?: Prisma.SortOrder
   due_date?: Prisma.SortOrder
@@ -338,7 +338,7 @@ export type FlashcardWhereUniqueInput = Prisma.AtLeast<{
   image_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
   audio_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
   state?: Prisma.EnumCardStateEnumFilter<"Flashcard"> | $Enums.CardStateEnum
-  repetitions?: Prisma.IntFilter<"Flashcard"> | number
+  step_index?: Prisma.IntFilter<"Flashcard"> | number
   interval?: Prisma.IntFilter<"Flashcard"> | number
   ease_factor?: Prisma.FloatFilter<"Flashcard"> | number
   due_date?: Prisma.DateTimeFilter<"Flashcard"> | Date | string
@@ -357,7 +357,7 @@ export type FlashcardOrderByWithAggregationInput = {
   image_url?: Prisma.SortOrderInput | Prisma.SortOrder
   audio_url?: Prisma.SortOrderInput | Prisma.SortOrder
   state?: Prisma.SortOrder
-  repetitions?: Prisma.SortOrder
+  step_index?: Prisma.SortOrder
   interval?: Prisma.SortOrder
   ease_factor?: Prisma.SortOrder
   due_date?: Prisma.SortOrder
@@ -383,7 +383,7 @@ export type FlashcardScalarWhereWithAggregatesInput = {
   image_url?: Prisma.StringNullableWithAggregatesFilter<"Flashcard"> | string | null
   audio_url?: Prisma.StringNullableWithAggregatesFilter<"Flashcard"> | string | null
   state?: Prisma.EnumCardStateEnumWithAggregatesFilter<"Flashcard"> | $Enums.CardStateEnum
-  repetitions?: Prisma.IntWithAggregatesFilter<"Flashcard"> | number
+  step_index?: Prisma.IntWithAggregatesFilter<"Flashcard"> | number
   interval?: Prisma.IntWithAggregatesFilter<"Flashcard"> | number
   ease_factor?: Prisma.FloatWithAggregatesFilter<"Flashcard"> | number
   due_date?: Prisma.DateTimeWithAggregatesFilter<"Flashcard"> | Date | string
@@ -400,7 +400,7 @@ export type FlashcardCreateInput = {
   image_url?: string | null
   audio_url?: string | null
   state?: $Enums.CardStateEnum
-  repetitions?: number
+  step_index?: number
   interval?: number
   ease_factor?: number
   due_date?: Date | string
@@ -419,7 +419,7 @@ export type FlashcardUncheckedCreateInput = {
   image_url?: string | null
   audio_url?: string | null
   state?: $Enums.CardStateEnum
-  repetitions?: number
+  step_index?: number
   interval?: number
   ease_factor?: number
   due_date?: Date | string
@@ -436,7 +436,7 @@ export type FlashcardUpdateInput = {
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
-  repetitions?: Prisma.IntFieldUpdateOperationsInput | number
+  step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
   ease_factor?: Prisma.FloatFieldUpdateOperationsInput | number
   due_date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -455,7 +455,7 @@ export type FlashcardUncheckedUpdateInput = {
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
-  repetitions?: Prisma.IntFieldUpdateOperationsInput | number
+  step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
   ease_factor?: Prisma.FloatFieldUpdateOperationsInput | number
   due_date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -473,7 +473,7 @@ export type FlashcardCreateManyInput = {
   image_url?: string | null
   audio_url?: string | null
   state?: $Enums.CardStateEnum
-  repetitions?: number
+  step_index?: number
   interval?: number
   ease_factor?: number
   due_date?: Date | string
@@ -490,7 +490,7 @@ export type FlashcardUpdateManyMutationInput = {
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
-  repetitions?: Prisma.IntFieldUpdateOperationsInput | number
+  step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
   ease_factor?: Prisma.FloatFieldUpdateOperationsInput | number
   due_date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -508,7 +508,7 @@ export type FlashcardUncheckedUpdateManyInput = {
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
-  repetitions?: Prisma.IntFieldUpdateOperationsInput | number
+  step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
   ease_factor?: Prisma.FloatFieldUpdateOperationsInput | number
   due_date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -536,7 +536,7 @@ export type FlashcardCountOrderByAggregateInput = {
   image_url?: Prisma.SortOrder
   audio_url?: Prisma.SortOrder
   state?: Prisma.SortOrder
-  repetitions?: Prisma.SortOrder
+  step_index?: Prisma.SortOrder
   interval?: Prisma.SortOrder
   ease_factor?: Prisma.SortOrder
   due_date?: Prisma.SortOrder
@@ -546,7 +546,7 @@ export type FlashcardCountOrderByAggregateInput = {
 }
 
 export type FlashcardAvgOrderByAggregateInput = {
-  repetitions?: Prisma.SortOrder
+  step_index?: Prisma.SortOrder
   interval?: Prisma.SortOrder
   ease_factor?: Prisma.SortOrder
 }
@@ -560,7 +560,7 @@ export type FlashcardMaxOrderByAggregateInput = {
   image_url?: Prisma.SortOrder
   audio_url?: Prisma.SortOrder
   state?: Prisma.SortOrder
-  repetitions?: Prisma.SortOrder
+  step_index?: Prisma.SortOrder
   interval?: Prisma.SortOrder
   ease_factor?: Prisma.SortOrder
   due_date?: Prisma.SortOrder
@@ -578,7 +578,7 @@ export type FlashcardMinOrderByAggregateInput = {
   image_url?: Prisma.SortOrder
   audio_url?: Prisma.SortOrder
   state?: Prisma.SortOrder
-  repetitions?: Prisma.SortOrder
+  step_index?: Prisma.SortOrder
   interval?: Prisma.SortOrder
   ease_factor?: Prisma.SortOrder
   due_date?: Prisma.SortOrder
@@ -588,7 +588,7 @@ export type FlashcardMinOrderByAggregateInput = {
 }
 
 export type FlashcardSumOrderByAggregateInput = {
-  repetitions?: Prisma.SortOrder
+  step_index?: Prisma.SortOrder
   interval?: Prisma.SortOrder
   ease_factor?: Prisma.SortOrder
 }
@@ -671,7 +671,7 @@ export type FlashcardCreateWithoutDeckInput = {
   image_url?: string | null
   audio_url?: string | null
   state?: $Enums.CardStateEnum
-  repetitions?: number
+  step_index?: number
   interval?: number
   ease_factor?: number
   due_date?: Date | string
@@ -688,7 +688,7 @@ export type FlashcardUncheckedCreateWithoutDeckInput = {
   image_url?: string | null
   audio_url?: string | null
   state?: $Enums.CardStateEnum
-  repetitions?: number
+  step_index?: number
   interval?: number
   ease_factor?: number
   due_date?: Date | string
@@ -735,7 +735,7 @@ export type FlashcardScalarWhereInput = {
   image_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
   audio_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
   state?: Prisma.EnumCardStateEnumFilter<"Flashcard"> | $Enums.CardStateEnum
-  repetitions?: Prisma.IntFilter<"Flashcard"> | number
+  step_index?: Prisma.IntFilter<"Flashcard"> | number
   interval?: Prisma.IntFilter<"Flashcard"> | number
   ease_factor?: Prisma.FloatFilter<"Flashcard"> | number
   due_date?: Prisma.DateTimeFilter<"Flashcard"> | Date | string
@@ -752,7 +752,7 @@ export type FlashcardCreateManyDeckInput = {
   image_url?: string | null
   audio_url?: string | null
   state?: $Enums.CardStateEnum
-  repetitions?: number
+  step_index?: number
   interval?: number
   ease_factor?: number
   due_date?: Date | string
@@ -769,7 +769,7 @@ export type FlashcardUpdateWithoutDeckInput = {
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
-  repetitions?: Prisma.IntFieldUpdateOperationsInput | number
+  step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
   ease_factor?: Prisma.FloatFieldUpdateOperationsInput | number
   due_date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -786,7 +786,7 @@ export type FlashcardUncheckedUpdateWithoutDeckInput = {
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
-  repetitions?: Prisma.IntFieldUpdateOperationsInput | number
+  step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
   ease_factor?: Prisma.FloatFieldUpdateOperationsInput | number
   due_date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -803,7 +803,7 @@ export type FlashcardUncheckedUpdateManyWithoutDeckInput = {
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
-  repetitions?: Prisma.IntFieldUpdateOperationsInput | number
+  step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
   ease_factor?: Prisma.FloatFieldUpdateOperationsInput | number
   due_date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -823,7 +823,7 @@ export type FlashcardSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   image_url?: boolean
   audio_url?: boolean
   state?: boolean
-  repetitions?: boolean
+  step_index?: boolean
   interval?: boolean
   ease_factor?: boolean
   due_date?: boolean
@@ -842,7 +842,7 @@ export type FlashcardSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   image_url?: boolean
   audio_url?: boolean
   state?: boolean
-  repetitions?: boolean
+  step_index?: boolean
   interval?: boolean
   ease_factor?: boolean
   due_date?: boolean
@@ -861,7 +861,7 @@ export type FlashcardSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   image_url?: boolean
   audio_url?: boolean
   state?: boolean
-  repetitions?: boolean
+  step_index?: boolean
   interval?: boolean
   ease_factor?: boolean
   due_date?: boolean
@@ -880,7 +880,7 @@ export type FlashcardSelectScalar = {
   image_url?: boolean
   audio_url?: boolean
   state?: boolean
-  repetitions?: boolean
+  step_index?: boolean
   interval?: boolean
   ease_factor?: boolean
   due_date?: boolean
@@ -889,7 +889,7 @@ export type FlashcardSelectScalar = {
   updated_at?: boolean
 }
 
-export type FlashcardOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "deck_id" | "card_type" | "front_text" | "back_text" | "image_url" | "audio_url" | "state" | "repetitions" | "interval" | "ease_factor" | "due_date" | "last_reviewed_at" | "created_at" | "updated_at", ExtArgs["result"]["flashcard"]>
+export type FlashcardOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "deck_id" | "card_type" | "front_text" | "back_text" | "image_url" | "audio_url" | "state" | "step_index" | "interval" | "ease_factor" | "due_date" | "last_reviewed_at" | "created_at" | "updated_at", ExtArgs["result"]["flashcard"]>
 export type FlashcardInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   deck?: boolean | Prisma.FlashcardDeckDefaultArgs<ExtArgs>
 }
@@ -914,7 +914,7 @@ export type $FlashcardPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     image_url: string | null
     audio_url: string | null
     state: $Enums.CardStateEnum
-    repetitions: number
+    step_index: number
     interval: number
     ease_factor: number
     due_date: Date
@@ -1353,7 +1353,7 @@ export interface FlashcardFieldRefs {
   readonly image_url: Prisma.FieldRef<"Flashcard", 'String'>
   readonly audio_url: Prisma.FieldRef<"Flashcard", 'String'>
   readonly state: Prisma.FieldRef<"Flashcard", 'CardStateEnum'>
-  readonly repetitions: Prisma.FieldRef<"Flashcard", 'Int'>
+  readonly step_index: Prisma.FieldRef<"Flashcard", 'Int'>
   readonly interval: Prisma.FieldRef<"Flashcard", 'Int'>
   readonly ease_factor: Prisma.FieldRef<"Flashcard", 'Float'>
   readonly due_date: Prisma.FieldRef<"Flashcard", 'DateTime'>

@@ -1270,7 +1270,7 @@ export const FlashcardScalarFieldEnum = {
   image_url: 'image_url',
   audio_url: 'audio_url',
   state: 'state',
-  repetitions: 'repetitions',
+  step_index: 'step_index',
   interval: 'interval',
   ease_factor: 'ease_factor',
   due_date: 'due_date',
