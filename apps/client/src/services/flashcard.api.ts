@@ -1,4 +1,5 @@
 import { axiosClient } from '@/lib/axios.client';
+import { splitClozeHtml } from '@/components/conversations/FlashcardTab/richtext';
 import type { CardDraft, Flashcard, Rating } from '@/components/conversations/FlashcardTab/types';
 
 export function mapBackendToClientCard(b: any): Flashcard {
@@ -24,33 +25,11 @@ export function mapBackendToClientCard(b: any): Flashcard {
 
 /**
  * Tách một câu Cloze có nhiều chỗ trống thành các câu độc lập (Cách 2 - Anki c1, c2):
- * Mỗi câu con chỉ che đúng 1 chỗ trống, các chỗ trống khác hiển thị text bình thường.
- * Ví dụ: "Năm {{1945}}, {{Việt Nam}} độc lập"
- * -> Thẻ 1: "Năm {{1945}}, Việt Nam độc lập"
- * -> Thẻ 2: "Năm 1945, {{Việt Nam}} độc lập"
+ * Mỗi câu con chỉ che đúng 1 chỗ trống, các chỗ trống khác hiển thị bình thường.
+ * Hỗ trợ cả HTML RichText (<span data-cloze="true">...</span>) và cú pháp cũ ({{...}}).
  */
 export function splitMultiCloze(front: string): string[] {
-  const matches = [...front.matchAll(/\{\{(.+?)\}\}/g)];
-  if (matches.length <= 1) return [front];
-
-  return matches.map((_, targetIdx) => {
-    let result = '';
-    let lastIndex = 0;
-    for (let i = 0; i < matches.length; i++) {
-      const m = matches[i];
-      const matchStart = m.index!;
-      const matchEnd = matchStart + m[0].length;
-      result += front.slice(lastIndex, matchStart);
-      if (i === targetIdx) {
-        result += m[0]; // Giữ nguyên {{từ khóa}} để che
-      } else {
-        result += m[1]; // Hiển thị text bình thường
-      }
-      lastIndex = matchEnd;
-    }
-    result += front.slice(lastIndex);
-    return result;
-  });
+  return splitClozeHtml(front);
 }
 
 export const flashcardApi = {

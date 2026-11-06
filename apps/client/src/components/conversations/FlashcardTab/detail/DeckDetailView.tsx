@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { richToPlain } from "../richtext";
 import type { Deck, DeckStats, Flashcard } from "../types";
 import { CardListEmpty } from "./CardListEmpty";
 import { CardListToolbar, type StatusFilter, type TypeFilter } from "./CardListToolbar";
@@ -33,7 +34,7 @@ export function DeckDetailView({ deck, cards, stats, onBack, onEditDeck, onStudy
       (c) =>
         (type === "all" || c.type === type) &&
         (status === "all" || c.status === status || (status === "learning" && c.status === "relearning")) &&
-        (!q || c.front.toLowerCase().includes(q) || c.back.toLowerCase().includes(q))
+        (!q || richToPlain(c.front).toLowerCase().includes(q) || richToPlain(c.back).toLowerCase().includes(q))
     );
   }, [cards, query, type, status]);
 

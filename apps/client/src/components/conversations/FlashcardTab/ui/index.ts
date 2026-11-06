@@ -15,3 +15,4 @@ export { ChipToggleGroup } from "./ChipToggle";
 export { Modal } from "./Modal";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { Menu, type MenuItem } from "./Menu";
+export { ToolbarButton } from "./ToolbarButton";

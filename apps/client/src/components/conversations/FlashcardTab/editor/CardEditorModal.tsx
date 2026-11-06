@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { BASIC_FORMATS, CLOZE_FORMATS, finalizeRich, isRichEmpty, toRichHtml } from "../richtext";
+import { BASIC_FORMATS, CLOZE_FORMATS, finalizeRich, isRichEmpty, splitClozeHtml, toRichHtml } from "../richtext";
 import { ClozeText } from "../shared/ClozeText";
 import type { CardDraft, CardType, Flashcard } from "../types";
 import { hasCloze } from "../utils/cloze";
@@ -111,10 +111,33 @@ function EditorDialog({ card, onClose, onSave }: Omit<Props, "open">) {
                   placeholder="Bôi đen một cụm từ trong câu rồi bấm “Chỗ trống”."
                 />
                 <Collapse open={hasCloze(front)}>
-                  <div className="rounded-xl bg-[#EFF4FF]/70 px-4 py-3 text-[14px] leading-7 text-[#0B1C30]">
-                    <p className="mb-0.5 text-[12px] font-semibold text-[#777587]">Người học sẽ thấy</p>
-                    <ClozeText text={front} mode="hidden" />
-                  </div>
+                  {(() => {
+                    const splitFronts = splitClozeHtml(front);
+                    return (
+                      <div className="rounded-xl bg-[#EFF4FF]/70 px-4 py-3 text-[14px] leading-7 text-[#0B1C30]">
+                        <p className="mb-1 text-[12px] font-semibold text-[#777587]">
+                          {splitFronts.length > 1 && !isEdit
+                            ? `Người học sẽ thấy (${splitFronts.length} thẻ độc lập sẽ được tạo)`
+                            : "Người học sẽ thấy"}
+                        </p>
+                        <div className="flex flex-col gap-2">
+                          {splitFronts.map((f, idx) => (
+                            <div
+                              key={idx}
+                              className={splitFronts.length > 1 ? "rounded-lg bg-white/60 px-3 py-1.5" : ""}
+                            >
+                              {splitFronts.length > 1 && (
+                                <span className="mb-0.5 block text-[11px] font-bold uppercase tracking-wider text-indigo-600">
+                                  Thẻ {idx + 1}
+                                </span>
+                              )}
+                              <ClozeText text={f} mode="hidden" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </Collapse>
               </div>
             </Field>

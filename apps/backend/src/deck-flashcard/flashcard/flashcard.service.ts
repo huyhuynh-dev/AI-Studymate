@@ -46,6 +46,52 @@ const differenceInDays = (d1: Date, d2: Date): number => {
     return Math.floor(ms / (1000 * 60 * 60 * 24));
 };
 
+const ALLOWED_SIMPLE_TAGS = new Set(['p', 'strong', 'em', 'u', 'ul', 'ol', 'li']);
+
+/**
+ * Làm sạch HTML của Flashcard theo allowlist của RichText schema:
+ * - Chỉ cho phép: p, br, strong, em, u, ul, ol, li (không giữ attribute)
+ * - Nếu allowCloze = true: cho phép thêm <span data-cloze="true">...</span>
+ * - Loại bỏ hoàn toàn nội dung thẻ nguy hiểm (script, style, iframe, object, embed, svg, math)
+ */
+export function sanitizeFlashcardHtml(raw: string, allowCloze = false): string {
+    if (!raw) return '';
+
+    const withoutDangerousBlocks = raw.replace(
+        /<(script|style|iframe|object|embed|svg|math)\b[^>]*>[\s\S]*?<\/\1>/gi,
+        ''
+    );
+
+    const spanStack: boolean[] = [];
+
+    return withoutDangerousBlocks
+        .replace(/<\/?([a-zA-Z0-9-]+)([^>]*)>/g, (fullMatch, rawTag: string, attrs: string) => {
+            const tag = rawTag.toLowerCase();
+            const isClosing = fullMatch.startsWith('</');
+
+            if (tag === 'br') {
+                return isClosing ? '' : '<br>';
+            }
+
+            if (ALLOWED_SIMPLE_TAGS.has(tag)) {
+                return isClosing ? `</${tag}>` : `<${tag}>`;
+            }
+
+            if (tag === 'span') {
+                if (isClosing) {
+                    const keep = spanStack.pop();
+                    return keep ? '</span>' : '';
+                }
+                const isCloze = allowCloze && /\bdata-cloze\b/i.test(attrs);
+                spanStack.push(isCloze);
+                return isCloze ? '<span data-cloze="true">' : '';
+            }
+
+            return '';
+        })
+        .trim();
+}
+
 @Injectable()
 export class FlashcardService {
     constructor(
@@ -61,12 +107,14 @@ export class FlashcardService {
         userId: string,
         dto: CreateFlashcardDto
     ): Promise<Prisma.FlashcardModel> {
+        const cardType = dto.cardType || CardTypeEnum.basic;
+        const isCloze = cardType === CardTypeEnum.cloze;
         return await this.deckRepo.createFlashcard(
             {
                 deck_id: dto.deckId,
-                front_text: dto.frontText.trim(),
-                back_text: (dto.backText || '').trim(),
-                card_type: dto.cardType || CardTypeEnum.basic,
+                front_text: sanitizeFlashcardHtml(dto.frontText, isCloze),
+                back_text: sanitizeFlashcardHtml(dto.backText || '', false),
+                card_type: cardType,
                 image_url: dto.imageUrl?.trim() || null,
                 audio_url: dto.audioUrl?.trim() || null,
                 state: CardStateEnum.new,
@@ -102,9 +150,15 @@ export class FlashcardService {
         userId: string,
         dto: UpdateFlashcardDto
     ): Promise<Prisma.FlashcardModel> {
+        const allowClozeFront =
+            dto.cardType === undefined || dto.cardType === CardTypeEnum.cloze;
         return await this.deckRepo.updateFlashcard(flashcardId, userId, {
-            ...(dto.frontText !== undefined && { front_text: dto.frontText.trim() }),
-            ...(dto.backText !== undefined && { back_text: dto.backText.trim() }),
+            ...(dto.frontText !== undefined && {
+                front_text: sanitizeFlashcardHtml(dto.frontText, allowClozeFront),
+            }),
+            ...(dto.backText !== undefined && {
+                back_text: sanitizeFlashcardHtml(dto.backText, false),
+            }),
             ...(dto.cardType !== undefined && { card_type: dto.cardType }),
             ...(dto.imageUrl !== undefined && { image_url: dto.imageUrl?.trim() || null }),
             ...(dto.audioUrl !== undefined && { audio_url: dto.audioUrl?.trim() || null }),

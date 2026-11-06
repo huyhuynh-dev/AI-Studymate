@@ -9,6 +9,7 @@ import {
     LEARNING_STEPS,
     MIN_EASE_FACTOR,
     RELEARNING_STEPS,
+    sanitizeFlashcardHtml,
 } from './flashcard.service.js';
 
 describe('FlashcardService - SM-2 Algorithm (calculateNextReview)', () => {
@@ -178,6 +179,27 @@ describe('FlashcardService - SM-2 Algorithm (calculateNextReview)', () => {
             const expectedDue = new Date(now);
             expectedDue.setDate(expectedDue.getDate() + 2);
             expect(result.due_date.toISOString()).toBe(expectedDue.toISOString());
+        });
+    });
+
+    describe('HTML Sanitizer (sanitizeFlashcardHtml)', () => {
+        it('Giữ nguyên các thẻ allowlist và loại bỏ script/onclick nguy hiểm', () => {
+            const dirty =
+                '<p onclick="evil()">Xin chào <strong>thế giới</strong><script>alert(1)</script></p>';
+            expect(sanitizeFlashcardHtml(dirty, false)).toBe('<p>Xin chào <strong>thế giới</strong></p>');
+        });
+
+        it('Cho phép <span data-cloze="true"> khi allowCloze = true và loại bỏ các span khác', () => {
+            const input =
+                '<p>Năm <span data-cloze="true" class="hack"><strong>1945</strong></span>, <span style="color:red">Việt Nam</span> độc lập</p>';
+            expect(sanitizeFlashcardHtml(input, true)).toBe(
+                '<p>Năm <span data-cloze="true"><strong>1945</strong></span>, Việt Nam độc lập</p>'
+            );
+        });
+
+        it('Gỡ thẻ <span data-cloze="true"> nhưng giữ nội dung bên trong khi allowCloze = false', () => {
+            const input = '<p>Năm <span data-cloze="true">1945</span></p>';
+            expect(sanitizeFlashcardHtml(input, false)).toBe('<p>Năm 1945</p>');
         });
     });
 });

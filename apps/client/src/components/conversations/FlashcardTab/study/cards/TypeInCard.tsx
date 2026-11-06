@@ -1,6 +1,6 @@
 import { CheckCircle2 } from "lucide-react";
 import { CARD_TYPE_LABEL } from "../../constants";
-import { RichText } from "../../richtext";
+import { RichText, richToPlain } from "../../richtext";
 import type { Flashcard } from "../../types";
 import { Button, cx, FONT_HEADING, SQUIRCLE } from "../../ui";
 import { diffTyped } from "../../utils/diff";
@@ -14,11 +14,14 @@ interface Props {
   onSubmit: () => void;
 }
 
+const normalizeAnswer = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 const nb = (s: string) => s.replace(/ /g, "\u00A0");
 
 export function TypeInCard({ card, revealed, value, onChange, onSubmit }: Props) {
   const typed = value.trim();
-  const correct = revealed && typed === card.back.trim();
+  const normalizedTyped = normalizeAnswer(value);
+  const expected = normalizeAnswer(richToPlain(card.back));
+  const correct = revealed && normalizedTyped === expected;
 
   return (
     <CardShell typeLabel={CARD_TYPE_LABEL.typein} audioUrl={card.audioUrl}>
@@ -61,7 +64,7 @@ export function TypeInCard({ card, revealed, value, onChange, onSubmit }: Props)
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[#777587]">Bạn đã gõ</p>
               <p className="mt-1 break-all text-lg font-semibold">
                 {typed ? (
-                  diffTyped(value, card.back).map((d, i) => (
+                  diffTyped(value, expected).map((d, i) => (
                     <span key={i} className={d.ok ? "text-emerald-700" : "rounded-sm bg-[#FFDAD6] text-[#93000A] line-through"}>
                       {nb(d.ch)}
                     </span>
@@ -73,7 +76,7 @@ export function TypeInCard({ card, revealed, value, onChange, onSubmit }: Props)
             </div>
             <div style={SQUIRCLE} className="rounded-2xl bg-[#6CF8BB]/30 px-5 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[#005236]/70">Đáp án</p>
-              <p className="mt-1 break-all text-lg font-bold text-[#005236]">{card.back}</p>
+              <p className="mt-1 break-all text-lg font-bold text-[#005236]">{expected}</p>
             </div>
           </div>
         )}
