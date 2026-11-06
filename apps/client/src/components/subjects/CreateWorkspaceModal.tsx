@@ -22,20 +22,20 @@ export interface ColorOption {
   hex: string;
 }
 
-// Danh sách các màu sắc trực quan có sẵn
+// Danh sách các màu sắc nhận diện EdTech kết hợp Apple HIG (DESIGN.md)
 export const COLOR_PALETTE: ColorOption[] = [
   { name: "Indigo", hex: "#4F46E5" },
   { name: "Xanh dương", hex: "#2563EB" },
-  { name: "Xanh biển", hex: "#0284C7" },
   { name: "Xanh ngọc", hex: "#0D9488" },
-  { name: "Xanh lá", hex: "#16A34A" },
-  { name: "Hổ phách", hex: "#CA8A04" },
+  { name: "Xanh lá (Sage)", hex: "#006C49" },
+  { name: "Hổ phách (Amber)", hex: "#CA8A04" },
   { name: "Cam san hô", hex: "#EA580C" },
   { name: "Đỏ", hex: "#DC2626" },
   { name: "Hồng đào", hex: "#E11D48" },
+  { name: "Tím đậm", hex: "#571AC0" },
   { name: "Tím hoàng gia", hex: "#9333EA" },
   { name: "Xám đá", hex: "#475569" },
-  { name: "Đen", hex: "#000000" },
+  { name: "Đen tuyền", hex: "#0B1C30" },
 ];
 
 interface WorkspaceDialogProps {
@@ -70,7 +70,7 @@ function WorkspaceDialog({
     onClose();
   }, [isSubmitting, onClose]);
 
-  // Đóng modal khi nhấn phím Escape
+  // Đóng modal khi nhấn Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !isSubmitting) {
@@ -96,7 +96,7 @@ function WorkspaceDialog({
 
     const hexRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
     if (!hexRegex.test(selectedColor)) {
-      setError("Mã màu không hợp lệ. Vui lòng chọn màu có định dạng HEX (vd: #4F46E5)");
+      setError("Mã màu không hợp lệ. Vui lòng chọn màu HEX hợp lệ");
       return;
     }
 
@@ -128,29 +128,29 @@ function WorkspaceDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-      {/* Backdrop */}
+      {/* Apple Translucent Dimming Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-200"
+        className="fixed inset-0 bg-[#0B1C30]/40 backdrop-blur-md transition-opacity duration-200"
         aria-hidden="true"
         onClick={handleClose}
       />
 
-      {/* Modal Dialog Card */}
-      <div className="relative w-full max-w-md transform rounded-2xl bg-white p-6 shadow-2xl transition-all border border-gray-100 z-10">
+      {/* Modal Dialog Surface */}
+      <div className="relative w-full max-w-md transform rounded-[22px] bg-white dark:bg-[#12151C] p-6 shadow-2xl transition-all border border-[#E5EEFF] dark:border-white/[0.12] z-10 select-none">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+        <div className="flex items-center justify-between pb-4 border-b border-[#E5EEFF] dark:border-white/[0.08]">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 shadow-2xs">
-              {isEditMode ? <Edit3 className="h-5 w-5" /> : <FolderPlus className="h-5 w-5" />}
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF2FF] dark:bg-white/[0.06] text-[#4F46E5] dark:text-[#818CF8]">
+              {isEditMode ? <Edit3 className="h-4 w-4" /> : <FolderPlus className="h-4 w-4" />}
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900">
-                {isEditMode ? "Chỉnh sửa không gian học tập" : "Tạo không gian học tập mới"}
+              <h3 className="text-base font-bold text-[#0B1C30] dark:text-[#EFF0F6] tracking-tight">
+                {isEditMode ? "Chỉnh sửa không gian" : "Tạo không gian học tập"}
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[#777587] dark:text-neutral-400">
                 {isEditMode
-                  ? "Cập nhật tên và màu sắc nhận diện của không gian"
-                  : "Tổ chức tài liệu và ghi chú theo từng môn học"}
+                  ? "Cập nhật tên và màu sắc nhận diện"
+                  : "Tổ chức tài liệu và ghi chú theo môn học"}
               </p>
             </div>
           </div>
@@ -159,22 +159,22 @@ function WorkspaceDialog({
             type="button"
             disabled={isSubmitting}
             onClick={handleClose}
-            aria-label="Đóng modal"
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer disabled:opacity-40"
+            aria-label="Đóng"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F8F9FF] dark:bg-white/[0.08] text-[#777587] hover:text-[#0B1C30] dark:hover:text-white transition-colors cursor-pointer disabled:opacity-40"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
 
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="mt-5 space-y-5">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {/* Field: Name */}
           <div className="space-y-1.5">
             <label
               htmlFor="workspace-name"
-              className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+              className="block text-[11px] font-semibold text-[#777587] dark:text-neutral-400 uppercase tracking-wider"
             >
-              Tên không gian <span className="text-rose-500">*</span>
+              Tên không gian <span className="text-[#BA1A1A]">*</span>
             </label>
             <input
               id="workspace-name"
@@ -187,30 +187,36 @@ function WorkspaceDialog({
                 if (error) setError("");
               }}
               placeholder="VD: Cấu trúc dữ liệu, Ôn thi IELTS..."
-              className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all disabled:opacity-60 ${error
-                ? "border-rose-400 bg-rose-50/30 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
-                : "border-gray-200 bg-gray-50/50 hover:bg-white focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10"
-                }`}
+              className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#0B1C30] dark:text-white placeholder-[#777587] outline-none transition-all disabled:opacity-60 ${
+                error
+                  ? "border-[#BA1A1A] bg-rose-50/20 focus:border-[#BA1A1A] focus:ring-3 focus:ring-[#BA1A1A]/15"
+                  : "border-[#C7C4D8] dark:border-white/[0.1] bg-[#F8F9FF] dark:bg-white/[0.03] hover:bg-white focus:bg-white dark:focus:bg-black focus:border-[#4F46E5] focus:ring-3 focus:ring-[#4F46E5]/15"
+              }`}
             />
-            {error && <p className="text-xs text-rose-500">{error}</p>}
+            {error && <p className="text-xs text-[#BA1A1A]">{error}</p>}
           </div>
 
           {/* Field: Color Selector */}
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              <label className="block text-[11px] font-semibold text-[#777587] dark:text-neutral-400 uppercase tracking-wider">
                 Màu sắc nhận diện
               </label>
-              {/* <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <span>Mã HEX:</span>
-                <span className="font-mono font-semibold text-gray-800 uppercase">
-                  {selectedColor}
-                </span>
-              </div> */}
+              <label className="flex items-center gap-1.5 cursor-pointer text-xs text-[#4F46E5] hover:text-[#3525CD] font-medium transition-colors">
+                <Pipette className="h-3 w-3" />
+                <span className="text-[11px]">Tùy chọn mã màu</span>
+                <input
+                  type="color"
+                  disabled={isSubmitting}
+                  value={selectedColor}
+                  onChange={(e) => setSelectedColor(e.target.value)}
+                  className="sr-only"
+                />
+              </label>
             </div>
 
             {/* Color Palette Grid */}
-            <div className="grid grid-cols-6 gap-2.5 rounded-xl border border-gray-100 bg-gray-50/40 p-3">
+            <div className="grid grid-cols-6 gap-2.5 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.02] p-3">
               {COLOR_PALETTE.map((color) => {
                 const isSelected =
                   selectedColor.toLowerCase() === color.hex.toLowerCase();
@@ -221,78 +227,68 @@ function WorkspaceDialog({
                     disabled={isSubmitting}
                     onClick={() => setSelectedColor(color.hex)}
                     title={`${color.name} (${color.hex})`}
-                    className={`group relative flex h-9 w-9 items-center justify-center rounded-xl transition-transform hover:scale-110 cursor-pointer shadow-2xs disabled:cursor-not-allowed ${isSelected
-                      ? "ring-2 ring-indigo-500 ring-offset-2 scale-105"
-                      : "hover:ring-1 hover:ring-gray-300"
-                      }`}
+                    className={`group relative flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-150 cursor-pointer disabled:cursor-not-allowed ${
+                      isSelected
+                        ? "ring-2 ring-offset-2 ring-[#4F46E5] dark:ring-offset-neutral-900 scale-105 shadow-xs"
+                        : "hover:scale-105 active:scale-95"
+                    }`}
                     style={{ backgroundColor: color.hex }}
                   >
                     {isSelected && (
-                      <Check className="h-4 w-4 text-white drop-shadow-md" />
+                      <Check className="h-3.5 w-3.5 text-white drop-shadow-sm" />
                     )}
                   </button>
                 );
               })}
             </div>
-
-            {/* Custom Color Input Option */}
-            <div className="flex items-center justify-between pt-1 text-xs text-gray-500">
-              <span className="text-[11px]">Chọn màu tùy chỉnh khác:</span>
-              <label className="flex items-center gap-1.5 cursor-pointer rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-2xs">
-                <Pipette className="h-3 w-3 text-gray-500" />
-                <span>Bảng màu mở rộng</span>
-                <input
-                  type="color"
-                  disabled={isSubmitting}
-                  value={selectedColor}
-                  onChange={(e) => setSelectedColor(e.target.value)}
-                  className="sr-only"
-                />
-              </label>
-            </div>
           </div>
 
-          {/* Live Preview Card */}
-          <div className="space-y-1.5">
-            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+          {/* Apple Live Preview Card */}
+          <div className="space-y-1.5 pt-1">
+            <span className="text-[11px] font-semibold text-[#777587] dark:text-neutral-400 uppercase tracking-wider">
               Xem trước hiển thị
             </span>
-            <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/60 p-3 transition-colors">
-              <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              style={{
+                backgroundImage: `radial-gradient(circle at 90% 15%, ${selectedColor}22 0%, transparent 65%)`,
+              }}
+              className="flex items-center justify-between rounded-xl bg-white dark:bg-[#161922] border border-[#E5EEFF] dark:border-white/[0.08] p-3 transition-colors shadow-xs"
+            >
+              <div className="flex items-center gap-3 min-w-0">
                 <div
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-2xs transition-colors shrink-0"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-white shadow-xs transition-colors shrink-0"
                   style={{ backgroundColor: selectedColor }}
                 >
                   <Folder className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-900 truncate">
+                  <p className="text-xs font-bold text-[#0B1C30] dark:text-[#EFF0F6] truncate">
                     {name.trim() || "Tên không gian học tập"}
                   </p>
-                  <p className="text-[10px] text-gray-400">Không gian học tập</p>
+                  <p className="text-[10px] text-[#777587] dark:text-[#9DA3AF]">Không gian ôn luyện & tài liệu</p>
                 </div>
               </div>
               <span
-                className="h-2.5 w-2.5 rounded-full shrink-0"
+                className="h-2 w-2 rounded-full shrink-0 shadow-xs"
                 style={{ backgroundColor: selectedColor }}
               />
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-[#E5EEFF] dark:border-white/[0.08]">
             <button
               type="button"
               disabled={isSubmitting}
               onClick={handleClose}
-              className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer disabled:opacity-50"
+              className="rounded-xl px-4 py-2 text-xs font-semibold text-[#464555] dark:text-neutral-300 bg-[#F8F9FF] dark:bg-white/[0.06] hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] active:scale-98 transition-all cursor-pointer disabled:opacity-50"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={!name.trim() || isSubmitting}
-              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#4F46E5] hover:bg-[#3525CD] px-4 py-2 text-xs font-semibold text-white shadow-md shadow-[#4F46E5]/20 disabled:opacity-40 disabled:cursor-not-allowed active:scale-98 transition-all cursor-pointer"
             >
               {isSubmitting ? (
                 <>

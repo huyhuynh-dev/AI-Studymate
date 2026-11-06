@@ -1,27 +1,95 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* EdTech Brand Palette from DESIGN.md */
+  --background: #f8f9ff;
+  --foreground: #0b1c30;
+  --surface-canvas: #f8f9ff;
+  --surface-card: #ffffff;
+  --on-surface-variant: #464555;
+  --border-subtle: #e5eeff;
+  --border-outline: #c7c4d8;
+  --brand-primary: #4f46e5;
+  --brand-primary-hover: #3525cd;
+  --brand-secondary: #006c49;
+  --brand-tertiary: #571ac0;
+  --brand-error: #ba1a1a;
+  --specular-hairline: rgba(11, 28, 48, 0.06);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-be-vietnam-pro), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --color-canvas: var(--surface-canvas);
+  --color-card: var(--surface-card);
+  --color-primary: var(--brand-primary);
+  --color-primary-hover: var(--brand-primary-hover);
+  --color-secondary: var(--brand-secondary);
+  --color-tertiary: var(--brand-tertiary);
+  --color-error: var(--brand-error);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", var(--font-be-vietnam-pro), system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #090b10;
+    --foreground: #eff0f6;
+    --surface-canvas: #090b10;
+    --surface-card: #12151c;
+    --on-surface-variant: #9da3af;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-outline: rgba(255, 255, 255, 0.15);
+    --brand-primary: #6366f1;
+    --brand-primary-hover: #4f46e5;
+    --brand-secondary: #10b981;
+    --brand-tertiary: #8b5cf6;
+    --brand-error: #ef4444;
+    --specular-hairline: rgba(255, 255, 255, 0.08);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-be-vietnam-pro), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Apple HIG Liquid Glass & Translucent Surfaces */
+.apple-liquid-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border-subtle);
+}
+
+@media (prefers-color-scheme: dark) {
+  .apple-liquid-glass {
+    background: rgba(18, 21, 28, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Apple Spring Physics Transition Utility */
+.apple-spring {
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Hide scrollbar while preserving scrolling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Tabular figures for numbers to prevent layout jitter */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 .bn-root,
