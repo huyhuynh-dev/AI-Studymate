@@ -6,7 +6,6 @@ import {
   Mail,
   Lock,
   ShieldCheck,
-  ShieldAlert,
   KeyRound,
   MailCheck,
   CheckCircle2,
@@ -15,12 +14,11 @@ import {
   RefreshCw,
   Clock,
   Pencil,
-  Sparkles,
+  Check,
 } from 'lucide-react';
 
 import AuthInput from '@/components/auth/AuthInput';
 import AuthSubmitButton from '@/components/auth/AuthSubmitButton';
-import AuthInfoBox from '@/components/auth/AuthInfoBox';
 import AuthSwitchLink from '@/components/auth/AuthSwitchLink';
 import AuthCheckbox from '@/components/auth/AuthCheckbox';
 import PasswordStrength from '@/components/auth/PasswordStrength';
@@ -30,6 +28,39 @@ import {
   handleVerifyOtp,
   handleResetPassword,
 } from '@/services/auth.api';
+
+// ─────────────────────────────────────────────
+// Apple Step Indicator
+// ─────────────────────────────────────────────
+function AppleStepProgress({ currentStep }: { currentStep: 1 | 2 | 3 }) {
+  const steps = [
+    { num: 1, label: 'Email' },
+    { num: 2, label: 'Xác thực OTP' },
+    { num: 3, label: 'Mật khẩu mới' },
+  ];
+
+  return (
+    <div className="mb-6 select-none">
+      <div className="flex items-center gap-1.5 h-1">
+        {steps.map((s) => (
+          <div
+            key={s.num}
+            className={`h-full flex-1 rounded-full transition-all duration-300 ease-out ${
+              s.num <= currentStep
+                ? 'bg-indigo-600 dark:bg-indigo-400'
+                : 'bg-gray-200/80 dark:bg-white/10'
+            }`}
+          />
+        ))}
+      </div>
+      <div className="flex items-center justify-between mt-2 text-[11px] text-gray-400 dark:text-gray-500 font-medium tracking-tight">
+        <span>
+          Bước {currentStep}/3: {steps[currentStep - 1].label}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────
 // Step 1 — Enter email
@@ -51,45 +82,49 @@ function StepEmail({
 }) {
   return (
     <>
-      {/* Icon + Badge */}
+      <AppleStepProgress currentStep={1} />
+
+      {/* App Squircle Glyph */}
       <div className="flex flex-col items-center mb-5">
-        <div className="relative mb-3">
-          <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
-            <KeyRound className="w-7 h-7 text-white" />
-          </div>
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-indigo-400 rounded-full flex items-center justify-center border-2 border-white">
-            <Sparkles className="w-3 h-3 text-white" />
-          </div>
+        <div className="w-12 h-12 rounded-[14px] bg-gradient-to-b from-indigo-500 to-indigo-600 dark:from-indigo-600 dark:to-indigo-700 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 ring-1 ring-white/20 apple-spring">
+          <KeyRound className="w-6 h-6 text-white" strokeWidth={1.8} />
         </div>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-full border border-indigo-100">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          Bảo mật tài khoản AI StudyMate
-        </span>
       </div>
 
-      {/* Title */}
+      {/* Title & Subtitle */}
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl sm:text-[26px] font-semibold text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
           Quên mật khẩu?
         </h1>
-        <p className="text-sm text-gray-500">
-          Đừng lo lắng! Nhập email tài khoản học tập đã đăng ký,
-          AI StudyMate sẽ gửi mã OTP xác thực để đặt lại mật khẩu cho bạn.
+        <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
+          Nhập email học tập của bạn để nhận mã xác thực đặt lại mật khẩu.
         </p>
       </div>
 
       {/* Feedback Banners */}
       {errorMessage && (
-        <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-sm text-red-700 animate-in fade-in">
-          <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-500" />
-          <span className="flex-1 leading-snug">{errorMessage}</span>
+        <div
+          role="alert"
+          className="mb-4 p-3.5 rounded-xl bg-red-500/10 dark:bg-red-500/15 border border-red-500/20 text-red-700 dark:text-red-300 flex items-start gap-2.5 text-[13px] leading-snug animate-in fade-in duration-200"
+        >
+          <AlertCircle
+            className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5"
+            strokeWidth={2}
+          />
+          <span className="flex-1 font-medium">{errorMessage}</span>
         </div>
       )}
 
       {successMessage && (
-        <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-sm text-emerald-700 animate-in fade-in">
-          <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-500" />
-          <span className="flex-1 leading-snug">{successMessage}</span>
+        <div
+          role="alert"
+          className="mb-4 p-3.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-start gap-2.5 text-[13px] leading-snug animate-in fade-in duration-200"
+        >
+          <CheckCircle2
+            className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5"
+            strokeWidth={2}
+          />
+          <span className="flex-1 font-medium">{successMessage}</span>
         </div>
       )}
 
@@ -105,44 +140,25 @@ function StepEmail({
           onChange={(e) => setEmail(e.target.value)}
           disabled={isLoading}
           placeholder="nguyen_van_a@student.edu.vn"
-          icon={<Mail size={18} />}
-          rightLabel={
-            <span className="text-xs text-gray-400 font-normal">Bước 1/3</span>
-          }
+          icon={<Mail className="w-4 h-4" strokeWidth={1.8} />}
         />
-        <p className="text-xs text-gray-400 flex items-center gap-1 -mt-1 px-0.5">
-          <span>😊</span> Hỗ trợ email sinh viên (@*.edu.vn) hoặc Gmail đã đăng ký.
-        </p>
 
         {/* Submit */}
-        <AuthSubmitButton
-          label="Gửi mã xác thực OTP"
-          type="button"
-          isLoading={isLoading}
-          loadingLabel="Đang gửi mã OTP..."
-          onClick={onSubmit}
-        />
-      </div>
-
-      {/* Info box */}
-      <div className="mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
-        <div className="flex gap-2">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-emerald-800 leading-relaxed">
-            Mã OTP có hiệu lực trong <strong>120 giây (2 phút)</strong>. Nếu không nhận
-            được thư sau 1 phút, hãy kiểm tra thư mục{' '}
-            <strong>Spam / Quảng cáo</strong> hoặc bấm gửi lại mã.
-          </p>
+        <div className="pt-1">
+          <AuthSubmitButton
+            label="Gửi mã xác thực"
+            type="button"
+            isLoading={isLoading}
+            loadingLabel="Đang gửi mã..."
+            onClick={onSubmit}
+          />
         </div>
       </div>
 
-      {/* Divider */}
-      <div className="my-5 border-t border-gray-100" />
-
       {/* Login link */}
       <AuthSwitchLink
-        text="Nhớ mật khẩu rồi?"
-        linkText="Đăng nhập ngay ›"
+        text="Đã nhớ mật khẩu?"
+        linkText="Đăng nhập"
         href="/auth/login"
       />
     </>
@@ -189,64 +205,86 @@ function StepOtp({
 
   return (
     <>
-      {/* Icon */}
+      <AppleStepProgress currentStep={2} />
+
+      {/* App Squircle Glyph */}
       <div className="flex flex-col items-center mb-5">
-        <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
-          <MailCheck className="w-7 h-7 text-white" />
+        <div className="w-12 h-12 rounded-[14px] bg-gradient-to-b from-indigo-500 to-indigo-600 dark:from-indigo-600 dark:to-indigo-700 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 ring-1 ring-white/20 apple-spring">
+          <MailCheck className="w-6 h-6 text-white" strokeWidth={1.8} />
         </div>
       </div>
 
       {/* Title */}
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+      <div className="text-center mb-4">
+        <h1 className="text-2xl sm:text-[26px] font-semibold text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
           Xác thực mã OTP
         </h1>
-        <p className="text-sm text-gray-500">
-          Mã xác nhận 6 chữ số đã được gửi trực tiếp đến hộp thư của bạn:
+        <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
+          Nhập mã xác nhận gồm 6 chữ số vừa được gửi đến:
         </p>
       </div>
 
       {/* Email chip */}
       <div className="flex justify-center mb-6">
-        <span className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-full border border-indigo-100">
-          <Mail className="w-4 h-4" />
-          {email}
+        <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-gray-50/80 dark:bg-white/5 text-gray-700 dark:text-gray-200 text-[13px] font-medium rounded-full border border-gray-200/80 dark:border-white/10 select-none">
+          <Mail className="w-3.5 h-3.5 text-indigo-500" strokeWidth={1.8} />
+          <span>{email}</span>
           <button
             type="button"
             onClick={onEditEmail}
-            className="text-indigo-500 hover:text-indigo-700 transition-colors cursor-pointer"
+            className="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-0.5 rounded cursor-pointer active:scale-90"
             aria-label="Chỉnh sửa email"
           >
-            <Pencil className="w-3.5 h-3.5" />
+            <Pencil className="w-3 h-3" strokeWidth={2} />
           </button>
         </span>
       </div>
 
       {/* Feedback Banners */}
       {errorMessage && (
-        <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-sm text-red-700 animate-in fade-in">
-          <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-500" />
-          <span className="flex-1 leading-snug">{errorMessage}</span>
+        <div
+          role="alert"
+          className="mb-4 p-3.5 rounded-xl bg-red-500/10 dark:bg-red-500/15 border border-red-500/20 text-red-700 dark:text-red-300 flex items-start gap-2.5 text-[13px] leading-snug animate-in fade-in duration-200"
+        >
+          <AlertCircle
+            className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5"
+            strokeWidth={2}
+          />
+          <span className="flex-1 font-medium">{errorMessage}</span>
         </div>
       )}
 
       {successMessage && (
-        <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-sm text-emerald-700 animate-in fade-in">
-          <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-500" />
-          <span className="flex-1 leading-snug">{successMessage}</span>
+        <div
+          role="alert"
+          className="mb-4 p-3.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-start gap-2.5 text-[13px] leading-snug animate-in fade-in duration-200"
+        >
+          <CheckCircle2
+            className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5"
+            strokeWidth={2}
+          />
+          <span className="flex-1 font-medium">{successMessage}</span>
         </div>
       )}
 
       {/* OTP Input */}
-      <OtpInput value={otp} onChange={setOtp} disabled={isLoading} />
+      <div className="my-2">
+        <OtpInput value={otp} onChange={setOtp} disabled={isLoading} />
+      </div>
 
       {/* Countdown + Resend */}
-      <div className="flex items-center justify-between mt-4 px-1">
-        <div className="flex items-center gap-1.5 text-xs text-gray-500">
-          <Clock className="w-3.5 h-3.5" />
+      <div className="flex items-center justify-between mt-4 px-1 select-none">
+        <div className="flex items-center gap-1.5 text-[12px] text-gray-500 dark:text-gray-400">
+          <Clock className="w-3.5 h-3.5" strokeWidth={1.8} />
           <span>
-            Mã hết hạn sau:{' '}
-            <span className={countdown <= 30 ? 'text-red-500 font-semibold' : 'text-indigo-600 font-semibold'}>
+            Hết hạn sau:{' '}
+            <span
+              className={`tabular-nums font-semibold ${
+                countdown <= 30
+                  ? 'text-red-500'
+                  : 'text-indigo-600 dark:text-indigo-400'
+              }`}
+            >
               {formatTime(countdown)}
             </span>
           </span>
@@ -255,17 +293,22 @@ function StepOtp({
           type="button"
           onClick={onResend}
           disabled={isResending || resendCooldown > 0}
-          className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:text-gray-400 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          className="flex items-center gap-1 text-[12px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-medium disabled:text-gray-400 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`} />
-          {resendCooldown > 0 ? `Gửi lại sau (${resendCooldown}s)` : 'Gửi lại mã OTP'}
+          <RefreshCw
+            className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`}
+            strokeWidth={1.8}
+          />
+          {resendCooldown > 0
+            ? `Gửi lại sau (${resendCooldown}s)`
+            : 'Gửi lại mã OTP'}
         </button>
       </div>
 
       {/* Submit */}
-      <div className="mt-5">
+      <div className="mt-6">
         <AuthSubmitButton
-          label="Xác nhận & Tiếp tục"
+          label="Tiếp tục"
           type="button"
           isLoading={isLoading}
           loadingLabel="Đang xác thực..."
@@ -274,38 +317,16 @@ function StepOtp({
         />
       </div>
 
-      {/* Security notice */}
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-        <div className="flex gap-2">
-          <ShieldAlert className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs text-blue-900 font-semibold">Lưu ý bảo mật</p>
-            <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">
-              Mã OTP có hiệu lực trong <strong>120 giây</strong> và tối đa 3 lần nhập sai. Tuyệt đối không chia sẻ mã này cho bất kỳ ai.
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Back button */}
       <div className="mt-5 text-center">
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-[13px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4" strokeWidth={1.8} />
           Quay lại bước trước
         </button>
-      </div>
-
-      {/* Footer info */}
-      <div className="mt-5 flex items-center justify-between text-xs text-gray-400 px-1">
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 bg-emerald-400 rounded-full" />
-          Hệ thống bảo mật 2 lớp SSL/TLS
-        </span>
-        <span>Bước 2 / 3</span>
       </div>
     </>
   );
@@ -362,78 +383,69 @@ function StepNewPassword({
   const passwordStrength = getPasswordStrength();
 
   const passwordChecks = [
-    { label: 'Từ 8 đến 64 ký tự', valid: password.length >= 8 && password.length <= 64 },
     {
-      label: 'Có cả chữ hoa (A-Z) và chữ thường (a-z)',
+      label: 'Từ 8 đến 64 ký tự',
+      valid: password.length >= 8 && password.length <= 64,
+    },
+    {
+      label: 'Chữ hoa (A-Z) và chữ thường (a-z)',
       valid: /[a-z]/.test(password) && /[A-Z]/.test(password),
     },
-    { label: 'Có ít nhất 1 chữ số (0-9)', valid: /[0-9]/.test(password) },
+    { label: 'Ít nhất 1 chữ số (0-9)', valid: /[0-9]/.test(password) },
     {
-      label: 'Có ít nhất 1 ký tự đặc biệt (@$!%*?&)',
+      label: 'Ký tự đặc biệt (@$!%*?&)',
       valid: /[@$!%*?&]/.test(password),
     },
   ];
 
-  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
-
-  // Strength bar colors
-  const strengthBarColors: Record<string, string> = {
-    empty: 'bg-gray-200',
-    weak: 'bg-red-500',
-    medium: 'bg-amber-500',
-    strong: 'bg-emerald-500',
-  };
-
-  const filledBars =
-    passwordStrength.level === 'empty'
-      ? 0
-      : passwordStrength.level === 'weak'
-        ? 1
-        : passwordStrength.level === 'medium'
-          ? 2
-          : 3;
+  const passwordsMatch =
+    confirmPassword.length > 0 && password === confirmPassword;
 
   return (
     <>
-      {/* Icon + Badge */}
+      <AppleStepProgress currentStep={3} />
+
+      {/* App Squircle Glyph */}
       <div className="flex flex-col items-center mb-5">
-        <div className="relative mb-3">
-          <div className="w-14 h-14 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
-            <ShieldCheck className="w-7 h-7 text-white" />
-          </div>
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full flex items-center justify-center border-2 border-white">
-            <CheckCircle2 className="w-3 h-3 text-white" />
-          </div>
+        <div className="w-12 h-12 rounded-[14px] bg-gradient-to-b from-emerald-500 to-emerald-600 dark:from-emerald-600 dark:to-emerald-700 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 ring-1 ring-white/20 apple-spring">
+          <ShieldCheck className="w-6 h-6 text-white" strokeWidth={1.8} />
         </div>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full border border-emerald-100 uppercase tracking-wide">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          Bảo mật tài khoản AI Study
-        </span>
       </div>
 
       {/* Title */}
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl sm:text-[26px] font-semibold text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
           Tạo mật khẩu mới
         </h1>
-        <p className="text-sm text-gray-500">
-          Mật khẩu mới của bạn phải khác với các mật khẩu đã sử dụng trước đây
-          để đảm bảo an toàn tối đa cho dữ liệu học tập.
+        <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
+          Thiết lập mật khẩu mới an toàn cho tài khoản của bạn.
         </p>
       </div>
 
       {/* Feedback Banners */}
       {errorMessage && (
-        <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-sm text-red-700 animate-in fade-in">
-          <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-500" />
-          <span className="flex-1 leading-snug">{errorMessage}</span>
+        <div
+          role="alert"
+          className="mb-4 p-3.5 rounded-xl bg-red-500/10 dark:bg-red-500/15 border border-red-500/20 text-red-700 dark:text-red-300 flex items-start gap-2.5 text-[13px] leading-snug animate-in fade-in duration-200"
+        >
+          <AlertCircle
+            className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5"
+            strokeWidth={2}
+          />
+          <span className="flex-1 font-medium">{errorMessage}</span>
         </div>
       )}
 
       {successMessage && (
-        <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-sm text-emerald-700 animate-in fade-in">
-          <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-500" />
-          <span className="flex-1 leading-snug">{successMessage}</span>
+        <div
+          role="alert"
+          className="mb-4 p-3.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-start gap-2.5 text-[13px] leading-snug animate-in fade-in duration-200"
+        >
+          <CheckCircle2
+            className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5"
+            strokeWidth={2}
+          />
+          <span className="flex-1 font-medium">{successMessage}</span>
         </div>
       )}
 
@@ -451,48 +463,46 @@ function StepNewPassword({
             onChange={(e) => setPassword(e.target.value)}
             disabled={isLoading}
             placeholder="Tạo mật khẩu mạnh"
-            icon={<Lock size={18} />}
+            icon={<Lock className="w-4 h-4" strokeWidth={1.8} />}
             showPasswordToggle
-            rightLabel={
-              password && (
-                <PasswordStrength
-                  label=""
-                  value={`● Độ mạnh: ${passwordStrength.text}`}
-                  level={passwordStrength.level}
-                />
-              )
-            }
           />
 
-          {/* Strength bar */}
+          {/* Dynamic Password Strength Indicator */}
+          <PasswordStrength
+            value={passwordStrength.text}
+            level={passwordStrength.level}
+          />
+
+          {/* Minimalist Password criteria micro-checks */}
           {password && (
-            <div className="mt-2.5">
-              <div className="flex gap-1 mb-2.5">
-                {[1, 2, 3].map((level) => (
-                  <div
-                    key={level}
-                    className={`h-1.5 flex-1 rounded-full transition-all ${
-                      level <= filledBars
-                        ? strengthBarColors[passwordStrength.level]
-                        : 'bg-gray-200'
+            <div className="mt-2.5 grid grid-cols-2 gap-1.5 p-2.5 rounded-xl bg-gray-50/70 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.06]">
+              {passwordChecks.map((check, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-1.5 text-[11px] select-none"
+                >
+                  <span
+                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${
+                      check.valid
+                        ? 'bg-emerald-500 text-white'
+                        : 'border border-gray-300 dark:border-white/20'
                     }`}
-                  />
-                ))}
-              </div>
-              <div className="space-y-1.5">
-                {passwordChecks.map((check, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-xs">
-                    {check.valid ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    ) : (
-                      <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-300" />
+                  >
+                    {check.valid && (
+                      <Check className="w-2.5 h-2.5" strokeWidth={3} />
                     )}
-                    <span className={check.valid ? 'text-emerald-600' : 'text-gray-400'}>
-                      {check.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  </span>
+                  <span
+                    className={
+                      check.valid
+                        ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+                        : 'text-gray-400 dark:text-gray-500'
+                    }
+                  >
+                    {check.label}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -509,23 +519,25 @@ function StepNewPassword({
             onChange={(e) => setConfirmPassword(e.target.value)}
             disabled={isLoading}
             placeholder="Nhập lại mật khẩu mới"
-            icon={<ShieldCheck size={18} />}
+            icon={<ShieldCheck className="w-4 h-4" strokeWidth={1.8} />}
             showPasswordToggle
           />
           {confirmPassword && (
             <p
-              className={`mt-1.5 text-xs flex items-center gap-1.5 px-0.5 ${
-                passwordsMatch ? 'text-emerald-600' : 'text-red-500'
+              className={`mt-1.5 text-[12px] flex items-center gap-1.5 px-0.5 select-none ${
+                passwordsMatch
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-red-500'
               }`}
             >
               {passwordsMatch ? (
                 <>
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>✓✓ Mật khẩu xác nhận đã hoàn toàn trùng khớp</span>
+                  <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2} />
+                  <span>Mật khẩu xác nhận hoàn toàn trùng khớp</span>
                 </>
               ) : (
                 <>
-                  <span className="w-3.5 h-3.5 text-red-500">✗</span>
+                  <AlertCircle className="w-3.5 h-3.5" strokeWidth={2} />
                   <span>Mật khẩu xác nhận không trùng khớp</span>
                 </>
               )}
@@ -534,47 +546,41 @@ function StepNewPassword({
         </div>
 
         {/* Logout all devices */}
-        <div className="flex items-start gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+        <div className="pt-1">
           <AuthCheckbox
             checked={logoutAll}
-            onChange={(e) => setLogoutAll((e.target as HTMLInputElement).checked)}
+            onChange={(e) =>
+              setLogoutAll((e.target as HTMLInputElement).checked)
+            }
             disabled={isLoading}
             label={
-              <div>
-                <p className="text-sm font-semibold text-gray-700">
-                  Đăng xuất khỏi tất cả các thiết bị khác
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Khuyên dùng để ngăn ngừa phiên đăng nhập trái phép cũ.
-                </p>
-              </div>
+              <span>
+                Đăng xuất khỏi tất cả thiết bị khác{' '}
+                <span className="text-gray-400 dark:text-gray-500 text-[11px] block">
+                  Khuyên dùng để bảo vệ tài khoản khỏi các phiên đăng nhập cũ
+                </span>
+              </span>
             }
           />
         </div>
 
         {/* Submit */}
-        <AuthSubmitButton
-          label="Cập nhật mật khẩu & Đăng nhập ngay"
-          type="button"
-          isLoading={isLoading}
-          loadingLabel="Đang cập nhật..."
-          onClick={onSubmit}
-          disabled={
-            !passwordsMatch ||
-            password.length < 8 ||
-            password.length > 64 ||
-            !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(password)
-          }
-          className="!from-emerald-600 !to-emerald-700 hover:!from-emerald-700 hover:!to-emerald-800 !shadow-emerald-200"
-        />
+        <div className="pt-2">
+          <AuthSubmitButton
+            label="Đặt lại mật khẩu"
+            type="button"
+            isLoading={isLoading}
+            loadingLabel="Đang cập nhật..."
+            onClick={onSubmit}
+            disabled={
+              !passwordsMatch ||
+              password.length < 8 ||
+              password.length > 64 ||
+              !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(password)
+            }
+          />
+        </div>
       </div>
-
-      {/* Security info */}
-      <AuthInfoBox
-        icon={<ShieldCheck size={18} className="text-indigo-500" />}
-        text="Bảo mật học thuật nâng cao 🔒 — Mật khẩu được mã hóa chuẩn bcrypt 256-bit an toàn tuyệt đối theo tiêu chuẩn giáo dục."
-        variant="bordered"
-      />
     </>
   );
 }
@@ -653,7 +659,9 @@ export default function ResetPasswordPage() {
       );
     } catch (err: unknown) {
       setErrorMessage(
-        err instanceof Error ? err.message : 'Đã có lỗi xảy ra. Vui lòng kiểm tra lại kết nối.'
+        err instanceof Error
+          ? err.message
+          : 'Đã có lỗi xảy ra. Vui lòng kiểm tra lại kết nối.'
       );
     } finally {
       setIsLoading(false);
@@ -680,15 +688,21 @@ export default function ResetPasswordPage() {
       });
 
       if (!response.success || !response.reset_token) {
-        setErrorMessage(response.error || 'Mã OTP không hợp lệ hoặc đã hết hạn.');
+        setErrorMessage(
+          response.error || 'Mã OTP không hợp lệ hoặc đã hết hạn.'
+        );
         return;
       }
 
       setResetToken(response.reset_token);
       setStep(3);
-      setSuccessMessage('Xác thực mã OTP thành công. Vui lòng thiết lập mật khẩu mới.');
+      setSuccessMessage(
+        'Xác thực mã OTP thành công. Vui lòng thiết lập mật khẩu mới.'
+      );
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Lỗi khi xác minh mã OTP.');
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Lỗi khi xác minh mã OTP.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -715,7 +729,9 @@ export default function ResetPasswordPage() {
       setOtp(Array(6).fill(''));
       setSuccessMessage('Đã gửi lại mã OTP mới. Vui lòng kiểm tra hộp thư!');
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Không thể gửi lại mã OTP.');
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Không thể gửi lại mã OTP.'
+      );
     } finally {
       setIsResending(false);
     }
@@ -727,7 +743,9 @@ export default function ResetPasswordPage() {
     setSuccessMessage(null);
 
     if (!resetToken) {
-      setErrorMessage('Phiên xác thực đã hết hạn hoặc không hợp lệ. Vui lòng thực hiện lại.');
+      setErrorMessage(
+        'Phiên xác thực đã hết hạn hoặc không hợp lệ. Vui lòng thực hiện lại.'
+      );
       return;
     }
 
@@ -737,7 +755,9 @@ export default function ResetPasswordPage() {
     }
 
     if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(newPassword)) {
-      setErrorMessage('Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&).');
+      setErrorMessage(
+        'Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&).'
+      );
       return;
     }
 
@@ -755,19 +775,26 @@ export default function ResetPasswordPage() {
       });
 
       if (!response.success) {
-        setErrorMessage(response.error || 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.');
+        setErrorMessage(
+          response.error || 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.'
+        );
         return;
       }
 
       setSuccessMessage(
-        response.message || 'Đặt lại mật khẩu thành công! Đang chuyển hướng sang trang đăng nhập...'
+        response.message ||
+          'Đặt lại mật khẩu thành công! Đang chuyển hướng sang trang đăng nhập...'
       );
 
       setTimeout(() => {
         router.push('/auth/login');
       }, 1500);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi đặt lại mật khẩu.');
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : 'Đã có lỗi xảy ra khi đặt lại mật khẩu.'
+      );
     } finally {
       setIsLoading(false);
     }
