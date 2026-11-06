@@ -1,14 +1,16 @@
 import { Image as ImageIcon, Pencil, Trash2, Volume2 } from "lucide-react";
 import { CARD_TYPE_LABEL, CARD_TYPE_TONE, STATUS_META } from "../constants";
+import { richToPlain } from "../richtext";
 import type { Flashcard } from "../types";
-import { clozeToPlain } from "../utils/cloze";
 import { dueLabel } from "../utils/srs";
 import { cx, IconButton, Pill, SQUIRCLE } from "../ui";
 
 /** A4 — Một hàng flashcard: loại · nội dung · SRS · thao tác nhanh (hiện khi hover) */
 export function CardRow({ card, onEdit, onDelete }: { card: Flashcard; onEdit: () => void; onDelete: () => void }) {
   const status = STATUS_META[card.status];
-  const front = card.type === "cloze" ? clozeToPlain(card.front) : card.front;
+  // Danh sách chỉ cần 1 dòng chữ thuần → richToPlain (chỗ trống hiện dạng [từ khóa])
+  const front = richToPlain(card.front);
+  const back = richToPlain(card.back);
   return (
     <div
       style={SQUIRCLE}
@@ -24,7 +26,7 @@ export function CardRow({ card, onEdit, onDelete }: { card: Flashcard; onEdit: (
           {card.imageUrl && <ImageIcon className="h-3.5 w-3.5 shrink-0 text-[#777587]" />}
           {card.audioUrl && <Volume2 className="h-3.5 w-3.5 shrink-0 text-[#777587]" />}
         </div>
-        <p className="truncate text-[13px] text-[#464555]/65">{card.back || "—"}</p>
+        <p className="truncate text-[13px] text-[#464555]/65">{back || "—"}</p>
       </div>
 
       <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">

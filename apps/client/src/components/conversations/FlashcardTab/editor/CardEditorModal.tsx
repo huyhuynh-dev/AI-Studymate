@@ -1,12 +1,13 @@
 "use client";
 
-import { Highlighter } from "lucide-react";
 import { useRef, useState } from "react";
+import { BASIC_FORMATS, CLOZE_FORMATS, finalizeRich, isRichEmpty, toRichHtml } from "../richtext";
 import { ClozeText } from "../shared/ClozeText";
 import type { CardDraft, CardType, Flashcard } from "../types";
 import { hasCloze } from "../utils/cloze";
-import { Button, Checkbox, Collapse, Field, Input, Modal, SegmentedControl, Textarea } from "../ui";
+import { Button, Checkbox, Collapse, Field, Input, Modal, SegmentedControl } from "../ui";
 import { MediaAttach } from "./MediaAttach";
+import { RichTextEditor, type RichTextEditorHandle } from "./RichTextEditor";
 
 interface Props {
   open: boolean;
@@ -24,19 +25,23 @@ export function CardEditorModal({ open, card, onClose, onSave }: Props) {
 function EditorDialog({ card, onClose, onSave }: Omit<Props, "open">) {
   const isEdit = !!card;
   const [type, setType] = useState<CardType>(card?.type ?? "basic");
-  const [front, setFront] = useState(card?.front ?? "");
-  const [back, setBack] = useState(card?.back ?? "");
+  // Dữ liệu cũ là text thuần → toRichHtml chuyển sang HTML (và đổi {{x}} thành chỗ trống nếu là thẻ cloze)
+  const [front, setFront] = useState(() => toRichHtml(card?.front ?? "", { legacyCloze: card?.type === "cloze" }));
+  // Mặt sau dạng rich (Cơ bản / ghi chú Cloze) và đáp án Gõ chính xác (text thuần) tách riêng
+  // → đổi qua lại giữa các loại thẻ không làm lẫn định dạng
+  const [back, setBack] = useState(() => (card && card.type !== "typein" ? toRichHtml(card.back) : ""));
+  const [answer, setAnswer] = useState(card?.type === "typein" ? card.back : "");
   const [imageUrl, setImageUrl] = useState(card?.imageUrl);
   const [audioUrl, setAudioUrl] = useState(card?.audioUrl);
   const [keepCreating, setKeepCreating] = useState(false);
   const [error, setError] = useState("");
-  const frontRef = useRef<HTMLTextAreaElement>(null);
+  const frontRef = useRef<RichTextEditorHandle>(null);
 
   const validate = () => {
-    if (!front.trim()) return "Vui lòng nhập nội dung mặt trước.";
-    if (type === "cloze" && !hasCloze(front)) return "Hãy bôi đen một cụm từ rồi bấm “Tạo chỗ trống”.";
-    if (type === "basic" && !back.trim()) return "Vui lòng nhập mặt sau.";
-    if (type === "typein" && !back.trim()) return "Vui lòng nhập đáp án chính xác.";
+    if (isRichEmpty(front)) return "Vui lòng nhập nội dung mặt trước.";
+    if (type === "cloze" && !hasCloze(front)) return "Hãy bôi đen một cụm từ rồi bấm “Chỗ trống”.";
+    if (type === "basic" && isRichEmpty(back)) return "Vui lòng nhập mặt sau.";
+    if (type === "typein" && !answer.trim()) return "Vui lòng nhập đáp án chính xác.";
     return "";
   };
 
@@ -44,23 +49,22 @@ function EditorDialog({ card, onClose, onSave }: Omit<Props, "open">) {
     const err = validate();
     setError(err);
     if (err) return;
-    onSave({ type, front: front.trim(), back: back.trim(), imageUrl, audioUrl });
+    // finalizeRich = sanitize theo allowlist của loại thẻ (thẻ không phải Cloze sẽ tự gỡ chỗ trống còn sót)
+    onSave({
+      type,
+      front: finalizeRich(front, type === "cloze" ? CLOZE_FORMATS : BASIC_FORMATS),
+      back: type === "typein" ? answer.trim() : finalizeRich(back, BASIC_FORMATS),
+      imageUrl,
+      audioUrl,
+    });
     if (keepCreating && !isEdit) {
       setFront("");
       setBack("");
+      setAnswer("");
       setImageUrl(undefined);
       setAudioUrl(undefined);
       frontRef.current?.focus();
     } else onClose();
-  };
-
-  const makeBlank = () => {
-    const el = frontRef.current;
-    if (!el) return;
-    const { selectionStart: s, selectionEnd: e } = el;
-    if (s === e) return setError("Hãy bôi đen cụm từ cần ẩn trước.");
-    setFront(`${front.slice(0, s)}{{${front.slice(s, e)}}}${front.slice(e)}`);
-    setError("");
   };
 
   return (
@@ -98,35 +102,38 @@ function EditorDialog({ card, onClose, onSave }: Omit<Props, "open">) {
           <>
             <Field label="Nội dung câu hoàn chỉnh" htmlFor="card-front">
               <div className="flex flex-col gap-2">
-                <div>
-                  <Button size="sm" icon={<Highlighter className="h-4 w-4 text-indigo-600" />} onClick={makeBlank}>
-                    Tạo chỗ trống [...]
-                  </Button>
-                </div>
-                <Textarea id="card-front" ref={frontRef} rows={4} value={front} onChange={(e) => setFront(e.target.value)} placeholder="Bôi đen một cụm từ trong câu rồi bấm “Tạo chỗ trống”." />
+                <RichTextEditor
+                  id="card-front"
+                  ref={frontRef}
+                  value={front}
+                  onChange={setFront}
+                  formats={CLOZE_FORMATS}
+                  placeholder="Bôi đen một cụm từ trong câu rồi bấm “Chỗ trống”."
+                />
                 <Collapse open={hasCloze(front)}>
-                  <p className="rounded-xl bg-[#EFF4FF]/70 px-4 py-3 text-[14px] leading-7 text-[#0B1C30]">
-                    <ClozeText text={front} mode="marked" />
-                  </p>
+                  <div className="rounded-xl bg-[#EFF4FF]/70 px-4 py-3 text-[14px] leading-7 text-[#0B1C30]">
+                    <p className="mb-0.5 text-[12px] font-semibold text-[#777587]">Người học sẽ thấy</p>
+                    <ClozeText text={front} mode="hidden" />
+                  </div>
                 </Collapse>
               </div>
             </Field>
             <Field label="Ghi chú / Giải thích bổ sung ở mặt sau" htmlFor="card-back" optional>
-              <Textarea id="card-back" rows={2} value={back} onChange={(e) => setBack(e.target.value)} />
+              <RichTextEditor id="card-back" value={back} onChange={setBack} formats={BASIC_FORMATS} compact />
             </Field>
           </>
         ) : (
           <>
             <Field label={type === "basic" ? "Mặt trước (Câu hỏi / Thuật ngữ)" : "Câu hỏi / Gợi ý hiển thị ở mặt trước"} htmlFor="card-front">
-              <Textarea id="card-front" ref={frontRef} rows={4} value={front} onChange={(e) => setFront(e.target.value)} />
+              <RichTextEditor id="card-front" ref={frontRef} value={front} onChange={setFront} formats={BASIC_FORMATS} />
             </Field>
             {type === "basic" ? (
               <Field label="Mặt sau (Câu trả lời / Định nghĩa)" htmlFor="card-back">
-                <Textarea id="card-back" rows={4} value={back} onChange={(e) => setBack(e.target.value)} />
+                <RichTextEditor id="card-back" value={back} onChange={setBack} formats={BASIC_FORMATS} />
               </Field>
             ) : (
-              <Field label="Đáp án chính xác" htmlFor="card-back" hint="Người học sẽ phải gõ khớp từng ký tự với đáp án này.">
-                <Input id="card-back" value={back} onChange={(e) => setBack(e.target.value)} />
+              <Field label="Đáp án chính xác" htmlFor="card-answer" hint="Người học sẽ phải gõ khớp từng ký tự với đáp án này (văn bản thuần, không định dạng).">
+                <Input id="card-answer" value={answer} onChange={(e) => setAnswer(e.target.value)} />
               </Field>
             )}
           </>

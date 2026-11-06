@@ -1,5 +1,6 @@
 import { CheckCircle2 } from "lucide-react";
 import { CARD_TYPE_LABEL } from "../../constants";
+import { RichText } from "../../richtext";
 import type { Flashcard } from "../../types";
 import { Button, cx, FONT_HEADING, SQUIRCLE } from "../../ui";
 import { diffTyped } from "../../utils/diff";
@@ -25,7 +26,7 @@ export function TypeInCard({ card, revealed, value, onChange, onSubmit }: Props)
         // eslint-disable-next-line @next/next/no-img-element
         <img src={card.imageUrl} alt="" className="mb-5 max-h-36 rounded-2xl object-contain" />
       )}
-      <p className={cx(FONT_HEADING, "whitespace-pre-wrap text-2xl font-semibold tracking-[-0.02em] text-[#0B1C30] sm:text-3xl")}>{card.front}</p>
+      <RichText html={card.front} align="center" className={cx(FONT_HEADING, "text-2xl font-semibold tracking-[-0.02em] text-[#0B1C30] sm:text-3xl")} />
 
       <div className="mt-8 w-full max-w-md">
         {!revealed ? (

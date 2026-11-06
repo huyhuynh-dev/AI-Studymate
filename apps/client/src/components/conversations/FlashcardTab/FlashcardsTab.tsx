@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useFocusMode } from "@/components/layout";
 import { AiGeneratorModal, type AiTarget } from "./ai/AiGeneratorModal";
 import { buildAiCards } from "./data/demoData";
 import { DeckFormModal } from "./decks/DeckFormModal";
@@ -69,7 +70,30 @@ export default function FlashcardsTab({
     return map;
   }, [decks]);
 
+  const { setFocusMode } = useFocusMode();
   const activeDeck = view.name !== "decks" ? decks.find((d) => d.id === view.deckId) : undefined;
+
+  // Đồng bộ Focus Mode: Tự động ẩn thanh tab & header khi vào Chế độ học (study)
+  useEffect(() => {
+    const isStudying = view.name === "study";
+    setFocusMode(isStudying);
+    return () => {
+      setFocusMode(false);
+    };
+  }, [view.name, setFocusMode]);
+
+  // Nhấn Escape để thoát Chế độ học và khôi phục giao diện
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && view.name === "study" && activeDeck) {
+        setFocusMode(false);
+        refreshDecks();
+        setView({ name: "detail", deckId: activeDeck.id });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [view.name, activeDeck, setFocusMode, refreshDecks]);
 
   /* ---------- handlers ---------- */
   const openAi = (target: AiTarget) => (hasDocuments ? setAi(target) : onUploadDocument?.());
@@ -150,6 +174,7 @@ export default function FlashcardsTab({
         }}
         onEditCard={(card) => setCardEditor({ open: true, card, deckId: card.deckId })}
         onExit={() => {
+          setFocusMode(false);
           refreshDecks();
           setView({ name: "detail", deckId: activeDeck.id });
         }}

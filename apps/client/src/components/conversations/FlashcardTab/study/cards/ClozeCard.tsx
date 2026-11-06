@@ -1,4 +1,5 @@
 import { CARD_TYPE_LABEL } from "../../constants";
+import { RichText } from "../../richtext";
 import { ClozeText } from "../../shared/ClozeText";
 import type { Flashcard } from "../../types";
 import { Collapse, cx, FONT_HEADING } from "../../ui";
@@ -11,12 +12,14 @@ export function ClozeCard({ card, revealed, onReveal }: { card: Flashcard; revea
         // eslint-disable-next-line @next/next/no-img-element
         <img src={card.imageUrl} alt="" className="mb-5 max-h-40 rounded-2xl object-contain" />
       )}
-      <p className={cx(FONT_HEADING, "text-2xl font-semibold leading-[1.8] tracking-[-0.015em] text-[#0B1C30] sm:text-3xl sm:leading-[1.7]")}>
-        <ClozeText text={card.front} mode={revealed ? "revealed" : "hidden"} />
-      </p>
+      <ClozeText
+        text={card.front}
+        mode={revealed ? "revealed" : "hidden"}
+        className={cx(FONT_HEADING, "text-2xl font-semibold leading-[1.8] tracking-[-0.015em] text-[#0B1C30] sm:text-3xl sm:leading-[1.7]")}
+      />
       <Collapse open={revealed && !!card.back} className="w-full">
         <div className="mt-6 border-t border-black/[0.06] pt-5">
-          <p className="whitespace-pre-wrap text-[15px] leading-6 text-[#464555]">{card.back}</p>
+          <RichText html={card.back} align="center" className="text-[15px] leading-6 text-[#464555]" />
         </div>
       </Collapse>
       <Collapse open={!revealed}>

@@ -2,7 +2,7 @@ export type ClozeSegment = { kind: "text" | "blank"; value: string };
 
 const CLOZE_RE = /\{\{(.+?)\}\}/g;
 
-/** Tách câu thành các đoạn chữ thường và chỗ trống ({{từ khóa}}) */
+/** [LEGACY] Tách câu text thuần thành đoạn chữ và chỗ trống ({{từ khóa}}). Dữ liệu mới là HTML — xem richtext/. */
 export function parseCloze(text: string): ClozeSegment[] {
   const out: ClozeSegment[] = [];
   let last = 0;
@@ -16,5 +16,8 @@ export function parseCloze(text: string): ClozeSegment[] {
   return out;
 }
 
-export const hasCloze = (text: string) => /\{\{.+?\}\}/.test(text);
+/** Có chỗ trống không? Nhận cả HTML mới (<span data-cloze>) lẫn cú pháp cũ {{...}} */
+export const hasCloze = (text: string) => /<span[^>]*\bdata-cloze\b/.test(text) || /\{\{.+?\}\}/.test(text);
+
+/** [LEGACY] Dùng richToPlain() từ richtext/ cho dữ liệu mới */
 export const clozeToPlain = (text: string) => text.replace(CLOZE_RE, "[$1]");
