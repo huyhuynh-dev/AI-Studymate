@@ -5,9 +5,6 @@ import {
   Plus,
   FileText,
   Image as ImageIcon,
-  ScanText,
-  Sparkles,
-  Brain,
   Download,
   Trash2,
   Loader2,
@@ -257,7 +254,7 @@ export default function DocumentsTab({
     }
   }
 
-  // 1. Trường hợp chưa có tài liệu nào và không có file đang upload: Hero Dropzone chuẩn Apple HIG
+  // 1. Trường hợp chưa có tài liệu nào và không có file đang upload: Empty State tối giản chuẩn Apple HIG
   const hasContent = documents.length > 0 || uploadQueue.length > 0;
 
   if (!hasContent && !isLoading) {
@@ -266,11 +263,11 @@ export default function DocumentsTab({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative flex w-full flex-col items-center justify-center rounded-[28px] border transition-all duration-300 select-none ${
+        className={`relative flex w-full flex-1 flex-col items-center justify-center rounded-3xl transition-all duration-200 select-none ${
           isDragging
-            ? "border-indigo-500 bg-indigo-500/[0.08] dark:bg-indigo-500/15 ring-4 ring-indigo-500/20"
-            : "border-black/[0.06] dark:border-white/[0.08] bg-linear-to-b from-indigo-500/[0.03] to-purple-500/[0.02] dark:from-white/[0.03] dark:to-white/[0.01]"
-        } px-6 py-12 sm:px-12 sm:py-16 text-center backdrop-blur-sm ${className}`}
+            ? "border-2 border-dashed border-indigo-500/60 bg-indigo-500/[0.04] dark:bg-indigo-500/[0.08]"
+            : "border border-transparent"
+        } px-6 py-16 text-center ${className}`}
       >
         <input
           ref={fileInputRef}
@@ -282,8 +279,8 @@ export default function DocumentsTab({
         />
 
         {errorMessage && (
-          <div className="mb-6 flex w-full max-w-md items-center justify-between rounded-[18px] border border-rose-500/20 bg-rose-500/[0.08] p-3.5 text-sm text-rose-700 dark:text-rose-400">
-            <div className="flex items-center gap-2.5">
+          <div className="mb-6 flex w-full max-w-md items-center justify-between rounded-2xl border border-rose-500/20 bg-rose-500/[0.08] px-4 py-3 text-xs text-rose-700 dark:text-rose-400">
+            <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
               <span>{errorMessage}</span>
             </div>
@@ -297,88 +294,31 @@ export default function DocumentsTab({
           </div>
         )}
 
-        {/* Illustration Badge chuẩn Apple concentric squircles */}
-        <div className="relative mb-6 sm:mb-8 flex items-center justify-center">
-          <div className="relative flex h-28 w-28 sm:h-32 sm:w-32 items-center justify-center rounded-[26px] bg-linear-to-b from-indigo-50 to-indigo-100/80 dark:from-indigo-950/40 dark:to-purple-950/30 border border-indigo-200/60 dark:border-indigo-500/20 shadow-sm">
-            <div className="relative flex items-center justify-center">
-              <svg
-                className="absolute -top-1.5 -left-1.5 h-14 w-12 text-indigo-400 dark:text-indigo-500 opacity-60"
-                viewBox="0 0 48 56"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M4 6C4 3.79086 5.79086 2 8 2H30L44 16V50C44 52.2091 42.2091 54 40 54H8C5.79086 54 4 52.2091 4 50V6Z"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-
-              <div className="relative z-10 flex h-14 w-12 flex-col items-center justify-center rounded-[10px] border-[2.5px] border-[#3730A3] dark:border-indigo-400 bg-white/40 dark:bg-black/20 backdrop-blur-xs">
-                <div className="absolute top-0 right-0 h-3 w-3 border-b-2 border-l-2 border-[#3730A3] dark:border-indigo-400 bg-[#ECE7FE] dark:bg-indigo-950/70 rounded-bl-xs" />
-                <div className="mt-1 flex items-center justify-center rounded border border-[#3730A3] dark:border-indigo-400 px-1 py-0.5">
-                  <span className="text-[10px] font-extrabold tracking-tight text-[#3730A3] dark:text-indigo-300">
-                    PDF
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Floating Sparkles Badge */}
-            <div className="absolute -top-2.5 -right-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-tr from-[#6366F1] to-[#7C3AED] shadow-md shadow-indigo-500/25">
-              <Sparkles className="h-4.5 w-4.5 text-white fill-white" />
-            </div>
-
-            {/* Floating Brain Badge */}
-            <div className="absolute -bottom-2 -left-2 flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#34D399] dark:bg-emerald-500 shadow-md shadow-emerald-500/20">
-              <Brain className="h-4.5 w-4.5 text-[#064E3B] dark:text-neutral-950" />
-            </div>
-          </div>
+        {/* Biểu tượng Apple Tonal Squircle */}
+        <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/70 dark:bg-white/[0.04] text-neutral-700 dark:text-neutral-200 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.04)]">
+          <FileText className="h-7 w-7 stroke-[1.75]" />
         </div>
 
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 dark:text-white">
-          Bắt đầu Không gian học tập của bạn
+        <h2 className="mt-5 text-[19px] sm:text-[21px] font-semibold tracking-[-0.02em] text-neutral-900 dark:text-neutral-100">
+          Chưa có tài liệu
         </h2>
 
-        <p className="mt-2.5 max-w-xl text-center text-sm sm:text-[15px] leading-relaxed text-neutral-600 dark:text-neutral-400">
-          Chưa có tài liệu nào trong phiên học này. Tải lên file PDF hoặc ảnh chụp bài giảng
-          (JPEG, PNG, WEBP) để AI StudyMate giúp bạn tóm tắt, tạo flashcard và giải đáp thắc
-          mắc chuyên sâu.
+        <p className="mt-2 max-w-[360px] text-center text-[14px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+          Tải lên tệp PDF hoặc hình ảnh bài giảng để bắt đầu đọc, ghi chú và hỏi đáp cùng AI.
         </p>
 
         <button
           type="button"
           onClick={handleTriggerUpload}
-          className="mt-7 inline-flex items-center gap-2 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] px-7 py-3 text-sm sm:text-base font-semibold text-white shadow-md shadow-indigo-500/20 transition-all active:scale-[0.98] cursor-pointer"
+          className="mt-6 inline-flex h-10 items-center gap-2 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] px-5 text-[13px] font-semibold text-white shadow-xs shadow-indigo-500/20 transition-all duration-200 active:scale-[0.97] cursor-pointer"
         >
-          <Plus className="h-5 w-5 stroke-[2.5]" />
+          <Plus className="h-4 w-4 stroke-[2.25]" />
           <span>Tải lên tài liệu</span>
         </button>
 
-        <p className="mt-3.5 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-          Hoặc kéo và thả tệp tài liệu trực tiếp vào đây (Tối đa {maxSizeMB}MB)
+        <p className="mt-3.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+          Kéo thả tệp vào đây · PDF, PNG, JPG (tối đa {maxSizeMB}MB)
         </p>
-
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
-          <div className="flex items-center gap-1.5 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-white/[0.04] px-3.5 py-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 shadow-2xs">
-            <span className="flex items-center justify-center rounded-[3px] border border-rose-500/30 bg-rose-500/10 px-1 py-0.2 text-[9px] font-black text-rose-600 dark:text-rose-400 leading-none">
-              PDF
-            </span>
-            <span>PDF</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-white/[0.04] px-3.5 py-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 shadow-2xs">
-            <ImageIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>PNG / JPG / WEBP</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/[0.06] dark:bg-indigo-500/[0.12] px-3.5 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 shadow-2xs">
-            <ScanText className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Trích xuất & OCR tự động</span>
-          </div>
-        </div>
       </div>
     );
   }

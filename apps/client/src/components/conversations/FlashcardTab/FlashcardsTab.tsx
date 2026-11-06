@@ -13,7 +13,7 @@ import { useDecks } from "@/hooks/useDecks";
 import { useFlashcards } from "@/hooks/useFlashcards";
 import { StudyView } from "./study/StudyView";
 import type { AiConfig, CardDraft, Deck, DeckStats, Flashcard } from "./types";
-import { AmbientGlow, ConfirmDialog, cx } from "./ui";
+import { ConfirmDialog, cx } from "./ui";
 
 export interface FlashcardsTabProps {
   conversationId?: string;
@@ -264,7 +264,6 @@ export default function FlashcardsTab({
 
   return (
     <div className={cx("relative isolate flex min-h-0 w-full flex-1 flex-col", className)}>
-      <AmbientGlow />
       <div className="flex min-h-0 flex-1 flex-col">
         <div key={view.name} className="flex flex-1 flex-col animate-in fade-in duration-200">
           {content}

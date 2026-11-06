@@ -6,8 +6,6 @@ import {
   Sparkles,
   BookOpen,
   FileUp,
-  Lightbulb,
-  CheckCircle2,
   AlertCircle,
   X,
 } from "lucide-react";
@@ -319,69 +317,53 @@ export default function SummaryTab({
   if (hasDocuments) {
     return (
       <div
-        className={`relative flex w-full flex-1 flex-col items-center justify-center p-6 sm:p-12 text-center select-none ${className}`}
+        className={`relative flex w-full flex-1 flex-col items-center justify-center px-6 py-16 text-center select-none ${className}`}
       >
         {/* Error banner */}
         {errorMessage && (
-          <div className="mb-6 flex items-center justify-between gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 px-4 py-2.5 text-xs text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50">
+          <div className="mb-6 flex w-full max-w-md items-center justify-between gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/[0.08] px-4 py-3 text-xs text-rose-700 dark:text-rose-400">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
               <span>{errorMessage}</span>
             </div>
-            <button type="button" onClick={clearError}>
+            <button type="button" onClick={clearError} className="cursor-pointer">
               <X className="h-4 w-4 text-rose-500" />
             </button>
           </div>
         )}
 
-        {/* Central Illustration */}
-        <div className="relative mb-6 sm:mb-8 flex items-center justify-center">
-          <div className="relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-[24px] bg-white dark:bg-[#161922] p-2 shadow-sm border border-black/[0.06] dark:border-white/[0.08]">
-            <div className="flex h-full w-full items-center justify-center rounded-[20px] bg-gradient-to-tr from-[#4F46E5] to-[#7C3AED] shadow-md shadow-indigo-500/25">
-              <Sparkles className="h-8 w-8 text-white fill-white animate-pulse" />
-            </div>
-            <div className="absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-xl border border-black/[0.06] dark:border-white/[0.1] bg-white dark:bg-[#1A1E29] shadow-md text-[#4F46E5] dark:text-[#818CF8]">
-              <BookOpen className="h-4.5 w-4.5" />
-            </div>
-          </div>
+        {/* Biểu tượng Apple Tonal Squircle */}
+        <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/70 dark:bg-white/[0.04] text-neutral-700 dark:text-neutral-200 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.04)]">
+          <BookOpen className="h-7 w-7 stroke-[1.75]" />
         </div>
 
-        {/* Title */}
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-          Sẵn sàng tạo bản Tóm tắt AI
+        <h2 className="mt-5 text-[19px] sm:text-[21px] font-semibold tracking-[-0.02em] text-neutral-900 dark:text-neutral-100">
+          Sẵn sàng tóm tắt
         </h2>
 
-        {/* Description */}
-        <p className="mt-2.5 max-w-xl text-center text-xs sm:text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
-          Hệ thống đã nhận diện được{" "}
-          <strong className="text-indigo-600 dark:text-indigo-400 font-semibold tabular-nums">
-            {readyDocs.length} tài liệu học tập
-          </strong>{" "}
-          trong cuộc trò chuyện này. Hãy thiết lập và để AI tổng hợp kiến thức trọng tâm cho bạn.
+        <p className="mt-2 max-w-[360px] text-center text-[14px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+          Đã nhận diện{" "}
+          <span className="font-semibold text-neutral-800 dark:text-neutral-200 tabular-nums">
+            {readyDocs.length} tài liệu
+          </span>{" "}
+          trong phiên học. Tổng hợp các luận điểm và kiến thức trọng tâm với AI.
         </p>
 
-        {/* Primary Action Button: "Tóm tắt tài liệu ngay" */}
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => setIsConfigModalOpen(true)}
-            disabled={!hasReadyDocuments}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] px-6 py-3 text-xs sm:text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-          >
-            <Sparkles className="h-4.5 w-4.5 fill-white" />
-            <span>Tóm tắt tài liệu ngay</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsConfigModalOpen(true)}
+          disabled={!hasReadyDocuments}
+          className="mt-6 inline-flex h-10 items-center gap-2 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] px-5 text-[13px] font-semibold text-white shadow-xs shadow-indigo-500/20 transition-all duration-200 active:scale-[0.97] cursor-pointer disabled:pointer-events-none disabled:opacity-40"
+        >
+          <Sparkles className="h-4 w-4" />
+          <span>Tạo bản tóm tắt</span>
+        </button>
 
-        {/* Status Indicator Apple Pill */}
-        <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-xs sm:text-[13px] text-emerald-700 dark:text-emerald-400 shadow-2xs">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <span>
-            {hasReadyDocuments
-              ? `Tài liệu đã sẵn sàng: ${readyDocs.map((d) => d.file_name).join(", ").slice(0, 50)}...`
-              : "Đang chờ hoàn tất OCR cho các tài liệu mới tải lên..."}
-          </span>
-        </div>
+        {!hasReadyDocuments && (
+          <p className="mt-3.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+            Đang hoàn tất trích xuất văn bản cho tài liệu mới tải lên…
+          </p>
+        )}
 
         {/* Summary Config Modal */}
         <SummaryConfigModal
@@ -398,50 +380,29 @@ export default function SummaryTab({
   // 5. Trạng thái MẶC ĐỊNH: CHƯA CÓ TÀI LIỆU NÀO ĐƯỢC TẢI LÊN
   return (
     <div
-      className={`relative flex w-full flex-1 flex-col items-center justify-center p-6 sm:p-12 text-center select-none ${className}`}
+      className={`relative flex w-full flex-1 flex-col items-center justify-center px-6 py-16 text-center select-none ${className}`}
     >
-      {/* Central Illustration */}
-      <div className="relative mb-6 sm:mb-8 flex items-center justify-center">
-        <div className="relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-[24px] bg-white dark:bg-[#161922] p-2 shadow-sm border border-black/[0.06] dark:border-white/[0.08]">
-          <div className="flex h-full w-full items-center justify-center rounded-[20px] bg-gradient-to-tr from-[#4F46E5] to-[#6366F1] shadow-md shadow-indigo-500/20">
-            <Sparkles className="h-8 w-8 text-white fill-white" />
-          </div>
-          <div className="absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-xl border border-black/[0.06] dark:border-white/[0.1] bg-white dark:bg-[#1A1E29] shadow-md text-[#4F46E5] dark:text-[#818CF8]">
-            <BookOpen className="h-4.5 w-4.5" />
-          </div>
-        </div>
+      {/* Biểu tượng Apple Tonal Squircle */}
+      <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/70 dark:bg-white/[0.04] text-neutral-700 dark:text-neutral-200 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.04)]">
+        <BookOpen className="h-7 w-7 stroke-[1.75]" />
       </div>
 
-      {/* Title */}
-      <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-        Chưa có bản Tóm tắt nào được tạo
+      <h2 className="mt-5 text-[19px] sm:text-[21px] font-semibold tracking-[-0.02em] text-neutral-900 dark:text-neutral-100">
+        Chưa có bản tóm tắt
       </h2>
 
-      {/* Description */}
-      <p className="mt-2.5 max-w-xl text-center text-xs sm:text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
-        AI StudyMate cần tài liệu học tập để tự động trích xuất các luận điểm
-        quan trọng, công thức và sơ đồ kiến thức cốt lõi cho bạn.
+      <p className="mt-2 max-w-[360px] text-center text-[14px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+        Tải lên tài liệu học tập để AI tự động tổng hợp các luận điểm, công thức và kiến thức cốt lõi.
       </p>
 
-      {/* Action Buttons */}
-      <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={onUploadDocument}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] px-5 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition-all active:scale-95 cursor-pointer"
-        >
-          <FileUp className="h-4.5 w-4.5" />
-          <span>Tải tài liệu để AI tóm tắt</span>
-        </button>
-      </div>
-
-      {/* Notice Banner Apple Capsule */}
-      <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-indigo-200/50 dark:border-indigo-800/40 bg-indigo-50/60 dark:bg-indigo-950/30 px-4 py-2 text-xs sm:text-[13px] text-indigo-700 dark:text-indigo-300 shadow-2xs">
-        <Lightbulb className="h-4 w-4 shrink-0 text-[#4F46E5] dark:text-[#818CF8]" />
-        <span>
-          Cần có tài liệu ở Tab Tài liệu (PDF) để kích hoạt tính năng tóm tắt tự động.
-        </span>
-      </div>
+      <button
+        type="button"
+        onClick={onUploadDocument}
+        className="mt-6 inline-flex h-10 items-center gap-2 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] px-5 text-[13px] font-semibold text-white shadow-xs shadow-indigo-500/20 transition-all duration-200 active:scale-[0.97] cursor-pointer"
+      >
+        <FileUp className="h-4 w-4 stroke-[2]" />
+        <span>Tải lên tài liệu</span>
+      </button>
     </div>
   );
 }

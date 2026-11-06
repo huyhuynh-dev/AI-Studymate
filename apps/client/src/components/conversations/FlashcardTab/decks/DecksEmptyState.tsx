@@ -1,6 +1,5 @@
-import { Lightbulb, Plus, Sparkles, Upload } from "lucide-react";
-import { Button, cx, FONT_HEADING, SQUIRCLE } from "../ui";
-import { DeckStackIllustration } from "./DeckStackIllustration";
+import { Layers, Plus, Sparkles, Upload } from "lucide-react";
+import { Button, cx, FONT_HEADING } from "../ui";
 
 interface Props {
   hasDocuments: boolean;
@@ -9,42 +8,36 @@ interface Props {
   onUploadDocument?: () => void;
 }
 
-/** A1 — Chưa có bộ thẻ nào (Hero Empty State chuẩn Apple HIG) */
+/** A1 — Chưa có bộ thẻ nào (Empty State tối giản chuẩn Apple HIG) */
 export function DecksEmptyState({ hasDocuments, onCreateManual, onCreateAi, onUploadDocument }: Props) {
   return (
-    <div
-      style={SQUIRCLE}
-      className="flex flex-1 flex-col items-center justify-center rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] bg-linear-to-b from-indigo-500/[0.03] to-purple-500/[0.02] dark:from-white/[0.03] dark:to-white/[0.01] px-6 py-12 sm:px-12 sm:py-16 text-center backdrop-blur-sm"
-    >
-      <DeckStackIllustration />
-      <h2 className={cx(FONT_HEADING, "mt-7 text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white")}>
-        Chưa có bộ thẻ ghi nhớ nào
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center select-none">
+      {/* Biểu tượng Apple Tonal Squircle */}
+      <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/70 dark:bg-white/[0.04] text-neutral-700 dark:text-neutral-200 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.04)]">
+        <Layers className="h-7 w-7 stroke-[1.75]" />
+      </div>
+
+      <h2 className={cx(FONT_HEADING, "mt-5 text-[19px] sm:text-[21px] font-semibold tracking-[-0.02em] text-neutral-900 dark:text-neutral-100")}>
+        Chưa có bộ thẻ ghi nhớ
       </h2>
-      <p className="mt-2.5 max-w-md text-sm sm:text-[15px] leading-relaxed text-neutral-600 dark:text-neutral-400">
-        Ôn tập bằng phương pháp lặp lại ngắt quãng (SRS) giúp bạn ghi nhớ lâu hơn gấp 3 lần. Hãy tạo bộ thẻ đầu tiên của bạn.
+
+      <p className="mt-2 max-w-[360px] text-[14px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+        Tạo bộ thẻ từ tài liệu bằng AI hoặc tự biên soạn thủ công để ôn tập ngắt quãng hiệu quả.
       </p>
-      <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
         {hasDocuments ? (
-          <Button variant="primary" size="lg" icon={<Sparkles className="h-4 w-4" />} onClick={onCreateAi}>
-            Tạo bộ thẻ bằng AI
+          <Button variant="primary" icon={<Sparkles className="h-4 w-4" />} onClick={onCreateAi}>
+            Tạo bằng AI
           </Button>
         ) : (
-          <Button variant="primary" size="lg" icon={<Upload className="h-4 w-4" />} onClick={onUploadDocument}>
-            Tải tài liệu để kích hoạt AI
+          <Button variant="primary" icon={<Upload className="h-4 w-4" />} onClick={onUploadDocument}>
+            Tải lên tài liệu
           </Button>
         )}
-        <Button size="lg" icon={<Plus className="h-4 w-4" />} onClick={onCreateManual}>
-          Tạo bộ thẻ thủ công
+        <Button variant="secondary" icon={<Plus className="h-4 w-4" />} onClick={onCreateManual}>
+          Tạo thủ công
         </Button>
-      </div>
-      <div
-        style={SQUIRCLE}
-        className="mt-8 flex max-w-md items-start gap-3 rounded-2xl border border-black/[0.05] dark:border-white/[0.07] bg-white/80 dark:bg-white/[0.04] px-4 py-3 text-left shadow-2xs"
-      >
-        <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-        <p className="text-xs sm:text-[13px] leading-5 text-neutral-600 dark:text-neutral-400">
-          Tải tài liệu PDF lên tab <b className="font-semibold text-neutral-900 dark:text-white">Tài liệu</b> nếu muốn AI tự động trích xuất thẻ ghi nhớ cho bạn.
-        </p>
       </div>
     </div>
   );
