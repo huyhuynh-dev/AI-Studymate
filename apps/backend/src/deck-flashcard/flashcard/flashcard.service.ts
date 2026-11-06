@@ -65,7 +65,7 @@ export class FlashcardService {
             {
                 deck_id: dto.deckId,
                 front_text: dto.frontText.trim(),
-                back_text: dto.backText.trim(),
+                back_text: (dto.backText || '').trim(),
                 card_type: dto.cardType || CardTypeEnum.basic,
                 image_url: dto.imageUrl?.trim() || null,
                 audio_url: dto.audioUrl?.trim() || null,

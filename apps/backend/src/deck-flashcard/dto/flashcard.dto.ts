@@ -10,9 +10,9 @@ export class CreateFlashcardDto {
     @IsNotEmpty()
     frontText: string;
 
+    @IsOptional()
     @IsString()
-    @IsNotEmpty()
-    backText: string;
+    backText?: string;
 
     @IsOptional()
     @IsEnum(CardTypeEnum)

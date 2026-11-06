@@ -95,11 +95,12 @@ export class DeckService {
         const newCount = flashcards.filter((c: any) => c.state === 'new').length;
         const learningCount = flashcards.filter((c: any) => c.state === 'learning').length;
         const relearningCount = flashcards.filter((c: any) => c.state === 'relearning').length;
+        const learningTotal = learningCount + relearningCount;
         const reviewCount = flashcards.filter((c: any) => c.state === 'review').length;
 
-        // Các thẻ cần ôn hôm nay: state không phải new và due_date <= now
+        // Các thẻ cần học/ôn hôm nay: bao gồm thẻ mới (cần học) và các thẻ đã đến hạn ôn tập
         const dueTodayCount = flashcards.filter(
-            (c: any) => c.state !== 'new' && new Date(c.due_date) <= now
+            (c: any) => c.state === 'new' || new Date(c.due_date) <= now
         ).length;
 
         return {
@@ -112,9 +113,9 @@ export class DeckService {
             stats: {
                 total: flashcards.length,
                 new: newCount,
-                learning: learningCount,
+                learning: learningTotal,
                 relearning: relearningCount,
-                inProgress: learningCount + relearningCount,
+                inProgress: learningTotal,
                 review: reviewCount,
                 dueToday: dueTodayCount,
             },

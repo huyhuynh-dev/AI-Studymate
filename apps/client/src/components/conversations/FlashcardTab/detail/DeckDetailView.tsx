@@ -32,7 +32,7 @@ export function DeckDetailView({ deck, cards, stats, onBack, onEditDeck, onStudy
     return cards.filter(
       (c) =>
         (type === "all" || c.type === type) &&
-        (status === "all" || c.status === status) &&
+        (status === "all" || c.status === status || (status === "learning" && c.status === "relearning")) &&
         (!q || c.front.toLowerCase().includes(q) || c.back.toLowerCase().includes(q))
     );
   }, [cards, query, type, status]);

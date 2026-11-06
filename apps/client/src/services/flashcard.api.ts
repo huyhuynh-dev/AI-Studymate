@@ -5,7 +5,7 @@ export function mapBackendToClientCard(b: any): Flashcard {
   const dueDate = new Date(b.due_date);
   const now = new Date();
   const diffMs = dueDate.getTime() - now.getTime();
-  const dueInDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const dueInDays = b.state === 'new' ? 0 : Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
   return {
     id: b.id,
@@ -73,7 +73,7 @@ export const flashcardApi = {
         const payload = {
           deckId: data.deckId,
           frontText,
-          backText: data.back || '',
+          backText: data.back?.trim() || '',
           cardType: 'cloze',
           imageUrl: data.imageUrl,
           audioUrl: data.audioUrl,
@@ -87,7 +87,7 @@ export const flashcardApi = {
     const payload = {
       deckId: data.deckId,
       frontText: data.front,
-      backText: data.back,
+      backText: data.back?.trim() || '',
       cardType: data.type === 'typein' ? 'type_in' : data.type,
       imageUrl: data.imageUrl,
       audioUrl: data.audioUrl,
