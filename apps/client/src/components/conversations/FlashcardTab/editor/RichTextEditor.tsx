@@ -26,7 +26,7 @@ interface Props {
   "aria-label"?: string;
 }
 
-/** Khung soạn thảo: nền xanh xám, không viền; viền chàm + ring chỉ hiện khi focus (Borderless Tonal Surface) */
+/** Khung soạn thảo chuẩn Apple Inset Surface: viền mảnh tinh tế, phát sáng khi focus */
 export const RichTextEditor = forwardRef<RichTextEditorHandle, Props>(function RichTextEditor(
   { id, value, onChange, formats = BASIC_FORMATS, placeholder, compact, autoFocus, "aria-label": ariaLabel },
   ref
@@ -51,7 +51,12 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, Props>(function R
           ...(ariaLabel ? { "aria-label": ariaLabel } : {}),
           role: "textbox",
           "aria-multiline": "true",
-          class: cx("px-4 py-3 text-[15px] leading-7 text-[#0B1C30] outline-none", compact ? "min-h-[64px]" : "min-h-[112px]", RICH_CONTENT, EDITOR_PLACEHOLDER),
+          class: cx(
+            "px-4 py-3 text-sm sm:text-[15px] leading-7 text-neutral-900 dark:text-neutral-100 outline-none",
+            compact ? "min-h-[64px]" : "min-h-[112px]",
+            RICH_CONTENT,
+            EDITOR_PLACEHOLDER
+          ),
         },
       },
       onUpdate: ({ editor: ed }) => {
@@ -77,7 +82,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, Props>(function R
       data-cloze-mode="marked"
       style={SQUIRCLE}
       className={cx(
-        "overflow-hidden rounded-2xl border-[1.5px] border-transparent bg-[#EFF4FF]/80 transition-all duration-300 focus-within:border-indigo-600 focus-within:bg-white focus-within:ring-[3px] focus-within:ring-indigo-600/15",
+        "overflow-hidden rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.04] transition-all duration-200 focus-within:border-indigo-500 dark:focus-within:border-indigo-400 focus-within:bg-white dark:focus-within:bg-[#161922] focus-within:ring-3 focus-within:ring-indigo-500/15",
         CLOZE_CHIP,
         CLOZE_MODES
       )}
@@ -85,7 +90,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, Props>(function R
       {editor ? (
         <>
           <EditorToolbar editor={editor} formats={formats} />
-          <div aria-hidden className="mx-1.5 h-px bg-[#0B1C30]/[0.06]" />
+          <div aria-hidden className="mx-1.5 h-px bg-black/[0.06] dark:bg-white/[0.08]" />
           <div className="max-h-64 overflow-y-auto">
             <EditorContent editor={editor} />
           </div>

@@ -12,7 +12,10 @@ export function AudioButton({ url }: { url: string }) {
         e.stopPropagation();
         new Audio(url).play().catch(() => {});
       }}
-      className={cx("flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-indigo-50 text-indigo-600 transition-all duration-300 hover:bg-indigo-100 active:scale-90", SPRING)}
+      className={cx(
+        "flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-indigo-500/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 transition-all duration-200 hover:bg-indigo-500/20 active:scale-90",
+        SPRING
+      )}
     >
       <Volume2 className="h-4 w-4" />
     </button>

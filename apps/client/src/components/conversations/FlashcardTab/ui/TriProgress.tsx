@@ -13,11 +13,11 @@ export function TriProgress({ newCount, learning, review, className }: { newCoun
     <div
       role="img"
       aria-label={`${newCount} thẻ mới, ${learning} đang học, ${review} đã ôn tập`}
-      className={cx("flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full bg-[#E5EEFF]", className)}
+      className={cx("flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full bg-neutral-200/70 dark:bg-white/[0.08]", className)}
     >
       {total > 0 &&
         parts.map(([tone, n]) =>
-          n > 0 ? <span key={tone} className={cx("h-full rounded-full transition-all duration-700", TONE_BAR[tone])} style={{ flexGrow: n }} /> : null
+          n > 0 ? <span key={tone} className={cx("h-full rounded-full transition-all duration-500", TONE_BAR[tone])} style={{ flexGrow: n }} /> : null
         )}
     </div>
   );

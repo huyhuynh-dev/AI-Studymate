@@ -15,15 +15,21 @@ export function ClozeCard({ card, revealed, onReveal }: { card: Flashcard; revea
       <ClozeText
         text={card.front}
         mode={revealed ? "revealed" : "hidden"}
-        className={cx(FONT_HEADING, "text-2xl font-semibold leading-[1.8] tracking-[-0.015em] text-[#0B1C30] sm:text-3xl sm:leading-[1.7]")}
+        className={cx(FONT_HEADING, "text-xl sm:text-2xl font-semibold leading-[1.7] text-neutral-900 dark:text-white")}
       />
       <Collapse open={revealed && !!card.back} className="w-full">
-        <div className="mt-6 border-t border-black/[0.06] pt-5">
-          <RichText html={card.back} align="center" className="text-[15px] leading-6 text-[#464555]" />
+        <div className="mt-6 border-t border-black/[0.06] dark:border-white/[0.08] pt-5">
+          <RichText html={card.back} align="center" className="text-sm sm:text-[15px] leading-6 text-neutral-600 dark:text-neutral-300" />
         </div>
       </Collapse>
       <Collapse open={!revealed}>
-        <p className="mt-8 text-[13px] text-[#777587]">Nhấn phím Space hoặc chạm vào thẻ để xem đáp án</p>
+        <p className="mt-8 text-xs font-medium text-neutral-400 dark:text-neutral-500">
+          Nhấn phím{" "}
+          <kbd className="rounded border border-black/[0.1] dark:border-white/[0.15] bg-neutral-100 dark:bg-white/[0.06] px-1.5 py-0.5 font-sans text-[11px] font-semibold">
+            Space
+          </kbd>{" "}
+          hoặc chạm vào thẻ để xem đáp án
+        </p>
       </Collapse>
     </CardShell>
   );

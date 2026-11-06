@@ -8,7 +8,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Nút công cụ dạng bật/tắt. Trạng thái bật = nền trắng + specular highlight (giống thumb của SegmentedControl).
+ * Nút công cụ dạng bật/tắt trên thanh EditorToolbar.
  * Bo 10px = 16px (khung ngoài) − 6px (padding) → đồng tâm.
  */
 export function ToolbarButton({ label, active = false, title, className, style, children, type = "button", ...rest }: Props) {
@@ -23,11 +23,11 @@ export function ToolbarButton({ label, active = false, title, className, style, 
       onMouseDown={(e) => e.preventDefault()}
       style={{ ...SQUIRCLE, ...style }}
       className={cx(
-        "flex h-8 min-w-8 shrink-0 cursor-pointer select-none items-center justify-center gap-1.5 rounded-[10px] px-1.5 transition-all duration-300 active:scale-90 disabled:pointer-events-none disabled:opacity-35",
+        "flex h-8 min-w-8 shrink-0 cursor-pointer select-none items-center justify-center gap-1.5 rounded-[10px] px-1.5 transition-all duration-200 active:scale-95 disabled:pointer-events-none disabled:opacity-35",
         SPRING,
         active
-          ? "bg-white text-indigo-600 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_2px_8px_-2px_rgba(11,28,48,0.14)]"
-          : "text-[#464555]/80 hover:bg-white/70 hover:text-[#0B1C30]",
+          ? "bg-white dark:bg-[#252A3A] text-indigo-600 dark:text-indigo-400 shadow-xs"
+          : "text-neutral-600 dark:text-neutral-400 hover:bg-white/70 dark:hover:bg-white/[0.08] hover:text-neutral-900 dark:hover:text-white",
         className
       )}
     >

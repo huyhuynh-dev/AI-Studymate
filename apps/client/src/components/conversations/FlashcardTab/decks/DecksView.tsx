@@ -16,7 +16,7 @@ interface Props {
   onDelete: (deck: Deck) => void;
 }
 
-/** A2 — Thanh công cụ + lưới bộ thẻ (3 cột lớn · 2 cột vừa · 1 cột điện thoại) */
+/** A2 — Thanh công cụ + lưới bộ thẻ chuẩn Apple HIG */
 export function DecksView({ decks, statsByDeck, onOpen, onStudy, onCreate, onCreateAi, onEdit, onDelete }: Props) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -40,7 +40,11 @@ export function DecksView({ decks, statsByDeck, onOpen, onStudy, onCreate, onCre
           ))}
         </div>
       ) : (
-        <p className="py-16 text-center text-sm text-[#777587]">Không tìm thấy bộ thẻ nào khớp “{query}”.</p>
+        <div className="flex flex-col items-center justify-center rounded-[22px] border border-dashed border-black/[0.08] dark:border-white/[0.1] bg-neutral-50/50 dark:bg-white/[0.02] py-14 text-center">
+          <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+            Không tìm thấy bộ thẻ nào khớp “{query}”.
+          </p>
+        </div>
       )}
     </div>
   );

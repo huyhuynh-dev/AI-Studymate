@@ -24,7 +24,7 @@ export function EditorToolbar({ editor, formats }: { editor: Editor; formats: Fo
     <div role="toolbar" aria-label="Định dạng văn bản" className="flex flex-wrap items-center gap-0.5 p-1.5">
       {groups.map((group, gi) => (
         <Fragment key={gi}>
-          {gi > 0 && <span aria-hidden className="mx-1 h-4 w-px bg-[#0B1C30]/10" />}
+          {gi > 0 && <span aria-hidden className="mx-1 h-4 w-px bg-black/[0.08] dark:bg-white/[0.1]" />}
           {group.map((def) => {
             const s = state[def.id];
             const Icon = def.icon;
@@ -39,7 +39,7 @@ export function EditorToolbar({ editor, formats }: { editor: Editor; formats: Fo
                 className={def.showLabel ? "px-2.5" : undefined}
               >
                 <Icon className="h-4 w-4" strokeWidth={2.25} />
-                {def.showLabel && <span className="text-[13px] font-semibold">{def.label}</span>}
+                {def.showLabel && <span className="text-xs font-semibold">{def.label}</span>}
               </ToolbarButton>
             );
           })}

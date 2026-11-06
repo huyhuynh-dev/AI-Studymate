@@ -2,35 +2,35 @@ import type { CardStatus, CardType, Rating } from "./types";
 
 export type Tone = "blue" | "amber" | "green" | "red" | "indigo" | "violet" | "gray";
 
-/** Nền nhạt + chữ đậm cùng tông — dùng cho Pill, nút đánh giá… */
+/** Nền nhạt + chữ đậm cùng tông + viền hairline — hỗ trợ đầy đủ Light & Dark Mode */
 export const TONE_SOFT: Record<Tone, string> = {
-  blue: "bg-blue-100/70 text-blue-800",
-  amber: "bg-amber-100/70 text-amber-800",
-  green: "bg-[#6CF8BB]/30 text-[#005236]",
-  red: "bg-[#FFDAD6]/80 text-[#93000A]",
-  indigo: "bg-indigo-50 text-indigo-700",
-  violet: "bg-[#E9DDFF]/70 text-[#5516BE]",
-  gray: "bg-[#EFF4FF] text-[#464555]",
+  blue: "bg-blue-500/10 text-blue-700 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20",
+  amber: "bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-1 ring-inset ring-amber-500/20",
+  green: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-500/20",
+  red: "bg-rose-500/10 text-rose-700 dark:text-rose-400 ring-1 ring-inset ring-rose-500/20",
+  indigo: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 ring-1 ring-inset ring-indigo-500/20",
+  violet: "bg-purple-500/10 text-purple-700 dark:text-purple-400 ring-1 ring-inset ring-purple-500/20",
+  gray: "bg-neutral-500/10 text-neutral-700 dark:text-neutral-300 ring-1 ring-inset ring-neutral-500/20",
 };
 
 export const TONE_BAR: Record<Tone, string> = {
-  blue: "bg-blue-500",
-  amber: "bg-amber-500",
-  green: "bg-emerald-500",
-  red: "bg-[#BA1A1A]",
-  indigo: "bg-indigo-500",
-  violet: "bg-[#6F3DD9]",
-  gray: "bg-[#C7C4D8]",
+  blue: "bg-blue-500 dark:bg-blue-400",
+  amber: "bg-amber-500 dark:bg-amber-400",
+  green: "bg-emerald-500 dark:bg-emerald-400",
+  red: "bg-rose-600 dark:bg-rose-500",
+  indigo: "bg-indigo-600 dark:bg-indigo-500",
+  violet: "bg-purple-600 dark:bg-purple-500",
+  gray: "bg-neutral-400 dark:bg-neutral-600",
 };
 
 export const TONE_TEXT: Record<Tone, string> = {
-  blue: "text-blue-600",
-  amber: "text-amber-600",
-  green: "text-emerald-600",
-  red: "text-[#BA1A1A]",
-  indigo: "text-indigo-600",
-  violet: "text-[#6F3DD9]",
-  gray: "text-[#0B1C30]",
+  blue: "text-blue-600 dark:text-blue-400",
+  amber: "text-amber-600 dark:text-amber-400",
+  green: "text-emerald-600 dark:text-emerald-400",
+  red: "text-rose-600 dark:text-rose-400",
+  indigo: "text-indigo-600 dark:text-indigo-400",
+  violet: "text-purple-600 dark:text-purple-400",
+  gray: "text-neutral-900 dark:text-white",
 };
 
 export const CARD_TYPE_LABEL: Record<CardType, string> = {

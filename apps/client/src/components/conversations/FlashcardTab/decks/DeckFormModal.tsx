@@ -36,8 +36,8 @@ function DeckFormDialog({ deck, onClose, onSubmit }: Omit<Props, "open">) {
       onClose={onClose}
       title={deck ? "Chỉnh sửa bộ thẻ" : "Tạo bộ thẻ mới"}
       footer={
-        <div className="flex justify-end gap-3">
-          <Button variant="ghost" onClick={onClose}>
+        <div className="flex justify-end gap-2.5">
+          <Button variant="secondary" onClick={onClose}>
             Hủy
           </Button>
           <Button variant="primary" onClick={submit}>

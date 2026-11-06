@@ -210,22 +210,28 @@ export default function FlashcardsTab({
   } else if (isDecksLoading) {
     content = (
       <div className="flex flex-col gap-6 animate-pulse">
-        <div className="flex items-center justify-between">
-          <div className="h-7 w-28 rounded-lg bg-gray-200" />
+        <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-4">
+          <div className="h-7 w-36 rounded-xl bg-neutral-200/70 dark:bg-white/[0.06]" />
           <div className="flex gap-2">
-            <div className="h-9 w-28 rounded-xl bg-gray-200" />
-            <div className="h-9 w-32 rounded-xl bg-gray-200" />
+            <div className="h-9 w-28 rounded-full bg-neutral-200/70 dark:bg-white/[0.06]" />
+            <div className="h-9 w-36 rounded-full bg-neutral-200/70 dark:bg-white/[0.06]" />
           </div>
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex h-52 flex-col gap-4 rounded-2xl border border-gray-100 bg-gray-50/70 p-5">
-              <div className="h-5 w-3/4 rounded bg-gray-200" />
-              <div className="h-4 w-full rounded bg-gray-200/70" />
-              <div className="mt-auto h-2 w-full rounded bg-gray-200" />
+            <div
+              key={i}
+              className="flex h-52 flex-col gap-4 rounded-[22px] border border-black/[0.06] dark:border-white/[0.08] bg-white/60 dark:bg-[#161922]/60 p-5"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-[12px] bg-neutral-200/70 dark:bg-white/[0.06]" />
+                <div className="h-5 w-2/3 rounded-lg bg-neutral-200/70 dark:bg-white/[0.06]" />
+              </div>
+              <div className="h-4 w-full rounded-lg bg-neutral-200/50 dark:bg-white/[0.04]" />
+              <div className="mt-auto h-1.5 w-full rounded-full bg-neutral-200/70 dark:bg-white/[0.06]" />
               <div className="flex justify-between pt-2">
-                <div className="h-4 w-12 rounded bg-gray-200" />
-                <div className="h-8 w-24 rounded-lg bg-gray-200" />
+                <div className="h-4 w-14 rounded-lg bg-neutral-200/70 dark:bg-white/[0.06]" />
+                <div className="h-8 w-24 rounded-full bg-neutral-200/70 dark:bg-white/[0.06]" />
               </div>
             </div>
           ))}
@@ -259,8 +265,8 @@ export default function FlashcardsTab({
   return (
     <div className={cx("relative isolate flex min-h-0 w-full flex-1 flex-col", className)}>
       <AmbientGlow />
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1">
-        <div key={view.name} className="flex flex-1 flex-col animate-in fade-in slide-in-from-bottom-1 duration-300">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div key={view.name} className="flex flex-1 flex-col animate-in fade-in duration-200">
           {content}
         </div>
       </div>

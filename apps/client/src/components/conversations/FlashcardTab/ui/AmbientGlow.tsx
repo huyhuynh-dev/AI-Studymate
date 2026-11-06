@@ -6,10 +6,10 @@ export function AmbientGlow() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 -z-10"
+      className="pointer-events-none absolute inset-0 -z-10 opacity-80 dark:opacity-40"
       style={{
         background:
-          "radial-gradient(ellipse closest-side at 28% 22%, rgba(79,70,229,0.045), transparent), radial-gradient(ellipse closest-side at 74% 78%, rgba(108,248,187,0.05), transparent)",
+          "radial-gradient(ellipse closest-side at 28% 22%, rgba(79,70,229,0.04), transparent), radial-gradient(ellipse closest-side at 74% 78%, rgba(16,185,129,0.035), transparent)",
       }}
     />
   );

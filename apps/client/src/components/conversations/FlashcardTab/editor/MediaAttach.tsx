@@ -21,21 +21,48 @@ export function MediaAttach({ imageUrl, audioUrl, onImage, onAudio }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" icon={<ImagePlus className="h-4 w-4" />} onClick={() => imgRef.current?.click()}>
+        <Button size="sm" icon={<ImagePlus className="h-3.5 w-3.5" />} onClick={() => imgRef.current?.click()}>
           Đính kèm hình ảnh
         </Button>
-        <Button size="sm" icon={<Music className="h-4 w-4" />} onClick={() => audioRef.current?.click()}>
+        <Button size="sm" icon={<Music className="h-3.5 w-3.5" />} onClick={() => audioRef.current?.click()}>
           Đính kèm âm thanh
         </Button>
-        <input ref={imgRef} type="file" accept="image/*" hidden onChange={(e) => { pick(e.target.files?.[0], onImage); e.target.value = ""; }} />
-        <input ref={audioRef} type="file" accept="audio/*" hidden onChange={(e) => { pick(e.target.files?.[0], onAudio); e.target.value = ""; }} />
+        <input
+          ref={imgRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            pick(e.target.files?.[0], onImage);
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={audioRef}
+          type="file"
+          accept="audio/*"
+          hidden
+          onChange={(e) => {
+            pick(e.target.files?.[0], onAudio);
+            e.target.value = "";
+          }}
+        />
       </div>
 
       {imageUrl && (
         <div className="relative w-fit">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageUrl} alt="Hình đính kèm" className="h-20 w-20 rounded-xl object-cover" />
-          <button type="button" aria-label="Gỡ hình ảnh" onClick={() => onImage(undefined)} className="absolute -right-2 -top-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-[#0B1C30] text-white shadow-md transition-transform active:scale-90">
+          <img
+            src={imageUrl}
+            alt="Hình đính kèm"
+            className="h-20 w-20 rounded-xl border border-black/[0.08] dark:border-white/[0.1] object-cover"
+          />
+          <button
+            type="button"
+            aria-label="Gỡ hình ảnh"
+            onClick={() => onImage(undefined)}
+            className="absolute -right-2 -top-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-md transition-transform active:scale-90"
+          >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>

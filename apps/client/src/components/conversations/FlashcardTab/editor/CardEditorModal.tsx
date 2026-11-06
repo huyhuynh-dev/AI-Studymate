@@ -25,10 +25,7 @@ export function CardEditorModal({ open, card, onClose, onSave }: Props) {
 function EditorDialog({ card, onClose, onSave }: Omit<Props, "open">) {
   const isEdit = !!card;
   const [type, setType] = useState<CardType>(card?.type ?? "basic");
-  // Dữ liệu cũ là text thuần → toRichHtml chuyển sang HTML (và đổi {{x}} thành chỗ trống nếu là thẻ cloze)
   const [front, setFront] = useState(() => toRichHtml(card?.front ?? "", { legacyCloze: card?.type === "cloze" }));
-  // Mặt sau dạng rich (Cơ bản / ghi chú Cloze) và đáp án Gõ chính xác (text thuần) tách riêng
-  // → đổi qua lại giữa các loại thẻ không làm lẫn định dạng
   const [back, setBack] = useState(() => (card && card.type !== "typein" ? toRichHtml(card.back) : ""));
   const [answer, setAnswer] = useState(card?.type === "typein" ? card.back : "");
   const [imageUrl, setImageUrl] = useState(card?.imageUrl);
@@ -49,7 +46,6 @@ function EditorDialog({ card, onClose, onSave }: Omit<Props, "open">) {
     const err = validate();
     setError(err);
     if (err) return;
-    // finalizeRich = sanitize theo allowlist của loại thẻ (thẻ không phải Cloze sẽ tự gỡ chỗ trống còn sót)
     onSave({
       type,
       front: finalizeRich(front, type === "cloze" ? CLOZE_FORMATS : BASIC_FORMATS),
@@ -76,8 +72,8 @@ function EditorDialog({ card, onClose, onSave }: Omit<Props, "open">) {
       footer={
         <div className="flex flex-wrap items-center justify-between gap-3">
           {isEdit ? <span /> : <Checkbox checked={keepCreating} onChange={setKeepCreating} label="Tiếp tục tạo thẻ tiếp theo" />}
-          <div className="flex gap-3">
-            <Button variant="ghost" onClick={onClose}>
+          <div className="flex gap-2.5">
+            <Button variant="secondary" onClick={onClose}>
               Hủy
             </Button>
             <Button variant="primary" onClick={submit}>
@@ -90,7 +86,10 @@ function EditorDialog({ card, onClose, onSave }: Omit<Props, "open">) {
       <div className="flex flex-col gap-5">
         <SegmentedControl<CardType>
           value={type}
-          onChange={(v) => { setType(v); setError(""); }}
+          onChange={(v) => {
+            setType(v);
+            setError("");
+          }}
           options={[
             { value: "basic", label: "Cơ bản" },
             { value: "cloze", label: "Điền khuyết" },
@@ -114,8 +113,8 @@ function EditorDialog({ card, onClose, onSave }: Omit<Props, "open">) {
                   {(() => {
                     const splitFronts = splitClozeHtml(front);
                     return (
-                      <div className="rounded-xl bg-[#EFF4FF]/70 px-4 py-3 text-[14px] leading-7 text-[#0B1C30]">
-                        <p className="mb-1 text-[12px] font-semibold text-[#777587]">
+                      <div className="rounded-xl border border-black/[0.05] dark:border-white/[0.07] bg-neutral-100/80 dark:bg-white/[0.04] px-4 py-3 text-sm leading-7 text-neutral-900 dark:text-neutral-100">
+                        <p className="mb-1 text-xs font-semibold text-neutral-500 dark:text-neutral-400">
                           {splitFronts.length > 1 && !isEdit
                             ? `Người học sẽ thấy (${splitFronts.length} thẻ độc lập sẽ được tạo)`
                             : "Người học sẽ thấy"}
@@ -124,10 +123,14 @@ function EditorDialog({ card, onClose, onSave }: Omit<Props, "open">) {
                           {splitFronts.map((f, idx) => (
                             <div
                               key={idx}
-                              className={splitFronts.length > 1 ? "rounded-lg bg-white/60 px-3 py-1.5" : ""}
+                              className={
+                                splitFronts.length > 1
+                                  ? "rounded-lg border border-black/[0.04] dark:border-white/[0.06] bg-white/70 dark:bg-white/[0.04] px-3 py-1.5"
+                                  : ""
+                              }
                             >
                               {splitFronts.length > 1 && (
-                                <span className="mb-0.5 block text-[11px] font-bold uppercase tracking-wider text-indigo-600">
+                                <span className="tabular-nums mb-0.5 block text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                                   Thẻ {idx + 1}
                                 </span>
                               )}
@@ -155,14 +158,18 @@ function EditorDialog({ card, onClose, onSave }: Omit<Props, "open">) {
                 <RichTextEditor id="card-back" value={back} onChange={setBack} formats={BASIC_FORMATS} />
               </Field>
             ) : (
-              <Field label="Đáp án chính xác" htmlFor="card-answer" hint="Người học sẽ phải gõ khớp từng ký tự với đáp án này (văn bản thuần, không định dạng).">
+              <Field
+                label="Đáp án chính xác"
+                htmlFor="card-answer"
+                hint="Người học sẽ phải gõ khớp từng ký tự với đáp án này (văn bản thuần, không định dạng)."
+              >
                 <Input id="card-answer" value={answer} onChange={(e) => setAnswer(e.target.value)} />
               </Field>
             )}
           </>
         )}
 
-        {error && <p className="-mt-2 text-[13px] text-[#BA1A1A]">{error}</p>}
+        {error && <p className="-mt-2 text-xs font-medium text-rose-600 dark:text-rose-400">{error}</p>}
 
         <MediaAttach imageUrl={imageUrl} audioUrl={audioUrl} onImage={setImageUrl} onAudio={setAudioUrl} />
       </div>

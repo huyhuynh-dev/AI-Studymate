@@ -9,18 +9,21 @@ interface Props {
   onUploadDocument?: () => void;
 }
 
-/** A1 — Chưa có bộ thẻ nào */
+/** A1 — Chưa có bộ thẻ nào (Hero Empty State chuẩn Apple HIG) */
 export function DecksEmptyState({ hasDocuments, onCreateManual, onCreateAi, onUploadDocument }: Props) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-4 py-10 text-center">
+    <div
+      style={SQUIRCLE}
+      className="flex flex-1 flex-col items-center justify-center rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] bg-linear-to-b from-indigo-500/[0.03] to-purple-500/[0.02] dark:from-white/[0.03] dark:to-white/[0.01] px-6 py-12 sm:px-12 sm:py-16 text-center backdrop-blur-sm"
+    >
       <DeckStackIllustration />
-      <h2 className={cx(FONT_HEADING, "mt-8 text-[26px] font-semibold tracking-[-0.025em] text-[#0B1C30] sm:text-[32px]")}>
-        Chưa có bộ thẻ nào
+      <h2 className={cx(FONT_HEADING, "mt-7 text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white")}>
+        Chưa có bộ thẻ ghi nhớ nào
       </h2>
-      <p className="mt-3 max-w-md text-[15px] leading-6 text-[#464555]/75">
+      <p className="mt-2.5 max-w-md text-sm sm:text-[15px] leading-relaxed text-neutral-600 dark:text-neutral-400">
         Ôn tập bằng phương pháp lặp lại ngắt quãng (SRS) giúp bạn ghi nhớ lâu hơn gấp 3 lần. Hãy tạo bộ thẻ đầu tiên của bạn.
       </p>
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-7 flex flex-col gap-3 sm:flex-row">
         {hasDocuments ? (
           <Button variant="primary" size="lg" icon={<Sparkles className="h-4 w-4" />} onClick={onCreateAi}>
             Tạo bộ thẻ bằng AI
@@ -34,10 +37,13 @@ export function DecksEmptyState({ hasDocuments, onCreateManual, onCreateAi, onUp
           Tạo bộ thẻ thủ công
         </Button>
       </div>
-      <div style={SQUIRCLE} className="mt-10 flex max-w-md items-start gap-3 rounded-2xl bg-[#EFF4FF]/70 px-4 py-3 text-left">
+      <div
+        style={SQUIRCLE}
+        className="mt-8 flex max-w-md items-start gap-3 rounded-2xl border border-black/[0.05] dark:border-white/[0.07] bg-white/80 dark:bg-white/[0.04] px-4 py-3 text-left shadow-2xs"
+      >
         <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-        <p className="text-[13px] leading-5 text-[#464555]/80">
-          Tải tài liệu PDF lên tab <b className="font-semibold text-[#0B1C30]">Tài liệu</b> nếu muốn AI tự động trích xuất thẻ ghi nhớ cho bạn.
+        <p className="text-xs sm:text-[13px] leading-5 text-neutral-600 dark:text-neutral-400">
+          Tải tài liệu PDF lên tab <b className="font-semibold text-neutral-900 dark:text-white">Tài liệu</b> nếu muốn AI tự động trích xuất thẻ ghi nhớ cho bạn.
         </p>
       </div>
     </div>

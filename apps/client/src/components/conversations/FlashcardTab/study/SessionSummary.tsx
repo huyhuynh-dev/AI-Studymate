@@ -10,16 +10,19 @@ interface Props {
   onExtra: () => void;
 }
 
-/** B4 — Tổng kết phiên học */
+/** B4 — Tổng kết phiên học chuẩn Apple Achievement Screen */
 export function SessionSummary({ total, goodRate, seconds, onBack, onExtra }: Props) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-4 py-10 text-center animate-in fade-in zoom-in-95 duration-500">
-      <span className="flex h-24 w-24 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-[#6F3DD9] text-white shadow-[0_20px_40px_-10px_rgba(79,70,229,0.5)]">
-        <Trophy className="h-11 w-11" />
+    <div className="flex flex-1 flex-col items-center justify-center rounded-[28px] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#161922] px-6 py-12 text-center shadow-xs animate-in fade-in zoom-in-95 duration-300">
+      <span className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-linear-to-br from-[#4F46E5] to-[#7C3AED] text-white shadow-lg shadow-indigo-500/30">
+        <Trophy className="h-10 w-10" />
       </span>
-      <h2 className={cx(FONT_HEADING, "mt-8 max-w-lg text-[26px] font-bold leading-tight tracking-[-0.025em] text-[#0B1C30] sm:text-[32px]")}>
+      <h2 className={cx(FONT_HEADING, "mt-6 max-w-lg text-2xl sm:text-[28px] font-bold leading-tight text-neutral-900 dark:text-white")}>
         Tuyệt vời! Bạn đã hoàn thành phiên ôn tập hôm nay.
       </h2>
+      <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+        Tiến độ lặp lại ngắt quãng (SRS) của bạn đã được cập nhật tự động.
+      </p>
       <div className="mt-8 grid w-full max-w-xl grid-cols-1 gap-3 sm:grid-cols-3">
         <StatTile large label="Thẻ đã học" value={total} />
         <StatTile large label="Tỷ lệ ghi nhớ tốt" value={`${goodRate}%`} tone="green" />

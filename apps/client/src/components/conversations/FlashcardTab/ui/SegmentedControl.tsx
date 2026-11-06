@@ -14,20 +14,23 @@ interface Props<T extends string | number> {
   className?: string;
 }
 
-/** Thanh gạt: nền trắng trượt theo spring. Track bo 12px, padding 4px → thumb bo 8px (đồng tâm). */
+/** Thanh gạt chuẩn Apple Segmented Control: Track bo 12px, padding 4px → thumb bo 8px (đồng tâm). */
 export function SegmentedControl<T extends string | number>({ options, value, onChange, className }: Props<T>) {
   const index = Math.max(0, options.findIndex((o) => o.value === value));
   return (
     <div
       role="tablist"
       style={{ ...SQUIRCLE, gridTemplateColumns: `repeat(${options.length}, 1fr)` }}
-      className={cx("relative grid rounded-xl bg-[#E5EEFF]/70 p-1", className)}
+      className={cx(
+        "relative grid rounded-xl border border-black/[0.05] dark:border-white/[0.07] bg-neutral-100/90 dark:bg-white/[0.05] p-1",
+        className
+      )}
     >
       <span
         aria-hidden
         style={{ ...SQUIRCLE, width: `calc((100% - 0.5rem) / ${options.length})`, transform: `translateX(${index * 100}%)` }}
         className={cx(
-          "absolute inset-y-1 left-1 rounded-lg bg-white shadow-[inset_0_1px_0_rgba(255,255,255,1),0_2px_8px_-2px_rgba(11,28,48,0.14)] transition-transform duration-500",
+          "absolute inset-y-1 left-1 rounded-lg bg-white dark:bg-[#252A3A] shadow-xs transition-transform duration-300",
           SPRING
         )}
       />
@@ -41,8 +44,10 @@ export function SegmentedControl<T extends string | number>({ options, value, on
             aria-selected={active}
             onClick={() => onChange(o.value)}
             className={cx(
-              "relative z-10 flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-colors duration-300",
-              active ? "text-[#0B1C30]" : "text-[#464555]/80 hover:text-[#0B1C30]"
+              "relative z-10 flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold tabular-nums transition-colors duration-200",
+              active
+                ? "text-neutral-900 dark:text-white"
+                : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
             )}
           >
             {o.icon}

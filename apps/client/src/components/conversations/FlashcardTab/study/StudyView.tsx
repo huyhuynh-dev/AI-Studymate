@@ -21,7 +21,7 @@ interface Props {
   onStudyExtra: () => void;
 }
 
-/** B3 — Chế độ học tập trung: header · sân khấu thẻ · khu nút hành động/đánh giá */
+/** B3 — Chế độ học tập trung chuẩn Apple Focus Stage: header · sân khấu thẻ · khu nút đánh giá */
 export function StudyView({ initialIds, cards, onPersist, onEditCard, onExit, onStudyExtra }: Props) {
   const session = useStudySession(initialIds, cards, onPersist);
   const [typed, setTyped] = useState("");
@@ -76,12 +76,15 @@ export function StudyView({ initialIds, cards, onPersist, onEditCard, onExit, on
     );
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col justify-between gap-6 py-2">
       <StudyHeader progress={session.progress} remaining={session.remaining} onExit={onExit} onEdit={() => onEditCard(current)} />
-      <div key={`${current.id}-${session.progress}`} className="flex flex-1 items-center justify-center animate-in fade-in slide-in-from-right-6 duration-500">
+      <div
+        key={`${current.id}-${session.progress}`}
+        className="flex flex-1 items-center justify-center animate-in fade-in slide-in-from-right-4 duration-300"
+      >
         {face}
       </div>
-      <div className="flex min-h-[88px] items-start justify-center pb-2">
+      <div className="flex min-h-[84px] items-start justify-center pb-2">
         {revealed ? (
           <RatingBar card={current} onRate={handleRate} />
         ) : (

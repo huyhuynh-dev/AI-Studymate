@@ -45,16 +45,20 @@ export function DeckDetailView({ deck, cards, stats, onBack, onEditDeck, onStudy
       {cards.length === 0 ? (
         <CardListEmpty onCreate={onAddCard} onAi={onAi} />
       ) : (
-        <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-3.5">
           <CardListToolbar query={query} onQuery={setQuery} type={type} onType={setType} status={status} onStatus={setStatus} />
           {filtered.length ? (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               {filtered.map((c) => (
                 <CardRow key={c.id} card={c} onEdit={() => onEditCard(c)} onDelete={() => onDeleteCard(c)} />
               ))}
             </div>
           ) : (
-            <p className="py-12 text-center text-sm text-[#777587]">Không có thẻ nào phù hợp với bộ lọc.</p>
+            <div className="flex flex-col items-center justify-center rounded-[20px] border border-dashed border-black/[0.08] dark:border-white/[0.1] bg-neutral-50/50 dark:bg-white/[0.02] py-12 text-center">
+              <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                Không có thẻ nào phù hợp với bộ lọc.
+              </p>
+            </div>
           )}
         </section>
       )}

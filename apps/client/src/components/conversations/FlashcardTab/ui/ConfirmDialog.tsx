@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { FONT_HEADING, cx } from "./tokens";
@@ -13,21 +13,21 @@ interface Props {
   onClose: () => void;
 }
 
-/** Hộp thoại xác nhận hành động nguy hiểm (xóa bộ thẻ, xóa thẻ…) */
+/** Hộp thoại xác nhận hành động nguy hiểm chuẩn Apple Destructive Alert Sheet */
 export function ConfirmDialog({ open, title, description, confirmLabel, cancelLabel = "Hủy bỏ", onConfirm, onClose }: Props) {
   return (
     <Modal open={open} onClose={onClose} size="sm" bare>
-      <div className="flex flex-col items-center text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FFDAD6]/80 text-[#BA1A1A]">
-          <AlertTriangle className="h-6 w-6" />
+      <div className="flex flex-col items-start">
+        <span className="flex h-12 w-12 items-center justify-center rounded-[16px] border border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400">
+          <Trash2 className="h-6 w-6" />
         </span>
-        <h2 className={cx(FONT_HEADING, "mt-4 text-xl font-semibold tracking-[-0.015em] text-[#0B1C30]")}>{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-[#464555]/80">{description}</p>
-        <div className="mt-6 grid w-full grid-cols-2 gap-3">
-          <Button size="lg" onClick={onClose}>
+        <h2 className={cx(FONT_HEADING, "mt-4 text-lg font-bold text-neutral-900 dark:text-white")}>{title}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{description}</p>
+        <div className="mt-6 flex w-full items-center justify-end gap-2.5">
+          <Button variant="secondary" onClick={onClose}>
             {cancelLabel}
           </Button>
-          <Button size="lg" variant="danger" onClick={onConfirm}>
+          <Button variant="danger" onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>

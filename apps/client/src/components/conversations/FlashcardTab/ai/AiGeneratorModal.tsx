@@ -14,7 +14,7 @@ interface Props {
   onGenerate: (cfg: AiConfig) => void;
 }
 
-/** Hộp thoại cấu hình AI tạo thẻ */
+/** Hộp thoại cấu hình AI tạo thẻ chuẩn Apple HIG */
 export function AiGeneratorModal({ target, onClose, onGenerate }: Props) {
   if (!target) return null;
   return <AiDialog target={target} onClose={onClose} onGenerate={onGenerate} />;
@@ -34,7 +34,6 @@ function AiDialog({ target, onClose, onGenerate }: { target: AiTarget; onClose: 
 
   const generate = () => {
     setLoading(true);
-    // TODO: thay setTimeout bằng lời gọi API tạo thẻ từ tài liệu
     timer.current = setTimeout(() => {
       onGenerate({ count, types, instructions, deckName });
       onClose();
@@ -48,8 +47,8 @@ function AiDialog({ target, onClose, onGenerate }: { target: AiTarget; onClose: 
       title="Tạo thẻ bằng AI"
       description={target.kind === "deck" ? `Thêm thẻ vào “${target.deckName}”` : "AI sẽ trích xuất thẻ từ tài liệu trong phiên học này."}
       footer={
-        <div className="flex justify-end gap-3">
-          <Button variant="ghost" disabled={loading} onClick={onClose}>
+        <div className="flex justify-end gap-2.5">
+          <Button variant="secondary" disabled={loading} onClick={onClose}>
             Hủy
           </Button>
           <Button
@@ -70,13 +69,23 @@ function AiDialog({ target, onClose, onGenerate }: { target: AiTarget; onClose: 
           </Field>
         )}
         <Field label="Số lượng thẻ">
-          <SegmentedControl<number> value={count} onChange={setCount} options={[10, 20, 30].map((n) => ({ value: n, label: `${n} thẻ` }))} />
+          <SegmentedControl<number>
+            value={count}
+            onChange={setCount}
+            options={[10, 20, 30].map((n) => ({ value: n, label: `${n} thẻ` }))}
+          />
         </Field>
         <Field label="Loại thẻ" hint="Chọn ít nhất một loại.">
           <ChipToggleGroup options={TYPE_OPTIONS} value={types} onChange={setTypes} />
         </Field>
         <Field label="Yêu cầu thêm" htmlFor="ai-note" optional>
-          <Textarea id="ai-note" rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="VD: Tập trung vào chương 3, ưu tiên các định nghĩa quan trọng." />
+          <Textarea
+            id="ai-note"
+            rows={3}
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            placeholder="VD: Tập trung vào chương 3, ưu tiên các định nghĩa quan trọng."
+          />
         </Field>
       </div>
     </Modal>
