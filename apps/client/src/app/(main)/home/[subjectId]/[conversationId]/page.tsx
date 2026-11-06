@@ -125,14 +125,14 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           <button
             type="button"
             title="Chia sẻ"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-600 shadow-xs transition-all hover:bg-gray-50 hover:text-gray-900 active:scale-[0.98] cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] text-[#464555] dark:text-[#EFF0F6] shadow-2xs transition-all hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] hover:text-[#0B1C30] active:scale-[0.98] cursor-pointer"
           >
             <Share2 className="h-4 w-4" />
           </button>
           <button
             type="button"
             title="Tùy chọn khác"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-600 shadow-xs transition-all hover:bg-gray-50 hover:text-gray-900 active:scale-[0.98] cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] text-[#464555] dark:text-[#EFF0F6] shadow-2xs transition-all hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] hover:text-[#0B1C30] active:scale-[0.98] cursor-pointer"
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
@@ -143,15 +143,15 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               aria-label="Trợ lý StudyMate AI"
               className={`flex h-9 w-9 items-center justify-center rounded-xl border shadow-xs transition-all active:scale-[0.98] cursor-pointer ${
                 !isRightSidebarCollapsed
-                  ? "border-indigo-200 bg-indigo-50 text-indigo-600 shadow-indigo-100/50"
-                  : "border-gray-100 bg-white text-gray-600 hover:border-indigo-100 hover:bg-indigo-50/50 hover:text-indigo-600"
+                  ? "border-[#C7D2FE] dark:border-[#4F46E5]/40 bg-[#EEF2FF] dark:bg-[#4F46E5]/20 text-[#4F46E5] dark:text-[#818CF8]"
+                  : "border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] text-[#464555] dark:text-neutral-400 hover:border-[#C7D2FE] hover:bg-[#EEF2FF]/60 hover:text-[#4F46E5]"
               }`}
             >
-              <Sparkles className="h-4 w-4 text-indigo-600 transition-transform group-hover:scale-110" />
+              <Sparkles className="h-4 w-4 text-[#4F46E5] dark:text-[#818CF8] transition-transform group-hover:scale-110" />
             </button>
-            {/* Dark Tooltip khi hover */}
+            {/* Apple Floating Tooltip khi hover */}
             <div className="pointer-events-none absolute right-0 top-full mt-2 hidden group-hover:flex items-center z-50 animate-in fade-in-50 zoom-in-95 duration-100">
-              <div className="rounded-lg bg-white/95 backdrop-blur-sm border border-slate-200/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-md shadow-slate-200/50 whitespace-nowrap">
+              <div className="rounded-lg bg-[#0B1C30]/95 dark:bg-white/95 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-white dark:text-[#0B1C30] shadow-xl whitespace-nowrap">
                 {isRightSidebarCollapsed ? "Mở Trợ lý StudyMate AI" : "Thu gọn Trợ lý StudyMate AI"}
               </div>
             </div>
@@ -159,12 +159,12 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         </div>
       </div>
 
-      {/* Container chính: Thẻ màu trắng chứa Tabs & Nội dung (Tự động xoá viền & bo góc khi vào Focus Mode) */}
+      {/* Container chính: Thẻ chứa Tabs & Nội dung (Tự động xoá viền & bo góc khi vào Focus Mode) */}
       <div
-        className={`flex flex-1 flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out ${
+        className={`flex flex-1 flex-col bg-white dark:bg-[#12151C] overflow-hidden transition-all duration-300 ease-in-out ${
           isFocusMode
             ? "min-h-0 rounded-none border-0 shadow-none"
-            : "rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xs"
+            : "rounded-2xl sm:rounded-3xl border border-[#E5EEFF] dark:border-white/[0.08] shadow-xs"
         }`}
       >
         {/* Component: Thanh Tab điều hướng — Trượt lên & Ẩn đi khi vào Focus Mode */}
@@ -172,7 +172,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           className={`relative z-10 shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
             isFocusMode
               ? "max-h-0 -translate-y-4 opacity-0 border-b-0 pointer-events-none"
-              : "max-h-20 translate-y-0 opacity-100 border-b border-gray-100"
+              : "max-h-20 translate-y-0 opacity-100 border-b border-[#E5EEFF] dark:border-white/[0.08]"
           }`}
         >
           <ConversationHeaderTabs

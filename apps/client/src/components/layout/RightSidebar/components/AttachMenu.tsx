@@ -13,10 +13,6 @@ interface AttachMenuProps {
   onSelectWorkspaceDoc: (doc: WorkspaceDoc) => void;
 }
 
-/**
- * Nút "+" và Popover Menu dạng nhúng (Embedded List) ngay phía trên ô chat.
- * Tinh gọn tương tác: người dùng chỉ cần click (+) rồi click vào tên file có sẵn là gắn ngay.
- */
 export function AttachMenu({
   onSelectLocal,
   availableDocs = [],
@@ -46,11 +42,11 @@ export function AttachMenu({
         aria-expanded={isOpen}
         onClick={() => setIsOpen((v) => !v)}
       >
-        <Plus className="h-4 w-4" />
+        <Plus className="h-4 w-4 stroke-[2]" />
       </IconButton>
 
       {isOpen && (
-        <div className="absolute bottom-full left-0 z-50 mb-2 w-72 max-w-[calc(100vw-32px)] rounded-2xl border border-gray-200/90 bg-white p-1.5 shadow-xl animate-in fade-in-50 zoom-in-95 duration-100">
+        <div className="absolute bottom-full left-0 z-50 mb-2 w-72 max-w-[calc(100vw-32px)] rounded-[20px] border border-[#E5EEFF] dark:border-white/[0.12] bg-white/95 dark:bg-[#161922]/95 backdrop-blur-xl p-1.5 shadow-2xl animate-in fade-in-50 zoom-in-95 duration-100 select-none">
           {/* Tùy chọn 1: Tải tệp từ thiết bị */}
           <button
             type="button"
@@ -58,32 +54,32 @@ export function AttachMenu({
               close();
               onSelectLocal();
             }}
-            className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-indigo-50"
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-[#EEF2FF] dark:hover:bg-white/[0.06]"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EEF2FF] dark:bg-[#4F46E5]/20 text-[#4F46E5] dark:text-[#818CF8]">
               <Upload className="h-4 w-4" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-xs font-semibold text-gray-900">
+              <span className="block text-xs font-bold text-[#0B1C30] dark:text-[#EFF0F6]">
                 Tải tệp từ thiết bị...
               </span>
-              <span className="block text-[10px] text-gray-500">
-                Mở Explorer (PDF, ảnh, Word, TXT)
+              <span className="block text-[10px] text-[#777587] dark:text-neutral-400">
+                PDF, ảnh, Word, TXT
               </span>
             </span>
           </button>
 
           {/* Đường phân cách */}
-          <div className="my-1 border-t border-gray-100" />
+          <div className="my-1 border-t border-[#E5EEFF] dark:border-white/[0.08]" />
 
-          {/* Tiêu đề nhóm: ĐÍNH KÈM TÀI LIỆU CÓ SẴN */}
-          <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400 select-none">
-            Đính kèm tài liệu có sẵn
+          {/* Tiêu đề nhóm */}
+          <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#777587] dark:text-neutral-400 select-none">
+            Tài liệu trong phiên học
           </div>
 
           {/* Danh sách tài liệu có sẵn */}
           {availableDocs.length === 0 ? (
-            <div className="px-3 py-2 text-[11px] italic text-gray-400">
+            <div className="px-3 py-2 text-[11px] italic text-[#777587] dark:text-neutral-500">
               Chưa có tài liệu nào trong phiên học
             </div>
           ) : (
@@ -103,13 +99,13 @@ export function AttachMenu({
                     }}
                     className={`flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs transition-colors ${
                       isAttached
-                        ? "cursor-default bg-gray-50/70 text-gray-400"
-                        : "cursor-pointer text-gray-700 hover:bg-indigo-50 hover:text-indigo-900"
+                        ? "cursor-default bg-gray-50/70 dark:bg-white/[0.02] text-[#777587]/60"
+                        : "cursor-pointer text-[#464555] dark:text-[#EFF0F6] hover:bg-[#EEF2FF] dark:hover:bg-white/[0.06] hover:text-[#4F46E5]"
                     }`}
                   >
                     <FileText
                       className={`h-3.5 w-3.5 shrink-0 ${
-                        isAttached ? "text-gray-300" : "text-indigo-500"
+                        isAttached ? "text-gray-300 dark:text-neutral-600" : "text-[#4F46E5] dark:text-[#818CF8]"
                       }`}
                     />
                     <span
@@ -119,7 +115,7 @@ export function AttachMenu({
                       {doc.file_name}
                     </span>
                     {isAttached && (
-                      <span className="shrink-0 text-[10px] text-gray-400">
+                      <span className="shrink-0 text-[10px] text-[#777587]">
                         Đã chọn
                       </span>
                     )}

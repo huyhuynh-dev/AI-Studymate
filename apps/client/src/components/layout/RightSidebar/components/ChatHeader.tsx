@@ -35,16 +35,17 @@ export function ChatHeader({
   onClose,
 }: ChatHeaderProps) {
   return (
-    // `relative` để HistoryMenu căn popover theo chiều ngang của header
-    <header className="relative flex h-14 shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-4">
-      <h2
-        className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900"
-        title={title}
-      >
-        {title}
-      </h2>
+    <header className="relative flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] px-4 select-none">
+      <div className="min-w-0 flex-1 flex items-center gap-2">
+        <h2
+          className="truncate text-[14px] font-bold text-[#0B1C30] dark:text-[#EFF0F6] tracking-tight leading-tight"
+          title={title}
+        >
+          {title}
+        </h2>
+      </div>
 
-      <div className="flex shrink-0 items-center gap-0.5">
+      <div className="flex shrink-0 items-center gap-1">
         <HistoryMenu
           sessions={sessions}
           isLoading={isLoading}

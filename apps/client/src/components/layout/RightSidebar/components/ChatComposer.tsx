@@ -34,9 +34,6 @@ interface ChatComposerProps {
   contextTitle?: string;
 }
 
-/**
- * Ô nhập + thanh công cụ + tính năng Mention @ + nút (+) Popover tinh gọn.
- */
 export function ChatComposer({
   value,
   onChange,
@@ -218,20 +215,20 @@ export function ChatComposer({
   const hasChips = Boolean(contextLabel) || attachedFiles.length > 0;
 
   return (
-    <div className="shrink-0 px-4 pb-3 pt-2">
-      <div className="relative w-full rounded-2xl border border-gray-200 bg-gray-50/70 p-3 transition-all focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-indigo-500/10">
-        {/* Autocomplete Popup khi gõ '@' (Cách 1: Mentions trực tiếp) */}
+    <div className="shrink-0 px-4 pb-3 pt-2 select-none">
+      <div className="relative w-full rounded-[22px] border border-[#E5EEFF] dark:border-white/[0.1] bg-white dark:bg-[#161922] p-3.5 transition-all shadow-[0_4px_20px_-4px_rgba(11,28,48,0.06)] focus-within:border-[#4F46E5] focus-within:ring-4 focus-within:ring-[#4F46E5]/12">
+        {/* Autocomplete Popup khi gõ '@' */}
         {mentionState?.isOpen && (
           <div
             ref={mentionContainerRef}
-            className="absolute bottom-full left-0 z-50 mb-2 w-72 max-w-[calc(100vw-32px)] rounded-2xl border border-gray-200/90 bg-white p-1.5 shadow-xl animate-in fade-in-50 zoom-in-95 duration-100"
+            className="absolute bottom-full left-0 z-50 mb-2 w-72 max-w-[calc(100vw-32px)] rounded-[20px] border border-[#E5EEFF] dark:border-white/[0.12] bg-white/95 dark:bg-[#161922]/95 backdrop-blur-xl p-1.5 shadow-2xl animate-in fade-in-50 zoom-in-95 duration-100 select-none"
           >
-            <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400 select-none">
+            <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#777587] dark:text-neutral-400 select-none">
               Đính kèm tài liệu
             </div>
 
             {matchingMentionDocs.length === 0 ? (
-              <div className="px-3 py-2 text-[11px] italic text-gray-400">
+              <div className="px-3 py-2 text-[11px] italic text-[#777587] dark:text-neutral-500">
                 {availableDocs.length === 0
                   ? "Không có tài liệu nào trong phiên học"
                   : "Không tìm thấy tài liệu phù hợp"}
@@ -252,20 +249,20 @@ export function ChatComposer({
                       onClick={() => handleSelectMentionDoc(doc)}
                       className={`flex w-full cursor-pointer items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs transition-colors ${
                         isSelected
-                          ? "bg-indigo-50 font-medium text-indigo-900"
-                          : "text-gray-700 hover:bg-gray-50"
+                          ? "bg-[#EEF2FF] dark:bg-[#4F46E5]/20 font-bold text-[#4F46E5] dark:text-[#818CF8]"
+                          : "text-[#464555] dark:text-[#EFF0F6] hover:bg-[#F8F9FF] dark:hover:bg-white/[0.04]"
                       }`}
                     >
                       <FileText
                         className={`h-3.5 w-3.5 shrink-0 ${
-                          isSelected ? "text-indigo-600" : "text-indigo-400"
+                          isSelected ? "text-[#4F46E5] dark:text-[#818CF8]" : "text-[#777587]"
                         }`}
                       />
                       <span className="flex-1 truncate" title={doc.file_name}>
                         {doc.file_name}
                       </span>
                       {isAttached && (
-                        <span className="shrink-0 text-[10px] text-gray-400">
+                        <span className="shrink-0 text-[10px] text-[#777587]">
                           Đã chọn
                         </span>
                       )}
@@ -295,11 +292,11 @@ export function ChatComposer({
           rows={2}
           placeholder={placeholder}
           aria-label="Nhập câu hỏi"
-          className="block max-h-40 min-h-11 w-full resize-none overflow-y-auto wrap-break-word bg-transparent text-sm leading-relaxed text-gray-900 placeholder-gray-400 outline-none"
+          className="block max-h-40 min-h-11 w-full resize-none overflow-y-auto wrap-break-word bg-transparent text-[13.5px] leading-relaxed text-[#0B1C30] dark:text-[#EFF0F6] placeholder-[#777587] dark:placeholder-neutral-500 outline-none select-text"
         />
 
         <div className="mt-1 flex items-center justify-between gap-2">
-          {/* Nút (+) với Popover menu nhúng danh sách tài liệu có sẵn (Cách 2) */}
+          {/* Nút (+) Popover menu nhúng danh sách tài liệu */}
           <AttachMenu
             onSelectLocal={onSelectLocalFile}
             availableDocs={availableDocs}
@@ -322,17 +319,17 @@ export function ChatComposer({
               }
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all ${
                 canSend
-                  ? "cursor-pointer bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 active:scale-95"
-                  : "cursor-not-allowed bg-gray-200 text-gray-400"
+                  ? "cursor-pointer bg-[#4F46E5] hover:bg-[#3525CD] text-white shadow-xs active:scale-95"
+                  : "cursor-not-allowed bg-[#E5EEFF] dark:bg-white/[0.06] text-[#777587] dark:text-neutral-500"
               }`}
             >
-              <ArrowUp className="h-4 w-4" />
+              <ArrowUp className="h-4 w-4 stroke-[2.5]" />
             </button>
           </div>
         </div>
       </div>
 
-      <p className="mt-2 text-center text-[10px] text-gray-400">
+      <p className="mt-2 text-center text-[10.5px] text-[#777587] dark:text-neutral-500">
         AI có thể mắc lỗi. Hãy kiểm tra lại thông tin quan trọng.
       </p>
     </div>

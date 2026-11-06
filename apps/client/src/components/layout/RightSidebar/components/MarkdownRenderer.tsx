@@ -35,7 +35,7 @@ function CodeBlock({ language, value }: CodeBlockProps) {
         <button
           type="button"
           onClick={handleCopy}
-          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[11px] transition-colors hover:bg-gray-800 hover:text-gray-200"
+          className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] transition-colors hover:bg-gray-800 hover:text-gray-200"
         >
           {copied ? (
             <>
@@ -81,26 +81,26 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
   content: string;
 }) {
   return (
-    <div className="prose prose-sm max-w-none text-inherit">
+    <div className="prose prose-sm max-w-none text-inherit leading-relaxed">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[[rehypeKatex, { output: "htmlAndMathml", throwOnError: false }]]}
         components={{
           table: ({ children }) => (
-            <div className="my-2.5 overflow-x-auto rounded-lg border border-gray-200">
-              <table className="w-full border-collapse text-left text-xs text-gray-800">
+            <div className="my-2.5 overflow-x-auto rounded-xl border border-[#E5EEFF] dark:border-white/[0.1]">
+              <table className="w-full border-collapse text-left text-xs text-[#0B1C30] dark:text-[#EFF0F6]">
                 {children}
               </table>
             </div>
           ),
           thead: ({ children }) => (
-            <thead className="border-b border-gray-200 bg-gray-100/70 font-semibold text-gray-900">
+            <thead className="border-b border-[#E5EEFF] dark:border-white/[0.1] bg-[#F8F9FF] dark:bg-white/[0.04] font-semibold text-[#0B1C30] dark:text-white">
               {children}
             </thead>
           ),
           th: ({ children }) => <th className="px-3 py-2">{children}</th>,
           td: ({ children }) => (
-            <td className="border-t border-gray-100 px-3 py-2">{children}</td>
+            <td className="border-t border-[#E5EEFF] dark:border-white/[0.06] px-3 py-2">{children}</td>
           ),
           code: ({ className, children, ...props }) => {
             const match = /language-(\w+)/.exec(className || "");
@@ -110,7 +110,7 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
             if (isInline) {
               return (
                 <code
-                  className="rounded bg-gray-200/70 px-1 py-0.5 font-mono text-[12px] font-medium text-indigo-950"
+                  className="rounded-md bg-[#EEF2FF] dark:bg-white/[0.08] px-1.5 py-0.5 font-mono text-[12px] font-semibold text-[#3525CD] dark:text-[#A5B4FC]"
                   {...props}
                 >
                   {children}
@@ -126,18 +126,18 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
             );
           },
           ul: ({ children }) => (
-            <ul className="my-1.5 list-disc space-y-1 pl-4 text-[13px]">
+            <ul className="my-1.5 list-disc space-y-1 pl-4 text-[13.5px]">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="my-1.5 list-decimal space-y-1 pl-4 text-[13px]">
+            <ol className="my-1.5 list-decimal space-y-1 pl-4 text-[13.5px]">
               {children}
             </ol>
           ),
-          li: ({ children }) => <li className="leading-[1.3] my-1">{children}</li>,
+          li: ({ children }) => <li className="leading-relaxed my-0.5">{children}</li>,
           blockquote: ({ children }) => (
-            <blockquote className="my-2 border-l-2 border-indigo-400 pl-3 italic text-gray-600">
+            <blockquote className="my-2 border-l-2 border-[#4F46E5] pl-3 italic text-[#464555] dark:text-neutral-400">
               {children}
             </blockquote>
           ),
@@ -146,13 +146,13 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
               href={href}
               target="_blank"
               rel="noreferrer"
-              className="text-indigo-600 underline hover:text-indigo-700"
+              className="text-[#4F46E5] dark:text-[#818CF8] underline font-semibold hover:text-[#3525CD]"
             >
               {children}
             </a>
           ),
           p: ({ children }) => (
-            <p className="my-[6pt] first:mt-0 last:mb-0 leading-[1.3] whitespace-pre-wrap break-words">
+            <p className="my-1.5 first:mt-0 last:mb-0 leading-relaxed whitespace-pre-wrap break-words">
               {children}
             </p>
           ),

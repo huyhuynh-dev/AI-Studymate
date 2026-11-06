@@ -19,11 +19,6 @@ interface HistoryMenuProps {
   onRequestDelete: (session: ChatSessionItem) => void;
 }
 
-/**
- * Nút lịch sử + popover "Đoạn chat gần đây".
- * Popover được căn theo phần tử `relative` gần nhất (ChatHeader),
- * nên wrapper dùng `display: contents` để không tạo thêm hộp bao.
- */
 export function HistoryMenu({
   sessions,
   isLoading,
@@ -67,27 +62,27 @@ export function HistoryMenu({
       </IconButton>
 
       {isOpen && (
-        <div className="absolute left-3 right-3 top-full z-50 mt-1 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl animate-in fade-in-50 zoom-in-95 duration-100">
-          <p className="px-4 pb-1 pt-3 text-xs font-medium text-gray-500">
+        <div className="absolute left-3 right-3 top-full z-50 mt-1 overflow-hidden rounded-[22px] border border-[#E5EEFF] dark:border-white/[0.12] bg-white/95 dark:bg-[#161922]/95 backdrop-blur-xl shadow-2xl animate-in fade-in-50 zoom-in-95 duration-100 select-none">
+          <p className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-[#777587] dark:text-neutral-400">
             Đoạn chat gần đây
           </p>
 
           {showSearch && (
             <div className="relative mx-3 mb-1 mt-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#777587]" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Tìm đoạn chat…"
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-7 text-xs text-gray-800 placeholder-gray-400 outline-none transition-colors focus:border-indigo-300 focus:bg-white"
+                className="w-full rounded-xl border border-[#E5EEFF] dark:border-white/[0.1] bg-[#F8F9FF] dark:bg-white/[0.04] py-1.5 pl-8 pr-7 text-xs text-[#0B1C30] dark:text-white placeholder-[#777587] outline-none transition-colors focus:border-[#4F46E5] focus:bg-white dark:focus:bg-black"
               />
               {query && (
                 <button
                   type="button"
                   aria-label="Xóa từ khóa"
                   onClick={() => setQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-[#777587] hover:text-[#0B1C30] dark:hover:text-white"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -95,20 +90,20 @@ export function HistoryMenu({
             </div>
           )}
 
-          <div className="max-h-72 overflow-y-auto p-1.5">
+          <div className="max-h-72 overflow-y-auto p-1.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {isLoading && sessions.length === 0 ? (
               <div className="animate-pulse space-y-1 p-1">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center gap-2.5 px-2 py-2.5">
-                    <div className="h-4 w-4 rounded bg-gray-200" />
-                    <div className="h-3 flex-1 rounded bg-gray-200" />
+                    <div className="h-4 w-4 rounded-md bg-[#E5EEFF] dark:bg-white/[0.08]" />
+                    <div className="h-3 flex-1 rounded-md bg-[#E5EEFF] dark:bg-white/[0.08]" />
                   </div>
                 ))}
               </div>
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center gap-2 px-3 py-6 text-center">
-                <MessageSquare className="h-6 w-6 text-gray-200" />
-                <p className="text-xs text-gray-500">
+                <MessageSquare className="h-6 w-6 text-[#C7C4D8] dark:text-neutral-600" />
+                <p className="text-xs text-[#777587] dark:text-neutral-400">
                   {query ? "Không tìm thấy đoạn chat nào" : "Chưa có lịch sử trò chuyện"}
                 </p>
               </div>
