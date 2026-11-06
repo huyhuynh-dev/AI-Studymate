@@ -12,9 +12,9 @@ export function CardRow({ card, onEdit, onDelete }: { card: Flashcard; onEdit: (
   return (
     <div
       style={SQUIRCLE}
-      className="group flex items-center gap-4 rounded-2xl bg-white/60 px-4 py-3 transition-all duration-300 hover:bg-white hover:shadow-[0_6px_20px_-8px_rgba(11,28,48,0.12)]"
+      className="group flex items-center gap-4 rounded-2xl px-4 py-3 transition-all duration-300 hover:bg-white hover:shadow-[0_6px_20px_-8px_rgba(11,28,48,0.12)]"
     >
-      <Pill tone={CARD_TYPE_TONE[card.type]} className="w-[84px] shrink-0 justify-center">
+      <Pill tone={CARD_TYPE_TONE[card.type]} className="w-24 shrink-0 justify-center">
         {CARD_TYPE_LABEL[card.type]}
       </Pill>
 

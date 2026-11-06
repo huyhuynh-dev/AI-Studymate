@@ -50,10 +50,10 @@ export function DeckCard({ deck, stats, onOpen, onStudy, onEdit, onDelete }: Pro
 
       <TriProgress newCount={stats.new} learning={stats.learning} review={stats.review} />
 
-      <div className="flex flex-wrap gap-1.5">
-        <Pill tone="blue">{stats.new} Mới</Pill>
-        <Pill tone="amber">{stats.learning} Đang học</Pill>
-        <Pill tone="green">{stats.dueToday} Cần ôn hôm nay</Pill>
+      <div className="flex min-h-[22px] flex-wrap gap-1.5">
+        {stats.new > 0 && <Pill tone="blue">{stats.new} Mới</Pill>}
+        {stats.learning > 0 && <Pill tone="amber">{stats.learning} Đang học</Pill>}
+        {stats.dueToday > 0 && <Pill tone="green">{stats.dueToday} Cần ôn hôm nay</Pill>}
       </div>
 
       <div className="mt-auto flex items-center justify-between border-t border-black/[0.05] pt-4">
