@@ -9,12 +9,14 @@ import { DecksView } from "./decks/DecksView";
 import { DeckDetailView } from "./detail/DeckDetailView";
 import { CardEditorModal } from "./editor/CardEditorModal";
 import { useFlashcardStore } from "./hooks/useFlashcardStore";
+import { useDecks } from "@/hooks/useDecks";
 import { StudyView } from "./study/StudyView";
-import type { AiConfig, CardDraft, Deck, Flashcard } from "./types";
+import type { AiConfig, CardDraft, Deck, DeckStats, Flashcard } from "./types";
 import { AmbientGlow, ConfirmDialog, cx } from "./ui";
 import { getDeckStats } from "./utils/srs";
 
 export interface FlashcardsTabProps {
+  conversationId?: string;
   onUploadDocument?: () => void;
   /** Phiên học đã có tài liệu nguồn chưa (quyết định nút AI ở Empty State) */
   hasDocuments?: boolean;
@@ -26,7 +28,13 @@ type View =
   | { name: "detail"; deckId: string }
   | { name: "study"; deckId: string; mode: "due" | "extra"; nonce: number };
 
-export default function FlashcardsTab({ onUploadDocument, hasDocuments = true, className }: FlashcardsTabProps) {
+export default function FlashcardsTab({
+  conversationId,
+  onUploadDocument,
+  hasDocuments = true,
+  className,
+}: FlashcardsTabProps) {
+  const { decks, isLoading: isDecksLoading, createDeck, updateDeck, deleteDeck } = useDecks(conversationId);
   const store = useFlashcardStore();
   const [view, setView] = useState<View>({ name: "decks" });
   const [deckForm, setDeckForm] = useState<{ open: boolean; deck: Deck | null }>({ open: false, deck: null });
@@ -35,12 +43,19 @@ export default function FlashcardsTab({ onUploadDocument, hasDocuments = true, c
   const [cardToDelete, setCardToDelete] = useState<Flashcard | null>(null);
   const [ai, setAi] = useState<AiTarget | null>(null);
 
-  const statsByDeck = useMemo(
-    () => Object.fromEntries(store.decks.map((d) => [d.id, getDeckStats(store.cards.filter((c) => c.deckId === d.id))])),
-    [store.decks, store.cards]
-  );
+  const statsByDeck = useMemo(() => {
+    const map: Record<string, DeckStats> = {};
+    for (const d of decks) {
+      if (d.stats) {
+        map[d.id] = d.stats;
+      } else {
+        map[d.id] = getDeckStats(store.cards.filter((c) => c.deckId === d.id));
+      }
+    }
+    return map;
+  }, [decks, store.cards]);
 
-  const activeDeck = view.name !== "decks" ? store.decks.find((d) => d.id === view.deckId) : undefined;
+  const activeDeck = view.name !== "decks" ? decks.find((d) => d.id === view.deckId) : undefined;
   const deckCards = activeDeck ? store.cards.filter((c) => c.deckId === activeDeck.id) : [];
 
   /* ---------- handlers ---------- */
@@ -48,9 +63,12 @@ export default function FlashcardsTab({ onUploadDocument, hasDocuments = true, c
   const startStudy = (deckId: string, mode: "due" | "extra") => setView({ name: "study", deckId, mode, nonce: Date.now() });
   const smartStudy = (deckId: string) => startStudy(deckId, statsByDeck[deckId]?.dueToday > 0 ? "due" : "extra");
 
-  const submitDeck = (v: { name: string; description: string }) => {
-    if (deckForm.deck) store.updateDeck(deckForm.deck.id, v);
-    else store.createDeck(v);
+  const submitDeck = async (v: { name: string; description: string }) => {
+    if (deckForm.deck) {
+      await updateDeck(deckForm.deck.id, v);
+    } else {
+      await createDeck(v);
+    }
   };
 
   const saveCard = (draft: CardDraft) => {
@@ -58,19 +76,26 @@ export default function FlashcardsTab({ onUploadDocument, hasDocuments = true, c
     else store.addCard(cardEditor.deckId, draft);
   };
 
-  const generateAi = (cfg: AiConfig) => {
+  const generateAi = async (cfg: AiConfig) => {
     if (!ai) return;
     const drafts = buildAiCards(cfg);
     if (ai.kind === "new") {
-      const deck = store.createDeck({ name: cfg.deckName?.trim() || "Bộ thẻ AI", description: "Được tạo tự động từ tài liệu của bạn." });
-      store.addCards(deck.id, drafts);
-      setView({ name: "detail", deckId: deck.id });
-    } else store.addCards(ai.deckId, drafts);
+      const createdDeck = await createDeck({
+        name: cfg.deckName?.trim() || "Bộ thẻ AI",
+        description: "Được tạo tự động từ tài liệu của bạn.",
+      });
+      if (createdDeck) {
+        store.addCards(createdDeck.id, drafts);
+        setView({ name: "detail", deckId: createdDeck.id });
+      }
+    } else {
+      store.addCards(ai.deckId, drafts);
+    }
   };
 
-  const confirmDeleteDeck = () => {
+  const confirmDeleteDeck = async () => {
     if (!deckToDelete) return;
-    store.deleteDeck(deckToDelete.id);
+    await deleteDeck(deckToDelete.id);
     if (view.name !== "decks" && view.deckId === deckToDelete.id) setView({ name: "decks" });
     setDeckToDelete(null);
   };
@@ -105,7 +130,32 @@ export default function FlashcardsTab({ onUploadDocument, hasDocuments = true, c
         onDeleteCard={setCardToDelete}
       />
     );
-  } else if (store.decks.length === 0) {
+  } else if (isDecksLoading) {
+    content = (
+      <div className="flex flex-col gap-6 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="h-7 w-28 rounded-lg bg-gray-200" />
+          <div className="flex gap-2">
+            <div className="h-9 w-28 rounded-xl bg-gray-200" />
+            <div className="h-9 w-32 rounded-xl bg-gray-200" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex h-52 flex-col gap-4 rounded-2xl border border-gray-100 bg-gray-50/70 p-5">
+              <div className="h-5 w-3/4 rounded bg-gray-200" />
+              <div className="h-4 w-full rounded bg-gray-200/70" />
+              <div className="mt-auto h-2 w-full rounded bg-gray-200" />
+              <div className="flex justify-between pt-2">
+                <div className="h-4 w-12 rounded bg-gray-200" />
+                <div className="h-8 w-24 rounded-lg bg-gray-200" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  } else if (decks.length === 0) {
     content = (
       <DecksEmptyState
         hasDocuments={hasDocuments}
@@ -117,7 +167,7 @@ export default function FlashcardsTab({ onUploadDocument, hasDocuments = true, c
   } else {
     content = (
       <DecksView
-        decks={store.decks}
+        decks={decks}
         statsByDeck={statsByDeck}
         onOpen={(deckId) => setView({ name: "detail", deckId })}
         onStudy={smartStudy}

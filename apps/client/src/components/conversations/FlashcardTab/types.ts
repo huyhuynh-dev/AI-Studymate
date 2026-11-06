@@ -1,11 +1,25 @@
 export type CardType = "basic" | "cloze" | "typein";
-export type CardStatus = "new" | "learning" | "review";
+export type CardStatus = "new" | "learning" | "relearning" | "review";
 export type Rating = "again" | "hard" | "good" | "easy";
+
+export interface DeckStats {
+  total: number;
+  new: number;
+  learning: number;
+  relearning?: number;
+  inProgress?: number;
+  review: number;
+  dueToday: number;
+}
 
 export interface Deck {
   id: string;
   name: string;
   description: string;
+  conversationId?: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  stats?: DeckStats;
 }
 
 export interface Flashcard {
@@ -26,14 +40,6 @@ export interface Flashcard {
 }
 
 export type CardDraft = Pick<Flashcard, "type" | "front" | "back" | "imageUrl" | "audioUrl">;
-
-export interface DeckStats {
-  total: number;
-  new: number;
-  learning: number;
-  review: number;
-  dueToday: number;
-}
 
 export interface AiConfig {
   count: number;

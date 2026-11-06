@@ -219,6 +219,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
           {activeTab === "flashcard" && (
             <FlashcardsTab
+              conversationId={conversationId}
               onUploadDocument={handleGoToDocuments}
               hasDocuments={documents.length > 0}
               className="w-full flex-1"

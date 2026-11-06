@@ -11,11 +11,8 @@ const card = (
   intervalDays = 0
 ): Flashcard => ({ id, deckId, type, front, back, status, dueInDays, intervalDays, ease: 2.5 });
 
-export const DEMO_DECKS: Deck[] = [
-  { id: "d1", name: "Ngăn xếp & Hàng đợi", description: "Các khái niệm cốt lõi về Stack, Queue và ứng dụng trong thuật toán." },
-  { id: "d2", name: "Độ phức tạp thuật toán", description: "Ký hiệu Big-O và độ phức tạp của các thuật toán sắp xếp, tìm kiếm phổ biến." },
-  { id: "d3", name: "Cây nhị phân", description: "" },
-];
+// Đã loại bỏ Mock Data DEMO_DECKS để sử dụng dữ liệu thực từ Backend Database
+export const DEMO_DECKS: Deck[] = [];
 
 export const DEMO_CARDS: Flashcard[] = [
   card("c1", "d1", "basic", "Stack hoạt động theo nguyên tắc nào?", "LIFO – Last In, First Out", "new", 0),
