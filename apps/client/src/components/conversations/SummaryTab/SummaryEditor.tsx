@@ -436,7 +436,7 @@ function InnerBlockNoteEditor({
   }, [editor]);
 
   return (
-    <div className="w-full flex-1 bg-white min-h-[450px] p-4 sm:p-6 lg:p-8 overflow-y-auto">
+    <div className="w-full flex-1 bg-white dark:bg-[#12151C] min-h-[450px] p-4 sm:p-6 lg:p-8 overflow-y-auto">
       <div
         className="w-full origin-top-left transition-[zoom,font-size] duration-150"
         style={{

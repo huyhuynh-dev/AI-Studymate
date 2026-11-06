@@ -46,7 +46,6 @@ export default function SummaryTab({
   documents = [],
   initialSummaryId,
   onUploadDocument,
-  onInputText,
   className = "",
 }: SummaryTabProps) {
   // Chế độ xem: 'list' (tổng quan danh sách) hoặc 'detail' (xem chi tiết editor)
@@ -57,13 +56,12 @@ export default function SummaryTab({
   // Zoom state
   const [zoomPercent, setZoomPercent] = useState<number>(100);
 
-  // Focus Mode (Chế độ tập trung / Mở rộng không gian hiển thị giống DocumentsTab)
+  // Focus Mode (Chế độ tập trung / Mở rộng không gian hiển thị)
   const { isFocusMode, toggleFocusMode, setFocusMode, setIsViewingDocument } = useFocusMode();
 
   const {
     summaries,
     activeSummary,
-    selectedSummaryId,
     setSelectedSummaryId,
     isLoading: isSummariesLoading,
     isGenerating,
@@ -153,11 +151,10 @@ export default function SummaryTab({
     try {
       const created = await createSummary(request);
       if (created) {
-        // Tự động điều hướng đến thẳng tóm tắt vừa tạo
         setSelectedSummaryId(created.id);
         setViewMode("detail");
       }
-    } catch (err) {
+    } catch {
       // Error đã được lưu trong errorMessage của hook
     }
   };
@@ -177,7 +174,6 @@ export default function SummaryTab({
   // Xóa tóm tắt
   const handleDeleteSummary = async (summaryId: string) => {
     await deleteSummary(summaryId);
-    // Nếu xóa tóm tắt đang xem hoặc không còn tóm tắt nào thì quay lại danh sách
     if (summaries.length <= 1) {
       setFocusMode(false);
       setViewMode("list");
@@ -208,23 +204,19 @@ export default function SummaryTab({
     if (viewMode === "detail" && activeSummary) {
       return (
         <div
-          className={`flex w-full flex-1 flex-col bg-white overflow-hidden transition-all duration-300 ${
-            isFocusMode
-              ? "h-full rounded-none border-0 shadow-none"
-              : `rounded-2xl sm:rounded-3xl border border-gray-200/80 shadow-2xs ${className}`
-          }`}
+          className={`flex w-full flex-1 flex-col bg-white dark:bg-[#12151C] overflow-hidden transition-all duration-300 ${className}`}
         >
           {/* Error notification banner if any */}
           {errorMessage && (
-            <div className="flex items-center justify-between gap-2 bg-rose-50 px-4 py-2 text-xs text-rose-700 border-b border-rose-100">
+            <div className="flex items-center justify-between gap-2 bg-rose-50 dark:bg-rose-950/40 px-4 py-2 text-xs text-rose-700 dark:text-rose-300 border-b border-rose-200 dark:border-rose-900/50">
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
                 <span>{errorMessage}</span>
               </div>
               <button
                 type="button"
                 onClick={clearError}
-                className="text-rose-500 hover:text-rose-800 cursor-pointer"
+                className="text-rose-500 hover:text-rose-800 dark:hover:text-rose-200 cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -266,7 +258,7 @@ export default function SummaryTab({
             />
           </div>
 
-          {/* Web Speech API TTS Floating Mini-Player Pill (Nổi ở góc dưới màn hình, không đẩy layout) */}
+          {/* Web Speech API TTS Floating Mini-Player Pill */}
           <SummaryTtsPlayer
             blocks={activeSummary.content_json}
             title={activeSummary.title}
@@ -288,11 +280,11 @@ export default function SummaryTab({
 
     // 3B. Chế độ xem Danh sách Tổng quan (List View)
     return (
-      <div className={`flex w-full flex-1 flex-col ${className}`}>
+      <div className={`flex w-full flex-1 flex-col bg-white dark:bg-[#12151C] overflow-hidden ${className}`}>
         {errorMessage && (
-          <div className="mb-4 flex items-center justify-between gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-xs text-rose-700 border border-rose-200">
+          <div className="m-4 flex items-center justify-between gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 px-4 py-2.5 text-xs text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-rose-600" />
+              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
               <span>{errorMessage}</span>
             </div>
             <button type="button" onClick={clearError}>
@@ -327,13 +319,13 @@ export default function SummaryTab({
   if (hasDocuments) {
     return (
       <div
-        className={`relative flex w-full flex-col items-center justify-center rounded-3xl border border-indigo-100/90 bg-gradient-to-b from-[#F5F8FF] to-white px-6 py-12 sm:px-12 sm:py-16 text-center select-none shadow-xs ${className}`}
+        className={`relative flex w-full flex-1 flex-col items-center justify-center p-6 sm:p-12 text-center select-none ${className}`}
       >
         {/* Error banner */}
         {errorMessage && (
-          <div className="mb-6 flex items-center justify-between gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-xs text-rose-700 border border-rose-200">
+          <div className="mb-6 flex items-center justify-between gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 px-4 py-2.5 text-xs text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-rose-600" />
+              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
               <span>{errorMessage}</span>
             </div>
             <button type="button" onClick={clearError}>
@@ -344,46 +336,46 @@ export default function SummaryTab({
 
         {/* Central Illustration */}
         <div className="relative mb-6 sm:mb-8 flex items-center justify-center">
-          <div className="relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-white p-2 shadow-sm border border-indigo-50">
-            <div className="flex h-full w-full items-center justify-center rounded-2xl bg-gradient-to-tr from-[#4F46E5] to-[#7C3AED] shadow-md shadow-indigo-500/25">
+          <div className="relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-[24px] bg-white dark:bg-[#161922] p-2 shadow-sm border border-black/[0.06] dark:border-white/[0.08]">
+            <div className="flex h-full w-full items-center justify-center rounded-[20px] bg-gradient-to-tr from-[#4F46E5] to-[#7C3AED] shadow-md shadow-indigo-500/25">
               <Sparkles className="h-8 w-8 text-white fill-white animate-pulse" />
             </div>
-            <div className="absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white shadow-md shadow-indigo-500/10">
-              <BookOpen className="h-4.5 w-4.5 text-[#4F46E5]" />
+            <div className="absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-xl border border-black/[0.06] dark:border-white/[0.1] bg-white dark:bg-[#1A1E29] shadow-md text-[#4F46E5] dark:text-[#818CF8]">
+              <BookOpen className="h-4.5 w-4.5" />
             </div>
           </div>
         </div>
 
         {/* Title */}
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
           Sẵn sàng tạo bản Tóm tắt AI
         </h2>
 
         {/* Description */}
-        <p className="mt-2.5 max-w-xl text-center text-sm sm:text-[15px] leading-relaxed text-gray-600">
+        <p className="mt-2.5 max-w-xl text-center text-xs sm:text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
           Hệ thống đã nhận diện được{" "}
-          <strong className="text-indigo-600 font-semibold">
+          <strong className="text-indigo-600 dark:text-indigo-400 font-semibold tabular-nums">
             {readyDocs.length} tài liệu học tập
           </strong>{" "}
           trong cuộc trò chuyện này. Hãy thiết lập và để AI tổng hợp kiến thức trọng tâm cho bạn.
         </p>
 
-        {/* Primary Action Button: "Tóm tắt tài liệu" */}
+        {/* Primary Action Button: "Tóm tắt tài liệu ngay" */}
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
           <button
             type="button"
             onClick={() => setIsConfigModalOpen(true)}
             disabled={!hasReadyDocuments}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] px-6 py-3 text-sm sm:text-base font-semibold text-white shadow-md shadow-indigo-500/25 transition-all hover:bg-[#4338CA] hover:shadow-lg hover:shadow-indigo-500/30 active:scale-[0.98] cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] px-6 py-3 text-xs sm:text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
           >
-            <Sparkles className="h-5 w-5 fill-white" />
+            <Sparkles className="h-4.5 w-4.5 fill-white" />
             <span>Tóm tắt tài liệu ngay</span>
           </button>
         </div>
 
-        {/* Status Indicator */}
-        <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50/80 px-4 py-2 text-xs sm:text-sm text-emerald-800 shadow-2xs">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+        {/* Status Indicator Apple Pill */}
+        <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-xs sm:text-[13px] text-emerald-700 dark:text-emerald-400 shadow-2xs">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>
             {hasReadyDocuments
               ? `Tài liệu đã sẵn sàng: ${readyDocs.map((d) => d.file_name).join(", ").slice(0, 50)}...`
@@ -406,27 +398,27 @@ export default function SummaryTab({
   // 5. Trạng thái MẶC ĐỊNH: CHƯA CÓ TÀI LIỆU NÀO ĐƯỢC TẢI LÊN
   return (
     <div
-      className={`relative flex w-full flex-col items-center justify-center rounded-3xl border border-blue-100/80 bg-[#F4F7FF] px-6 py-12 sm:px-12 sm:py-16 text-center select-none ${className}`}
+      className={`relative flex w-full flex-1 flex-col items-center justify-center p-6 sm:p-12 text-center select-none ${className}`}
     >
       {/* Central Illustration */}
       <div className="relative mb-6 sm:mb-8 flex items-center justify-center">
-        <div className="relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-white p-2 shadow-sm border border-indigo-50">
-          <div className="flex h-full w-full items-center justify-center rounded-2xl bg-gradient-to-tr from-[#4F46E5] to-[#6366F1] shadow-md shadow-indigo-500/20">
+        <div className="relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-[24px] bg-white dark:bg-[#161922] p-2 shadow-sm border border-black/[0.06] dark:border-white/[0.08]">
+          <div className="flex h-full w-full items-center justify-center rounded-[20px] bg-gradient-to-tr from-[#4F46E5] to-[#6366F1] shadow-md shadow-indigo-500/20">
             <Sparkles className="h-8 w-8 text-white fill-white" />
           </div>
-          <div className="absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white shadow-md shadow-indigo-500/10">
-            <BookOpen className="h-4.5 w-4.5 text-[#4F46E5]" />
+          <div className="absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-xl border border-black/[0.06] dark:border-white/[0.1] bg-white dark:bg-[#1A1E29] shadow-md text-[#4F46E5] dark:text-[#818CF8]">
+            <BookOpen className="h-4.5 w-4.5" />
           </div>
         </div>
       </div>
 
       {/* Title */}
-      <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">
+      <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
         Chưa có bản Tóm tắt nào được tạo
       </h2>
 
       {/* Description */}
-      <p className="mt-2.5 max-w-xl text-center text-sm sm:text-[15px] leading-relaxed text-gray-600">
+      <p className="mt-2.5 max-w-xl text-center text-xs sm:text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
         AI StudyMate cần tài liệu học tập để tự động trích xuất các luận điểm
         quan trọng, công thức và sơ đồ kiến thức cốt lõi cho bạn.
       </p>
@@ -436,16 +428,16 @@ export default function SummaryTab({
         <button
           type="button"
           onClick={onUploadDocument}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] px-5 py-2.5 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold text-white shadow-md shadow-indigo-500/25 transition-all hover:bg-[#4338CA] hover:shadow-lg hover:shadow-indigo-500/30 active:scale-[0.98] cursor-pointer"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] px-5 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition-all active:scale-95 cursor-pointer"
         >
-          <FileUp className="h-5 w-5" />
+          <FileUp className="h-4.5 w-4.5" />
           <span>Tải tài liệu để AI tóm tắt</span>
         </button>
       </div>
 
-      {/* Notice Banner */}
-      <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-indigo-100/70 bg-[#EAF0FE]/90 px-4 py-2 text-xs sm:text-sm text-indigo-700 shadow-2xs">
-        <Lightbulb className="h-4 w-4 shrink-0 text-[#4F46E5]" />
+      {/* Notice Banner Apple Capsule */}
+      <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-indigo-200/50 dark:border-indigo-800/40 bg-indigo-50/60 dark:bg-indigo-950/30 px-4 py-2 text-xs sm:text-[13px] text-indigo-700 dark:text-indigo-300 shadow-2xs">
+        <Lightbulb className="h-4 w-4 shrink-0 text-[#4F46E5] dark:text-[#818CF8]" />
         <span>
           Cần có tài liệu ở Tab Tài liệu (PDF) để kích hoạt tính năng tóm tắt tự động.
         </span>

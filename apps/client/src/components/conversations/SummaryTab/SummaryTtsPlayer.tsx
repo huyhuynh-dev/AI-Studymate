@@ -400,13 +400,13 @@ export default function SummaryTtsPlayer({
 
   if (!isSupported) {
     return (
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 rounded-full bg-amber-50 px-4 py-2 text-xs font-medium text-amber-800 border border-amber-200 shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-200">
-        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 rounded-full bg-amber-50 dark:bg-amber-950/50 px-4 py-2 text-xs font-medium text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-200 select-none">
+        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
         <span>Trình duyệt không hỗ trợ Web Speech API.</span>
         <button
           type="button"
           onClick={onClose}
-          className="ml-1 rounded-full p-1 text-amber-600 hover:bg-amber-100 hover:text-amber-900 cursor-pointer"
+          className="ml-1 rounded-full p-1 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-white/[0.08] cursor-pointer"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -418,19 +418,19 @@ export default function SummaryTtsPlayer({
 
   return (
     <>
-      {/* Floating Action Widget: Mini-Player dạng Viên thuốc (Pill) cố định ở đáy màn hình */}
+      {/* Floating Action Widget: Mini-Player dạng Viên thuốc (Pill) phong cách Apple Dynamic Island */}
       <div
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 sm:gap-2.5 rounded-full bg-white/95 px-3 sm:px-3.5 py-2 text-gray-800 shadow-xl shadow-indigo-950/15 border border-indigo-100/90 backdrop-blur-md select-none animate-in fade-in zoom-in-95 slide-in-from-bottom-3 duration-200"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 sm:gap-2.5 rounded-full bg-white/90 dark:bg-[#1A1E29]/95 px-3 sm:px-3.5 py-2 text-neutral-800 dark:text-neutral-100 shadow-2xl shadow-indigo-950/20 border border-black/[0.08] dark:border-white/[0.12] backdrop-blur-xl select-none animate-in fade-in zoom-in-95 slide-in-from-bottom-3 duration-200"
         role="region"
         aria-label="Trình đọc văn bản tóm tắt"
       >
         {/* Animated Waveform / Icon Loa */}
-        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-50 text-indigo-600 shrink-0">
+        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shrink-0">
           {isPlaying ? (
             <div className="flex items-center gap-0.5 h-3.5 px-0.5">
-              <span className="w-0.5 h-3 bg-indigo-600 rounded-full animate-bounce [animation-delay:-0.3s]" />
-              <span className="w-0.5 h-3.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-0.15s]" />
-              <span className="w-0.5 h-2.5 bg-indigo-600 rounded-full animate-bounce" />
+              <span className="w-0.5 h-3 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+              <span className="w-0.5 h-3.5 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+              <span className="w-0.5 h-2.5 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce" />
             </div>
           ) : (
             <Volume2 className="h-4 w-4" />
@@ -443,7 +443,7 @@ export default function SummaryTtsPlayer({
             type="button"
             onClick={handlePause}
             title="Tạm dừng đọc"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow-xs hover:bg-indigo-700 active:scale-95 transition-all cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4F46E5] hover:bg-[#4338CA] text-white shadow-xs active:scale-95 transition-all cursor-pointer"
           >
             <Pause className="h-4 w-4 fill-white" />
           </button>
@@ -452,37 +452,37 @@ export default function SummaryTtsPlayer({
             type="button"
             onClick={handlePlay}
             title={isPaused ? "Tiếp tục đọc" : "Bắt đầu đọc tóm tắt"}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow-xs hover:bg-indigo-700 active:scale-95 transition-all cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4F46E5] hover:bg-[#4338CA] text-white shadow-xs active:scale-95 transition-all cursor-pointer"
           >
             <Play className="h-4 w-4 fill-white translate-x-0.5" />
           </button>
         )}
 
         {/* Nút Stop: Dừng hẳn và đặt lại vị trí về đầu */}
-        {(isPlaying || isPaused || currentWordCharIndexRef.current > 0) && (
+        {(isPlaying || isPaused) && (
           <button
             type="button"
             onClick={() => stopSpeech(true)}
             title="Dừng và đọc lại từ đầu"
-            className="flex h-7 w-7 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors cursor-pointer"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer"
           >
-            <Square className="h-3 w-3 fill-gray-500" />
+            <Square className="h-3 w-3 fill-current" />
           </button>
         )}
 
-        <div className="h-4 w-px bg-gray-200 shrink-0" />
+        <div className="h-4 w-px bg-black/[0.08] dark:bg-white/[0.1] shrink-0" />
 
         {/* Nút điều chỉnh tốc độ đọc dạng Cycle Pill */}
         <button
           type="button"
           onClick={handleCycleRate}
           title="Nhấn để đổi tốc độ đọc (0.8x -> 1x -> 1.25x -> 1.5x -> 1.75x) - Không làm gián đoạn vị trí đọc"
-          className="flex items-center gap-0.5 rounded-full bg-gray-100/90 px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 active:scale-95 transition-all cursor-pointer"
+          className="flex items-center gap-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.06] px-2.5 py-1 text-xs font-bold text-neutral-700 dark:text-neutral-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer"
         >
           <span>{rate}x</span>
         </button>
 
-        <div className="h-4 w-px bg-gray-200 shrink-0" />
+        <div className="h-4 w-px bg-black/[0.08] dark:bg-white/[0.1] shrink-0" />
 
         {/* Dropdown Chọn Ngôn ngữ & Giọng đọc (Tiếng Việt & Tiếng Anh) */}
         <div className="relative" ref={dropdownContainerRef}>
@@ -492,10 +492,10 @@ export default function SummaryTtsPlayer({
             title="Nhấn để chọn giọng đọc (Tiếng Việt hoặc Tiếng Anh)"
             className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-all cursor-pointer max-w-[150px] xs:max-w-[180px] sm:max-w-[210px] ${
               isCurrentVoiceEnglish
-                ? "bg-blue-50/90 text-blue-800 border-blue-200 hover:bg-blue-100"
+                ? "bg-blue-50/90 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800/50 hover:bg-blue-100"
                 : selectedVoice
-                  ? "bg-emerald-50/90 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-                  : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                  ? "bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100"
+                  : "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 hover:bg-amber-100"
             }`}
           >
             <span className="shrink-0 text-sm">
@@ -509,19 +509,19 @@ export default function SummaryTtsPlayer({
 
           {/* Menu Dropdown danh sách các giọng đọc */}
           {isVoiceDropdownOpen && (
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 sm:w-80 rounded-2xl bg-white p-2 shadow-2xl border border-gray-200 text-xs text-gray-800 animate-in fade-in zoom-in-95 duration-150 z-50">
-              <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-gray-100 mb-1">
-                <div className="flex items-center gap-1.5 font-bold text-gray-900">
-                  <Languages className="h-4 w-4 text-indigo-600" />
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 sm:w-80 rounded-[20px] bg-white dark:bg-[#1A1E29] p-2 shadow-2xl border border-black/[0.08] dark:border-white/[0.12] text-xs text-neutral-800 dark:text-neutral-200 animate-in fade-in zoom-in-95 duration-150 z-50">
+              <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-black/[0.06] dark:border-white/[0.08] mb-1">
+                <div className="flex items-center gap-1.5 font-bold text-neutral-900 dark:text-neutral-100">
+                  <Languages className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                   <span>Chọn giọng đọc</span>
                 </div>
-                <span className="text-[10px] text-gray-400">Tiếng Việt & Tiếng Anh</span>
+                <span className="text-[10px] text-neutral-400 dark:text-neutral-500">Tiếng Việt & Tiếng Anh</span>
               </div>
 
               <div className="max-h-64 overflow-y-auto space-y-2 p-1">
                 {/* Nhóm 1: Tiếng Việt */}
                 <div>
-                  <div className="px-2 py-1 text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                  <div className="px-2 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                     <span>🇻🇳</span>
                     <span>Tiếng Việt</span>
                   </div>
@@ -536,20 +536,20 @@ export default function SummaryTtsPlayer({
                             onClick={() => handleSelectVoice(v)}
                             className={`flex items-center justify-between w-full rounded-xl px-2.5 py-1.5 text-left text-xs transition-all cursor-pointer ${
                               isSelected
-                                ? "bg-emerald-50 text-emerald-900 font-semibold border border-emerald-200"
-                                : "text-gray-700 hover:bg-gray-50 border border-transparent"
+                                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/50"
+                                : "text-neutral-700 dark:text-neutral-300 hover:bg-black/[0.03] dark:hover:bg-white/[0.04] border border-transparent"
                             }`}
                           >
                             <span className="truncate pr-2">{formatVoiceName(v)}</span>
                             {isSelected && (
-                              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             )}
                           </button>
                         );
                       })}
                     </div>
                   ) : (
-                    <div className="px-2.5 py-1.5 text-[11px] text-amber-700 bg-amber-50 rounded-xl">
+                    <div className="px-2.5 py-1.5 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-xl">
                       Không tìm thấy giọng Tiếng Việt trên máy. Khuyên dùng Microsoft Edge hoặc Chrome.
                     </div>
                   )}
@@ -557,7 +557,7 @@ export default function SummaryTtsPlayer({
 
                 {/* Nhóm 2: Tiếng Anh */}
                 <div>
-                  <div className="px-2 py-1 text-[11px] font-bold text-blue-700 flex items-center gap-1 border-t border-gray-100 pt-2">
+                  <div className="px-2 py-1 text-[11px] font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1 border-t border-black/[0.06] dark:border-white/[0.08] pt-2">
                     <span>🇺🇸</span>
                     <span>Tiếng Anh (English)</span>
                   </div>
@@ -572,20 +572,20 @@ export default function SummaryTtsPlayer({
                             onClick={() => handleSelectVoice(v)}
                             className={`flex items-center justify-between w-full rounded-xl px-2.5 py-1.5 text-left text-xs transition-all cursor-pointer ${
                               isSelected
-                                ? "bg-blue-50 text-blue-900 font-semibold border border-blue-200"
-                                : "text-gray-700 hover:bg-gray-50 border border-transparent"
+                                ? "bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800/50"
+                                : "text-neutral-700 dark:text-neutral-300 hover:bg-black/[0.03] dark:hover:bg-white/[0.04] border border-transparent"
                             }`}
                           >
                             <span className="truncate pr-2">{formatVoiceName(v)}</span>
                             {isSelected && (
-                              <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                              <Check className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
                             )}
                           </button>
                         );
                       })}
                     </div>
                   ) : (
-                    <div className="px-2.5 py-1.5 text-[11px] text-gray-500">
+                    <div className="px-2.5 py-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
                       Không tìm thấy giọng tiếng Anh.
                     </div>
                   )}
@@ -603,7 +603,7 @@ export default function SummaryTtsPlayer({
             onClose();
           }}
           title="Tắt trình đọc âm thanh"
-          className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors cursor-pointer ml-0.5 shrink-0"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer ml-0.5 shrink-0"
         >
           <X className="h-3.5 w-3.5" />
         </button>
