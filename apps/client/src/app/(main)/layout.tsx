@@ -68,7 +68,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                             : isViewingDocument
                               ? "p-2 sm:p-3 overflow-y-auto"
                               : showRightSidebar
-                                ? "p-3.5 sm:p-5 lg:p-6 overflow-y-auto"
+                                ? "p-3 sm:p-4 lg:p-5 overflow-y-auto"
                                 : "p-5 sm:p-8 lg:p-10 overflow-y-auto"
                     }`}
                 >

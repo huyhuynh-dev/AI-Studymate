@@ -10,6 +10,9 @@ export * from "./DeleteConversationModal";
 export { default as ConversationContextMenu } from "./ConversationContextMenu";
 export * from "./ConversationContextMenu";
 
+export { default as ConversationHeader } from "./ConversationHeader";
+export * from "./ConversationHeader";
+
 export { default as ConversationHeaderRoutes } from "./ConversationHeaderRoutes";
 export * from "./ConversationHeaderRoutes";
 

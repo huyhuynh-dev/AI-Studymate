@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, use } from "react";
-import { Share2, MoreHorizontal, Sparkles } from "lucide-react";
-import ConversationHeaderRoutes from "@/components/conversations/ConversationHeaderRoutes";
+import ConversationHeader from "@/components/conversations/ConversationHeader";
 import ConversationHeaderTabs, { TabKey } from "@/components/conversations/ConversationHeaderTabs";
 import DocumentsTab from "@/components/conversations/DocumentsTab";
 import SummaryTab from "@/components/conversations/SummaryTab/SummaryTab";
@@ -101,98 +100,56 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   return (
     <div
       className={`flex flex-1 min-h-full w-full flex-col transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-        isFocusMode ? "h-full gap-0" : isDocumentViewerActive ? "gap-2 sm:gap-2.5" : "gap-3 sm:gap-4"
+        isFocusMode ? "h-full gap-0" : isDocumentViewerActive ? "gap-2 sm:gap-2.5" : "gap-3 sm:gap-3.5"
       }`}
     >
-      {/* Hàng Header điều hướng: Breadcrumb bên trái & Các nút chức năng bên phải — Trượt lên & Ẩn đi khi vào Focus Mode */}
+      {/* 1. Header Toolbar 2 tầng chuẩn Apple — Thu gọn trơn tru khi vào Focus Mode */}
       <div
-        className={`flex shrink-0 flex-wrap items-center justify-between gap-3 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden ${
+        className={`shrink-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden ${
+          isFocusMode
+            ? "max-h-0 -translate-y-4 opacity-0 pointer-events-none"
+            : "max-h-20 translate-y-0 opacity-100"
+        }`}
+      >
+        <ConversationHeader
+          subjectName={subjectName}
+          subjectHref={`/home/${subjectId}`}
+          sessionTitle={sessionTitle}
+          badgeText="Phiên mới"
+          isRightSidebarCollapsed={isRightSidebarCollapsed}
+          onToggleRightSidebar={toggleRightSidebar}
+        />
+      </div>
+
+      {/* 2. Apple Segmented Tab Controller — Tự co giãn linh hoạt, chống tràn tuyệt đối */}
+      <div
+        className={`shrink-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden ${
           isFocusMode
             ? "max-h-0 -translate-y-4 opacity-0 pointer-events-none"
             : "max-h-16 translate-y-0 opacity-100"
         }`}
       >
-        {/* Component: Breadcrumb điều hướng Apple */}
-        <ConversationHeaderRoutes
-          subjectName={subjectName}
-          subjectHref={`/home/${subjectId}`}
-          sessionTitle={sessionTitle}
-          badgeText="Phiên mới"
+        <ConversationHeaderTabs
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
         />
-
-        {/* Các nút hành động bên phải phong cách Apple Toolbar Pill Buttons */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <button
-            type="button"
-            title="Chia sẻ"
-            aria-label="Chia sẻ"
-            className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 backdrop-blur-md text-neutral-600 dark:text-neutral-300 shadow-2xs transition-all duration-200 hover:bg-neutral-100/80 dark:hover:bg-white/[0.08] hover:text-neutral-900 dark:hover:text-white active:scale-95 cursor-pointer"
-          >
-            <Share2 className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            title="Tùy chọn khác"
-            aria-label="Tùy chọn khác"
-            className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 backdrop-blur-md text-neutral-600 dark:text-neutral-300 shadow-2xs transition-all duration-200 hover:bg-neutral-100/80 dark:hover:bg-white/[0.08] hover:text-neutral-900 dark:hover:text-white active:scale-95 cursor-pointer"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
-
-          {/* Nút bật/tắt Trợ lý AI StudyMate */}
-          <div className="relative group">
-            <button
-              type="button"
-              onClick={toggleRightSidebar}
-              aria-label="Trợ lý StudyMate AI"
-              className={`flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-full border transition-all duration-200 active:scale-95 cursor-pointer ${
-                !isRightSidebarCollapsed
-                  ? "border-indigo-300 dark:border-indigo-500/40 bg-indigo-50 dark:bg-indigo-950/40 text-[#4F46E5] dark:text-[#818CF8] shadow-xs"
-                  : "border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 backdrop-blur-md text-neutral-600 dark:text-neutral-400 hover:border-indigo-200 dark:hover:border-indigo-800/40 hover:bg-indigo-50/50 hover:text-[#4F46E5]"
-              }`}
-            >
-              <Sparkles className="h-4 w-4 text-[#4F46E5] dark:text-[#818CF8] transition-transform duration-200 group-hover:scale-110" />
-            </button>
-            {/* Apple Floating Tooltip khi hover */}
-            <div className="pointer-events-none absolute right-0 top-full mt-2 hidden group-hover:flex items-center z-50 animate-in fade-in-50 zoom-in-95 duration-150">
-              <div className="rounded-full bg-[#0B1C30]/90 dark:bg-white/95 backdrop-blur-md px-3 py-1 text-xs font-medium text-white dark:text-[#0B1C30] shadow-xl whitespace-nowrap">
-                {isRightSidebarCollapsed ? "Mở Trợ lý StudyMate AI" : "Thu gọn Trợ lý StudyMate AI"}
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Container chính: Thẻ chứa Tabs & Nội dung với Apple Concentric Radii */}
-      <div
-        className={`flex flex-1 flex-col bg-white dark:bg-[#12151C] overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      {/* 3. Vùng Nội dung Tab (Tab Content Outlet) — Unified Apple Workspace Surface */}
+      <main
+        className={`flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           isFocusMode
-            ? "min-h-0 rounded-none border-0 shadow-none"
-            : "rounded-[20px] sm:rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs"
+            ? "min-h-0 rounded-none border-0 shadow-none bg-white dark:bg-[#0B0D13]"
+            : "rounded-[20px] sm:rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs bg-white dark:bg-[#12151C]"
         }`}
       >
-        {/* Component: Thanh Tab điều hướng — Trượt lên & Ẩn đi khi vào Focus Mode */}
-        <div
-          className={`relative z-10 shrink-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden ${
-            isFocusMode
-              ? "max-h-0 -translate-y-4 opacity-0 border-b-0 pointer-events-none"
-              : "max-h-20 translate-y-0 opacity-100"
-          }`}
-        >
-          <ConversationHeaderTabs
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-          />
-        </div>
-
-        {/* Khu vực nội dung Tab */}
         <div
           className={`relative flex flex-1 flex-col overflow-hidden transition-all duration-200 ${
             isFocusMode ? "min-h-0" : ""
           } ${
             isDocumentViewerActive
               ? "p-0 items-stretch justify-start"
-              : "p-4 sm:p-6 md:p-8 items-center justify-center"
+              : "p-3 sm:p-5 lg:p-6 items-stretch justify-start overflow-y-auto"
           }`}
         >
           {activeTab === "documents" && (
@@ -237,7 +194,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
             />
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
