@@ -17,11 +17,64 @@ export class DeckFlashcardRepoService {
         });
     }
 
+    async getDecksWithStats(
+        userId: string,
+        filter: { conversationId?: string; search?: string } = {}
+    ) {
+        const where: Prisma.FlashcardDeckWhereInput = {
+            user_id: userId,
+        };
+
+        if (filter.conversationId) {
+            where.conversation_id = filter.conversationId;
+        }
+
+        if (filter.search && filter.search.trim()) {
+            const keyword = filter.search.trim();
+            where.OR = [
+                { name: { contains: keyword, mode: 'insensitive' } },
+                { description: { contains: keyword, mode: 'insensitive' } },
+            ];
+        }
+
+        return await this.prisma.flashcardDeck.findMany({
+            where,
+            orderBy: { created_at: 'desc' },
+            include: {
+                flashcards: {
+                    select: {
+                        id: true,
+                        state: true,
+                        due_date: true,
+                    },
+                },
+            },
+        });
+    }
+
     async getDeckById(deckId: string, userId: string): Promise<Prisma.FlashcardDeckModel | null> {
         return await this.prisma.flashcardDeck.findFirst({
             where: {
                 id: deckId,
                 user_id: userId,
+            },
+        });
+    }
+
+    async getDeckByIdWithStats(deckId: string, userId: string) {
+        return await this.prisma.flashcardDeck.findFirst({
+            where: {
+                id: deckId,
+                user_id: userId,
+            },
+            include: {
+                flashcards: {
+                    select: {
+                        id: true,
+                        state: true,
+                        due_date: true,
+                    },
+                },
             },
         });
     }

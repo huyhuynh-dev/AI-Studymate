@@ -21,6 +21,7 @@ enum CardStateEnum {
   new
   learning
   review
+  relearning
 
   @@map("card_state_enum")
 }

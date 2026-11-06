@@ -21,7 +21,8 @@ export type CardTypeEnum = (typeof CardTypeEnum)[keyof typeof CardTypeEnum]
 export const CardStateEnum = {
   new: 'new',
   learning: 'learning',
-  review: 'review'
+  review: 'review',
+  relearning: 'relearning'
 } as const
 
 export type CardStateEnum = (typeof CardStateEnum)[keyof typeof CardStateEnum]

@@ -29,6 +29,7 @@ import { DeckFlashcardRepoService } from './deck-flashcard-repo/deck-flashcard-r
     DocumentChunksRepoService,
     SummariesRepoService,
     ChatAgentRepoService,
+    DeckFlashcardRepoService,
   ],
 })
 export class RepoModule { }
