@@ -384,14 +384,14 @@ function StepNewPassword({
 
   const passwordChecks = [
     {
-      label: 'Từ 8 đến 64 ký tự',
+      label: '8 đến 64 ký tự',
       valid: password.length >= 8 && password.length <= 64,
     },
     {
-      label: 'Chữ hoa (A-Z) và chữ thường (a-z)',
+      label: 'Chữ hoa & chữ thường',
       valid: /[a-z]/.test(password) && /[A-Z]/.test(password),
     },
-    { label: 'Ít nhất 1 chữ số (0-9)', valid: /[0-9]/.test(password) },
+    { label: 'Ít nhất 1 chữ số', valid: /[0-9]/.test(password) },
     {
       label: 'Ký tự đặc biệt (@$!%*?&)',
       valid: /[@$!%*?&]/.test(password),
@@ -405,9 +405,9 @@ function StepNewPassword({
     <>
       <AppleStepProgress currentStep={3} />
 
-      {/* App Squircle Glyph */}
+      {/* App Squircle Glyph (Đồng bộ gradient thương hiệu Indigo) */}
       <div className="flex flex-col items-center mb-5">
-        <div className="w-12 h-12 rounded-[14px] bg-gradient-to-b from-emerald-500 to-emerald-600 dark:from-emerald-600 dark:to-emerald-700 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 ring-1 ring-white/20 apple-spring">
+        <div className="w-12 h-12 rounded-[14px] bg-gradient-to-b from-indigo-500 to-indigo-600 dark:from-indigo-600 dark:to-indigo-700 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 ring-1 ring-white/20 apple-spring">
           <ShieldCheck className="w-6 h-6 text-white" strokeWidth={1.8} />
         </div>
       </div>
@@ -418,7 +418,7 @@ function StepNewPassword({
           Tạo mật khẩu mới
         </h1>
         <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
-          Thiết lập mật khẩu mới an toàn cho tài khoản của bạn.
+          Thiết lập mật khẩu mới an toàn cho tài khoản học tập của bạn.
         </p>
       </div>
 
@@ -467,22 +467,19 @@ function StepNewPassword({
             showPasswordToggle
           />
 
-          {/* Dynamic Password Strength Indicator */}
+          {/* Dynamic 3-Segment Password Strength Indicator */}
           <PasswordStrength
             value={passwordStrength.text}
             level={passwordStrength.level}
           />
 
-          {/* Minimalist Password criteria micro-checks */}
+          {/* Minimalist Criteria Checklist (Hiện diện tiến trình tinh tế theo thời gian thực) */}
           {password && (
-            <div className="mt-2.5 grid grid-cols-2 gap-1.5 p-2.5 rounded-xl bg-gray-50/70 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.06]">
+            <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-2.5 rounded-xl bg-gray-50/70 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.06] select-none">
               {passwordChecks.map((check, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-1.5 text-[11px] select-none"
-                >
+                <div key={i} className="flex items-center gap-1.5 text-[11px]">
                   <span
-                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${
+                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                       check.valid
                         ? 'bg-emerald-500 text-white'
                         : 'border border-gray-300 dark:border-white/20'
@@ -533,12 +530,12 @@ function StepNewPassword({
               {passwordsMatch ? (
                 <>
                   <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2} />
-                  <span>Mật khẩu xác nhận hoàn toàn trùng khớp</span>
+                  <span>Mật khẩu trùng khớp</span>
                 </>
               ) : (
                 <>
                   <AlertCircle className="w-3.5 h-3.5" strokeWidth={2} />
-                  <span>Mật khẩu xác nhận không trùng khớp</span>
+                  <span>Mật khẩu chưa trùng khớp</span>
                 </>
               )}
             </p>
@@ -564,7 +561,7 @@ function StepNewPassword({
           />
         </div>
 
-        {/* Submit */}
+        {/* Submit (The 1 Primary CTA) */}
         <div className="pt-2">
           <AuthSubmitButton
             label="Đặt lại mật khẩu"
