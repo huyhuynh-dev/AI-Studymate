@@ -22,8 +22,8 @@ export * from "./DocumentsTab";
 export { default as DocumentImageViewer } from "./DocumentImageViewer";
 export * from "./DocumentImageViewer";
 
-export { default as SummaryTab } from "./SummaryTab";
-export * from "./SummaryTab";
+export { default as SummaryTab } from "./SummaryTab/SummaryTab";
+export * from "./SummaryTab/SummaryTab";
 
 export { default as FlashcardsTab } from "./FlashcardsTab";
 export * from "./FlashcardsTab";

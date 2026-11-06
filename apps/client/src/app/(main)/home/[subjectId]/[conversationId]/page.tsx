@@ -5,8 +5,8 @@ import { Share2, MoreHorizontal, Sparkles } from "lucide-react";
 import ConversationHeaderRoutes from "@/components/conversations/ConversationHeaderRoutes";
 import ConversationHeaderTabs, { TabKey } from "@/components/conversations/ConversationHeaderTabs";
 import DocumentsTab from "@/components/conversations/DocumentsTab";
-import SummaryTab from "@/components/conversations/SummaryTab";
-import FlashcardsTab from "@/components/conversations/FlashcardsTab";
+import SummaryTab from "@/components/conversations/SummaryTab/SummaryTab";
+import FlashcardsTab from "@/components/conversations/FlashcardTab";
 import QuizTab from "@/components/conversations/QuizTab";
 import { useFocusMode } from "@/components/layout";
 import { useSubjects } from "@/hooks/useSubjects";
@@ -220,6 +220,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           {activeTab === "flashcard" && (
             <FlashcardsTab
               onUploadDocument={handleGoToDocuments}
+              hasDocuments={documents.length > 0}
               className="w-full flex-1"
             />
           )}
