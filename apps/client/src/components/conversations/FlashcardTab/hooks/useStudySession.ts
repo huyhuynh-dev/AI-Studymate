@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Flashcard, Rating } from "../types";
 import { applyRating } from "../utils/srs";
 
@@ -21,7 +21,11 @@ export function useStudySession(
   const [goodAnswers, setGoodAnswers] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [seconds, setSeconds] = useState(0);
-  const startedAt = useRef(Date.now());
+  const startedAt = useRef<number | null>(null);
+
+  useEffect(() => {
+    startedAt.current ??= Date.now();
+  }, []);
 
   const current = queue.length ? cards.find((c) => c.id === queue[0]) ?? null : null;
 
@@ -45,7 +49,10 @@ export function useStudySession(
       return;
     }
     setCompleted((n) => n + 1);
-    if (queue.length === 1) setSeconds(Math.max(1, Math.round((Date.now() - startedAt.current) / 1000)));
+    if (queue.length === 1) {
+      const elapsed = startedAt.current === null ? 0 : Date.now() - startedAt.current;
+      setSeconds(Math.max(1, Math.round(elapsed / 1000)));
+    }
     setQueue((q) => q.slice(1));
   };
 

@@ -26,7 +26,7 @@ export function SessionSummary({ total, goodRate, seconds, onBack, onExtra }: Pr
       <div className="mt-8 grid w-full max-w-xl grid-cols-1 gap-3 sm:grid-cols-3">
         <StatTile large label="Thẻ đã học" value={total} />
         <StatTile large label="Tỷ lệ ghi nhớ tốt" value={`${goodRate}%`} tone="green" />
-        <StatTile large label="Thời gian tập trung" value={formatDuration(seconds)} tone="indigo" />
+        <StatTile large label="Thời gian học" value={formatDuration(seconds)} tone="indigo" />
       </div>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         <Button variant="primary" size="lg" icon={<ArrowLeft className="h-4 w-4" />} onClick={onBack}>
