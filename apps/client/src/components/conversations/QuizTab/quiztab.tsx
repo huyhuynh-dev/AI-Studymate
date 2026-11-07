@@ -120,7 +120,7 @@ export function QuizTab({
   const quizId = view.name === "list" ? null : view.quizId;
   const quiz = quizId ? quizOf(quizId) : null;
 
-  if (view.name === "list" || !quiz) {
+  if (view.name === "list") {
     content = (
       <QuizListView
         quizzes={store.quizzes} attempts={store.attempts} loading={store.loading} error={store.error} onRetry={store.reload}
@@ -141,6 +141,16 @@ export function QuizTab({
         onDelete={setDeleting}
       />
     );
+  } else if (view.name === "builder") {
+    content = (
+      <QuizBuilderView
+        key={view.quizId ?? "new"} quiz={view.quizId ? quiz : null}
+        onCancel={() => go(view.quizId ? { name: "detail", quizId: view.quizId } : { name: "list" })}
+        onSave={(d) => saveQuiz(view.quizId, d)}
+      />
+    );
+  } else if (!quiz) {
+    content = null;
   } else if (view.name === "detail") {
     content = (
       <QuizOverviewView
@@ -151,14 +161,6 @@ export function QuizTab({
         onStart={() => setSetup({ quizId: quiz.id })}
         onReview={(a) => go({ name: "result", quizId: quiz.id, attemptId: a.id })}
         onResume={(a) => go({ name: "taking", quizId: quiz.id, attemptId: a.id })}
-      />
-    );
-  } else if (view.name === "builder") {
-    content = (
-      <QuizBuilderView
-        key={view.quizId ?? "new"} quiz={view.quizId ? quiz : null}
-        onCancel={() => go(view.quizId ? { name: "detail", quizId: view.quizId } : { name: "list" })}
-        onSave={(d) => saveQuiz(view.quizId, d)}
       />
     );
   } else {
