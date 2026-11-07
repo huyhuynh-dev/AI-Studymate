@@ -34,11 +34,8 @@ export default function WelcomeComponent({
 
   const handleWorkspaceCreated = async (data: { name: string; color: string }) => {
     try {
-      const created = await createSubject(data);
+      await createSubject(data);
       setIsModalOpen(false);
-      if (created?.id) {
-        router.push(`/home/${created.id}`);
-      }
     } catch (err) {
       console.error("Lỗi khi tạo không gian học tập:", err);
     }

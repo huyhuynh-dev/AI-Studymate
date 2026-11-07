@@ -51,10 +51,7 @@ export default function SubjectCardListView() {
 
   const handleWorkspaceFormSubmit = async (data: { name: string; color: string }) => {
     if (workspaceModalMode === "create") {
-      const created = await createSubject(data);
-      if (created?.id) {
-        router.push(`/home/${created.id}`);
-      }
+      await createSubject(data);
     } else if (workspaceModalMode === "edit" && editingSubject) {
       await updateSubject(editingSubject.id, data);
     }

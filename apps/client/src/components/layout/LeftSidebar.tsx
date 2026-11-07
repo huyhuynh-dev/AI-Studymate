@@ -221,7 +221,6 @@ export default function LeftSidebar({
       if (created?.id) {
         setActiveId(created.id);
         onSelectSubject?.(created);
-        router.push(`/home/${created.id}`);
       }
     } else if (workspaceModalMode === "edit" && editingSubject) {
       await updateSubject(editingSubject.id, data);
