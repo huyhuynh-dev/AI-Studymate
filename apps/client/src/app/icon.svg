@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <style>
+    #light-mode { display: block; }
+    #dark-mode { display: none; }
+
+    @media (prefers-color-scheme: dark) {
+      #light-mode { display: none; }
+      #dark-mode { display: block; }
+    }
+  </style>
+
+  <defs>
+    <linearGradient id="light-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8F9FF"/>
+      <stop offset="100%" stop-color="#DCE9FF"/>
+    </linearGradient>
+    <linearGradient id="light-ribbon-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3525CD"/>
+      <stop offset="55%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#6F3DD9"/>
+    </linearGradient>
+    <linearGradient id="light-ribbon-bottom" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#006C49"/>
+      <stop offset="45%" stop-color="#3525CD"/>
+      <stop offset="100%" stop-color="#6CF8BB"/>
+    </linearGradient>
+    <filter id="light-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#3525CD" flood-opacity="0.26"/>
+    </filter>
+
+    <linearGradient id="dark-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111625"/>
+      <stop offset="50%" stop-color="#0B101B"/>
+      <stop offset="100%" stop-color="#06080E"/>
+    </linearGradient>
+    <radialGradient id="dark-ambient-glow" cx="50%" cy="50%" r="48%">
+      <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.22"/>
+      <stop offset="55%" stop-color="#3525CD" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#0B1C30" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="dark-rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#383E5C" stop-opacity="0.85"/>
+      <stop offset="50%" stop-color="#1E2235" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#253835" stop-opacity="0.7"/>
+    </linearGradient>
+    <linearGradient id="dark-ribbon-top" x1="15%" y1="10%" x2="85%" y2="90%">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="45%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="dark-ribbon-bottom" x1="80%" y1="10%" x2="15%" y2="95%">
+      <stop offset="0%" stop-color="#3525CD"/>
+      <stop offset="42%" stop-color="#3B2FE0"/>
+      <stop offset="72%" stop-color="#0D9488"/>
+      <stop offset="100%" stop-color="#6CF8BB"/>
+    </linearGradient>
+    <linearGradient id="dark-center-fill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#192138"/>
+      <stop offset="100%" stop-color="#0B1120"/>
+    </linearGradient>
+    <linearGradient id="dark-center-stroke" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A5B4FC"/>
+      <stop offset="50%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#6CF8BB"/>
+    </linearGradient>
+    <linearGradient id="dark-spark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="65%" stop-color="#E2DFFF"/>
+      <stop offset="100%" stop-color="#9DF4C8"/>
+    </linearGradient>
+    <filter id="dark-glow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="24" flood-color="#000000" flood-opacity="0.65"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="18" flood-color="#4F46E5" flood-opacity="0.32"/>
+    </filter>
+    <filter id="dark-disc-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.7"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#6366F1" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <g id="light-mode" transform="scale(2)">
+    <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#light-bg)"/>
+    <rect x="25" y="25" width="462" height="462" rx="107" fill="none" stroke="#C7C4D8" stroke-opacity="0.7" stroke-width="2"/>
+    <g filter="url(#light-shadow)">
+      <path d="M342 166 C342 118, 286 98, 232 108 C166 120, 134 176, 174 224 C202 256, 260 262, 310 282 L338 232 C292 214, 240 208, 222 186 C206 166, 224 148, 256 148 C282 148, 298 158, 304 178 Z" fill="url(#light-ribbon-top)"/>
+      <path d="M170 346 C170 394, 226 414, 280 404 C346 392, 378 336, 338 288 C310 256, 252 250, 202 230 L174 280 C220 298, 272 304, 290 326 C306 346, 288 364, 256 364 C230 364, 214 354, 208 334 Z" fill="url(#light-ribbon-bottom)"/>
+      <circle cx="256" cy="256" r="34" fill="#FFFFFF" fill-opacity="0.9" stroke="#4F46E5" stroke-width="2"/>
+      <path d="M256 232 C259 248, 264 253, 280 256 C264 259, 259 264, 256 280 C253 264, 248 259, 232 256 C248 253, 253 248, 256 232 Z" fill="#3525CD"/>
+    </g>
+  </g>
+
+  <g id="dark-mode">
+    <rect x="50" y="50" width="924" height="924" rx="220" fill="url(#dark-bg)" stroke="url(#dark-rim)" stroke-width="4"/>
+    <rect x="52" y="52" width="920" height="920" rx="218" fill="url(#dark-ambient-glow)"/>
+    <g filter="url(#dark-glow)">
+      <path d="M 632 340 C 612 240, 372 240, 372 348 C 372 440, 520 468, 640 508" fill="none" stroke="url(#dark-ribbon-top)" stroke-width="116" stroke-linecap="butt"/>
+      <path d="M 384 516 C 504 556, 652 584, 652 676 C 652 784, 412 784, 392 684" fill="none" stroke="url(#dark-ribbon-bottom)" stroke-width="116" stroke-linecap="butt"/>
+    </g>
+    <g filter="url(#dark-disc-shadow)">
+      <circle cx="500" cy="512" r="68" fill="url(#dark-center-fill)" stroke="url(#dark-center-stroke)" stroke-width="5"/>
+      <path d="M 500 464 Q 500 512 548 512 Q 500 512 500 560 Q 500 512 452 512 Q 500 512 500 464 Z" fill="url(#dark-spark)"/>
+    </g>
+  </g>
+</svg>
