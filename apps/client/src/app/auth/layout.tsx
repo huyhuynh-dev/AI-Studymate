@@ -4,7 +4,7 @@ import AuthFooter from '@/components/auth/AuthFooter';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col relative overflow-x-hidden no-scrollbar">
+    <div className="relative flex min-h-screen flex-col overflow-x-clip no-scrollbar">
       {/* Ẩn thanh cuộn dọc toàn trang cho các giao diện Auth trong khi vẫn bảo toàn khả năng cuộn mượt mà */}
       <style>{`
         html, body {

@@ -1,0 +1,76 @@
+/* QuizTab design tokens — bổ sung cho globals.css (không ghi đè biến sẵn có).
+   Light/Dark theo prefers-color-scheme, đồng bộ với globals.css của dự án. */
+:root {
+  --qz-fill: rgba(11, 28, 48, 0.05);
+  --qz-fill-strong: rgba(11, 28, 48, 0.09);
+  --qz-elevated: #ffffff;
+  --qz-primary-soft: rgba(79, 70, 229, 0.09);
+  --qz-success: #006c49;
+  --qz-success-soft: rgba(0, 108, 73, 0.1);
+  --qz-warning: #b45309;
+  --qz-warning-soft: rgba(245, 158, 11, 0.16);
+  --qz-danger: #ba1a1a;
+  --qz-danger-soft: rgba(186, 26, 26, 0.09);
+  --qz-ai: #571ac0;
+  --qz-ai-soft: rgba(87, 26, 192, 0.08);
+  --qz-shadow-card: 0 4px 20px -4px rgba(11, 28, 48, 0.05), 0 1px 3px -1px rgba(11, 28, 48, 0.03);
+  --qz-shadow-hover: 0 6px 16px -2px rgba(79, 70, 229, 0.1), 0 2px 4px -1px rgba(11, 28, 48, 0.03);
+  --qz-shadow-float: 0 20px 40px -8px rgba(11, 28, 48, 0.12);
+  --qz-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --qz-fill: rgba(255, 255, 255, 0.06);
+    --qz-fill-strong: rgba(255, 255, 255, 0.1);
+    --qz-elevated: #1a1e28; /* Z-level 2: sáng hơn card (#12151c) */
+    --qz-primary-soft: rgba(99, 102, 241, 0.18);
+    --qz-success: #34d399;
+    --qz-success-soft: rgba(52, 211, 153, 0.12);
+    --qz-warning: #fbbf24;
+    --qz-warning-soft: rgba(251, 191, 36, 0.14);
+    --qz-danger: #f87171;
+    --qz-danger-soft: rgba(248, 113, 113, 0.13);
+    --qz-ai: #b69cff;
+    --qz-ai-soft: rgba(139, 92, 246, 0.16);
+    /* Dark mode: phân tầng bằng độ sáng + viền, không dùng bóng đen */
+    --qz-shadow-card: none;
+    --qz-shadow-hover: none;
+    --qz-shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* Vùng soạn thảo TipTap & hiển thị HTML rich-text (Tailwind preflight đã reset list/heading) */
+.qz-prose { font-family: var(--font-sans); font-size: 15px; line-height: 1.6; color: var(--foreground); overflow-wrap: anywhere; }
+.qz-prose p { margin: 0 0 0.5em; }
+.qz-prose p:last-child { margin-bottom: 0; }
+.qz-prose ul { list-style: disc; padding-left: 1.4em; margin: 0.4em 0; }
+.qz-prose ol { list-style: decimal; padding-left: 1.4em; margin: 0.4em 0; }
+.qz-prose li > p { margin: 0; }
+.qz-prose strong { font-weight: 700; }
+.qz-prose u { text-underline-offset: 3px; }
+.qz-prose code { font-size: 0.92em; padding: 0.1em 0.35em; border-radius: 6px; background: var(--qz-fill-strong); }
+.qz-prose img { max-width: 100%; border-radius: 12px; }
+.qz-editor .ProseMirror { outline: none; min-height: var(--qz-editor-min, 120px); }
+.qz-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder); color: #777587; float: left; height: 0; pointer-events: none;
+}
+
+/* Chuyển động: lò xo giảm chấn (CSS fallback), phản hồi theo hành động của người dùng */
+@keyframes qz-pop { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes qz-sheet { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes qz-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes qz-breathe { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.12); opacity: 0.75; } }
+@keyframes qz-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.qz-anim-pop { animation: qz-pop 0.35s var(--qz-ease) both; }
+.qz-anim-sheet { animation: qz-sheet 0.4s var(--qz-ease) both; }
+.qz-anim-fade { animation: qz-fade 0.25s ease-out both; }
+.qz-anim-breathe { animation: qz-breathe 1.8s ease-in-out infinite; }
+.qz-shimmer {
+  background: linear-gradient(90deg, transparent 0%, var(--qz-ai-soft) 50%, transparent 100%);
+  background-size: 200% 100%; animation: qz-shimmer 2.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .qz-anim-pop, .qz-anim-sheet, .qz-anim-fade, .qz-anim-breathe, .qz-shimmer { animation: none !important; }
+  .apple-spring { transition-duration: 0.01ms !important; }
+}
