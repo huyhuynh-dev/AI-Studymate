@@ -7,6 +7,7 @@ import { DocumentsRepoService } from './documents-repo/documents-repo.service.js
 import { DocumentChunksRepoService } from './document-chunks-repo/document-chunks-repo.service.js';
 import { SummariesRepoService } from './summaries-repo/summaries-repo.service.js';
 import { ChatAgentRepoService } from './chat-agent-repo/chat-agent-repo.service.js';
+import { DeckFlashcardRepoService } from './deck-flashcard-repo/deck-flashcard-repo.service.js';
 
 @Module({
   imports: [PrismaModule],
@@ -18,6 +19,7 @@ import { ChatAgentRepoService } from './chat-agent-repo/chat-agent-repo.service.
     DocumentChunksRepoService,
     SummariesRepoService,
     ChatAgentRepoService,
+    DeckFlashcardRepoService,
   ],
   exports: [
     UsersRepoService,
@@ -27,6 +29,7 @@ import { ChatAgentRepoService } from './chat-agent-repo/chat-agent-repo.service.
     DocumentChunksRepoService,
     SummariesRepoService,
     ChatAgentRepoService,
+    DeckFlashcardRepoService,
   ],
 })
 export class RepoModule { }

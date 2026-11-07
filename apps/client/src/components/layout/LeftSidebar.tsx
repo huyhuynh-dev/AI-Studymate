@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
-  FolderPlus,
   Folder,
   FolderOpen,
   Settings,
@@ -67,13 +66,6 @@ export default function LeftSidebar({
     avatarUrl:
       "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
   },
-  streakDays = 14,
-  xp = 180,
-  progress = {
-    current: 42,
-    total: 50,
-    percentage: 84,
-  },
   selectedSubjectId,
   isCollapsed = false,
   onToggleCollapse,
@@ -117,18 +109,19 @@ export default function LeftSidebar({
   const [deletingSubject, setDeletingSubject] = useState<Subject | null>(null);
   const [railTooltip, setRailTooltip] = useState<{ text: string; top: number } | null>(null);
 
-  useEffect(() => {
+  const handleToggleCollapse = () => {
     setRailTooltip(null);
-  }, [isCollapsed]);
+    onToggleCollapse?.();
+  };
 
-  // State menu 3 chấm (Fixed Floating Action Menu)
+  // State menu 3 chấm (Apple macOS Context Menu)
   const [menuAnchor, setMenuAnchor] = useState<{
     subject: Subject;
     top: number;
     left: number;
   } | null>(null);
 
-  // Đóng action menu khi click ra ngoài hoặc cuộn trang/thay đổi kích thước
+  // Đóng action menu khi click ra ngoài hoặc scroll / resize
   useEffect(() => {
     if (!menuAnchor) return;
 
@@ -170,7 +163,7 @@ export default function LeftSidebar({
 
     const rect = e.currentTarget.getBoundingClientRect();
     const menuHeight = 84;
-    const menuWidth = 144;
+    const menuWidth = 148;
 
     let top = rect.bottom + 4;
     if (top + menuHeight > window.innerHeight) {
@@ -225,9 +218,10 @@ export default function LeftSidebar({
     if (workspaceModalMode === "create") {
       const created = await createSubject(data);
       onCreateWorkspace?.(data);
-      setActiveId(created.id);
-      onSelectSubject?.(created);
-      router.push(`/home/${created.id}`);
+      if (created?.id) {
+        setActiveId(created.id);
+        onSelectSubject?.(created);
+      }
     } else if (workspaceModalMode === "edit" && editingSubject) {
       await updateSubject(editingSubject.id, data);
     }
@@ -244,26 +238,26 @@ export default function LeftSidebar({
 
   return (
     <aside
-      className={`flex h-full flex-col justify-between border-r border-gray-100 bg-white select-none transition-all duration-300 ease-in-out ${isCollapsed
-        ? "w-12 px-1 py-3 items-center"
-        : "w-72 p-4 opacity-100"
-        } ${className}`.trim()}
+      className={`flex h-full flex-col justify-between border-r border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] select-none transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        isCollapsed ? "w-14 px-1.5 py-3 items-center" : "w-68 p-3.5 opacity-100"
+      } ${className}`.trim()}
     >
       {isCollapsed ? (
-        <div className="flex h-full w-full flex-col justify-between items-center py-1">
-          {/* Cụm 1: Trên cùng - Mở rộng & Tạo nhanh không gian */}
-          <div className="flex flex-col items-center gap-1.5 shrink-0">
+        /* ── Collapsed Rail Mode ── */
+        <div className="flex h-full w-full flex-col justify-between items-center">
+          {/* Top: Expand & Quick Create */}
+          <div className="flex flex-col items-center gap-2 shrink-0">
             {onToggleCollapse && (
               <button
                 type="button"
-                onClick={onToggleCollapse}
-                aria-label="Mở rộng sidebar"
+                onClick={handleToggleCollapse}
+                aria-label="Mở rộng thanh bên"
                 onMouseEnter={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   setRailTooltip({ text: "Mở rộng thanh bên", top: rect.top + rect.height / 2 });
                 }}
                 onMouseLeave={() => setRailTooltip(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#777587] hover:text-[#0B1C30] dark:hover:text-white hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer"
               >
                 <PanelLeftOpen className="h-4 w-4" />
               </button>
@@ -272,20 +266,20 @@ export default function LeftSidebar({
             <button
               type="button"
               onClick={handleOpenCreateModal}
-              aria-label="Tạo không gian học tập mới"
+              aria-label="Tạo không gian mới"
               onMouseEnter={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 setRailTooltip({ text: "Tạo không gian mới", top: rect.top + rect.height / 2 });
               }}
               onMouseLeave={() => setRailTooltip(null)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 transition-colors cursor-pointer"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#777587] hover:text-[#4F46E5] hover:bg-[#EEF2FF] active:scale-95 transition-all cursor-pointer"
             >
               <Plus className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Cụm 2: Ở giữa - Danh sách Thư mục không gian học tập kèm màu sắc và Dark Tooltip */}
-          <div className="flex-1 w-full min-h-0 flex flex-col items-center gap-1.5 py-2.5 overflow-y-auto overflow-x-hidden no-scrollbar">
+          {/* Middle: Workspaces list */}
+          <div className="flex-1 w-full min-h-0 flex flex-col items-center gap-1.5 py-3 overflow-y-auto overflow-x-hidden no-scrollbar">
             {subjects.map((subject) => {
               const isActive = activeId === subject.id;
               const subjectColor = subject.color || "#4F46E5";
@@ -301,10 +295,10 @@ export default function LeftSidebar({
                     setRailTooltip({ text: subject.name, top: rect.top + rect.height / 2 });
                   }}
                   onMouseLeave={() => setRailTooltip(null)}
-                  className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                  className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg active:scale-95 transition-all cursor-pointer ${
                     isActive
-                      ? "bg-indigo-50 text-indigo-900 shadow-xs ring-1 ring-indigo-200"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      ? "bg-[#EEF2FF] text-[#4F46E5] shadow-2xs ring-1 ring-[#C7D2FE]"
+                      : "text-[#777587] hover:bg-[#F8F9FF] dark:hover:bg-white/[0.04] hover:text-[#0B1C30]"
                   }`}
                 >
                   {isActive ? (
@@ -318,9 +312,9 @@ export default function LeftSidebar({
                       style={{ color: subjectColor }}
                     />
                   )}
-                  {/* Chấm màu nhận diện nhỏ ở góc */}
+                  {/* Concentric Accent Dot */}
                   <span
-                    className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full ring-1 ring-white"
+                    className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
                     style={{ backgroundColor: subjectColor }}
                   />
                 </button>
@@ -328,18 +322,18 @@ export default function LeftSidebar({
             })}
           </div>
 
-          {/* Cụm 3: Ở cuối - Avatar người dùng (Profile & Settings) */}
-          <div className="flex flex-col items-center pt-2.5 border-t border-gray-100 shrink-0 w-full">
+          {/* Bottom: User avatar */}
+          <div className="flex flex-col items-center pt-2.5 border-t border-[#E5EEFF] dark:border-white/[0.08] shrink-0 w-full">
             <button
               type="button"
               onClick={onSettingsClick}
-              aria-label="Cài đặt"
+              aria-label="Cài đặt tài khoản"
               onMouseEnter={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
-                setRailTooltip({ text: "Cài đặt", top: rect.top + rect.height / 2 });
+                setRailTooltip({ text: "Cài đặt tài khoản", top: rect.top + rect.height / 2 });
               }}
               onMouseLeave={() => setRailTooltip(null)}
-              className="relative h-8 w-8 overflow-hidden rounded-full border border-gray-200 hover:ring-2 hover:ring-indigo-500 hover:ring-offset-1 transition-all cursor-pointer"
+              className="relative h-8 w-8 overflow-hidden rounded-full border border-[#E5EEFF] dark:border-white/[0.1] hover:ring-2 hover:ring-[#4F46E5]/40 transition-all cursor-pointer active:scale-95"
             >
               <Image
                 src={
@@ -356,262 +350,220 @@ export default function LeftSidebar({
           </div>
         </div>
       ) : (
+        /* ── Full Expanded Sidebar Mode ── */
         <>
-          {/* ── Top & Main Content ── */}
-      <div className="flex-1 min-h-0 flex flex-col space-y-4 overflow-y-auto pr-0.5">
-        {/* Section Header: Workspace Title + Add Folder + Collapse */}
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-bold tracking-wider text-gray-500 uppercase">
-            KHÔNG GIAN HỌC TẬP
-          </span>
-          <div className="flex items-center gap-1">
+          <div className="flex-1 min-h-0 flex flex-col space-y-3 overflow-y-auto no-scrollbar pr-0.5">
+            {/* Header: macOS Split-View Title + Actions */}
+            <div className="flex items-center justify-between px-2 pt-1 pb-1">
+              <span className="text-[11px] font-semibold tracking-wider text-[#777587] dark:text-neutral-400 uppercase">
+                Không gian học tập
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleOpenCreateModal}
+                  aria-label="Tạo không gian học tập"
+                  title="Tạo không gian mới"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-[#777587] hover:text-[#4F46E5] hover:bg-[#EEF2FF] dark:hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+                {onToggleCollapse && (
+                  <button
+                    type="button"
+                    onClick={handleToggleCollapse}
+                    aria-label="Thu gọn thanh bên"
+                    title="Thu gọn"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-[#777587] hover:text-[#0B1C30] dark:hover:text-white hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer"
+                  >
+                    <PanelLeftClose className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Workspaces List */}
+            <div className="space-y-0.5">
+              {/* 1. Loading Skeleton */}
+              {isLoading && subjects.length === 0 && (
+                <div className="space-y-1 animate-pulse px-1">
+                  {[1, 2, 3].map((idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between rounded-xl bg-[#F8F9FF] dark:bg-white/[0.04] p-2.5"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-4 w-4 rounded-md bg-[#E5EEFF] dark:bg-white/[0.08]" />
+                        <div className="h-3.5 w-24 rounded-md bg-[#E5EEFF] dark:bg-white/[0.08]" />
+                      </div>
+                      <div className="h-2 w-2 rounded-full bg-[#E5EEFF] dark:bg-white/[0.08]" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 2. Error State */}
+              {error && subjects.length === 0 && (
+                <div className="rounded-xl border border-rose-200/60 bg-rose-50/50 dark:bg-rose-950/20 p-3 text-center space-y-2 mx-1">
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{error}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => refresh()}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-900 bg-white dark:bg-neutral-900 px-2.5 py-1 text-xs font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-50 transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    <span>Thử lại</span>
+                  </button>
+                </div>
+              )}
+
+              {/* 3. Empty State */}
+              {!isLoading && subjects.length === 0 && !error && (
+                <div className="rounded-2xl border border-dashed border-[#E5EEFF] dark:border-white/[0.1] bg-[#F8F9FF] dark:bg-white/[0.02] p-4 text-center space-y-2.5 mx-1">
+                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEF2FF] text-[#4F46E5]">
+                    <Folder className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-[#0B1C30] dark:text-neutral-300">
+                      Chưa có không gian nào
+                    </p>
+                    <p className="text-[11px] text-[#777587] dark:text-neutral-500 mt-0.5">
+                      Tạo không gian để quản lý tài liệu
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateModal}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#4F46E5] hover:bg-[#3525CD] px-3 py-1.5 text-xs font-medium text-white shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Tạo không gian</span>
+                  </button>
+                </div>
+              )}
+
+              {/* 4. Subject Items */}
+              {subjects.map((subject) => {
+                const isActive = activeId === subject.id;
+                const subjectColor = subject.color || "#4F46E5";
+                const isMenuOpen = menuAnchor?.subject.id === subject.id;
+
+                return (
+                  <div key={subject.id} className="relative group px-1">
+                    <div
+                      onClick={() => handleSubjectClick(subject)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          handleSubjectClick(subject);
+                        }
+                      }}
+                      className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left transition-all duration-150 cursor-pointer ${
+                        isActive
+                          ? "bg-[#EEF2FF] dark:bg-white/[0.12] text-[#3525CD] dark:text-white font-semibold shadow-2xs"
+                          : "text-[#464555] dark:text-neutral-400 hover:bg-[#F8F9FF] dark:hover:bg-white/[0.04] hover:text-[#0B1C30] dark:hover:text-neutral-200 font-medium"
+                      }`}
+                    >
+                      {/* Left: Icon & Subject Name */}
+                      <div className="flex items-center gap-2.5 min-w-0 pr-1">
+                        <div
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-transform group-hover:scale-105"
+                          style={{ backgroundColor: `${subjectColor}16` }}
+                        >
+                          {isActive ? (
+                            <FolderOpen
+                              className="h-3.5 w-3.5 transition-colors"
+                              style={{ color: subjectColor }}
+                            />
+                          ) : (
+                            <Folder
+                              className="h-3.5 w-3.5 transition-colors"
+                              style={{ color: subjectColor }}
+                            />
+                          )}
+                        </div>
+                        <span
+                          title={subject.name}
+                          className="text-[13px] truncate leading-tight tracking-tight"
+                        >
+                          {subject.name}
+                        </span>
+                      </div>
+
+                      {/* Right: Dot Indicator & More Action Trigger */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* 3-dots Menu Button */}
+                        <button
+                          type="button"
+                          data-menu-trigger="true"
+                          aria-label={`Tùy chọn cho ${subject.name}`}
+                          onClick={(e) => handleToggleActionMenu(subject, e)}
+                          className={`rounded-md p-1 transition-all cursor-pointer ${
+                            isMenuOpen
+                              ? "bg-[#E5EEFF] dark:bg-white/[0.12] text-[#0B1C30] dark:text-white opacity-100"
+                              : "text-[#777587] opacity-0 group-hover:opacity-100 hover:bg-[#E5EEFF] dark:hover:bg-white/[0.06] hover:text-[#0B1C30] dark:hover:text-neutral-200"
+                          }`}
+                        >
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </button>
+
+                        <span
+                          className={`h-2 w-2 rounded-full transition-transform ${
+                            isMenuOpen ? "hidden" : "group-hover:hidden"
+                          }`}
+                          style={{ backgroundColor: subjectColor }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Bottom: User Profile & Quick Settings */}
+          <div className="border-t border-[#E5EEFF] dark:border-white/[0.08] pt-3 px-1 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#E5EEFF] dark:border-white/[0.1]">
+                <Image
+                  src={
+                    user.avatarUrl ||
+                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+                  }
+                  alt={user.name}
+                  width={32}
+                  height={32}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-[#0B1C30] dark:text-neutral-100 truncate leading-snug">
+                  {user.name}
+                </p>
+                <p className="text-[11px] text-[#777587] dark:text-neutral-500 truncate leading-none">
+                  {user.email}
+                </p>
+              </div>
+            </div>
+
             <button
               type="button"
-              onClick={handleOpenCreateModal}
-              aria-label="Thêm không gian mới"
-              title="Thêm không gian học tập"
-              className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
+              onClick={onSettingsClick}
+              aria-label="Cài đặt"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-[#777587] hover:text-[#0B1C30] dark:hover:text-neutral-200 hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer shrink-0"
             >
-              <FolderPlus className="h-4 w-4" />
+              <Settings className="h-4 w-4" />
             </button>
-            {onToggleCollapse && (
-              <button
-                type="button"
-                onClick={onToggleCollapse}
-                aria-label="Thu gọn sidebar trái"
-                title="Thu gọn sidebar"
-                className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
-              >
-                <PanelLeftClose className="h-4 w-4" />
-              </button>
-            )}
           </div>
-        </div>
-
-        {/* ── Streak & XP Banner ── */}
-        {/* <div className="flex items-center justify-between rounded-2xl border border-blue-100/60 bg-blue-50/60 p-3 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/20 text-emerald-600 shadow-2xs">
-              <Flame className="h-5 w-5 fill-emerald-500 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-gray-900">
-                Chuỗi {streakDays} ngày
-              </p>
-              <p className="text-xs text-gray-500">Học tích cực</p>
-            </div>
-          </div>
-          <span className="rounded-full bg-emerald-300 px-2.5 py-1 text-xs font-bold text-emerald-950 shadow-2xs">
-            +{xp} XP
-          </span>
-        </div> */}
-
-        {/* ── Document Folders / Subjects Section ── */}
-        <div className="space-y-2">
-          {/* <div className="flex items-center justify-between px-1">
-            <p className="text-xs font-bold tracking-wider text-gray-400 uppercase">
-              THƯ MỤC TÀI LIỆU
-            </p>
-            {subjects.length > 0 && (
-              <span className="text-[11px] font-medium text-gray-400">
-                {subjects.length} không gian
-              </span>
-            )}
-          </div> */}
-
-          {/* 1. Loading Skeleton State */}
-          {isLoading && subjects.length === 0 && (
-            <div className="space-y-2 animate-pulse">
-              {[1, 2, 3].map((idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between rounded-xl bg-gray-50 p-2.5"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-4 w-4 rounded-md bg-gray-200" />
-                    <div className="h-3.5 w-28 rounded-md bg-gray-200" />
-                  </div>
-                  <div className="h-3 w-3 rounded-full bg-gray-200" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* 2. Error State */}
-          {error && subjects.length === 0 && (
-            <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-3 text-center space-y-2">
-              <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 font-medium">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => refresh()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
-              >
-                <RefreshCw className="h-3 w-3" />
-                <span>Thử lại</span>
-              </button>
-            </div>
-          )}
-
-          {/* 3. Empty State */}
-          {!isLoading && subjects.length === 0 && !error && (
-            <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-4 text-center space-y-2.5">
-              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                <Folder className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-700">
-                  Chưa có không gian học tập nào
-                </p>
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  Tạo không gian để bắt đầu quản lý tài liệu
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleOpenCreateModal}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-indigo-700 transition-colors cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Tạo không gian</span>
-              </button>
-            </div>
-          )}
-
-          {/* 4. Real Subjects List */}
-          {subjects.map((subject) => {
-            const isActive = activeId === subject.id;
-            const subjectColor = subject.color || "#4F46E5";
-            const isMenuOpen = menuAnchor?.subject.id === subject.id;
-
-            return (
-              <div key={subject.id} className="relative group">
-                <div
-                  onClick={() => handleSubjectClick(subject)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      handleSubjectClick(subject);
-                    }
-                  }}
-                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all cursor-pointer ${isActive
-                    ? "bg-indigo-50/80 text-indigo-900 shadow-2xs font-semibold"
-                    : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium"
-                    }`}
-                >
-                  {/* Left: Folder Icon & Name */}
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    {isActive ? (
-                      <FolderOpen
-                        className="h-4 w-4 shrink-0 transition-colors"
-                        style={{ color: subjectColor }}
-                      />
-                    ) : (
-                      <Folder
-                        className="h-4 w-4 shrink-0 transition-colors"
-                        style={{ color: subjectColor }}
-                      />
-                    )}
-                    <span
-                      title={subject.name}
-                      className="text-xs sm:text-sm truncate leading-snug"
-                    >
-                      {subject.name}
-                    </span>
-                  </div>
-
-                  {/* Right: Color Dot or Action Menu Trigger */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span
-                      className="h-2 w-2 rounded-full transition-transform group-hover:scale-125"
-                      style={{ backgroundColor: subjectColor }}
-                    />
-
-                    {/* 3-dots Menu Button */}
-                    <button
-                      type="button"
-                      data-menu-trigger="true"
-                      aria-label={`Tùy chọn cho ${subject.name}`}
-                      onClick={(e) => handleToggleActionMenu(subject, e)}
-                      className={`rounded-md p-1 transition-colors cursor-pointer ${isMenuOpen
-                        ? "bg-gray-200 text-gray-800 opacity-100"
-                        : "text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-700"
-                        }`}
-                    >
-                      <MoreVertical className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ── Weekly Goal Progress Card ── */}
-        {/* <div className="rounded-2xl border border-blue-100/60 bg-blue-50/50 p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-gray-700">
-              Chỉ tiêu ghi nhớ tuần
-            </span>
-            <span className="font-bold text-indigo-600 text-sm">
-              {progress.percentage}%
-            </span>
-          </div>
-
-          <div className="my-2 h-2 w-full overflow-hidden rounded-full bg-indigo-100">
-            <div
-              className="h-full rounded-full bg-indigo-600 transition-all duration-300"
-              style={{ width: `${progress.percentage}%` }}
-            />
-          </div>
-
-          <p className="text-xs text-gray-500">
-            {progress.current} / {progress.total} khái niệm cốt lõi
-          </p>
-        </div> */}
-      </div>
-
-      {/* ── Bottom: User Profile & Settings ── */}
-      <div className="border-t border-gray-100 pt-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-gray-200 shadow-2xs">
-            <Image
-              src={
-                user.avatarUrl ||
-                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
-              }
-              alt={user.name}
-              width={36}
-              height={36}
-              unoptimized
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">
-              {user.name}
-            </p>
-            <p className="text-[11px] text-gray-400 truncate">{user.email}</p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onSettingsClick}
-          aria-label="Cài đặt"
-          className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors cursor-pointer shrink-0"
-        >
-          <Settings className="h-4 w-4" />
-        </button>
-      </div>
-
-      </>
+        </>
       )}
 
-      {/* ── Fixed Floating Action Menu ── */}
+      {/* ── Apple macOS Floating Context Menu ── */}
       {menuAnchor && (
         <div
           data-dropdown-menu="true"
@@ -620,23 +572,23 @@ export default function LeftSidebar({
             top: `${menuAnchor.top}px`,
             left: `${menuAnchor.left}px`,
           }}
-          className="z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg ring-1 ring-black/5 animate-in fade-in-50 zoom-in-95 duration-100 select-none"
+          className="z-50 w-36 rounded-xl border border-[#E5EEFF] dark:border-white/[0.12] bg-white/95 dark:bg-[#12151C]/95 backdrop-blur-xl p-1 shadow-lg shadow-[#0B1C30]/5 animate-in fade-in-50 zoom-in-95 duration-100 select-none"
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             onClick={(e) => handleOpenEditModal(menuAnchor.subject, e)}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#464555] dark:text-neutral-200 hover:bg-[#4F46E5] hover:text-white transition-colors cursor-pointer"
           >
-            <Edit3 className="h-3.5 w-3.5 text-indigo-600" />
+            <Edit3 className="h-3.5 w-3.5" />
             <span>Chỉnh sửa</span>
           </button>
           <button
             type="button"
             onClick={(e) => handleOpenDeleteModal(menuAnchor.subject, e)}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer"
           >
-            <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+            <Trash2 className="h-3.5 w-3.5" />
             <span>Xóa</span>
           </button>
         </div>
@@ -664,17 +616,18 @@ export default function LeftSidebar({
         }}
         onConfirm={handleConfirmDelete}
       />
-      {/* ── Soft Dark Tooltip cho chế độ Rail (Floating Pill) ── */}
+
+      {/* ── Apple Floating Pill Tooltip (Rail Mode) ── */}
       {isCollapsed && railTooltip && (
         <div
           style={{
             position: "fixed",
             top: `${railTooltip.top}px`,
-            left: "56px",
+            left: "60px",
           }}
           className="z-50 -translate-y-1/2 pointer-events-none animate-in fade-in-50 zoom-in-95 duration-100"
         >
-          <div className="rounded-lg bg-white/95 backdrop-blur-sm border border-slate-200/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-md shadow-slate-200/50 whitespace-nowrap">
+          <div className="rounded-lg bg-[#0B1C30]/95 dark:bg-white/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-medium text-white dark:text-[#0B1C30] shadow-xl whitespace-nowrap">
             {railTooltip.text}
           </div>
         </div>

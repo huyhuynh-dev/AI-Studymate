@@ -11,6 +11,7 @@ export interface OtpInputProps {
   onChange: (value: string[]) => void;
   /** Disable all inputs */
   disabled?: boolean;
+  className?: string;
 }
 
 export default function OtpInput({
@@ -18,6 +19,7 @@ export default function OtpInput({
   value,
   onChange,
   disabled = false,
+  className = '',
 }: OtpInputProps) {
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -29,11 +31,14 @@ export default function OtpInput({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const focusInput = useCallback((index: number) => {
-    const clamped = Math.max(0, Math.min(index, length - 1));
-    inputsRef.current[clamped]?.focus();
-    inputsRef.current[clamped]?.select();
-  }, [length]);
+  const focusInput = useCallback(
+    (index: number) => {
+      const clamped = Math.max(0, Math.min(index, length - 1));
+      inputsRef.current[clamped]?.focus();
+      inputsRef.current[clamped]?.select();
+    },
+    [length]
+  );
 
   const handleChange = useCallback(
     (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,11 +64,11 @@ export default function OtpInput({
         e.preventDefault();
         const next = [...value];
         if (value[index]) {
-          // Clear current and stay
+          // Clear current digit
           next[index] = '';
           onChange(next);
         } else if (index > 0) {
-          // Move back and clear
+          // Move back and clear previous
           next[index - 1] = '';
           onChange(next);
           focusInput(index - 1);
@@ -82,7 +87,10 @@ export default function OtpInput({
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLInputElement>) => {
       e.preventDefault();
-      const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, length);
+      const pasted = e.clipboardData
+        .getData('text')
+        .replace(/\D/g, '')
+        .slice(0, length);
       if (!pasted) return;
 
       const next = [...value];
@@ -99,31 +107,41 @@ export default function OtpInput({
   );
 
   return (
-    <div className="flex items-center justify-center gap-2.5">
-      {Array.from({ length }).map((_, i) => (
-        <input
-          key={i}
-          ref={(el) => { inputsRef.current[i] = el; }}
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={1}
-          value={value[i] || ''}
-          onChange={(e) => handleChange(i, e)}
-          onKeyDown={(e) => handleKeyDown(i, e)}
-          onPaste={i === 0 ? handlePaste : undefined}
-          onFocus={(e) => e.target.select()}
-          disabled={disabled}
-          className={`
-            w-12 h-14 text-center text-2xl font-bold rounded-xl border-2
-            bg-gray-50 text-gray-900
-            focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100
-            transition-all
-            disabled:opacity-50 disabled:cursor-not-allowed
-            ${value[i] ? 'border-indigo-300 bg-indigo-50/30' : 'border-gray-200'}
-          `}
-        />
-      ))}
+    <div
+      className={`flex items-center justify-center gap-2 sm:gap-2.5 ${className}`.trim()}
+    >
+      {Array.from({ length }).map((_, i) => {
+        const isFilled = Boolean(value[i]);
+        return (
+          <input
+            key={i}
+            ref={(el) => {
+              inputsRef.current[i] = el;
+            }}
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={1}
+            value={value[i] || ''}
+            onChange={(e) => handleChange(i, e)}
+            onKeyDown={(e) => handleKeyDown(i, e)}
+            onPaste={i === 0 ? handlePaste : undefined}
+            onFocus={(e) => e.target.select()}
+            disabled={disabled}
+            className={`
+              w-11 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-semibold tabular-nums
+              rounded-xl border outline-none apple-spring
+              disabled:opacity-50 disabled:cursor-not-allowed
+              ${
+                isFilled
+                  ? 'border-indigo-500/80 dark:border-indigo-400 bg-white dark:bg-[#12151c] text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                  : 'border-gray-200/90 dark:border-white/10 bg-gray-50/70 dark:bg-white/[0.04] text-gray-900 dark:text-white'
+              }
+              focus:border-indigo-500 dark:focus:border-indigo-400 focus:bg-white dark:focus:bg-[#12151c] focus:ring-3 focus:ring-indigo-500/15
+            `}
+          />
+        );
+      })}
     </div>
   );
 }

@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, use } from "react";
-import { Share2, MoreHorizontal, Sparkles } from "lucide-react";
-import ConversationHeaderRoutes from "@/components/conversations/ConversationHeaderRoutes";
+import ConversationHeader from "@/components/conversations/ConversationHeader";
 import ConversationHeaderTabs, { TabKey } from "@/components/conversations/ConversationHeaderTabs";
 import DocumentsTab from "@/components/conversations/DocumentsTab";
-import SummaryTab from "@/components/conversations/SummaryTab";
-import FlashcardsTab from "@/components/conversations/FlashcardsTab";
+import SummaryTab from "@/components/conversations/SummaryTab/SummaryTab";
+import FlashcardsTab from "@/components/conversations/FlashcardTab";
 import QuizTab from "@/components/conversations/QuizTab";
 import { useFocusMode } from "@/components/layout";
 import { useSubjects } from "@/hooks/useSubjects";
@@ -100,95 +99,57 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
   return (
     <div
-      className={`flex flex-1 min-h-full w-full flex-col transition-all duration-300 ease-in-out ${
-        isFocusMode ? "h-full gap-0" : isDocumentViewerActive ? "gap-2.5" : "gap-4"
+      className={`flex flex-1 min-h-full w-full flex-col transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        isFocusMode ? "h-full gap-0" : isDocumentViewerActive ? "gap-2 sm:gap-2.5" : "gap-3 sm:gap-3.5"
       }`}
     >
-      {/* Hàng Header điều hướng: Breadcrumb bên trái & Các nút chức năng bên phải — Trượt lên & Ẩn đi khi vào Focus Mode */}
+      {/* 1. Header Toolbar 2 tầng chuẩn Apple — Thu gọn trơn tru khi vào Focus Mode */}
       <div
-        className={`flex shrink-0 flex-wrap items-center justify-between gap-3 transition-all duration-300 ease-in-out overflow-hidden ${
+        className={`shrink-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden ${
+          isFocusMode
+            ? "max-h-0 -translate-y-4 opacity-0 pointer-events-none"
+            : "max-h-20 translate-y-0 opacity-100"
+        }`}
+      >
+        <ConversationHeader
+          subjectName={subjectName}
+          subjectHref={`/home/${subjectId}`}
+          sessionTitle={sessionTitle}
+          badgeText="Phiên mới"
+          isRightSidebarCollapsed={isRightSidebarCollapsed}
+          onToggleRightSidebar={toggleRightSidebar}
+        />
+      </div>
+
+      {/* 2. Apple Segmented Tab Controller — Tự co giãn linh hoạt, chống tràn tuyệt đối */}
+      <div
+        className={`shrink-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden ${
           isFocusMode
             ? "max-h-0 -translate-y-4 opacity-0 pointer-events-none"
             : "max-h-16 translate-y-0 opacity-100"
         }`}
       >
-        {/* Component: Breadcrumb điều hướng */}
-        <ConversationHeaderRoutes
-          subjectName={subjectName}
-          subjectHref={`/home/${subjectId}`}
-          sessionTitle={sessionTitle}
-          badgeText="Phiên mới"
+        <ConversationHeaderTabs
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
         />
-
-        {/* Các nút hành động bên phải: Chia sẻ, Tùy chọn & Trợ lý StudyMate AI */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            title="Chia sẻ"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-600 shadow-xs transition-all hover:bg-gray-50 hover:text-gray-900 active:scale-[0.98] cursor-pointer"
-          >
-            <Share2 className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            title="Tùy chọn khác"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-600 shadow-xs transition-all hover:bg-gray-50 hover:text-gray-900 active:scale-[0.98] cursor-pointer"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
-          <div className="relative group">
-            <button
-              type="button"
-              onClick={toggleRightSidebar}
-              aria-label="Trợ lý StudyMate AI"
-              className={`flex h-9 w-9 items-center justify-center rounded-xl border shadow-xs transition-all active:scale-[0.98] cursor-pointer ${
-                !isRightSidebarCollapsed
-                  ? "border-indigo-200 bg-indigo-50 text-indigo-600 shadow-indigo-100/50"
-                  : "border-gray-100 bg-white text-gray-600 hover:border-indigo-100 hover:bg-indigo-50/50 hover:text-indigo-600"
-              }`}
-            >
-              <Sparkles className="h-4 w-4 text-indigo-600 transition-transform group-hover:scale-110" />
-            </button>
-            {/* Dark Tooltip khi hover */}
-            <div className="pointer-events-none absolute right-0 top-full mt-2 hidden group-hover:flex items-center z-50 animate-in fade-in-50 zoom-in-95 duration-100">
-              <div className="rounded-lg bg-white/95 backdrop-blur-sm border border-slate-200/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-md shadow-slate-200/50 whitespace-nowrap">
-                {isRightSidebarCollapsed ? "Mở Trợ lý StudyMate AI" : "Thu gọn Trợ lý StudyMate AI"}
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Container chính: Thẻ màu trắng chứa Tabs & Nội dung (Tự động xoá viền & bo góc khi vào Focus Mode) */}
-      <div
-        className={`flex flex-1 flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out ${
+      {/* 3. Vùng Nội dung Tab (Tab Content Outlet) — Unified Apple Workspace Surface */}
+      <main
+        className={`flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           isFocusMode
-            ? "min-h-0 rounded-none border-0 shadow-none"
-            : "rounded-2xl sm:rounded-3xl border border-gray-100 shadow-xs"
+            ? "min-h-0 rounded-none border-0 shadow-none bg-white dark:bg-[#0B0D13]"
+            : "rounded-[20px] sm:rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] shadow-xs bg-white dark:bg-[#12151C]"
         }`}
       >
-        {/* Component: Thanh Tab điều hướng — Trượt lên & Ẩn đi khi vào Focus Mode */}
-        <div
-          className={`relative z-10 shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
-            isFocusMode
-              ? "max-h-0 -translate-y-4 opacity-0 border-b-0 pointer-events-none"
-              : "max-h-20 translate-y-0 opacity-100 border-b border-gray-100"
-          }`}
-        >
-          <ConversationHeaderTabs
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-          />
-        </div>
-
-        {/* Khu vực nội dung Tab (Loại bỏ padding thừa khi đang xem PDF/Ảnh để giải quyết Box-in-box Syndrome) */}
         <div
           className={`relative flex flex-1 flex-col overflow-hidden transition-all duration-200 ${
             isFocusMode ? "min-h-0" : ""
           } ${
             isDocumentViewerActive
               ? "p-0 items-stretch justify-start"
-              : "p-4 sm:p-6 md:p-8 items-center justify-center"
+              : "p-3 sm:p-5 lg:p-6 items-stretch justify-start overflow-y-auto"
           }`}
         >
           {activeTab === "documents" && (
@@ -219,7 +180,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
           {activeTab === "flashcard" && (
             <FlashcardsTab
+              conversationId={conversationId}
               onUploadDocument={handleGoToDocuments}
+              hasDocuments={documents.length > 0}
               className="w-full flex-1"
             />
           )}
@@ -231,7 +194,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
             />
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

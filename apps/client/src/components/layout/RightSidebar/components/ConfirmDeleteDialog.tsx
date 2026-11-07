@@ -18,7 +18,6 @@ export function ConfirmDeleteDialog({
   onConfirm,
 }: ConfirmDeleteDialogProps) {
   if (!session) return null;
-  // key theo id → mỗi lần mở là một state mới (không dính lỗi / trạng thái đang xóa của lần trước)
   return (
     <DialogBody
       key={session.id}
@@ -64,7 +63,7 @@ function DialogBody({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 animate-in fade-in-50 duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B1C30]/40 backdrop-blur-md p-4 animate-in fade-in-50 duration-150 select-none"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !isDeleting) onCancel();
       }}
@@ -74,46 +73,44 @@ function DialogBody({
         aria-modal="true"
         aria-labelledby="confirm-delete-title"
         aria-describedby="confirm-delete-desc"
-        className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl"
+        className="w-full max-w-sm rounded-[22px] border border-[#E5EEFF] dark:border-white/[0.12] bg-white dark:bg-[#12151C] p-6 shadow-2xl"
       >
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
-            <Trash2 className="h-5 w-5" />
+        <div className="flex items-start gap-3.5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-950/40 text-[#BA1A1A] dark:text-rose-400 shadow-2xs">
+            <Trash2 className="h-5 w-5 stroke-[2]" />
           </span>
           <div className="min-w-0">
             <h3
               id="confirm-delete-title"
-              className="text-sm font-semibold text-gray-900"
+              className="text-base font-bold text-[#0B1C30] dark:text-[#EFF0F6] tracking-tight"
             >
               Xóa đoạn chat này?
             </h3>
             <p
               id="confirm-delete-desc"
-              className="mt-1 text-xs leading-relaxed text-gray-500"
+              className="mt-1 text-xs leading-relaxed text-[#777587] dark:text-[#9DA3AF]"
             >
-              <span className="font-medium text-gray-800 wrap-break-word">
+              <span className="font-bold text-[#0B1C30] dark:text-white wrap-break-word">
                 “{session.title}”
               </span>{" "}
-              sẽ bị xóa vĩnh viễn cùng toàn bộ tin nhắn trong đoạn chat. Hành
-              động này không thể hoàn tác. Tài liệu và tóm tắt của bạn không bị
-              ảnh hưởng.
+              sẽ bị xóa vĩnh viễn cùng toàn bộ tin nhắn. Hành động này không thể hoàn tác.
             </p>
           </div>
         </div>
 
         {error && (
-          <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <p role="alert" className="mt-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 px-3 py-2 text-xs text-[#BA1A1A] dark:text-rose-400">
             {error}
           </p>
         )}
 
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-5 flex justify-end gap-2.5 pt-2 border-t border-[#E5EEFF] dark:border-white/[0.08]">
           <button
             ref={cancelRef}
             type="button"
             onClick={onCancel}
             disabled={isDeleting}
-            className="cursor-pointer rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-xl border border-[#E5EEFF] dark:border-white/[0.1] bg-[#F8F9FF] dark:bg-white/[0.06] px-4 py-2 text-xs font-semibold text-[#464555] dark:text-neutral-300 transition-colors hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Hủy
           </button>
@@ -121,7 +118,7 @@ function DialogBody({
             type="button"
             onClick={() => void handleConfirm()}
             disabled={isDeleting}
-            className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-[#BA1A1A] hover:bg-[#93000A] px-4 py-2 text-xs font-semibold text-white transition-all shadow-xs disabled:cursor-not-allowed disabled:opacity-70 active:scale-98"
           >
             {isDeleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {isDeleting ? "Đang xóa…" : error ? "Thử lại" : "Xóa đoạn chat"}

@@ -8,7 +8,7 @@ interface MessageActionsProps {
 }
 
 const actionBase =
-  "flex cursor-pointer items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium transition-colors";
+  "flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-all duration-150 select-none active:scale-95";
 
 export function MessageActions({ content }: MessageActionsProps) {
   const [copied, setCopied] = useState(false);
@@ -36,14 +36,14 @@ export function MessageActions({ content }: MessageActionsProps) {
     setFeedback((prev) => (prev === value ? null : value));
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+    <div className="flex flex-wrap items-center gap-1.5 pt-1">
       <button
         type="button"
         onClick={handleCopy}
-        className={`${actionBase} border-gray-200 bg-white text-gray-600 hover:bg-gray-50`}
+        className={`${actionBase} border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#161922] text-[#777587] dark:text-neutral-400 hover:text-[#0B1C30] dark:hover:text-white hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] shadow-2xs`}
       >
         {copied ? (
-          <Check className="h-3 w-3 text-emerald-600" />
+          <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
         ) : (
           <Copy className="h-3 w-3" />
         )}
@@ -56,11 +56,11 @@ export function MessageActions({ content }: MessageActionsProps) {
         aria-label="Hữu ích"
         aria-pressed={feedback === "up"}
         onClick={() => toggleFeedback("up")}
-        className={`${actionBase} px-1.5 ${
+        className={`${actionBase} px-2 ${
           feedback === "up"
-            ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-            : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-emerald-600"
-        }`}
+            ? "border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+            : "border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#161922] text-[#777587] dark:text-neutral-400 hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] hover:text-emerald-600"
+        } shadow-2xs`}
       >
         <ThumbsUp className="h-3 w-3" />
       </button>
@@ -71,11 +71,11 @@ export function MessageActions({ content }: MessageActionsProps) {
         aria-label="Chưa chính xác"
         aria-pressed={feedback === "down"}
         onClick={() => toggleFeedback("down")}
-        className={`${actionBase} px-1.5 ${
+        className={`${actionBase} px-2 ${
           feedback === "down"
-            ? "border-rose-200 bg-rose-50 text-rose-600"
-            : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-rose-600"
-        }`}
+            ? "border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400"
+            : "border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#161922] text-[#777587] dark:text-neutral-400 hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] hover:text-rose-600"
+        } shadow-2xs`}
       >
         <ThumbsDown className="h-3 w-3" />
       </button>

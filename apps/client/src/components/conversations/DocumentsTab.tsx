@@ -5,9 +5,6 @@ import {
   Plus,
   FileText,
   Image as ImageIcon,
-  ScanText,
-  Sparkles,
-  Brain,
   Download,
   Trash2,
   Loader2,
@@ -64,7 +61,6 @@ function formatDate(dateString: string): string {
 export default function DocumentsTab({
   documents = [],
   isLoading = false,
-  isUploading = false,
   uploadQueue = [],
   errorMessage = null,
   onClearError,
@@ -175,9 +171,9 @@ export default function DocumentsTab({
       return (
         <span
           title={doc.processing_error || "Lỗi trong quá trình trích xuất văn bản"}
-          className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200 ring-inset cursor-help"
+          className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-400 ring-1 ring-rose-500/20 ring-inset cursor-help"
         >
-          <AlertCircle className="h-3.5 w-3.5 text-red-600" />
+          <AlertCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
           Lỗi trích xuất
         </span>
       );
@@ -187,9 +183,9 @@ export default function DocumentsTab({
       return (
         <span
           title={doc.processing_error || "Lỗi trong quá trình tạo chỉ mục ngữ nghĩa (Embedding)"}
-          className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 ring-1 ring-orange-200 ring-inset cursor-help"
+          className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-400 ring-1 ring-orange-500/20 ring-inset cursor-help"
         >
-          <AlertCircle className="h-3.5 w-3.5 text-orange-600" />
+          <AlertCircle className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
           Lỗi chỉ mục
         </span>
       );
@@ -197,8 +193,8 @@ export default function DocumentsTab({
 
     if (doc.ocr_status === "processing") {
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200 ring-inset">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-400 ring-1 ring-indigo-500/20 ring-inset">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
           Đang trích xuất...
         </span>
       );
@@ -209,8 +205,8 @@ export default function DocumentsTab({
       (doc.embed_status === "pending" || doc.embed_status === "processing")
     ) {
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 ring-1 ring-violet-200 ring-inset">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-600" />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-700 dark:text-purple-400 ring-1 ring-purple-500/20 ring-inset">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-purple-600 dark:text-purple-400" />
           Đang lập chỉ mục...
         </span>
       );
@@ -218,16 +214,16 @@ export default function DocumentsTab({
 
     if (doc.ocr_status === "done" && doc.embed_status === "done") {
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 ring-inset">
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/20 ring-inset">
+          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
           Sẵn sàng
         </span>
       );
     }
 
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200 ring-inset">
-        <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-600" />
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 ring-1 ring-amber-500/20 ring-inset">
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-600 dark:text-amber-400" />
         Đang chờ
       </span>
     );
@@ -258,7 +254,7 @@ export default function DocumentsTab({
     }
   }
 
-  // 1. Trường hợp chưa có tài liệu nào và không có file đang upload: Hiển thị Hero Dropzone nguyên bản
+  // 1. Trường hợp chưa có tài liệu nào và không có file đang upload: Empty State tối giản chuẩn Apple HIG
   const hasContent = documents.length > 0 || uploadQueue.length > 0;
 
   if (!hasContent && !isLoading) {
@@ -267,10 +263,11 @@ export default function DocumentsTab({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative flex w-full flex-col items-center justify-center rounded-3xl border transition-all duration-200 select-none ${isDragging
-          ? "border-indigo-400 bg-indigo-50/70 ring-4 ring-indigo-100"
-          : "border-blue-100/80 bg-[#F4F7FF]"
-          } px-6 py-12 sm:px-12 sm:py-16 text-center ${className}`}
+        className={`relative flex w-full flex-1 flex-col items-center justify-center rounded-3xl transition-all duration-200 select-none ${
+          isDragging
+            ? "border-2 border-dashed border-indigo-500/60 bg-indigo-500/[0.04] dark:bg-indigo-500/[0.08]"
+            : "border border-transparent"
+        } px-6 py-16 text-center ${className}`}
       >
         <input
           ref={fileInputRef}
@@ -282,106 +279,51 @@ export default function DocumentsTab({
         />
 
         {errorMessage && (
-          <div className="mb-6 flex w-full max-w-md items-center justify-between rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <div className="mb-6 flex w-full max-w-md items-center justify-between rounded-2xl border border-rose-500/20 bg-rose-500/[0.08] px-4 py-3 text-xs text-rose-700 dark:text-rose-400">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
               <span>{errorMessage}</span>
             </div>
             <button
               onClick={onClearError}
               type="button"
-              className="text-red-500 hover:text-red-700 cursor-pointer"
+              className="text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         )}
 
-        {/* Illustration Badge */}
-        <div className="relative mb-6 sm:mb-8 flex items-center justify-center">
-          <div className="relative flex h-28 w-28 sm:h-32 sm:w-32 items-center justify-center rounded-3xl bg-[#ECE7FE] shadow-xs">
-            <div className="relative flex items-center justify-center">
-              <svg
-                className="absolute -top-1.5 -left-1.5 h-14 w-12 text-indigo-400 opacity-60"
-                viewBox="0 0 48 56"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M4 6C4 3.79086 5.79086 2 8 2H30L44 16V50C44 52.2091 42.2091 54 40 54H8C5.79086 54 4 52.2091 4 50V6Z"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-
-              <div className="relative z-10 flex h-14 w-12 flex-col items-center justify-center rounded-lg border-[2.5px] border-[#3730A3] bg-white/20 backdrop-blur-xs">
-                <div className="absolute top-0 right-0 h-3 w-3 border-b-2 border-l-2 border-[#3730A3] bg-[#ECE7FE] rounded-bl-sm" />
-                <div className="mt-1 flex items-center justify-center rounded border border-[#3730A3] px-1 py-0.5">
-                  <span className="text-[10px] font-extrabold tracking-tight text-[#3730A3]">
-                    PDF
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="absolute -top-2.5 -right-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-tr from-[#6366F1] to-[#7C3AED] shadow-md shadow-indigo-500/25">
-              <Sparkles className="h-4.5 w-4.5 text-white fill-white" />
-            </div>
-
-            <div className="absolute -bottom-2 -left-2 flex h-8 w-8 items-center justify-center rounded-xl bg-[#34D399] shadow-md shadow-emerald-500/20">
-              <Brain className="h-4.5 w-4.5 text-[#064E3B]" />
-            </div>
-          </div>
+        {/* Biểu tượng Apple Tonal Squircle */}
+        <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/70 dark:bg-white/[0.04] text-neutral-700 dark:text-neutral-200 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.04)]">
+          <FileText className="h-7 w-7 stroke-[1.75]" />
         </div>
 
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">
-          Bắt đầu Không gian học tập của bạn
+        <h2 className="mt-5 text-[19px] sm:text-[21px] font-semibold tracking-[-0.02em] text-neutral-900 dark:text-neutral-100">
+          Chưa có tài liệu
         </h2>
 
-        <p className="mt-2.5 max-w-xl text-center text-sm sm:text-[15px] leading-relaxed text-gray-600">
-          Chưa có tài liệu nào trong phiên học này. Tải lên file PDF hoặc ảnh chụp bài giảng
-          (JPEG, PNG, WEBP) để AI StudyMate giúp bạn tóm tắt, tạo flashcard và giải đáp thắc
-          mắc chuyên sâu.
+        <p className="mt-2 max-w-[360px] text-center text-[14px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+          Tải lên tệp PDF hoặc hình ảnh bài giảng để bắt đầu đọc, ghi chú và hỏi đáp cùng AI.
         </p>
 
         <button
           type="button"
           onClick={handleTriggerUpload}
-          className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] px-6 py-3 text-sm sm:text-base font-semibold text-white shadow-md shadow-indigo-500/25 transition-all hover:bg-[#4338CA] hover:shadow-lg hover:shadow-indigo-500/30 active:scale-[0.98] cursor-pointer"
+          className="mt-6 inline-flex h-10 items-center gap-2 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] px-5 text-[13px] font-semibold text-white shadow-xs shadow-indigo-500/20 transition-all duration-200 active:scale-[0.97] cursor-pointer"
         >
-          <Plus className="h-5 w-5 stroke-[2.5]" />
+          <Plus className="h-4 w-4 stroke-[2.25]" />
           <span>Tải lên tài liệu</span>
         </button>
 
-        <p className="mt-3.5 text-xs sm:text-sm text-gray-500">
-          Hoặc kéo và thả tệp tài liệu trực tiếp vào đây (Tối đa {maxSizeMB}MB)
+        <p className="mt-3.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+          Kéo thả tệp vào đây · PDF, PNG, JPG (tối đa {maxSizeMB}MB)
         </p>
-
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
-          <div className="flex items-center gap-1.5 rounded-full border border-gray-200/90 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 shadow-xs">
-            <span className="flex items-center justify-center rounded-[3px] border border-red-500 bg-red-50 px-1 py-0.2 text-[9px] font-black text-red-600 leading-none">
-              PDF
-            </span>
-            <span>PDF</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 rounded-full border border-gray-200/90 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 shadow-xs">
-            <ImageIcon className="h-3.5 w-3.5 text-emerald-600" />
-            <span>PNG / JPG / WEBP</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 rounded-full border border-indigo-100 bg-white px-3.5 py-1.5 text-xs font-semibold text-indigo-600 shadow-xs">
-            <ScanText className="h-3.5 w-3.5 text-indigo-600" />
-            <span>Trích xuất & OCR tự động</span>
-          </div>
-        </div>
       </div>
     );
   }
 
-  // 2. Trường hợp đã có tài liệu hoặc đang tải lên: Giao diện danh sách chuyên nghiệp
+  // 2. Trường hợp đã có tài liệu hoặc đang tải lên: Danh sách tài liệu chuẩn Apple HIG
   return (
     <div
       onDragOver={handleDragOver}
@@ -400,15 +342,15 @@ export default function DocumentsTab({
 
       {/* Thông báo lỗi nếu có */}
       {errorMessage && (
-        <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50/90 p-4 text-sm text-red-700 shadow-xs">
+        <div className="flex items-center justify-between rounded-[18px] border border-rose-500/20 bg-rose-500/[0.08] p-4 text-sm text-rose-700 dark:text-rose-400 shadow-2xs">
           <div className="flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 shrink-0 text-red-500" />
+            <AlertCircle className="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
             <span className="font-medium">{errorMessage}</span>
           </div>
           <button
             onClick={onClearError}
             type="button"
-            className="rounded-lg p-1 text-red-500 hover:bg-red-100 hover:text-red-700 cursor-pointer"
+            className="rounded-full p-1 text-rose-500 hover:bg-rose-500/10 hover:text-rose-700 dark:hover:text-rose-300 cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -416,34 +358,33 @@ export default function DocumentsTab({
       )}
 
       {/* Thanh Header của Tab */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.08] pb-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h2 className="text-lg font-bold text-gray-900">Tài liệu đã tải lên</h2>
-            <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-indigo-50 px-2 text-xs font-bold text-indigo-600">
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Tài liệu đã tải lên</h2>
+            <span className="tabular-nums inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 px-2 text-xs font-bold text-indigo-600 dark:text-indigo-400">
               {filteredDocuments.length}
               {filterType !== "all" && `/${documents.length}`}
             </span>
           </div>
-          {/* <p className="mt-1 text-xs sm:text-sm text-gray-500">
-            Quản lý tài liệu học tập của phiên này. AI sẽ dựa vào các tài liệu này để tóm tắt và hỏi đáp.
-          </p> */}
         </div>
 
         <div className="flex items-center gap-2.5 sm:gap-3">
-          {/* Bộ lọc loại tài liệu dạng Icon nằm ngang (Tiết kiệm không gian) */}
-          <div className="flex items-center rounded-xl border border-gray-200/90 bg-gray-50/90 p-1 shadow-xs">
+          {/* Bộ lọc loại tài liệu dạng Apple Segmented Pill */}
+          <div className="flex items-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.05] p-1 shadow-2xs">
             {/* Nút: Tất cả tài liệu */}
             <button
               type="button"
               onClick={() => setFilterType("all")}
               title={`Tất cả tài liệu (${documents.length})`}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all cursor-pointer ${filterType === "all"
-                  ? "bg-white text-indigo-600 shadow-xs"
-                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-100/70"
-                }`}
+              className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all cursor-pointer ${
+                filterType === "all"
+                  ? "bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-2xs"
+                  : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+              }`}
             >
-              <Layers className="h-4 w-4" />
+              <Layers className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Tất cả</span>
             </button>
 
             {/* Nút: Chỉ PDF */}
@@ -451,12 +392,14 @@ export default function DocumentsTab({
               type="button"
               onClick={() => setFilterType("pdf")}
               title={`Tài liệu PDF (${pdfCount})`}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all cursor-pointer ${filterType === "pdf"
-                  ? "bg-white text-red-600 shadow-xs"
-                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-100/70"
-                }`}
+              className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all cursor-pointer ${
+                filterType === "pdf"
+                  ? "bg-white dark:bg-neutral-800 text-rose-600 dark:text-rose-400 shadow-2xs"
+                  : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+              }`}
             >
-              <FileText className="h-4 w-4" />
+              <FileText className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">PDF ({pdfCount})</span>
             </button>
 
             {/* Nút: Chỉ Hình ảnh */}
@@ -464,19 +407,21 @@ export default function DocumentsTab({
               type="button"
               onClick={() => setFilterType("image")}
               title={`Hình ảnh (${imageCount})`}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all cursor-pointer ${filterType === "image"
-                  ? "bg-white text-emerald-600 shadow-xs"
-                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-100/70"
-                }`}
+              className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all cursor-pointer ${
+                filterType === "image"
+                  ? "bg-white dark:bg-neutral-800 text-emerald-600 dark:text-emerald-400 shadow-2xs"
+                  : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+              }`}
             >
-              <ImageIcon className="h-4 w-4" />
+              <ImageIcon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Ảnh ({imageCount})</span>
             </button>
           </div>
 
           <button
             type="button"
             onClick={handleTriggerUpload}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-all hover:bg-[#4338CA] active:scale-[0.98] cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer"
           >
             <Plus className="h-4 w-4 stroke-[2.5]" />
             <span className="hidden sm:inline">Tải thêm tài liệu</span>
@@ -487,7 +432,7 @@ export default function DocumentsTab({
 
       {/* Vùng kéo thả phụ trợ nếu đang drag */}
       {isDragging && (
-        <div className="flex items-center justify-center rounded-2xl border-2 border-dashed border-indigo-400 bg-indigo-50/70 p-8 text-center text-sm font-semibold text-indigo-700">
+        <div className="flex items-center justify-center rounded-[20px] border-2 border-dashed border-indigo-500 bg-indigo-500/10 dark:bg-indigo-500/20 p-8 text-center text-sm font-semibold text-indigo-700 dark:text-indigo-300">
           <UploadCloud className="mr-2 h-6 w-6 animate-bounce" />
           Thả tệp vào đây để tải lên ngay
         </div>
@@ -495,54 +440,57 @@ export default function DocumentsTab({
 
       {/* Danh sách tệp đang tải lên (Upload Queue) */}
       {uploadQueue.length > 0 && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-blue-900">
+        <div className="flex flex-col gap-3 rounded-[20px] border border-indigo-500/20 bg-indigo-500/[0.03] dark:bg-indigo-500/[0.06] p-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-300">
             Tiến trình tải lên ({uploadQueue.length})
           </h3>
           <div className="flex flex-col gap-2.5">
             {uploadQueue.map((item) => (
               <div
                 key={item.id}
-                className="flex flex-col gap-1.5 rounded-xl border border-blue-100 bg-white p-3 shadow-xs"
+                className="flex flex-col gap-2 rounded-[14px] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#161922] p-3.5 shadow-2xs"
               >
                 <div className="flex items-center justify-between text-xs sm:text-sm">
-                  <div className="flex items-center gap-2 truncate font-medium text-gray-800">
-                    <FileText className="h-4 w-4 shrink-0 text-indigo-600" />
+                  <div className="flex items-center gap-2 truncate font-medium text-neutral-800 dark:text-neutral-200">
+                    <FileText className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
                     <span className="truncate">{item.fileName}</span>
-                    <span className="text-xs text-gray-400">({formatBytes(item.fileSize)})</span>
+                    <span className="tabular-nums text-xs text-neutral-400 dark:text-neutral-500">
+                      ({formatBytes(item.fileSize)})
+                    </span>
                   </div>
 
-                  <div className="shrink-0 text-xs font-semibold">
+                  <div className="shrink-0 text-xs font-semibold tabular-nums">
                     {item.status === "uploading" && (
-                      <span className="text-indigo-600">{item.progress}%</span>
+                      <span className="text-indigo-600 dark:text-indigo-400">{item.progress}%</span>
                     )}
                     {item.status === "verifying" && (
-                      <span className="text-blue-600">Đang xác thực...</span>
+                      <span className="text-blue-600 dark:text-blue-400">Đang xác thực...</span>
                     )}
                     {item.status === "completed" && (
-                      <span className="text-emerald-600">Hoàn tất!</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">Hoàn tất!</span>
                     )}
                     {item.status === "error" && (
-                      <span className="text-red-600">Thất bại</span>
+                      <span className="text-rose-600 dark:text-rose-400">Thất bại</span>
                     )}
                   </div>
                 </div>
 
                 {/* Progress bar */}
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-white/[0.06]">
                   <div
-                    className={`h-full transition-all duration-300 ${item.status === "error"
-                      ? "bg-red-500"
-                      : item.status === "completed"
-                        ? "bg-emerald-500"
-                        : "bg-indigo-600"
-                      }`}
+                    className={`h-full transition-all duration-300 ${
+                      item.status === "error"
+                        ? "bg-rose-500"
+                        : item.status === "completed"
+                          ? "bg-emerald-500"
+                          : "bg-indigo-600 dark:bg-indigo-500"
+                    }`}
                     style={{ width: `${item.progress}%` }}
                   />
                 </div>
 
                 {item.errorMessage && (
-                  <p className="text-xs text-red-600">{item.errorMessage}</p>
+                  <p className="text-xs text-rose-600 dark:text-rose-400">{item.errorMessage}</p>
                 )}
               </div>
             ))}
@@ -553,24 +501,24 @@ export default function DocumentsTab({
       {/* Danh sách các tài liệu đã tải lên */}
       <div className="flex flex-col gap-3">
         {filteredDocuments.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-8 text-center animate-in fade-in duration-150">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-xs border border-gray-100 text-gray-400 mb-3">
+          <div className="flex flex-col items-center justify-center rounded-[22px] border border-dashed border-black/[0.08] dark:border-white/[0.1] bg-neutral-50/50 dark:bg-white/[0.02] p-8 text-center animate-in fade-in duration-150">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white dark:bg-neutral-800 shadow-2xs border border-black/[0.06] dark:border-white/[0.08] text-neutral-400 mb-3">
               {filterType === "pdf" ? (
-                <FileText className="h-6 w-6 text-red-500" />
+                <FileText className="h-6 w-6 text-rose-500" />
               ) : (
                 <ImageIcon className="h-6 w-6 text-emerald-500" />
               )}
             </div>
-            <p className="text-sm font-semibold text-gray-800">
+            <p className="text-sm font-semibold text-neutral-900 dark:text-white">
               Không có tài liệu {filterType === "pdf" ? "PDF" : "hình ảnh"} nào
             </p>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
               Chưa có tài liệu định dạng này trong danh sách tải lên của phiên học.
             </p>
             <button
               type="button"
               onClick={() => setFilterType("all")}
-              className="mt-3.5 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+              className="mt-3.5 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 cursor-pointer"
             >
               <Layers className="h-3.5 w-3.5" />
               <span>Xem tất cả tài liệu ({documents.length})</span>
@@ -583,15 +531,16 @@ export default function DocumentsTab({
               <div
                 key={doc.id}
                 onClick={() => handleCardClick(doc)}
-                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-xs transition-all hover:border-indigo-200 hover:bg-indigo-50/30 hover:shadow-sm cursor-pointer select-none"
+                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-[20px] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#161922] p-4 shadow-2xs hover:shadow-md hover:border-indigo-500/30 dark:hover:border-indigo-500/40 hover:bg-neutral-50/50 dark:hover:bg-[#1B1F2A] transition-all cursor-pointer select-none"
               >
                 {/* Thông tin tệp */}
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors ${isPdf
-                      ? "border-red-100 bg-red-50 text-red-600 group-hover:border-red-200 group-hover:bg-red-100/70"
-                      : "border-emerald-100 bg-emerald-50 text-emerald-600 group-hover:border-emerald-200 group-hover:bg-emerald-100/70"
-                      }`}
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border transition-colors ${
+                      isPdf
+                        ? "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:bg-rose-500/15"
+                        : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500/15"
+                    }`}
                   >
                     {isPdf ? (
                       <span className="text-xs font-black">PDF</span>
@@ -601,17 +550,17 @@ export default function DocumentsTab({
                   </div>
 
                   <div className="min-w-0">
-                    <h4 className="truncate text-sm sm:text-base font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                    <h4 className="truncate text-sm sm:text-base font-semibold text-neutral-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                       {doc.file_name}
                     </h4>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 tabular-nums text-xs text-neutral-500 dark:text-neutral-400">
                       <span>{formatBytes(doc.file_size)}</span>
                       <span>•</span>
                       <span>{formatDate(doc.uploaded_at || doc.created_at)}</span>
                       {doc.raw_text && (
                         <>
                           <span>•</span>
-                          <span className="text-indigo-600">
+                          <span className="text-indigo-600 dark:text-indigo-400">
                             {doc.raw_text.length.toLocaleString()} ký tự
                           </span>
                         </>
@@ -621,7 +570,7 @@ export default function DocumentsTab({
                 </div>
 
                 {/* Trạng thái & Nút thao tác */}
-                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-50">
+                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-black/[0.04] dark:border-white/[0.06]">
                   {renderStatusBadge(doc)}
 
                   <div className="flex items-center gap-1.5">
@@ -633,7 +582,7 @@ export default function DocumentsTab({
                         handleCardClick(doc);
                       }}
                       title={isPdf ? "Xem tài liệu PDF" : "Xem hình ảnh"}
-                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-600 shadow-xs transition-all hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 active:scale-95 cursor-pointer"
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300 shadow-2xs transition-all hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 cursor-pointer"
                     >
                       <Eye className="h-4 w-4" />
                     </button>
@@ -646,7 +595,7 @@ export default function DocumentsTab({
                         onDownload?.(doc.id, doc.file_name);
                       }}
                       title="Tải về tệp gốc"
-                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-600 shadow-xs transition-all hover:bg-gray-50 hover:text-gray-900 active:scale-95 cursor-pointer"
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300 shadow-2xs transition-all hover:bg-neutral-200/80 dark:hover:bg-white/[0.12] hover:text-neutral-900 dark:hover:text-white active:scale-95 cursor-pointer"
                     >
                       <Download className="h-4 w-4" />
                     </button>
@@ -659,7 +608,7 @@ export default function DocumentsTab({
                         confirmDelete(doc.id);
                       }}
                       title="Xóa tài liệu"
-                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-400 shadow-xs transition-all hover:border-red-100 hover:bg-red-50 hover:text-red-600 active:scale-95 cursor-pointer"
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.06] text-neutral-400 shadow-2xs transition-all hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 active:scale-95 cursor-pointer"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -671,29 +620,29 @@ export default function DocumentsTab({
         )}
       </div>
 
-      {/* Modal xác nhận xóa */}
+      {/* Modal xác nhận xóa chuẩn Apple Destructive Alert */}
       {deletingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-md">
+          <div className="w-full max-w-sm rounded-[24px] border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-[#1C202C] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 mb-4">
               <Trash2 className="h-6 w-6" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900">Xác nhận xóa tài liệu</h3>
-            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Xác nhận xóa tài liệu</h3>
+            <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
               Bạn có chắc chắn muốn xóa tài liệu này không? File gốc trên Cloudflare R2 và toàn bộ dữ liệu văn bản đã trích xuất sẽ bị xóa vĩnh viễn.
             </p>
             <div className="mt-6 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setDeletingId(null)}
-                className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
+                className="rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.1] transition-colors cursor-pointer"
               >
                 Hủy bỏ
               </button>
               <button
                 type="button"
                 onClick={executeDelete}
-                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-red-700 cursor-pointer"
+                className="rounded-full bg-rose-600 hover:bg-rose-700 px-5 py-2 text-sm font-semibold text-white shadow-xs transition-colors cursor-pointer"
               >
                 Xác nhận xóa
               </button>

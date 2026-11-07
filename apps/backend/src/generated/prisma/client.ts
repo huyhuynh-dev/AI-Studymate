@@ -57,6 +57,41 @@ export type Subject = Prisma.SubjectModel
  */
 export type Conversation = Prisma.ConversationModel
 /**
+ * Model FlashcardDeck
+ * 
+ */
+export type FlashcardDeck = Prisma.FlashcardDeckModel
+/**
+ * Model Flashcard
+ * 
+ */
+export type Flashcard = Prisma.FlashcardModel
+/**
+ * Model FlashcardReview
+ * 
+ */
+export type FlashcardReview = Prisma.FlashcardReviewModel
+/**
+ * Model Quiz
+ * 
+ */
+export type Quiz = Prisma.QuizModel
+/**
+ * Model QuizQuestion
+ * 
+ */
+export type QuizQuestion = Prisma.QuizQuestionModel
+/**
+ * Model QuizAttempt
+ * 
+ */
+export type QuizAttempt = Prisma.QuizAttemptModel
+/**
+ * Model QuizAttemptAnswer
+ * 
+ */
+export type QuizAttemptAnswer = Prisma.QuizAttemptAnswerModel
+/**
  * Model Document
  * 
  */

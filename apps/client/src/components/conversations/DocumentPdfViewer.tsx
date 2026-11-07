@@ -52,7 +52,7 @@ import {
 } from "@embedpdf/plugin-export/react";
 
 import {
-  ArrowLeft,
+  ChevronLeft,
   ZoomIn,
   ZoomOut,
   Maximize2,
@@ -93,9 +93,9 @@ interface PdfToolbarProps {
 }
 
 /**
- * Thanh công cụ hợp nhất (Unified Header & Toolbar):
- * Gộp nút Quay lại + Tên file + Công cụ Tương tác/Ghi chú + Nút Lưu R2 + Zoom + Nút Chế độ tập trung [↗]/[↙]
- * giúp loại bỏ hoàn toàn tình trạng "Box-in-box Syndrome" (nhiều thanh tiêu đề xếp chồng).
+ * Thanh công cụ hợp nhất (Unified Apple Header & Toolbar):
+ * Chuẩn Apple HIG: Thẻ Pill mờ kính (Backdrop Blur), nút bo tròn Squircle,
+ * các công cụ Highlight/Ghi chú với màu sắc sematic tinh tế, nút lưu R2 và điều khiển Focus Mode.
  */
 function PdfToolbar({
   documentId,
@@ -116,10 +116,13 @@ function PdfToolbar({
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hasUnsavedHistoryChanges, setHasUnsavedHistoryChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Suy luận trạng thái thay đổi chưa lưu từ lịch sử hoặc pending changes của Annotation
+  const hasUnsavedChanges = hasUnsavedHistoryChanges || Boolean(annotationState?.hasPendingChanges);
 
   const activeToolId = annotationState?.activeToolId ?? null;
   const hasSelectedAnnotation = (annotationState?.selectedUids?.length ?? 0) > 0;
@@ -137,25 +140,13 @@ function PdfToolbar({
   useEffect(() => {
     if (!historyCapability) return;
     const scope = historyCapability.forDocument(documentId);
-    const updateHistoryState = () => {
+    return scope.onHistoryChange(() => {
       setCanUndo(scope.canUndo());
       setCanRedo(scope.canRedo());
-    };
-    updateHistoryState();
-    return scope.onHistoryChange(() => {
-      updateHistoryState();
-      setHasUnsavedChanges(true);
+      setHasUnsavedHistoryChanges(true);
       setSaveSuccess(false);
     });
   }, [historyCapability, documentId]);
-
-  // Nếu có thay đổi đang chờ commit trong annotationState thì cũng đánh dấu chưa lưu
-  useEffect(() => {
-    if (annotationState?.hasPendingChanges) {
-      setHasUnsavedChanges(true);
-      setSaveSuccess(false);
-    }
-  }, [annotationState?.hasPendingChanges]);
 
   const initialZoomAppliedRef = useRef(false);
 
@@ -232,13 +223,14 @@ function PdfToolbar({
       // 5. Đồng bộ lại dung lượng tệp mới trong cơ sở dữ liệu
       await documentsApi.completeOverwrite(backendDocumentId);
 
-      setHasUnsavedChanges(false);
+      setHasUnsavedHistoryChanges(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Lỗi khi lưu tài liệu PDF lên R2:", err);
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       setSaveError(
-        err?.response?.data?.message || err?.message || "Không thể lưu thay đổi"
+        errorObj?.response?.data?.message || errorObj?.message || "Không thể lưu thay đổi"
       );
       setTimeout(() => setSaveError(null), 4000);
     } finally {
@@ -317,31 +309,31 @@ function PdfToolbar({
       id: "highlight",
       label: "Highlight văn bản",
       icon: Highlighter,
-      activeColor: "bg-amber-50 text-amber-600 border-amber-200",
+      activeColor: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
     },
     {
       id: "underline",
       label: "Gạch chân văn bản",
       icon: Underline,
-      activeColor: "bg-indigo-50 text-indigo-600 border-indigo-200",
+      activeColor: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30",
     },
     {
       id: "strikeout",
       label: "Gạch ngang văn bản",
       icon: Strikethrough,
-      activeColor: "bg-rose-50 text-rose-600 border-rose-200",
+      activeColor: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
     },
     {
       id: "freeText",
       label: "Thêm hộp ghi chú chữ (Nhấp vào trang để viết)",
       icon: StickyNote,
-      activeColor: "bg-emerald-50 text-emerald-600 border-emerald-200",
+      activeColor: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
     },
     {
       id: "ink",
       label: "Bút vẽ ghi chú tự do",
       icon: PenTool,
-      activeColor: "bg-purple-50 text-purple-600 border-purple-200",
+      activeColor: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30",
     },
   ];
 
@@ -350,26 +342,26 @@ function PdfToolbar({
     : 100;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 py-2 shadow-2xs shrink-0 z-10">
-      {/* Cụm Trái: Nút Quay lại + Tên tài liệu thu gọn */}
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/[0.06] dark:border-white/[0.08] bg-white/90 dark:bg-[#12151C]/90 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-2.5 shadow-2xs shrink-0 z-10 transition-colors">
+      {/* Cụm Trái: Nút Quay lại Apple Pill + Tên tài liệu */}
       <div className="flex items-center gap-2 min-w-0">
         <button
           type="button"
           onClick={onClose}
           title="Quay lại danh sách tài liệu"
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 text-xs font-semibold text-gray-700 shadow-2xs transition-all hover:bg-gray-50 hover:text-indigo-600 active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+          className="inline-flex h-8 items-center gap-1.5 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-700 dark:text-neutral-200 shadow-2xs transition-all hover:bg-neutral-50 dark:hover:bg-white/[0.1] hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ChevronLeft className="h-4 w-4" />
           <span>Quay lại</span>
         </button>
 
-        <div className="hidden xl:flex items-center gap-1.5 min-w-0 max-w-[180px] rounded-lg bg-gray-50 px-2 py-1 border border-gray-100">
-          <span className="rounded-[3px] bg-red-50 border border-red-200 px-1 py-0.2 text-[9px] font-black text-red-600 shrink-0">
+        <div className="hidden xl:flex items-center gap-1.5 min-w-0 max-w-[200px] rounded-full bg-neutral-100/80 dark:bg-white/[0.06] px-2.5 py-1 border border-black/[0.04] dark:border-white/[0.06]">
+          <span className="rounded-[4px] bg-rose-500/10 border border-rose-500/20 px-1 py-0.2 text-[9px] font-black text-rose-600 dark:text-rose-400 shrink-0">
             PDF
           </span>
           <span
             title={fileName}
-            className="truncate text-xs font-medium text-gray-700"
+            className="truncate text-xs font-medium text-neutral-700 dark:text-neutral-300"
           >
             {fileName}
           </span>
@@ -378,19 +370,21 @@ function PdfToolbar({
 
       {/* Cụm Giữa: Chế độ Con trỏ, Sao chép & Công cụ Highlight / Ghi chú */}
       <div className="flex items-center gap-1">
+        {/* Nút Con trỏ */}
         <button
           type="button"
           onClick={() => handleToggleTool(null)}
           title="Chế độ Con trỏ & Bôi đen văn bản"
-          className={`flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition-all cursor-pointer ${
+          className={`flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition-all active:scale-95 cursor-pointer ${
             activeToolId === null
-              ? "border-indigo-200 bg-indigo-50 text-indigo-600 shadow-2xs"
-              : "border-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              ? "border-indigo-500/30 bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 shadow-2xs"
+              : "border-transparent text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-900 dark:hover:text-white"
           }`}
         >
           <MousePointer className="h-4 w-4" />
         </button>
 
+        {/* Nút Sao chép */}
         <button
           type="button"
           onClick={handleCopySelection}
@@ -400,12 +394,12 @@ function PdfToolbar({
               ? "Sao chép văn bản đang bôi đen (Ctrl+C)"
               : "Bôi đen văn bản trên PDF để sao chép"
           }
-          className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-all ${
+          className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-all active:scale-95 ${
             copied
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700 cursor-default"
+              ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 cursor-default"
               : hasSelection
-                ? "border-indigo-200 bg-indigo-600 text-white shadow-2xs hover:bg-indigo-700 cursor-pointer"
-                : "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed"
+                ? "border-indigo-600 bg-[#4F46E5] text-white shadow-2xs hover:bg-[#4338CA] cursor-pointer"
+                : "border-black/[0.04] dark:border-white/[0.06] bg-neutral-100/50 dark:bg-white/[0.03] text-neutral-400 dark:text-neutral-600 cursor-not-allowed"
           }`}
         >
           {copied ? (
@@ -421,7 +415,7 @@ function PdfToolbar({
           )}
         </button>
 
-        <div className="mx-0.5 h-5 w-px bg-gray-200" />
+        <div className="mx-1 h-5 w-px bg-black/[0.08] dark:bg-white/[0.1]" />
 
         {/* Công cụ Highlight & Ghi chú */}
         <div className="flex items-center gap-0.5">
@@ -434,10 +428,10 @@ function PdfToolbar({
                 type="button"
                 onClick={() => handleToggleTool(tool.id)}
                 title={tool.label}
-                className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all cursor-pointer ${
+                className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all active:scale-95 cursor-pointer ${
                   isActive
                     ? `${tool.activeColor} shadow-2xs`
-                    : "border-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    : "border-transparent text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-900 dark:hover:text-white"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -446,7 +440,7 @@ function PdfToolbar({
           })}
         </div>
 
-        <div className="mx-0.5 h-5 w-px bg-gray-200" />
+        <div className="mx-1 h-5 w-px bg-black/[0.08] dark:bg-white/[0.1]" />
 
         {/* Hoàn tác / Làm lại & Xoá Annotation */}
         <div className="flex items-center gap-0.5">
@@ -455,7 +449,7 @@ function PdfToolbar({
             onClick={() => historyCapability?.forDocument(documentId).undo()}
             disabled={!canUndo}
             title="Hoàn tác (Undo)"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-900 dark:hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
           >
             <Undo2 className="h-4 w-4" />
           </button>
@@ -465,7 +459,7 @@ function PdfToolbar({
             onClick={() => historyCapability?.forDocument(documentId).redo()}
             disabled={!canRedo}
             title="Làm lại (Redo)"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-900 dark:hover:text-white disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
           >
             <Redo2 className="h-4 w-4" />
           </button>
@@ -479,17 +473,17 @@ function PdfToolbar({
                 ? "Xoá Highlight / Ghi chú đang chọn (Delete)"
                 : "Chọn một Highlight hoặc Ghi chú để xoá"
             }
-            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all ${
+            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all active:scale-95 ${
               hasSelectedAnnotation
-                ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100 cursor-pointer"
-                : "border-transparent text-gray-300 cursor-not-allowed"
+                ? "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 cursor-pointer"
+                : "border-transparent text-neutral-300 dark:text-neutral-700 cursor-not-allowed"
             }`}
           >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="mx-0.5 h-5 w-px bg-gray-200" />
+        <div className="mx-1 h-5 w-px bg-black/[0.08] dark:bg-white/[0.1]" />
 
         {/* Nút Lưu chỉnh sửa đè lên Cloudflare R2 */}
         <button
@@ -505,14 +499,14 @@ function PdfToolbar({
           }
           className={`relative inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-all active:scale-95 ${
             isSaving
-              ? "border-indigo-200 bg-indigo-50 text-indigo-600 cursor-wait"
+              ? "border-indigo-500/30 bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 cursor-wait"
               : saveError
-                ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100 cursor-pointer"
+                ? "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                 : saveSuccess
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 cursor-default"
+                  ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 cursor-default"
                   : hasUnsavedChanges
-                    ? "border-indigo-600 bg-indigo-600 text-white shadow-2xs hover:bg-indigo-700 cursor-pointer"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                    ? "border-indigo-600 bg-[#4F46E5] text-white shadow-2xs hover:bg-[#4338CA] cursor-pointer"
+                    : "border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
           }`}
         >
           {isSaving ? (
@@ -537,7 +531,7 @@ function PdfToolbar({
               {hasUnsavedChanges && (
                 <span
                   aria-label="Có thay đổi chưa lưu"
-                  className="h-1.5 w-1.5 rounded-full bg-amber-300 ring-2 ring-white/40"
+                  className="h-1.5 w-1.5 rounded-full bg-amber-400 ring-2 ring-white/50"
                 />
               )}
             </>
@@ -545,15 +539,15 @@ function PdfToolbar({
         </button>
       </div>
 
-      {/* Cụm Phải: Điều khiển Phóng to / Thu nhỏ & Nút Chế độ Tập trung (Focus Mode [↗] / [↙]) */}
+      {/* Cụm Phải: Segmented Zoom Pill & Nút Focus Mode */}
       <div className="flex items-center gap-1.5">
         {zoom && (
-          <div className="flex items-center gap-0.5 rounded-xl border border-gray-200/80 bg-gray-50/80 p-0.5">
+          <div className="flex items-center gap-0.5 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-neutral-100/80 dark:bg-white/[0.05] p-0.5">
             <button
               type="button"
               onClick={() => zoom.zoomOut()}
               title="Thu nhỏ"
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-white hover:text-gray-900 hover:shadow-2xs cursor-pointer"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-white dark:hover:bg-white/[0.1] hover:text-neutral-900 dark:hover:text-white hover:shadow-2xs cursor-pointer"
             >
               <ZoomOut className="h-3.5 w-3.5" />
             </button>
@@ -562,7 +556,7 @@ function PdfToolbar({
               type="button"
               onClick={() => zoom.requestZoom(1)}
               title="Đặt lại 100%"
-              className="min-w-[44px] rounded-md px-1 py-1 text-center font-mono text-xs font-semibold text-gray-700 transition-colors hover:bg-white cursor-pointer"
+              className="min-w-[44px] rounded-md px-1 py-1 text-center font-mono tabular-nums text-xs font-semibold text-neutral-700 dark:text-neutral-300 transition-colors hover:bg-white dark:hover:bg-white/[0.1] cursor-pointer"
             >
               {zoomPercentage}%
             </button>
@@ -571,25 +565,25 @@ function PdfToolbar({
               type="button"
               onClick={() => zoom.zoomIn()}
               title="Phóng to"
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-white hover:text-gray-900 hover:shadow-2xs cursor-pointer"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-white dark:hover:bg-white/[0.1] hover:text-neutral-900 dark:hover:text-white hover:shadow-2xs cursor-pointer"
             >
               <ZoomIn className="h-3.5 w-3.5" />
             </button>
 
-            <div className="mx-0.5 h-4 w-px bg-gray-200" />
+            <div className="mx-0.5 h-4 w-px bg-black/[0.08] dark:bg-white/[0.1]" />
 
             <button
               type="button"
               onClick={() => zoom.requestZoom(ZoomMode.FitWidth)}
               title="Vừa chiều ngang khung hình"
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-white hover:text-indigo-600 hover:shadow-2xs cursor-pointer"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-white dark:hover:bg-white/[0.1] hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-2xs cursor-pointer"
             >
               <MoveHorizontal className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
 
-        {/* Nút Chế độ tập trung (Focus Mode / Partial Fullscreen): [ ↗ ] Mở rộng / [ ↙ ] Thu nhỏ */}
+        {/* Nút Chế độ tập trung (Focus Mode) */}
         <button
           type="button"
           onClick={toggleFocusMode}
@@ -598,10 +592,10 @@ function PdfToolbar({
               ? "Thoát Chế độ tập trung (Esc)"
               : "Chế độ tập trung — Ẩn thanh điều hướng & mở rộng tối đa vùng đọc PDF"
           }
-          className={`flex h-8 w-8 items-center justify-center rounded-xl border transition-all active:scale-95 cursor-pointer ${
+          className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all active:scale-95 cursor-pointer ${
             isFocusMode
-              ? "border-indigo-600 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700"
-              : "border-gray-200 bg-white text-gray-700 shadow-2xs hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+              ? "border-indigo-600 bg-[#4F46E5] text-white shadow-xs hover:bg-[#4338CA]"
+              : "border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 shadow-2xs hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400"
           }`}
         >
           {isFocusMode ? (
@@ -617,6 +611,7 @@ function PdfToolbar({
 
 /**
  * Menu ngữ cảnh nhỏ xuất hiện ngay trên Highlight / Ghi chú khi người dùng click chọn annotation
+ * Thiết kế chuẩn Apple Floating Pill
  */
 function AnnotationQuickMenu({
   selected,
@@ -649,7 +644,7 @@ function AnnotationQuickMenu({
         <button
           type="button"
           onClick={handleDelete}
-          className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-600 shadow-md transition-colors hover:bg-red-50 cursor-pointer whitespace-nowrap"
+          className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/20 bg-white/95 dark:bg-[#1E2330]/95 backdrop-blur-md px-3 py-1 text-xs font-semibold text-rose-600 dark:text-rose-400 shadow-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
         >
           <Trash2 className="h-3.5 w-3.5" />
           <span>Xoá</span>
@@ -677,10 +672,11 @@ export default function DocumentPdfViewer({
     try {
       const res = await documentsApi.getViewUrl(document.id);
       setPdfUrl(res.downloadUrl);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`Không thể lấy URL PDF cho document ${document.id}:`, err);
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       setUrlError(
-        err?.response?.data?.message || err?.message || "Không thể tải đường dẫn tài liệu PDF"
+        errorObj?.response?.data?.message || errorObj?.message || "Không thể tải đường dẫn tài liệu PDF"
       );
     } finally {
       setIsLoadingUrl(false);
@@ -688,8 +684,29 @@ export default function DocumentPdfViewer({
   }, [document.id]);
 
   useEffect(() => {
-    fetchPdfViewUrl();
-  }, [fetchPdfViewUrl]);
+    let ignore = false;
+    documentsApi
+      .getViewUrl(document.id)
+      .then((res) => {
+        if (!ignore) {
+          setPdfUrl(res.downloadUrl);
+          setIsLoadingUrl(false);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!ignore) {
+          console.error(`Không thể lấy URL PDF cho document ${document.id}:`, err);
+          const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+          setUrlError(
+            errorObj?.response?.data?.message || errorObj?.message || "Không thể tải đường dẫn tài liệu PDF"
+          );
+          setIsLoadingUrl(false);
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [document.id]);
 
   // Đăng ký các plugins của EmbedPDF Headless khi đã có URL tài liệu
   const plugins = useMemo(() => {
@@ -731,25 +748,25 @@ export default function DocumentPdfViewer({
 
   return (
     <div
-      className={`flex w-full flex-col overflow-hidden transition-all duration-300 ease-in-out ${
+      className={`flex w-full flex-col overflow-hidden rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100 dark:bg-[#0B0D12] transition-all duration-300 ease-in-out ${
         isFocusMode
-          ? "h-screen flex-1"
+          ? "h-screen flex-1 rounded-none border-none"
           : "h-[calc(100vh-185px)] min-h-[580px] flex-1"
       } ${className}`}
     >
       {/* Thanh Header phụ trợ khi đang tải hoặc gặp lỗi (trước khi PdfToolbar được mount) */}
       {(isPreparing || fatalError) && (
-        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-3 py-2 shrink-0">
+        <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] bg-white/90 dark:bg-[#12151C]/90 px-3 py-2 sm:px-4 sm:py-2.5 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 text-xs font-semibold text-gray-700 shadow-2xs transition-all hover:bg-gray-50 hover:text-indigo-600 cursor-pointer shrink-0"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-700 dark:text-neutral-200 shadow-2xs transition-all hover:bg-neutral-50 dark:hover:bg-white/[0.1] hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0"
             >
-              <ArrowLeft className="h-3.5 w-3.5" />
+              <ChevronLeft className="h-4 w-4" />
               <span>Quay lại</span>
             </button>
-            <span className="truncate text-xs font-semibold text-gray-700">
+            <span className="truncate text-xs font-semibold text-neutral-800 dark:text-neutral-200">
               {document.file_name}
             </span>
           </div>
@@ -758,7 +775,7 @@ export default function DocumentPdfViewer({
             type="button"
             onClick={toggleFocusMode}
             title={isFocusMode ? "Thoát Chế độ tập trung (Esc)" : "Chế độ tập trung"}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-white/[0.1] cursor-pointer"
           >
             {isFocusMode ? (
               <Minimize2 className="h-4 w-4" />
@@ -771,8 +788,8 @@ export default function DocumentPdfViewer({
 
       {/* Trạng thái đang khởi tạo WebAssembly Engine hoặc đang lấy Presigned URL */}
       {isPreparing && !fatalError && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-slate-50 text-gray-600">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-neutral-50/80 dark:bg-[#0F1218] text-neutral-600 dark:text-neutral-400">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
           <p className="text-sm font-medium">
             {isEngineLoading
               ? "Đang khởi tạo bộ xử lý PDF..."
@@ -783,16 +800,16 @@ export default function DocumentPdfViewer({
 
       {/* Trạng thái lỗi */}
       {fatalError && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-slate-50 p-6 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-500 border border-red-100">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-neutral-50/80 dark:bg-[#0F1218] p-6 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/20">
             <AlertCircle className="h-6 w-6" />
           </div>
-          <p className="text-sm font-semibold text-gray-900">Không thể mở tài liệu PDF</p>
-          <p className="max-w-md text-xs text-gray-500">{fatalError}</p>
+          <p className="text-sm font-semibold text-neutral-900 dark:text-white">Không thể mở tài liệu PDF</p>
+          <p className="max-w-md text-xs text-neutral-500 dark:text-neutral-400">{fatalError}</p>
           <button
             type="button"
             onClick={fetchPdfViewUrl}
-            className="mt-1 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors cursor-pointer"
+            className="mt-1 rounded-full bg-[#4F46E5] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#4338CA] transition-all cursor-pointer"
           >
             Thử lại
           </button>
@@ -808,35 +825,35 @@ export default function DocumentPdfViewer({
                 {({ isLoading, isError, isLoaded }) => (
                   <div className="flex h-full w-full flex-col overflow-hidden">
                     {isLoading && (
-                      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-slate-50 text-gray-600">
-                        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-neutral-50/80 dark:bg-[#0F1218] text-neutral-600 dark:text-neutral-400">
+                        <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
                         <p className="text-sm font-medium">Đang kết xuất các trang PDF...</p>
                       </div>
                     )}
 
                     {isError && (
-                      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-slate-50 p-6 text-center">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-500 border border-red-100">
+                      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-neutral-50/80 dark:bg-[#0F1218] p-6 text-center">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/20">
                           <FileText className="h-6 w-6" />
                         </div>
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-neutral-900 dark:text-white">
                           Lỗi đọc dữ liệu tệp PDF
                         </p>
-                        <p className="max-w-md text-xs text-gray-500">
+                        <p className="max-w-md text-xs text-neutral-500 dark:text-neutral-400">
                           Tệp PDF có thể bị hỏng hoặc phiên truy cập đã hết hạn.
                         </p>
                         <div className="mt-1 flex items-center gap-2">
                           <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                            className="rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-white/[0.1] transition-colors cursor-pointer"
                           >
                             Quay lại
                           </button>
                           <button
                             type="button"
                             onClick={fetchPdfViewUrl}
-                            className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors cursor-pointer"
+                            className="rounded-full bg-[#4F46E5] px-4 py-2 text-xs font-semibold text-white hover:bg-[#4338CA] transition-colors cursor-pointer"
                           >
                             Tải lại tài liệu
                           </button>
@@ -855,13 +872,13 @@ export default function DocumentPdfViewer({
                         />
 
                         {/* Vùng cuộn các trang PDF chiếm trọn 100% diện tích còn lại */}
-                        <div className="relative flex-1 min-h-0 overflow-hidden">
+                        <div className="relative flex-1 min-h-0 overflow-hidden bg-neutral-200/60 dark:bg-[#0E1117]">
                           <Viewport
                             documentId={activeDocumentId}
                             style={{
                               width: "100%",
                               height: "100%",
-                              backgroundColor: "#eef2f6",
+                              backgroundColor: "transparent",
                             }}
                           >
                             <ZoomGestureWrapper documentId={activeDocumentId}>
@@ -880,8 +897,10 @@ export default function DocumentPdfViewer({
                                         userSelect: "none",
                                         WebkitUserSelect: "none",
                                         backgroundColor: "#ffffff",
+                                        borderRadius: "8px",
+                                        overflow: "hidden",
                                         boxShadow:
-                                          "0 4px 12px -2px rgba(15, 23, 42, 0.12), 0 2px 4px -2px rgba(15, 23, 42, 0.08)",
+                                          "0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                                       }}
                                     >
                                       {/* Lớp 1: Hiển thị đồ hoạ trang PDF */}

@@ -33,10 +33,10 @@ function RowAction({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-gray-400 transition-colors focus-visible:outline-2 focus-visible:outline-indigo-500 ${
+      className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-[#777587] transition-colors focus-visible:outline-2 focus-visible:outline-[#4F46E5] ${
         danger
-          ? "hover:bg-rose-50 hover:text-rose-600"
-          : "hover:bg-white hover:text-indigo-600"
+          ? "hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400"
+          : "hover:bg-white dark:hover:bg-[#12151C] hover:text-[#4F46E5] dark:hover:text-[#818CF8]"
       }`}
     >
       {children}
@@ -105,7 +105,7 @@ export function HistorySessionRow({
   // ── Chế độ sửa tên ──
   if (isEditing) {
     return (
-      <div className="rounded-xl bg-indigo-50/60 px-2 py-1.5">
+      <div className="rounded-xl bg-[#EEF2FF] dark:bg-white/[0.06] px-2 py-1.5">
         <div className="flex items-center gap-1.5">
           <input
             ref={inputRef}
@@ -120,16 +120,15 @@ export function HistorySessionRow({
                 e.preventDefault();
                 void commit();
               } else if (e.key === "Escape") {
-                e.stopPropagation(); // chỉ hủy sửa, không đóng cả popover
+                e.stopPropagation();
                 cancel();
               }
             }}
-            className="h-8 min-w-0 flex-1 rounded-lg border border-indigo-300 bg-white px-2.5 text-[13px] text-gray-900 outline-none ring-2 ring-indigo-500/10"
+            className="h-8 min-w-0 flex-1 rounded-lg border border-[#C7D2FE] bg-white dark:bg-[#12151C] px-2.5 text-[13px] text-[#0B1C30] dark:text-white outline-none ring-2 ring-[#4F46E5]/10"
           />
 
-          {/* onMouseDown preventDefault: giữ focus ở ô nhập để không kích hoạt blur */}
           {isSaving ? (
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-600" />
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#4F46E5]" />
           ) : (
             <>
               <button
@@ -138,7 +137,7 @@ export function HistorySessionRow({
                 title="Lưu (Enter)"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => void commit()}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-indigo-600 text-white transition-colors hover:bg-indigo-700"
+                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-[#4F46E5] text-white transition-colors hover:bg-[#3525CD]"
               >
                 <Check className="h-3.5 w-3.5" />
               </button>
@@ -148,7 +147,7 @@ export function HistorySessionRow({
                 title="Hủy (Esc)"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={cancel}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-white hover:text-gray-800"
+                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[#777587] transition-colors hover:bg-white dark:hover:bg-[#12151C] hover:text-[#0B1C30] dark:hover:text-white"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -157,7 +156,7 @@ export function HistorySessionRow({
         </div>
 
         {error && (
-          <p role="alert" className="px-1 pt-1.5 text-[11px] text-rose-600">
+          <p role="alert" className="px-1 pt-1.5 text-[11px] text-rose-600 dark:text-rose-400">
             {error}
           </p>
         )}
@@ -169,19 +168,23 @@ export function HistorySessionRow({
   return (
     <div
       className={`group flex items-center rounded-xl transition-colors ${
-        isActive ? "bg-indigo-50" : "hover:bg-gray-50 focus-within:bg-gray-50"
+        isActive
+          ? "bg-[#EEF2FF] dark:bg-[#4F46E5]/20"
+          : "hover:bg-[#F8F9FF] dark:hover:bg-white/[0.04] focus-within:bg-[#F8F9FF]"
       }`}
     >
       <button
         type="button"
         onClick={onSelect}
         className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl py-2 pl-2.5 pr-1 text-left ${
-          isActive ? "text-indigo-900" : "text-gray-700"
+          isActive
+            ? "text-[#4F46E5] dark:text-[#818CF8] font-bold"
+            : "text-[#464555] dark:text-[#EFF0F6] font-medium"
         }`}
       >
         <MessageSquare
           className={`h-4 w-4 shrink-0 ${
-            isActive ? "text-indigo-600" : "text-gray-400"
+            isActive ? "text-[#4F46E5] dark:text-[#818CF8]" : "text-[#777587]"
           }`}
         />
         <span className="min-w-0 flex-1 truncate text-[13px]" title={session.title}>
@@ -189,9 +192,9 @@ export function HistorySessionRow({
         </span>
       </button>
 
-      {/* Cột phải cố định bề rộng: giờ ↔ nút thao tác (hover/focus; luôn hiện trên màn hình cảm ứng) */}
+      {/* Cột phải cố định bề rộng */}
       <div className="flex h-8 w-16 shrink-0 items-center justify-end pr-1.5">
-        <span className="truncate text-[10px] text-gray-400 group-hover:hidden group-focus-within:hidden [@media(pointer:coarse)]:hidden">
+        <span className="truncate text-[10px] text-[#777587] group-hover:hidden group-focus-within:hidden [@media(pointer:coarse)]:hidden">
           {session.timestamp}
         </span>
         <div className="hidden items-center gap-0.5 group-hover:flex group-focus-within:flex [@media(pointer:coarse)]:flex">

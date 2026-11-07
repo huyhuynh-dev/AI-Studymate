@@ -6,9 +6,9 @@ export function ContextChip({ label, title }: { label: string; title?: string })
   return (
     <span
       title={title}
-      className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-700"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF] dark:bg-[#4F46E5]/20 px-2.5 py-1 text-[11px] font-semibold text-[#4F46E5] dark:text-[#818CF8] shadow-2xs"
     >
-      <BookOpen className="h-3 w-3 shrink-0" />
+      <BookOpen className="h-3 w-3 shrink-0 stroke-[2]" />
       <span className="max-w-[140px] truncate">{label}</span>
     </span>
   );
@@ -25,19 +25,19 @@ export function FileChip({ file, onRemove }: FileChipProps) {
 
   if (isUploading) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50/70 py-0.5 pl-2 pr-1 text-[11px] font-medium text-indigo-700">
-        <Loader2 className="h-3 w-3 shrink-0 animate-spin text-indigo-600" />
+      <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF]/80 dark:bg-[#4F46E5]/15 py-0.5 pl-2.5 pr-1.5 text-[11px] font-semibold text-[#4F46E5] dark:text-[#818CF8] shadow-2xs">
+        <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[#4F46E5]" />
         <span className="max-w-[120px] truncate" title={file.name}>
           {file.name}
         </span>
-        <span className="text-[10px] text-indigo-500 font-normal">
+        <span className="text-[10px] text-[#4F46E5]/80 font-normal">
           {file.progress !== undefined ? `${file.progress}%` : "..."}
         </span>
         <button
           type="button"
           aria-label={`Hủy tải ${file.name}`}
           onClick={() => onRemove(file.id)}
-          className="flex h-4 w-4 cursor-pointer items-center justify-center rounded text-indigo-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
+          className="flex h-4 w-4 cursor-pointer items-center justify-center rounded text-[#4F46E5] transition-colors hover:bg-rose-50 hover:text-rose-600"
         >
           <X className="h-3 w-3" />
         </button>
@@ -49,13 +49,13 @@ export function FileChip({ file, onRemove }: FileChipProps) {
     return (
       <span
         title={file.errorMessage || "Tải lên thất bại"}
-        className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50/80 py-0.5 pl-2 pr-1 text-[11px] font-medium text-rose-700"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50/80 dark:bg-rose-950/30 py-0.5 pl-2.5 pr-1.5 text-[11px] font-semibold text-[#BA1A1A] dark:text-rose-400 shadow-2xs"
       >
-        <AlertCircle className="h-3 w-3 shrink-0 text-rose-500" />
+        <AlertCircle className="h-3 w-3 shrink-0 text-[#BA1A1A]" />
         <span className="max-w-[120px] truncate" title={file.name}>
           {file.name}
         </span>
-        <span className="text-[10px] text-rose-500 font-normal">Lỗi</span>
+        <span className="text-[10px] text-[#BA1A1A] font-normal">Lỗi</span>
         <button
           type="button"
           aria-label={`Gỡ ${file.name}`}
@@ -69,8 +69,8 @@ export function FileChip({ file, onRemove }: FileChipProps) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white py-0.5 pl-2 pr-1 text-[11px] font-medium text-gray-700">
-      <FileText className="h-3 w-3 shrink-0 text-indigo-500" />
+    <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5EEFF] dark:border-white/[0.1] bg-white dark:bg-[#161922] py-0.5 pl-2.5 pr-1.5 text-[11px] font-semibold text-[#464555] dark:text-[#EFF0F6] shadow-2xs">
+      <FileText className="h-3 w-3 shrink-0 text-[#4F46E5] dark:text-[#818CF8]" />
       <span className="max-w-[120px] truncate" title={file.name}>
         {file.name}
       </span>
@@ -78,7 +78,7 @@ export function FileChip({ file, onRemove }: FileChipProps) {
         type="button"
         aria-label={`Gỡ ${file.name}`}
         onClick={() => onRemove(file.id)}
-        className="flex h-4 w-4 cursor-pointer items-center justify-center rounded text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
+        className="flex h-4 w-4 cursor-pointer items-center justify-center rounded text-[#777587] transition-colors hover:bg-rose-50 hover:text-rose-600"
       >
         <X className="h-3 w-3" />
       </button>

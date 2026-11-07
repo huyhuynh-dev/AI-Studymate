@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Folder, MoreVertical, Edit3, Trash2, Plus, Loader2 } from "lucide-react";
+import { Folder, MoreVertical, Edit3, Trash2, Plus, ArrowUpRight, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSubjects } from "@/hooks/useSubjects";
 import { Subject } from "@/types";
@@ -51,10 +51,7 @@ export default function SubjectCardListView() {
 
   const handleWorkspaceFormSubmit = async (data: { name: string; color: string }) => {
     if (workspaceModalMode === "create") {
-      const created = await createSubject(data);
-      if (created?.id) {
-        router.push(`/home/${created.id}`);
-      }
+      await createSubject(data);
     } else if (workspaceModalMode === "edit" && editingSubject) {
       await updateSubject(editingSubject.id, data);
     }
@@ -70,107 +67,196 @@ export default function SubjectCardListView() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full w-full min-h-100 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+      <div className="w-full space-y-8 animate-pulse">
+        {/* Skeleton Header */}
+        <div className="flex items-center justify-between pb-6 border-b border-[#E5EEFF] dark:border-white/[0.08]">
+          <div className="space-y-2">
+            <div className="h-7 w-48 rounded-lg bg-[#E5EEFF] dark:bg-white/[0.08]" />
+            <div className="h-4 w-72 rounded-lg bg-[#EFF4FF] dark:bg-white/[0.06]" />
+          </div>
+          <div className="h-10 w-36 rounded-xl bg-[#E5EEFF] dark:bg-white/[0.08]" />
+        </div>
+
+        {/* Skeleton Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-52 rounded-[22px] bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.08] p-5 flex flex-col justify-between"
+            >
+              <div className="flex justify-between items-center">
+                <div className="h-11 w-11 rounded-xl bg-[#EFF4FF] dark:bg-white/[0.06]" />
+                <div className="h-6 w-16 rounded-full bg-[#EFF4FF] dark:bg-white/[0.06]" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-5 w-3/4 rounded-md bg-[#E5EEFF] dark:bg-white/[0.08]" />
+                <div className="h-3.5 w-1/2 rounded-md bg-[#EFF4FF] dark:bg-white/[0.05]" />
+              </div>
+              <div className="flex justify-between items-center pt-3 border-t border-[#F0F4FF] dark:border-white/[0.05]">
+                <div className="h-6 w-24 rounded-full bg-[#EFF4FF] dark:bg-white/[0.06]" />
+                <div className="h-8 w-8 rounded-full bg-[#EFF4FF] dark:bg-white/[0.06]" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (subjects.length === 0) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
+      <div className="flex h-full w-full items-center justify-center py-12">
         <WelcomeComponent />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-white/50 p-6 sm:p-8 rounded-2xl border border-gray-100 shadow-sm min-h-125">
-      <div className="flex items-center justify-between mb-8">
+    <div className="w-full flex flex-col">
+      {/* ── Apple Large Title Section Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-[#E5EEFF] dark:border-white/[0.08]">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Các Không Gian Học Tập</h2>
-          <p className="text-gray-500 text-sm mt-1">Chọn một không gian học tập để bắt đầu ôn luyện</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0B1C30] dark:text-[#EFF0F6]">
+              Không gian học tập
+            </h1>
+            <span className="tabular-nums text-xs font-semibold text-[#4F46E5] dark:text-[#818CF8] bg-[#EEF2FF] dark:bg-[#4F46E5]/20 border border-[#C7D2FE] dark:border-[#4F46E5]/30 px-2.5 py-0.5 rounded-full shadow-2xs">
+              {subjects.length} không gian
+            </span>
+          </div>
+          <p className="text-sm text-[#464555] dark:text-[#9DA3AF] mt-1">
+            Chọn không gian môn học để quản lý tài liệu và tiếp tục ôn luyện
+          </p>
         </div>
+
+        {/* Primary CTA (Rule of 1 Primary Action) */}
         <button
           onClick={handleOpenCreateModal}
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition-all hover:bg-indigo-700 hover:shadow-indigo-500/35 active:scale-95 cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#4F46E5] hover:bg-[#3525CD] active:scale-[0.98] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#4F46E5]/20 hover:shadow-[#4F46E5]/30 transition-all duration-150 cursor-pointer self-start sm:self-auto shrink-0"
         >
-          <Plus className="h-4 w-4 stroke-[2.5]" />
-          <span className="hidden sm:inline">Tạo mới</span>
+          <Plus className="h-4 w-4" />
+          <span>Tạo không gian</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {/* ── Apple Luxury Workspace Cards Grid (Light & Dark Mode) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {subjects.map((subject) => {
           const subjectColor = subject.color || "#4F46E5";
           const isMenuOpen = actionMenuOpenId === subject.id;
 
           return (
-            <div key={subject.id} className="relative group h-full">
+            <div key={subject.id} className="relative group">
               <div
                 onClick={() => handleSubjectClick(subject)}
-                className="flex flex-col h-full bg-white rounded-2xl p-5 border border-gray-200/80 shadow-xs hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group-hover:-translate-y-0.5"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    handleSubjectClick(subject);
+                  }
+                }}
+                style={{
+                  backgroundImage: `radial-gradient(circle at 92% 12%, ${subjectColor}22 0%, transparent 65%)`,
+                }}
+                className="relative flex flex-col justify-between h-52 rounded-[22px] p-5 bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.1] shadow-[0_4px_20px_-4px_rgba(11,28,48,0.05),0_1px_3px_-1px_rgba(11,28,48,0.03)] hover:border-[#C7C4D8] dark:hover:border-white/[0.22] hover:shadow-[0_16px_32px_-8px_rgba(79,70,229,0.12),0_4px_12px_-2px_rgba(11,28,48,0.04)] dark:hover:shadow-[0_16px_32px_-8px_rgba(0,0,0,0.5)] hover:-translate-y-1 active:scale-[0.99] transition-all duration-200 cursor-pointer text-left overflow-hidden"
               >
-                <div className="flex items-start justify-between mb-4">
+                {/* ── Top Bar: Icon + Action & Subtle Pill ── */}
+                <div className="flex items-center justify-between">
+                  {/* Squircle Icon with soft tactile depth */}
                   <div
-                    className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-50/80 shadow-inner"
-                    style={{ backgroundColor: `${subjectColor}15` }}
+                    className="flex h-11 w-11 items-center justify-center rounded-xl shadow-xs transition-transform group-hover:scale-105 duration-200"
+                    style={{
+                      backgroundColor: `${subjectColor}18`,
+                      border: `1px solid ${subjectColor}33`,
+                    }}
                   >
-                    <Folder className="h-6 w-6" style={{ color: subjectColor }} />
+                    <Folder className="h-5 w-5" style={{ color: subjectColor }} />
                   </div>
 
-                  {/* Dropdown menu trigger */}
-                  <div className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActionMenuOpenId(isMenuOpen ? null : subject.id);
-                      }}
-                      className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
+                  {/* Top-Right: Quick Tag + Context Menu */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F8F9FF] dark:bg-white/[0.06] border border-[#E5EEFF] dark:border-white/[0.1] text-[10px] font-semibold text-[#777587] dark:text-[#EFF0F6] uppercase tracking-wider">
+                      <BookOpen className="h-2.5 w-2.5" />
+                      Môn học
+                    </span>
 
-                    {isMenuOpen && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-30 cursor-default"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionMenuOpenId(null);
-                          }}
-                        />
-                        <div className="absolute right-0 top-full z-40 mt-1 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100">
-                          <button
-                            type="button"
-                            onClick={(e) => handleOpenEditModal(subject, e)}
-                            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
-                          >
-                            <Edit3 className="h-4 w-4 text-indigo-600" />
-                            <span>Chỉnh sửa</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleOpenDeleteModal(subject, e)}
-                            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="h-4 w-4 text-rose-600" />
-                            <span>Xóa</span>
-                          </button>
-                        </div>
-                      </>
-                    )}
+                    {/* 3-dots Context Menu Button */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        aria-label={`Tùy chọn ${subject.name}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActionMenuOpenId(isMenuOpen ? null : subject.id);
+                        }}
+                        className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                          isMenuOpen
+                            ? "bg-[#E5EEFF] dark:bg-white/[0.15] text-[#0B1C30] dark:text-white opacity-100"
+                            : "text-[#777587] dark:text-[#9DA3AF] opacity-60 group-hover:opacity-100 hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] hover:text-[#0B1C30] dark:hover:text-white"
+                        }`}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+
+                      {/* macOS Style Context Menu */}
+                      {isMenuOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-30 cursor-default"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionMenuOpenId(null);
+                            }}
+                          />
+                          <div className="absolute right-0 top-full z-40 mt-1 w-36 rounded-xl border border-[#E5EEFF] dark:border-white/[0.12] bg-white/95 dark:bg-[#161922]/95 backdrop-blur-xl p-1 shadow-lg shadow-[#0B1C30]/5 dark:shadow-black/40 animate-in fade-in zoom-in-95 duration-100 select-none">
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenEditModal(subject, e)}
+                              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#464555] dark:text-[#EFF0F6] hover:bg-[#4F46E5] hover:text-white transition-colors cursor-pointer"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                              <span>Chỉnh sửa</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenDeleteModal(subject, e)}
+                              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Xóa</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-auto">
-                  <h3 className="font-semibold text-gray-900 text-lg line-clamp-1 mb-1">{subject.name}</h3>
-                  <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
+                {/* ── Middle: Typography & Subject Overview ── */}
+                <div className="space-y-1 my-2">
+                  <h3 className="font-bold text-[#0B1C30] dark:text-[#EFF0F6] text-base sm:text-lg line-clamp-1 tracking-tight group-hover:text-[#4F46E5] dark:group-hover:text-[#818CF8] transition-colors">
+                    {subject.name}
+                  </h3>
+                  <p className="text-xs text-[#777587] dark:text-[#9DA3AF] line-clamp-1">
+                    Không gian ôn luyện & quản lý tài liệu
+                  </p>
+                </div>
+
+                {/* ── Bottom Bar: Structured Metadata & Interactive Circle Button ── */}
+                <div className="flex items-center justify-between pt-3 border-t border-[#F0F4FF] dark:border-white/[0.08]">
+                  {/* Status chip with glowing colored dot */}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F8F9FF] dark:bg-white/[0.06] border border-[#E5EEFF] dark:border-white/[0.1] text-[11px] font-semibold text-[#464555] dark:text-[#EFF0F6]">
                     <span
-                      className="h-2 w-2 rounded-full"
+                      className="h-2 w-2 rounded-full shadow-xs"
                       style={{ backgroundColor: subjectColor }}
                     />
-                    <span>Không gian học tập</span>
+                    <span>Tài liệu học tập</span>
+                  </div>
+
+                  {/* Elegant Circular Action Button */}
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F8F9FF] dark:bg-white/[0.08] border border-[#E5EEFF] dark:border-white/[0.1] text-[#777587] dark:text-neutral-300 group-hover:bg-[#4F46E5] group-hover:border-[#4F46E5] group-hover:text-white group-hover:scale-105 active:scale-95 transition-all duration-200 shadow-2xs">
+                    <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.2 group-hover:-translate-y-0.2" />
                   </div>
                 </div>
               </div>
@@ -179,6 +265,7 @@ export default function SubjectCardListView() {
         })}
       </div>
 
+      {/* ── Modal Tạo mới & Chỉnh sửa Không gian ── */}
       <CreateWorkspaceModal
         isOpen={isWorkspaceModalOpen}
         mode={workspaceModalMode}
@@ -187,6 +274,7 @@ export default function SubjectCardListView() {
         onSubmit={handleWorkspaceFormSubmit}
       />
 
+      {/* ── Modal Xác nhận Xóa Không gian ── */}
       <DeleteWorkspaceModal
         isOpen={isDeleteModalOpen}
         subject={deletingSubject}

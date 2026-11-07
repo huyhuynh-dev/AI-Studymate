@@ -50,7 +50,7 @@ export default function ConversationContextMenu({
   if (!isOpen) return null;
 
   // Giữ menu không tràn ra ngoài màn hình
-  const adjustedX = Math.min(position.x, (typeof window !== "undefined" ? window.innerWidth : 1000) - 200);
+  const adjustedX = Math.min(position.x, (typeof window !== "undefined" ? window.innerWidth : 1000) - 180);
   const adjustedY = Math.min(position.y, (typeof window !== "undefined" ? window.innerHeight : 800) - 120);
 
   return (
@@ -61,7 +61,7 @@ export default function ConversationContextMenu({
         left: `${adjustedX}px`,
       }}
       data-context-menu="true"
-      className="fixed z-50 min-w-44 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 overflow-hidden animate-in fade-in zoom-in-95 duration-150 select-none"
+      className="fixed z-50 min-w-44 bg-white/95 dark:bg-[#161922]/95 backdrop-blur-xl rounded-xl shadow-xl shadow-[#0B1C30]/5 dark:shadow-black/40 border border-[#E5EEFF] dark:border-white/[0.12] p-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100 select-none"
       onClick={(e) => e.stopPropagation()}
     >
       <button
@@ -70,13 +70,13 @@ export default function ConversationContextMenu({
           onEdit();
           onClose();
         }}
-        className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/60 transition-colors text-left cursor-pointer"
+        className="flex items-center gap-2 w-full px-2.5 py-1.5 text-xs font-medium text-[#464555] dark:text-[#EFF0F6] hover:bg-[#4F46E5] hover:text-white rounded-lg transition-colors text-left cursor-pointer"
       >
-        <Edit3 className="w-4 h-4 text-gray-400 group-hover:text-indigo-500" />
-        <span>Chỉnh sửa</span>
+        <Edit3 className="w-3.5 h-3.5" />
+        <span>Chỉnh sửa tên</span>
       </button>
 
-      <div className="h-px bg-gray-100 my-1" />
+      <div className="h-px bg-[#E5EEFF] dark:bg-white/[0.08] my-1" />
 
       <button
         type="button"
@@ -84,9 +84,9 @@ export default function ConversationContextMenu({
           onDelete();
           onClose();
         }}
-        className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
+        className="flex items-center gap-2 w-full px-2.5 py-1.5 text-xs font-medium text-[#BA1A1A] dark:text-rose-400 hover:bg-[#BA1A1A] hover:text-white rounded-lg transition-colors text-left cursor-pointer"
       >
-        <Trash2 className="w-4 h-4 text-red-500" />
+        <Trash2 className="w-3.5 h-3.5" />
         <span>Xóa phiên học</span>
       </button>
     </div>

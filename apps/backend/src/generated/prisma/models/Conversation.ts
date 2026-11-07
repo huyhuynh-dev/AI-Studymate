@@ -195,6 +195,8 @@ export type ConversationWhereInput = {
   documents?: Prisma.DocumentListRelationFilter
   chat_sessions?: Prisma.ChatSessionListRelationFilter
   summaries?: Prisma.SummaryListRelationFilter
+  flashcard_decks?: Prisma.FlashcardDeckListRelationFilter
+  quizzes?: Prisma.QuizListRelationFilter
 }
 
 export type ConversationOrderByWithRelationInput = {
@@ -209,6 +211,8 @@ export type ConversationOrderByWithRelationInput = {
   documents?: Prisma.DocumentOrderByRelationAggregateInput
   chat_sessions?: Prisma.ChatSessionOrderByRelationAggregateInput
   summaries?: Prisma.SummaryOrderByRelationAggregateInput
+  flashcard_decks?: Prisma.FlashcardDeckOrderByRelationAggregateInput
+  quizzes?: Prisma.QuizOrderByRelationAggregateInput
 }
 
 export type ConversationWhereUniqueInput = Prisma.AtLeast<{
@@ -226,6 +230,8 @@ export type ConversationWhereUniqueInput = Prisma.AtLeast<{
   documents?: Prisma.DocumentListRelationFilter
   chat_sessions?: Prisma.ChatSessionListRelationFilter
   summaries?: Prisma.SummaryListRelationFilter
+  flashcard_decks?: Prisma.FlashcardDeckListRelationFilter
+  quizzes?: Prisma.QuizListRelationFilter
 }, "id">
 
 export type ConversationOrderByWithAggregationInput = {
@@ -262,6 +268,8 @@ export type ConversationCreateInput = {
   documents?: Prisma.DocumentCreateNestedManyWithoutConversationInput
   chat_sessions?: Prisma.ChatSessionCreateNestedManyWithoutConversationInput
   summaries?: Prisma.SummaryCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationUncheckedCreateInput = {
@@ -274,6 +282,8 @@ export type ConversationUncheckedCreateInput = {
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutConversationInput
   chat_sessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutConversationInput
   summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationUpdateInput = {
@@ -286,6 +296,8 @@ export type ConversationUpdateInput = {
   documents?: Prisma.DocumentUpdateManyWithoutConversationNestedInput
   chat_sessions?: Prisma.ChatSessionUpdateManyWithoutConversationNestedInput
   summaries?: Prisma.SummaryUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationUncheckedUpdateInput = {
@@ -298,6 +310,8 @@ export type ConversationUncheckedUpdateInput = {
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutConversationNestedInput
   chat_sessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutConversationNestedInput
   summaries?: Prisma.SummaryUncheckedUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationCreateManyInput = {
@@ -451,6 +465,34 @@ export type ConversationUncheckedUpdateManyWithoutSubjectNestedInput = {
   deleteMany?: Prisma.ConversationScalarWhereInput | Prisma.ConversationScalarWhereInput[]
 }
 
+export type ConversationCreateNestedOneWithoutFlashcard_decksInput = {
+  create?: Prisma.XOR<Prisma.ConversationCreateWithoutFlashcard_decksInput, Prisma.ConversationUncheckedCreateWithoutFlashcard_decksInput>
+  connectOrCreate?: Prisma.ConversationCreateOrConnectWithoutFlashcard_decksInput
+  connect?: Prisma.ConversationWhereUniqueInput
+}
+
+export type ConversationUpdateOneRequiredWithoutFlashcard_decksNestedInput = {
+  create?: Prisma.XOR<Prisma.ConversationCreateWithoutFlashcard_decksInput, Prisma.ConversationUncheckedCreateWithoutFlashcard_decksInput>
+  connectOrCreate?: Prisma.ConversationCreateOrConnectWithoutFlashcard_decksInput
+  upsert?: Prisma.ConversationUpsertWithoutFlashcard_decksInput
+  connect?: Prisma.ConversationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ConversationUpdateToOneWithWhereWithoutFlashcard_decksInput, Prisma.ConversationUpdateWithoutFlashcard_decksInput>, Prisma.ConversationUncheckedUpdateWithoutFlashcard_decksInput>
+}
+
+export type ConversationCreateNestedOneWithoutQuizzesInput = {
+  create?: Prisma.XOR<Prisma.ConversationCreateWithoutQuizzesInput, Prisma.ConversationUncheckedCreateWithoutQuizzesInput>
+  connectOrCreate?: Prisma.ConversationCreateOrConnectWithoutQuizzesInput
+  connect?: Prisma.ConversationWhereUniqueInput
+}
+
+export type ConversationUpdateOneRequiredWithoutQuizzesNestedInput = {
+  create?: Prisma.XOR<Prisma.ConversationCreateWithoutQuizzesInput, Prisma.ConversationUncheckedCreateWithoutQuizzesInput>
+  connectOrCreate?: Prisma.ConversationCreateOrConnectWithoutQuizzesInput
+  upsert?: Prisma.ConversationUpsertWithoutQuizzesInput
+  connect?: Prisma.ConversationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ConversationUpdateToOneWithWhereWithoutQuizzesInput, Prisma.ConversationUpdateWithoutQuizzesInput>, Prisma.ConversationUncheckedUpdateWithoutQuizzesInput>
+}
+
 export type ConversationCreateNestedOneWithoutDocumentsInput = {
   create?: Prisma.XOR<Prisma.ConversationCreateWithoutDocumentsInput, Prisma.ConversationUncheckedCreateWithoutDocumentsInput>
   connectOrCreate?: Prisma.ConversationCreateOrConnectWithoutDocumentsInput
@@ -502,6 +544,8 @@ export type ConversationCreateWithoutUserInput = {
   documents?: Prisma.DocumentCreateNestedManyWithoutConversationInput
   chat_sessions?: Prisma.ChatSessionCreateNestedManyWithoutConversationInput
   summaries?: Prisma.SummaryCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationUncheckedCreateWithoutUserInput = {
@@ -513,6 +557,8 @@ export type ConversationUncheckedCreateWithoutUserInput = {
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutConversationInput
   chat_sessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutConversationInput
   summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationCreateOrConnectWithoutUserInput = {
@@ -562,6 +608,8 @@ export type ConversationCreateWithoutSubjectInput = {
   documents?: Prisma.DocumentCreateNestedManyWithoutConversationInput
   chat_sessions?: Prisma.ChatSessionCreateNestedManyWithoutConversationInput
   summaries?: Prisma.SummaryCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationUncheckedCreateWithoutSubjectInput = {
@@ -573,6 +621,8 @@ export type ConversationUncheckedCreateWithoutSubjectInput = {
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutConversationInput
   chat_sessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutConversationInput
   summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationCreateOrConnectWithoutSubjectInput = {
@@ -601,6 +651,142 @@ export type ConversationUpdateManyWithWhereWithoutSubjectInput = {
   data: Prisma.XOR<Prisma.ConversationUpdateManyMutationInput, Prisma.ConversationUncheckedUpdateManyWithoutSubjectInput>
 }
 
+export type ConversationCreateWithoutFlashcard_decksInput = {
+  id?: string
+  title: string
+  created_at?: Date | string
+  updated_at?: Date | string
+  subject: Prisma.SubjectCreateNestedOneWithoutConversationsInput
+  user: Prisma.UserCreateNestedOneWithoutConversationsInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutConversationInput
+  chat_sessions?: Prisma.ChatSessionCreateNestedManyWithoutConversationInput
+  summaries?: Prisma.SummaryCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutConversationInput
+}
+
+export type ConversationUncheckedCreateWithoutFlashcard_decksInput = {
+  id?: string
+  subject_id: string
+  user_id: string
+  title: string
+  created_at?: Date | string
+  updated_at?: Date | string
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutConversationInput
+  chat_sessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutConversationInput
+  summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutConversationInput
+}
+
+export type ConversationCreateOrConnectWithoutFlashcard_decksInput = {
+  where: Prisma.ConversationWhereUniqueInput
+  create: Prisma.XOR<Prisma.ConversationCreateWithoutFlashcard_decksInput, Prisma.ConversationUncheckedCreateWithoutFlashcard_decksInput>
+}
+
+export type ConversationUpsertWithoutFlashcard_decksInput = {
+  update: Prisma.XOR<Prisma.ConversationUpdateWithoutFlashcard_decksInput, Prisma.ConversationUncheckedUpdateWithoutFlashcard_decksInput>
+  create: Prisma.XOR<Prisma.ConversationCreateWithoutFlashcard_decksInput, Prisma.ConversationUncheckedCreateWithoutFlashcard_decksInput>
+  where?: Prisma.ConversationWhereInput
+}
+
+export type ConversationUpdateToOneWithWhereWithoutFlashcard_decksInput = {
+  where?: Prisma.ConversationWhereInput
+  data: Prisma.XOR<Prisma.ConversationUpdateWithoutFlashcard_decksInput, Prisma.ConversationUncheckedUpdateWithoutFlashcard_decksInput>
+}
+
+export type ConversationUpdateWithoutFlashcard_decksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  subject?: Prisma.SubjectUpdateOneRequiredWithoutConversationsNestedInput
+  user?: Prisma.UserUpdateOneRequiredWithoutConversationsNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutConversationNestedInput
+  chat_sessions?: Prisma.ChatSessionUpdateManyWithoutConversationNestedInput
+  summaries?: Prisma.SummaryUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutConversationNestedInput
+}
+
+export type ConversationUncheckedUpdateWithoutFlashcard_decksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  subject_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutConversationNestedInput
+  chat_sessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutConversationNestedInput
+  summaries?: Prisma.SummaryUncheckedUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutConversationNestedInput
+}
+
+export type ConversationCreateWithoutQuizzesInput = {
+  id?: string
+  title: string
+  created_at?: Date | string
+  updated_at?: Date | string
+  subject: Prisma.SubjectCreateNestedOneWithoutConversationsInput
+  user: Prisma.UserCreateNestedOneWithoutConversationsInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutConversationInput
+  chat_sessions?: Prisma.ChatSessionCreateNestedManyWithoutConversationInput
+  summaries?: Prisma.SummaryCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutConversationInput
+}
+
+export type ConversationUncheckedCreateWithoutQuizzesInput = {
+  id?: string
+  subject_id: string
+  user_id: string
+  title: string
+  created_at?: Date | string
+  updated_at?: Date | string
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutConversationInput
+  chat_sessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutConversationInput
+  summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutConversationInput
+}
+
+export type ConversationCreateOrConnectWithoutQuizzesInput = {
+  where: Prisma.ConversationWhereUniqueInput
+  create: Prisma.XOR<Prisma.ConversationCreateWithoutQuizzesInput, Prisma.ConversationUncheckedCreateWithoutQuizzesInput>
+}
+
+export type ConversationUpsertWithoutQuizzesInput = {
+  update: Prisma.XOR<Prisma.ConversationUpdateWithoutQuizzesInput, Prisma.ConversationUncheckedUpdateWithoutQuizzesInput>
+  create: Prisma.XOR<Prisma.ConversationCreateWithoutQuizzesInput, Prisma.ConversationUncheckedCreateWithoutQuizzesInput>
+  where?: Prisma.ConversationWhereInput
+}
+
+export type ConversationUpdateToOneWithWhereWithoutQuizzesInput = {
+  where?: Prisma.ConversationWhereInput
+  data: Prisma.XOR<Prisma.ConversationUpdateWithoutQuizzesInput, Prisma.ConversationUncheckedUpdateWithoutQuizzesInput>
+}
+
+export type ConversationUpdateWithoutQuizzesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  subject?: Prisma.SubjectUpdateOneRequiredWithoutConversationsNestedInput
+  user?: Prisma.UserUpdateOneRequiredWithoutConversationsNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutConversationNestedInput
+  chat_sessions?: Prisma.ChatSessionUpdateManyWithoutConversationNestedInput
+  summaries?: Prisma.SummaryUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutConversationNestedInput
+}
+
+export type ConversationUncheckedUpdateWithoutQuizzesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  subject_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutConversationNestedInput
+  chat_sessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutConversationNestedInput
+  summaries?: Prisma.SummaryUncheckedUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutConversationNestedInput
+}
+
 export type ConversationCreateWithoutDocumentsInput = {
   id?: string
   title: string
@@ -610,6 +796,8 @@ export type ConversationCreateWithoutDocumentsInput = {
   user: Prisma.UserCreateNestedOneWithoutConversationsInput
   chat_sessions?: Prisma.ChatSessionCreateNestedManyWithoutConversationInput
   summaries?: Prisma.SummaryCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationUncheckedCreateWithoutDocumentsInput = {
@@ -621,6 +809,8 @@ export type ConversationUncheckedCreateWithoutDocumentsInput = {
   updated_at?: Date | string
   chat_sessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutConversationInput
   summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationCreateOrConnectWithoutDocumentsInput = {
@@ -648,6 +838,8 @@ export type ConversationUpdateWithoutDocumentsInput = {
   user?: Prisma.UserUpdateOneRequiredWithoutConversationsNestedInput
   chat_sessions?: Prisma.ChatSessionUpdateManyWithoutConversationNestedInput
   summaries?: Prisma.SummaryUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationUncheckedUpdateWithoutDocumentsInput = {
@@ -659,6 +851,8 @@ export type ConversationUncheckedUpdateWithoutDocumentsInput = {
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chat_sessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutConversationNestedInput
   summaries?: Prisma.SummaryUncheckedUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationCreateWithoutChat_sessionsInput = {
@@ -670,6 +864,8 @@ export type ConversationCreateWithoutChat_sessionsInput = {
   user: Prisma.UserCreateNestedOneWithoutConversationsInput
   documents?: Prisma.DocumentCreateNestedManyWithoutConversationInput
   summaries?: Prisma.SummaryCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationUncheckedCreateWithoutChat_sessionsInput = {
@@ -681,6 +877,8 @@ export type ConversationUncheckedCreateWithoutChat_sessionsInput = {
   updated_at?: Date | string
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutConversationInput
   summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationCreateOrConnectWithoutChat_sessionsInput = {
@@ -708,6 +906,8 @@ export type ConversationUpdateWithoutChat_sessionsInput = {
   user?: Prisma.UserUpdateOneRequiredWithoutConversationsNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutConversationNestedInput
   summaries?: Prisma.SummaryUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationUncheckedUpdateWithoutChat_sessionsInput = {
@@ -719,6 +919,8 @@ export type ConversationUncheckedUpdateWithoutChat_sessionsInput = {
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutConversationNestedInput
   summaries?: Prisma.SummaryUncheckedUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationCreateWithoutSummariesInput = {
@@ -730,6 +932,8 @@ export type ConversationCreateWithoutSummariesInput = {
   user: Prisma.UserCreateNestedOneWithoutConversationsInput
   documents?: Prisma.DocumentCreateNestedManyWithoutConversationInput
   chat_sessions?: Prisma.ChatSessionCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationUncheckedCreateWithoutSummariesInput = {
@@ -741,6 +945,8 @@ export type ConversationUncheckedCreateWithoutSummariesInput = {
   updated_at?: Date | string
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutConversationInput
   chat_sessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutConversationInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutConversationInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutConversationInput
 }
 
 export type ConversationCreateOrConnectWithoutSummariesInput = {
@@ -768,6 +974,8 @@ export type ConversationUpdateWithoutSummariesInput = {
   user?: Prisma.UserUpdateOneRequiredWithoutConversationsNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutConversationNestedInput
   chat_sessions?: Prisma.ChatSessionUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationUncheckedUpdateWithoutSummariesInput = {
@@ -779,6 +987,8 @@ export type ConversationUncheckedUpdateWithoutSummariesInput = {
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutConversationNestedInput
   chat_sessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationCreateManyUserInput = {
@@ -798,6 +1008,8 @@ export type ConversationUpdateWithoutUserInput = {
   documents?: Prisma.DocumentUpdateManyWithoutConversationNestedInput
   chat_sessions?: Prisma.ChatSessionUpdateManyWithoutConversationNestedInput
   summaries?: Prisma.SummaryUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationUncheckedUpdateWithoutUserInput = {
@@ -809,6 +1021,8 @@ export type ConversationUncheckedUpdateWithoutUserInput = {
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutConversationNestedInput
   chat_sessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutConversationNestedInput
   summaries?: Prisma.SummaryUncheckedUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationUncheckedUpdateManyWithoutUserInput = {
@@ -836,6 +1050,8 @@ export type ConversationUpdateWithoutSubjectInput = {
   documents?: Prisma.DocumentUpdateManyWithoutConversationNestedInput
   chat_sessions?: Prisma.ChatSessionUpdateManyWithoutConversationNestedInput
   summaries?: Prisma.SummaryUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationUncheckedUpdateWithoutSubjectInput = {
@@ -847,6 +1063,8 @@ export type ConversationUncheckedUpdateWithoutSubjectInput = {
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutConversationNestedInput
   chat_sessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutConversationNestedInput
   summaries?: Prisma.SummaryUncheckedUpdateManyWithoutConversationNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutConversationNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutConversationNestedInput
 }
 
 export type ConversationUncheckedUpdateManyWithoutSubjectInput = {
@@ -866,12 +1084,16 @@ export type ConversationCountOutputType = {
   documents: number
   chat_sessions: number
   summaries: number
+  flashcard_decks: number
+  quizzes: number
 }
 
 export type ConversationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   documents?: boolean | ConversationCountOutputTypeCountDocumentsArgs
   chat_sessions?: boolean | ConversationCountOutputTypeCountChat_sessionsArgs
   summaries?: boolean | ConversationCountOutputTypeCountSummariesArgs
+  flashcard_decks?: boolean | ConversationCountOutputTypeCountFlashcard_decksArgs
+  quizzes?: boolean | ConversationCountOutputTypeCountQuizzesArgs
 }
 
 /**
@@ -905,6 +1127,20 @@ export type ConversationCountOutputTypeCountSummariesArgs<ExtArgs extends runtim
   where?: Prisma.SummaryWhereInput
 }
 
+/**
+ * ConversationCountOutputType without action
+ */
+export type ConversationCountOutputTypeCountFlashcard_decksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FlashcardDeckWhereInput
+}
+
+/**
+ * ConversationCountOutputType without action
+ */
+export type ConversationCountOutputTypeCountQuizzesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.QuizWhereInput
+}
+
 
 export type ConversationSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -918,6 +1154,8 @@ export type ConversationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   documents?: boolean | Prisma.Conversation$documentsArgs<ExtArgs>
   chat_sessions?: boolean | Prisma.Conversation$chat_sessionsArgs<ExtArgs>
   summaries?: boolean | Prisma.Conversation$summariesArgs<ExtArgs>
+  flashcard_decks?: boolean | Prisma.Conversation$flashcard_decksArgs<ExtArgs>
+  quizzes?: boolean | Prisma.Conversation$quizzesArgs<ExtArgs>
   _count?: boolean | Prisma.ConversationCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["conversation"]>
 
@@ -959,6 +1197,8 @@ export type ConversationInclude<ExtArgs extends runtime.Types.Extensions.Interna
   documents?: boolean | Prisma.Conversation$documentsArgs<ExtArgs>
   chat_sessions?: boolean | Prisma.Conversation$chat_sessionsArgs<ExtArgs>
   summaries?: boolean | Prisma.Conversation$summariesArgs<ExtArgs>
+  flashcard_decks?: boolean | Prisma.Conversation$flashcard_decksArgs<ExtArgs>
+  quizzes?: boolean | Prisma.Conversation$quizzesArgs<ExtArgs>
   _count?: boolean | Prisma.ConversationCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ConversationIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -978,6 +1218,8 @@ export type $ConversationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     documents: Prisma.$DocumentPayload<ExtArgs>[]
     chat_sessions: Prisma.$ChatSessionPayload<ExtArgs>[]
     summaries: Prisma.$SummaryPayload<ExtArgs>[]
+    flashcard_decks: Prisma.$FlashcardDeckPayload<ExtArgs>[]
+    quizzes: Prisma.$QuizPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1385,6 +1627,8 @@ export interface Prisma__ConversationClient<T, Null = never, ExtArgs extends run
   documents<T extends Prisma.Conversation$documentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Conversation$documentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   chat_sessions<T extends Prisma.Conversation$chat_sessionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Conversation$chat_sessionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ChatSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   summaries<T extends Prisma.Conversation$summariesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Conversation$summariesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SummaryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  flashcard_decks<T extends Prisma.Conversation$flashcard_decksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Conversation$flashcard_decksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  quizzes<T extends Prisma.Conversation$quizzesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Conversation$quizzesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$QuizPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1890,6 +2134,54 @@ export type Conversation$summariesArgs<ExtArgs extends runtime.Types.Extensions.
   take?: number
   skip?: number
   distinct?: Prisma.SummaryScalarFieldEnum | Prisma.SummaryScalarFieldEnum[]
+}
+
+/**
+ * Conversation.flashcard_decks
+ */
+export type Conversation$flashcard_decksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FlashcardDeck
+   */
+  select?: Prisma.FlashcardDeckSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FlashcardDeck
+   */
+  omit?: Prisma.FlashcardDeckOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FlashcardDeckInclude<ExtArgs> | null
+  where?: Prisma.FlashcardDeckWhereInput
+  orderBy?: Prisma.FlashcardDeckOrderByWithRelationInput | Prisma.FlashcardDeckOrderByWithRelationInput[]
+  cursor?: Prisma.FlashcardDeckWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FlashcardDeckScalarFieldEnum | Prisma.FlashcardDeckScalarFieldEnum[]
+}
+
+/**
+ * Conversation.quizzes
+ */
+export type Conversation$quizzesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Quiz
+   */
+  select?: Prisma.QuizSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Quiz
+   */
+  omit?: Prisma.QuizOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.QuizInclude<ExtArgs> | null
+  where?: Prisma.QuizWhereInput
+  orderBy?: Prisma.QuizOrderByWithRelationInput | Prisma.QuizOrderByWithRelationInput[]
+  cursor?: Prisma.QuizWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.QuizScalarFieldEnum | Prisma.QuizScalarFieldEnum[]
 }
 
 /**

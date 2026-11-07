@@ -8,7 +8,6 @@ import {
   Mail,
   Lock,
   ShieldCheck,
-  Sparkles,
   AlertCircle,
   CheckCircle2,
 } from 'lucide-react';
@@ -19,7 +18,6 @@ import AuthDivider from '@/components/auth/AuthDivider';
 import AuthInput from '@/components/auth/AuthInput';
 import AuthSubmitButton from '@/components/auth/AuthSubmitButton';
 import AuthSwitchLink from '@/components/auth/AuthSwitchLink';
-import AuthInfoBox from '@/components/auth/AuthInfoBox';
 import AuthCheckbox from '@/components/auth/AuthCheckbox';
 import PasswordStrength from '@/components/auth/PasswordStrength';
 import { handleGoogleLogin, handleRegister } from '@/services/auth.api';
@@ -111,7 +109,9 @@ export default function RegisterPage() {
     }
 
     if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(password)) {
-      setErrorMessage('Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&).');
+      setErrorMessage(
+        'Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&).'
+      );
       return;
     }
 
@@ -149,16 +149,10 @@ export default function RegisterPage() {
 
       // Điều hướng người dùng sang trang xác thực email kèm email vừa đăng ký
       setTimeout(() => {
-        router.push(`/auth/email-verification?email=${encodeURIComponent(trimmedEmail)}`);
+        router.push(
+          `/auth/email-verification?email=${encodeURIComponent(trimmedEmail)}`
+        );
       }, 1000);
-
-      /* Code cũ điều hướng trực tiếp về trang chủ khi Backend còn cấp token tự động sau khi đăng ký:
-      // Redirect user to home
-      setTimeout(() => {
-        router.push('/');
-        router.refresh();
-      }, 700);
-      */
     } catch (err: any) {
       setErrorMessage(
         err.message || 'Đã có lỗi xảy ra. Vui lòng kiểm tra lại kết nối.'
@@ -169,10 +163,10 @@ export default function RegisterPage() {
 
   return (
     <>
-      {/* Card Header */}
-      <AuthCardHeader variant="register" />
+      {/* Card Header (Khung định danh tinh gọn, loại bỏ các badge tiếp thị rườm rà) */}
+      <AuthCardHeader variant="register" showBadge={false} />
 
-      {/* Google Button */}
+      {/* Google OAuth (Secondary Action theo quy tắc 1 Primary CTA) */}
       <div className="mt-7">
         <GoogleButton
           label="Tiếp tục với Google"
@@ -182,23 +176,35 @@ export default function RegisterPage() {
         />
       </div>
 
-      {/* Divider */}
-      <AuthDivider text="Hoặc đăng ký bằng Email" />
+      {/* Hairline Divider thanh lịch */}
+      <AuthDivider text="HOẶC TIẾP TỤC VỚI EMAIL" />
 
       {/* Form Submission */}
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Error / Success Feedback Banners */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Apple Callout Feedback Banners */}
         {errorMessage && (
-          <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-sm text-red-700 animate-in fade-in">
-            <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-500" />
-            <span className="flex-1 leading-snug">{errorMessage}</span>
+          <div
+            role="alert"
+            className="p-3.5 rounded-xl bg-red-500/10 dark:bg-red-500/15 border border-red-500/20 text-red-700 dark:text-red-300 flex items-start gap-2.5 text-[13px] leading-snug animate-in fade-in duration-200"
+          >
+            <AlertCircle
+              className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
+            <span className="flex-1 font-medium">{errorMessage}</span>
           </div>
         )}
 
         {successMessage && (
-          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-sm text-emerald-700 animate-in fade-in">
-            <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-500" />
-            <span className="flex-1 leading-snug">{successMessage}</span>
+          <div
+            role="alert"
+            className="p-3.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-start gap-2.5 text-[13px] leading-snug animate-in fade-in duration-200"
+          >
+            <CheckCircle2
+              className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
+            <span className="flex-1 font-medium">{successMessage}</span>
           </div>
         )}
 
@@ -213,7 +219,7 @@ export default function RegisterPage() {
           onChange={(e) => setName(e.target.value)}
           disabled={isLoading || isGoogleLoading}
           placeholder="Nguyễn Văn A"
-          icon={<User size={18} />}
+          icon={<User className="w-4 h-4" strokeWidth={1.8} />}
         />
 
         {/* Email */}
@@ -227,7 +233,7 @@ export default function RegisterPage() {
           onChange={(e) => setEmail(e.target.value)}
           disabled={isLoading || isGoogleLoading}
           placeholder="nguyen_van_a@student.edu.vn"
-          icon={<Mail size={18} />}
+          icon={<Mail className="w-4 h-4" strokeWidth={1.8} />}
         />
 
         {/* Password */}
@@ -242,9 +248,10 @@ export default function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             disabled={isLoading || isGoogleLoading}
             placeholder="Tối thiểu 8 ký tự"
-            icon={<Lock size={18} />}
+            icon={<Lock className="w-4 h-4" strokeWidth={1.8} />}
             showPasswordToggle
           />
+          {/* Dynamic Password Strength Indicator */}
           <PasswordStrength
             value={passwordStrength.text}
             level={passwordStrength.level}
@@ -262,43 +269,43 @@ export default function RegisterPage() {
           onChange={(e) => setConfirmPassword(e.target.value)}
           disabled={isLoading || isGoogleLoading}
           placeholder="Nhập lại mật khẩu"
-          icon={<ShieldCheck size={18} />}
+          icon={<ShieldCheck className="w-4 h-4" strokeWidth={1.8} />}
           showPasswordToggle
         />
 
         {/* Terms Checkbox */}
-        <div className="pt-1">
+        <div className="pt-0.5">
           <AuthCheckbox
             name="terms"
             checked={agreedToTerms}
             onChange={(e) => setAgreedToTerms(e.target.checked)}
             disabled={isLoading || isGoogleLoading}
             label={
-              <>
+              <span>
                 Tôi đồng ý với{' '}
                 <Link
                   href="/terms"
-                  className="text-indigo-600 hover:underline font-medium"
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
                 >
                   Điều khoản dịch vụ
                 </Link>{' '}
                 và{' '}
                 <Link
                   href="/privacy"
-                  className="text-indigo-600 hover:underline font-medium"
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
                 >
                   Chính sách bảo vệ dữ liệu học tập
                 </Link>{' '}
                 của AI StudyMate.
-              </>
+              </span>
             }
           />
         </div>
 
-        {/* Submit Button */}
-        <div className="mt-6">
+        {/* The 1 Primary CTA Button */}
+        <div className="pt-2">
           <AuthSubmitButton
-            label="Tạo tài khoản học tập"
+            label="Tạo tài khoản"
             type="submit"
             isLoading={isLoading}
             loadingLabel="Đang tạo tài khoản..."
@@ -314,12 +321,10 @@ export default function RegisterPage() {
         href="/auth/login"
       />
 
-      {/* Info Box */}
-      <AuthInfoBox
-        icon={<Sparkles size={16} className="text-amber-400" />}
-        text="Miễn phí hoàn toàn cho sinh viên • Không cần thẻ tín dụng"
-        variant="plain"
-      />
+      {/* Deferent Footnote (Thay thế hộp banner lấp lánh bằng dòng ghi chú tin cậy tinh tế) */}
+      <p className="mt-4 text-center text-[12px] text-gray-400 dark:text-gray-500 select-none">
+        Miễn phí hoàn toàn cho sinh viên • Không cần thẻ tín dụng
+      </p>
     </>
   );
 }

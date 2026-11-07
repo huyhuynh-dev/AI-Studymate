@@ -10,6 +10,9 @@ export * from "./DeleteConversationModal";
 export { default as ConversationContextMenu } from "./ConversationContextMenu";
 export * from "./ConversationContextMenu";
 
+export { default as ConversationHeader } from "./ConversationHeader";
+export * from "./ConversationHeader";
+
 export { default as ConversationHeaderRoutes } from "./ConversationHeaderRoutes";
 export * from "./ConversationHeaderRoutes";
 
@@ -22,8 +25,8 @@ export * from "./DocumentsTab";
 export { default as DocumentImageViewer } from "./DocumentImageViewer";
 export * from "./DocumentImageViewer";
 
-export { default as SummaryTab } from "./SummaryTab";
-export * from "./SummaryTab";
+export { default as SummaryTab } from "./SummaryTab/SummaryTab";
+export * from "./SummaryTab/SummaryTab";
 
 export { default as FlashcardsTab } from "./FlashcardsTab";
 export * from "./FlashcardsTab";

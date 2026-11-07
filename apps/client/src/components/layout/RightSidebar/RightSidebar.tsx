@@ -569,9 +569,9 @@ export default function RightSidebar({
       }}
       className={`${
         isFullscreen
-          ? "fixed inset-0 z-50 flex h-screen w-screen flex-col border-none bg-white select-none animate-in fade-in-50 duration-150 overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-          : `relative flex h-full flex-col border-l border-gray-100 bg-white select-none ${
-              isDragging ? "transition-none" : "transition-all duration-300 ease-in-out"
+          ? "fixed inset-0 z-50 flex h-screen w-screen flex-col border-none bg-white dark:bg-[#12151C] text-[#0B1C30] dark:text-[#EFF0F6] select-none animate-in fade-in-50 duration-150 overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          : `relative flex h-full flex-col border-l border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] text-[#0B1C30] dark:text-[#EFF0F6] select-none ${
+              isDragging ? "transition-none" : "transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
             } ${
               isCollapsed
                 ? "w-0 border-l-0 overflow-hidden opacity-0 pointer-events-none"
@@ -589,8 +589,8 @@ export default function RightSidebar({
           <div
             className={`h-full w-1 transition-colors duration-150 ${
               isDragging
-                ? "bg-indigo-600 shadow-xs"
-                : "bg-transparent group-hover:bg-indigo-400/80"
+                ? "bg-[#4F46E5] shadow-xs"
+                : "bg-transparent group-hover:bg-[#4F46E5]/70"
             }`}
           />
         </div>
@@ -682,7 +682,7 @@ export default function RightSidebar({
         {/* Placeholder trong layout flow để không gián đoạn giao diện nền */}
         <div
           style={{ width: `${sidebarWidth}px` }}
-          className="shrink-0 h-full border-l border-gray-100 bg-white"
+          className="shrink-0 h-full border-l border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C]"
         />
         {createPortal(sidebarContent, document.body)}
       </>

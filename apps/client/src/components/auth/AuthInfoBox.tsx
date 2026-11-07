@@ -3,19 +3,23 @@ import React from 'react';
 export interface AuthInfoBoxProps {
   icon: React.ReactNode;
   text: string;
-  variant?: 'bordered' | 'plain'; // 'bordered' has border/bg, 'plain' is just text
+  variant?: 'bordered' | 'plain';
+  className?: string;
 }
 
 export function AuthInfoBox({
   icon,
   text,
   variant = 'bordered',
+  className = '',
 }: AuthInfoBoxProps) {
   if (variant === 'plain') {
     return (
-      <div className="mt-4 text-center text-sm text-gray-500">
+      <div
+        className={`mt-4 text-center text-[12px] text-gray-500 dark:text-gray-400 select-none ${className}`.trim()}
+      >
         <span className="inline-flex items-center justify-center gap-1.5">
-          <span className="flex-shrink-0">{icon}</span>
+          <span className="shrink-0">{icon}</span>
           <span>{text}</span>
         </span>
       </div>
@@ -23,9 +27,13 @@ export function AuthInfoBox({
   }
 
   return (
-    <div className="mt-5 flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-      <span className="flex-shrink-0 mt-0.5">{icon}</span>
-      <p className="text-xs text-gray-500 leading-relaxed">{text}</p>
+    <div
+      className={`mt-6 p-3 rounded-xl bg-gray-50/70 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.06] flex items-center gap-2.5 ${className}`.trim()}
+    >
+      <span className="shrink-0">{icon}</span>
+      <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed select-none">
+        {text}
+      </p>
     </div>
   );
 }

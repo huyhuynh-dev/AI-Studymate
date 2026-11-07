@@ -437,14 +437,6 @@ export type DocumentChunkCreatepage_numbersInput = {
   set: number[]
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type DocumentChunkUpdatepage_numbersInput = {
   set?: number[]
   push?: number | number[]

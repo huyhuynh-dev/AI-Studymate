@@ -59,26 +59,26 @@ export default function DeleteWorkspaceModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-      {/* Backdrop */}
+      {/* Apple Translucent Dimming Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-200"
+        className="fixed inset-0 bg-[#0B1C30]/40 backdrop-blur-md transition-opacity duration-200"
         aria-hidden="true"
         onClick={handleClose}
       />
 
-      {/* Modal Dialog Card */}
-      <div className="relative w-full max-w-md transform rounded-2xl bg-white p-6 shadow-2xl transition-all border border-gray-100 z-10">
+      {/* Modal Dialog Surface */}
+      <div className="relative w-full max-w-md transform rounded-[22px] bg-white dark:bg-[#12151C] p-6 shadow-2xl transition-all border border-[#E5EEFF] dark:border-white/[0.12] z-10 select-none">
         {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-gray-100">
+        <div className="flex items-start justify-between pb-4 border-b border-[#E5EEFF] dark:border-white/[0.08]">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 shadow-2xs shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-[#BA1A1A] dark:text-[#EF4444] shrink-0 shadow-2xs">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900">
+              <h3 className="text-base font-bold text-[#0B1C30] dark:text-white tracking-tight">
                 Xác nhận xóa không gian
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[#777587] dark:text-neutral-400">
                 Hành động này không thể hoàn tác
               </p>
             </div>
@@ -88,37 +88,37 @@ export default function DeleteWorkspaceModal({
             type="button"
             disabled={isDeleting}
             onClick={handleClose}
-            aria-label="Đóng modal"
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer disabled:opacity-40"
+            aria-label="Đóng"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F8F9FF] dark:bg-white/[0.08] text-[#777587] hover:text-[#0B1C30] dark:hover:text-white transition-colors cursor-pointer disabled:opacity-40"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
 
         {/* Content */}
         <div className="mt-4 space-y-3">
-          <p className="text-sm text-gray-600 leading-relaxed">
+          <p className="text-sm text-[#464555] dark:text-neutral-300 leading-relaxed">
             Bạn có chắc chắn muốn xóa không gian học tập{" "}
-            <span className="font-semibold text-gray-900 break-words">
+            <span className="font-bold text-[#0B1C30] dark:text-white break-words">
               &ldquo;{subject.name}&rdquo;
             </span>
-            ? Mọi tài liệu và dữ liệu liên quan sẽ bị loại bỏ khỏi không gian này.
+            ? Mọi tài liệu và ghi chú liên quan sẽ bị xóa vĩnh viễn khỏi không gian này.
           </p>
 
           {error && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-xs text-rose-700">
+            <div className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/20 p-3 text-xs text-[#BA1A1A] dark:text-rose-400">
               {error}
             </div>
           )}
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2.5 pt-4 mt-4 border-t border-gray-100">
+        <div className="flex items-center justify-end gap-2.5 pt-4 mt-4 border-t border-[#E5EEFF] dark:border-white/[0.08]">
           <button
             type="button"
             disabled={isDeleting}
             onClick={handleClose}
-            className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer disabled:opacity-50"
+            className="rounded-xl px-4 py-2 text-xs font-semibold text-[#464555] dark:text-neutral-300 bg-[#F8F9FF] dark:bg-white/[0.06] hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] active:scale-98 transition-all cursor-pointer disabled:opacity-50"
           >
             Hủy
           </button>
@@ -126,7 +126,7 @@ export default function DeleteWorkspaceModal({
             type="button"
             disabled={isDeleting}
             onClick={handleDelete}
-            className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#BA1A1A] hover:bg-[#93000A] px-4 py-2 text-xs font-semibold text-white shadow-xs disabled:opacity-50 disabled:cursor-not-allowed active:scale-98 transition-all cursor-pointer"
           >
             {isDeleting ? (
               <>

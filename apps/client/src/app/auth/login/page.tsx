@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { AtSign, Lock, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AtSign, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 import AuthCardHeader from '@/components/auth/AuthCardHeader';
 import GoogleButton from '@/components/auth/GoogleButton';
@@ -11,7 +11,6 @@ import AuthDivider from '@/components/auth/AuthDivider';
 import AuthInput from '@/components/auth/AuthInput';
 import AuthSubmitButton from '@/components/auth/AuthSubmitButton';
 import AuthSwitchLink from '@/components/auth/AuthSwitchLink';
-import AuthInfoBox from '@/components/auth/AuthInfoBox';
 import AuthCheckbox from '@/components/auth/AuthCheckbox';
 import { handleGoogleLogin, handleEmailLogin } from '@/services/auth.api';
 
@@ -100,7 +99,9 @@ export default function LoginPage() {
           result.error?.toLowerCase().includes('email is not verified');
 
         if (isEmailNotVerified) {
-          router.push(`/auth/email-verification?email=${encodeURIComponent(trimmedEmail)}`);
+          router.push(
+            `/auth/email-verification?email=${encodeURIComponent(trimmedEmail)}`
+          );
           return;
         }
 
@@ -113,7 +114,9 @@ export default function LoginPage() {
 
       const rawRedirect = searchParams.get('redirect');
       const redirectTarget =
-        rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+        rawRedirect &&
+        rawRedirect.startsWith('/') &&
+        !rawRedirect.startsWith('//')
           ? rawRedirect
           : '/home';
 
@@ -131,7 +134,9 @@ export default function LoginPage() {
           err.message?.toLowerCase().includes('email is not verified'));
 
       if (isEmailNotVerified) {
-        router.push(`/auth/email-verification?email=${encodeURIComponent(trimmedEmail)}`);
+        router.push(
+          `/auth/email-verification?email=${encodeURIComponent(trimmedEmail)}`
+        );
         return;
       }
 
@@ -144,10 +149,10 @@ export default function LoginPage() {
 
   return (
     <>
-      {/* Card Header */}
-      <AuthCardHeader variant="login" />
+      {/* Card Header (Khung định danh tinh gọn, loại bỏ các badge tiếp thị rườm rà) */}
+      <AuthCardHeader variant="login" showBadge={false} />
 
-      {/* Google Button */}
+      {/* Google OAuth (Secondary Action theo quy tắc 1 Primary CTA của Apple) */}
       <div className="mt-7">
         <GoogleButton
           label="Tiếp tục với Google"
@@ -157,23 +162,35 @@ export default function LoginPage() {
         />
       </div>
 
-      {/* Divider */}
-      <AuthDivider text="HOẶC ĐĂNG NHẬP BẰNG EMAIL" />
+      {/* Hairline Divider thanh lịch, nhường chỗ cho form đăng nhập */}
+      <AuthDivider text="HOẶC TIẾP TỤC VỚI EMAIL" />
 
       {/* Form Submission */}
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Error / Success Feedback Banners */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Apple Callout Feedback Banners */}
         {errorMessage && (
-          <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-sm text-red-700 animate-in fade-in">
-            <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-500" />
-            <span className="flex-1 leading-snug">{errorMessage}</span>
+          <div
+            role="alert"
+            className="p-3.5 rounded-xl bg-red-500/10 dark:bg-red-500/15 border border-red-500/20 text-red-700 dark:text-red-300 flex items-start gap-2.5 text-[13px] leading-snug animate-in fade-in duration-200"
+          >
+            <AlertCircle
+              className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
+            <span className="flex-1 font-medium">{errorMessage}</span>
           </div>
         )}
 
         {successMessage && (
-          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-sm text-emerald-700 animate-in fade-in">
-            <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-emerald-500" />
-            <span className="flex-1 leading-snug">{successMessage}</span>
+          <div
+            role="alert"
+            className="p-3.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-start gap-2.5 text-[13px] leading-snug animate-in fade-in duration-200"
+          >
+            <CheckCircle2
+              className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5"
+              strokeWidth={2}
+            />
+            <span className="flex-1 font-medium">{successMessage}</span>
           </div>
         )}
 
@@ -188,7 +205,7 @@ export default function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
           disabled={isLoading || isGoogleLoading}
           placeholder="nguyen_van_a@student.edu.vn"
-          icon={<AtSign size={18} />}
+          icon={<AtSign className="w-4 h-4" strokeWidth={1.8} />}
         />
 
         {/* Password Input */}
@@ -202,12 +219,12 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           disabled={isLoading || isGoogleLoading}
           placeholder="••••••••"
-          icon={<Lock size={18} />}
+          icon={<Lock className="w-4 h-4" strokeWidth={1.8} />}
           showPasswordToggle
           rightLabel={
             <Link
               href="/auth/reset-password"
-              className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+              className="text-[12px] font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors focus-visible:outline-none focus-visible:underline"
             >
               Quên mật khẩu?
             </Link>
@@ -215,7 +232,7 @@ export default function LoginPage() {
         />
 
         {/* Remember Me */}
-        <div className="pt-1">
+        <div className="pt-0.5">
           <AuthCheckbox
             label="Ghi nhớ đăng nhập trên thiết bị này"
             name="rememberMe"
@@ -225,10 +242,10 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* Submit Button */}
-        <div className="mt-6">
+        {/* The 1 Primary CTA Button */}
+        <div className="pt-2">
           <AuthSubmitButton
-            label="Đăng nhập vào góc học tập"
+            label="Đăng nhập"
             type="submit"
             isLoading={isLoading}
             loadingLabel="Đang đăng nhập..."
@@ -242,13 +259,6 @@ export default function LoginPage() {
         text="Chưa có tài khoản?"
         linkText="Đăng ký ngay miễn phí"
         href="/auth/register"
-      />
-
-      {/* Info Box */}
-      <AuthInfoBox
-        icon={<ShieldCheck size={18} className="text-emerald-500" />}
-        text="Dữ liệu giáo trình, ghi chú và bài nghiên cứu của bạn được bảo mật tuyệt đối & không chia sẻ với bên thứ ba."
-        variant="bordered"
       />
     </>
   );

@@ -9,7 +9,50 @@
 * 🟢 You can import this file directly.
 */
 
+export const CardTypeEnum = {
+  basic: 'basic',
+  cloze: 'cloze',
+  type_in: 'type_in'
+} as const
+
+export type CardTypeEnum = (typeof CardTypeEnum)[keyof typeof CardTypeEnum]
 
 
-// This file is empty because there are no enums in the schema.
-export {}
+export const CardStateEnum = {
+  new: 'new',
+  learning: 'learning',
+  review: 'review',
+  relearning: 'relearning'
+} as const
+
+export type CardStateEnum = (typeof CardStateEnum)[keyof typeof CardStateEnum]
+
+
+export const QuestionTypeEnum = {
+  single_choice: 'single_choice',
+  multiple_choice: 'multiple_choice',
+  true_false: 'true_false',
+  short_answer: 'short_answer',
+  essay: 'essay'
+} as const
+
+export type QuestionTypeEnum = (typeof QuestionTypeEnum)[keyof typeof QuestionTypeEnum]
+
+
+export const AttemptStatusEnum = {
+  in_progress: 'in_progress',
+  grading: 'grading',
+  submitted: 'submitted'
+} as const
+
+export type AttemptStatusEnum = (typeof AttemptStatusEnum)[keyof typeof AttemptStatusEnum]
+
+
+export const EvaluationStatusEnum = {
+  pending: 'pending',
+  correct: 'correct',
+  partial: 'partial',
+  incorrect: 'incorrect'
+} as const
+
+export type EvaluationStatusEnum = (typeof EvaluationStatusEnum)[keyof typeof EvaluationStatusEnum]

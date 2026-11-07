@@ -125,8 +125,8 @@ function AskUserQuestionCard({
 
   if (state === "input-streaming") {
     return (
-      <div className="my-2 flex items-center gap-2 rounded-xl border border-indigo-100 bg-white p-3 text-xs text-indigo-700 shadow-2xs">
-        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-indigo-600" />
+      <div className="my-2 flex items-center gap-2 rounded-xl border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF] dark:bg-[#4F46E5]/10 p-3 text-xs text-[#4F46E5] dark:text-[#818CF8] shadow-2xs">
+        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#4F46E5]" />
         <span>AI đang chuẩn bị câu hỏi làm rõ yêu cầu…</span>
       </div>
     );
@@ -140,21 +140,21 @@ function AskUserQuestionCard({
     }> = Array.isArray(part.output?.answers) ? part.output.answers : [];
 
     return (
-      <div className="my-2 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 text-xs text-gray-800 shadow-2xs">
-        <div className="flex items-center gap-1.5 font-semibold text-emerald-800">
-          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+      <div className="my-2 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 p-3 text-xs text-[#0B1C30] dark:text-[#EFF0F6] shadow-2xs">
+        <div className="flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-400">
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>Đã xác nhận thông tin tóm tắt</span>
         </div>
         {submittedAnswers.length > 0 && (
-          <ul className="mt-2 space-y-1 border-t border-emerald-100/80 pt-2 text-[11px] text-gray-700">
+          <ul className="mt-2 space-y-1 border-t border-emerald-100 dark:border-emerald-900/40 pt-2 text-[11px] text-[#464555] dark:text-neutral-300">
             {submittedAnswers.map((ans, idx) => (
               <li key={ans.id || idx} className="leading-snug">
                 {ans.question && (
-                  <span className="font-medium text-gray-600">
+                  <span className="font-medium text-[#777587] dark:text-neutral-400">
                     {ans.question}:{" "}
                   </span>
                 )}
-                <span className="font-semibold text-gray-900">
+                <span className="font-semibold text-[#0B1C30] dark:text-white">
                   {ans.answer}
                 </span>
               </li>
@@ -166,32 +166,32 @@ function AskUserQuestionCard({
   }
 
   return (
-    <div className="my-2 space-y-3 rounded-xl border border-indigo-200/80 bg-white p-3.5 text-xs text-gray-800 shadow-xs">
+    <div className="my-2 space-y-3 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-white dark:bg-[#161922] p-3.5 text-xs text-[#0B1C30] dark:text-[#EFF0F6] shadow-xs">
       <div className="flex items-start gap-2">
-        <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+        <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#4F46E5] dark:text-[#818CF8]" />
         <div className="space-y-0.5">
-          <div className="font-semibold text-gray-900">
+          <div className="font-bold text-[#0B1C30] dark:text-[#EFF0F6]">
             Làm rõ yêu cầu tóm tắt
           </div>
           {contextMessage && (
-            <p className="text-[11px] leading-relaxed text-gray-600">
+            <p className="text-[11px] leading-relaxed text-[#777587] dark:text-[#9DA3AF]">
               {contextMessage}
             </p>
           )}
         </div>
       </div>
 
-      <div className="space-y-3 border-t border-gray-100 pt-2.5">
+      <div className="space-y-3 border-t border-[#E5EEFF] dark:border-white/[0.08] pt-2.5">
         {questions.map((q, qIdx) => {
           const currentSelected = selectedOptions[q.id] || [];
           const allowCustom = q.allowCustomInput !== false;
           return (
             <div key={q.id || qIdx} className="space-y-1.5">
-              <div className="font-medium text-gray-900">
+              <div className="font-semibold text-[#0B1C30] dark:text-[#EFF0F6]">
                 {questions.length > 1 ? `${qIdx + 1}. ` : ""}
                 {q.question}
                 {q.allowMultiple && (
-                  <span className="ml-1 text-[10px] font-normal text-gray-400">
+                  <span className="ml-1 text-[10px] font-normal text-[#777587] dark:text-neutral-400">
                     (Có thể chọn nhiều)
                   </span>
                 )}
@@ -208,10 +208,10 @@ function AskUserQuestionCard({
                         onClick={() =>
                           toggleOption(q.id, opt, q.allowMultiple)
                         }
-                        className={`cursor-pointer rounded-lg border px-2.5 py-1 text-left text-[11px] font-medium transition-all ${
+                        className={`cursor-pointer rounded-xl border px-2.5 py-1 text-left text-[11px] font-semibold transition-all active:scale-95 ${
                           isSelected
-                            ? "border-indigo-600 bg-indigo-600 text-white shadow-2xs"
-                            : "border-gray-200 bg-gray-50 text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/60 hover:text-indigo-700"
+                            ? "border-[#4F46E5] bg-[#4F46E5] text-white shadow-2xs"
+                            : "border-[#E5EEFF] dark:border-white/[0.1] bg-[#F8F9FF] dark:bg-white/[0.03] text-[#464555] dark:text-[#EFF0F6] hover:border-[#C7D2FE] hover:text-[#4F46E5]"
                         }`}
                       >
                         {opt}
@@ -227,7 +227,7 @@ function AskUserQuestionCard({
                   value={customInputs[q.id] || ""}
                   onChange={(e) => handleCustomChange(q.id, e.target.value)}
                   placeholder="Hoặc nhập câu trả lời / yêu cầu riêng của bạn…"
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50/70 px-2.5 py-1.5 text-[11px] text-gray-800 placeholder:text-gray-400 focus:border-indigo-400 focus:bg-white focus:outline-none"
+                  className="w-full rounded-xl border border-[#E5EEFF] dark:border-white/[0.1] bg-[#F8F9FF] dark:bg-white/[0.03] px-3 py-1.5 text-[11px] text-[#0B1C30] dark:text-white placeholder-[#777587] focus:border-[#4F46E5] focus:bg-white dark:focus:bg-black focus:outline-none transition-all"
                 />
               )}
             </div>
@@ -240,7 +240,7 @@ function AskUserQuestionCard({
           type="button"
           onClick={handleSubmit}
           disabled={!hasAnyAnswer && questions.length > 0}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-2xs transition-all hover:bg-indigo-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-[#4F46E5] px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-xs transition-all hover:bg-[#3525CD] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Send className="h-3 w-3" />
           <span>Xác nhận & Tiếp tục</span>
@@ -297,30 +297,30 @@ export const AiMessage = React.memo(function AiMessage({
       ));
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 select-text">
       {/* Tên trợ lý */}
-      <div className="flex items-center gap-1.5">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-          <Bot className="h-3.5 w-3.5" />
+      <div className="flex items-center gap-2 select-none">
+        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#EEF2FF] dark:bg-[#4F46E5]/20 text-[#4F46E5] dark:text-[#818CF8] shadow-2xs">
+          <Bot className="h-3.5 w-3.5 stroke-[2]" />
         </span>
-        <span className="text-xs font-semibold text-gray-900">
+        <span className="text-xs font-bold text-[#0B1C30] dark:text-[#EFF0F6]">
           {ASSISTANT_NAME}
         </span>
         {hasCitation && (
-          <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+          <span className="rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
             Đã trích dẫn
           </span>
         )}
         {message.timestamp && (
-          <span className="ml-auto text-[10px] text-gray-400">
+          <span className="ml-auto text-[10px] text-[#777587] dark:text-neutral-500 font-medium">
             {message.timestamp}
           </span>
         )}
       </div>
 
       {/* Nội dung */}
-      <div className="space-y-2.5 rounded-2xl rounded-tl-sm border border-gray-100 bg-gray-50 px-3.5 py-2.5 text-[13px] leading-[1.3] text-gray-800">
-        {/* Render theo Typed Parts (chuẩn Vercel AI SDK 6) */}
+      <div className="space-y-2.5 rounded-[20px] rounded-tl-[4px] border border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#161922] px-4 py-3 text-[13.5px] leading-relaxed text-[#0B1C30] dark:text-[#EFF0F6] shadow-xs">
+        {/* Render theo Typed Parts (chuẩn Vercel AI SDK) */}
         {normalizedParts && normalizedParts.length > 0 ? (
           normalizedParts.map((part: any, index: number) => {
             if (part.type === "text" || typeof part.text === "string") {
@@ -331,14 +331,14 @@ export const AiMessage = React.memo(function AiMessage({
               return (
                 <details
                   key={index}
-                  className="group my-2 rounded-xl border border-indigo-100 bg-indigo-50/50 p-2.5 text-xs text-indigo-900"
+                  className="group my-2 rounded-xl border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF]/60 dark:bg-[#4F46E5]/10 p-2.5 text-xs text-[#3525CD] dark:text-[#A5B4FC]"
                 >
-                  <summary className="flex cursor-pointer items-center gap-1.5 font-medium select-none">
-                    <Brain className="h-3.5 w-3.5 text-indigo-500" />
+                  <summary className="flex cursor-pointer items-center gap-1.5 font-semibold select-none">
+                    <Brain className="h-3.5 w-3.5 text-[#4F46E5] dark:text-[#818CF8]" />
                     <span>Quá trình suy luận</span>
                     <ChevronDown className="ml-auto h-3.5 w-3.5 transition-transform group-open:rotate-180" />
                   </summary>
-                  <div className="mt-2 border-l border-indigo-200 pl-5 leading-relaxed text-gray-700">
+                  <div className="mt-2 border-l-2 border-[#C7D2FE] dark:border-[#4F46E5]/40 pl-3 leading-relaxed text-[#464555] dark:text-neutral-300">
                     <MarkdownRenderer
                       content={part.reasoning || part.text || ""}
                     />
@@ -347,7 +347,7 @@ export const AiMessage = React.memo(function AiMessage({
               );
             }
 
-            // 1. Hiển thị Tool 1: Tìm kiếm đoạn trích cụ thể (searchDocumentChunks / searchDocuments)
+            // 1. Tool 1: Tìm kiếm đoạn trích cụ thể (searchDocumentChunks / searchDocuments)
             if (
               part.type === "tool-searchDocumentChunks" ||
               part.type === "tool-searchDocuments" ||
@@ -381,21 +381,21 @@ export const AiMessage = React.memo(function AiMessage({
               return (
                 <details
                   key={index}
-                  className="group my-2 rounded-xl border border-indigo-100 bg-white p-2.5 text-xs text-gray-700 shadow-2xs"
+                  className="group my-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.03] p-2.5 text-xs text-[#464555] dark:text-[#EFF0F6] shadow-2xs"
                 >
-                  <summary className="flex cursor-pointer items-center gap-2 font-medium select-none">
+                  <summary className="flex cursor-pointer items-center gap-2 font-semibold select-none">
                     {isRunning && (
                       <>
-                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-indigo-600" />
-                        <span className="text-indigo-700">
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#4F46E5]" />
+                        <span className="text-[#4F46E5] dark:text-[#818CF8]">
                           Đang tìm kiếm đoạn trích trong tài liệu…
                         </span>
                       </>
                     )}
                     {isDone && (
                       <>
-                        <Search className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                        <span className="text-gray-900">
+                        <Search className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[#0B1C30] dark:text-white">
                           {totalChunks > 0
                             ? `Đã tra cứu ${totalChunks} đoạn trích từ tài liệu`
                             : "Đã tra cứu tài liệu (không tìm thấy đoạn khớp)"}
@@ -404,22 +404,22 @@ export const AiMessage = React.memo(function AiMessage({
                     )}
                     {isError && (
                       <>
-                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
-                        <span className="text-red-600">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                        <span className="text-rose-600 dark:text-rose-400">
                           Lỗi khi tra cứu đoạn trích tài liệu
                         </span>
                       </>
                     )}
-                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform group-open:rotate-180" />
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-[#777587] transition-transform group-open:rotate-180" />
                   </summary>
 
-                  <div className="mt-2.5 space-y-2 border-t border-gray-100 pt-2 text-[11px]">
+                  <div className="mt-2.5 space-y-2 border-t border-[#E5EEFF] dark:border-white/[0.08] pt-2 text-[11px]">
                     {semanticQuery && (
                       <div>
-                        <span className="font-semibold text-gray-600">
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
                           Truy vấn ngữ nghĩa:{" "}
                         </span>
-                        <span className="italic text-gray-800">
+                        <span className="italic text-[#0B1C30] dark:text-neutral-200">
                           “{semanticQuery}”
                         </span>
                       </div>
@@ -427,13 +427,13 @@ export const AiMessage = React.memo(function AiMessage({
 
                     {keywords.length > 0 && (
                       <div className="flex flex-wrap items-center gap-1">
-                        <span className="font-semibold text-gray-600">
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
                           Từ khóa:{" "}
                         </span>
                         {keywords.map((kw, kwIdx) => (
                           <span
                             key={`${kw}-${kwIdx}`}
-                            className="rounded-md bg-indigo-50 px-1.5 py-0.5 font-medium text-indigo-700"
+                            className="rounded-md bg-[#EEF2FF] dark:bg-[#4F46E5]/20 px-1.5 py-0.5 font-semibold text-[#4F46E5] dark:text-[#818CF8]"
                           >
                             {kw}
                           </span>
@@ -443,22 +443,22 @@ export const AiMessage = React.memo(function AiMessage({
 
                     {isDone && sources.length > 0 && (
                       <div className="space-y-1 pt-0.5">
-                        <div className="font-semibold text-gray-600">
+                        <div className="font-semibold text-[#777587] dark:text-neutral-400">
                           Nguồn tham khảo ({sources.length} tệp):
                         </div>
                         <ul className="space-y-1">
                           {sources.map((src) => (
                             <li
                               key={src.documentId}
-                              className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2 py-1 text-gray-700"
+                              className="flex items-center justify-between gap-2 rounded-lg bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.08] px-2 py-1 text-[#464555] dark:text-neutral-300"
                             >
                               <div className="flex min-w-0 items-center gap-1.5">
-                                <FileText className="h-3 w-3 shrink-0 text-indigo-500" />
+                                <FileText className="h-3 w-3 shrink-0 text-[#4F46E5]" />
                                 <span className="truncate font-medium">
                                   {src.fileName}
                                 </span>
                               </div>
-                              <span className="shrink-0 text-[10px] text-gray-500">
+                              <span className="shrink-0 text-[10px] text-[#777587]">
                                 {src.pageNumbers && src.pageNumbers.length > 0
                                   ? `Trang ${src.pageNumbers.join(", ")}`
                                   : `${src.chunkCount} đoạn`}
@@ -473,7 +473,7 @@ export const AiMessage = React.memo(function AiMessage({
               );
             }
 
-            // 2. Hiển thị Tool 2: Đọc toàn bộ nội dung tài liệu (getDocumentsFullContent)
+            // 2. Tool 2: Đọc toàn bộ nội dung tài liệu (getDocumentsFullContent)
             if (
               part.type === "tool-getDocumentsFullContent" ||
               (part.type === "dynamic-tool" &&
@@ -500,68 +500,68 @@ export const AiMessage = React.memo(function AiMessage({
               return (
                 <details
                   key={index}
-                  className="group my-2 rounded-xl border border-indigo-100 bg-white p-2.5 text-xs text-gray-700 shadow-2xs"
+                  className="group my-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.03] p-2.5 text-xs text-[#464555] dark:text-[#EFF0F6] shadow-2xs"
                 >
-                  <summary className="flex cursor-pointer items-center gap-2 font-medium select-none">
+                  <summary className="flex cursor-pointer items-center gap-2 font-semibold select-none">
                     {isRunning && (
                       <>
-                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-indigo-600" />
-                        <span className="text-indigo-700">
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#4F46E5]" />
+                        <span className="text-[#4F46E5] dark:text-[#818CF8]">
                           Đang đọc toàn bộ nội dung tài liệu…
                         </span>
                       </>
                     )}
                     {isDone && (
                       <>
-                        <BookOpen className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                        <span className="text-gray-900">
+                        <BookOpen className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[#0B1C30] dark:text-white">
                           {totalDocuments > 0
-                            ? `Đã đọc toàn bộ nội dung ${totalDocuments} tài liệu`
+                            ? `Đã nạp toàn bộ nội dung ${totalDocuments} tài liệu`
                             : "Đã kiểm tra tài liệu (chưa có văn bản trích xuất)"}
                         </span>
                       </>
                     )}
                     {isError && (
                       <>
-                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
-                        <span className="text-red-600">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                        <span className="text-rose-600 dark:text-rose-400">
                           Lỗi khi đọc toàn bộ nội dung tài liệu
                         </span>
                       </>
                     )}
-                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform group-open:rotate-180" />
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-[#777587] transition-transform group-open:rotate-180" />
                   </summary>
 
-                  <div className="mt-2.5 space-y-2 border-t border-gray-100 pt-2 text-[11px]">
+                  <div className="mt-2.5 space-y-2 border-t border-[#E5EEFF] dark:border-white/[0.08] pt-2 text-[11px]">
                     <div>
-                      <span className="font-semibold text-gray-600">
+                      <span className="font-semibold text-[#777587] dark:text-neutral-400">
                         Chế độ đọc:{" "}
                       </span>
-                      <span className="text-gray-800">
+                      <span className="text-[#0B1C30] dark:text-neutral-200">
                         {fetchAllDocuments
-                          ? "Toàn bộ tài liệu trong cuộc trò chuyện"
-                          : "Tài liệu được chỉ định / đính kèm"}
+                          ? "Toàn bộ tài liệu trong phiên học"
+                          : "Tài liệu được chỉ định"}
                       </span>
                     </div>
 
                     {isDone && documents.length > 0 && (
                       <div className="space-y-1 pt-0.5">
-                        <div className="font-semibold text-gray-600">
+                        <div className="font-semibold text-[#777587] dark:text-neutral-400">
                           Tài liệu đã nạp ({documents.length} tệp):
                         </div>
                         <ul className="space-y-1">
                           {documents.map((doc) => (
                             <li
                               key={doc.documentId}
-                              className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2 py-1 text-gray-700"
+                              className="flex items-center justify-between gap-2 rounded-lg bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.08] px-2 py-1 text-[#464555] dark:text-neutral-300"
                             >
                               <div className="flex min-w-0 items-center gap-1.5">
-                                <FileText className="h-3 w-3 shrink-0 text-indigo-500" />
+                                <FileText className="h-3 w-3 shrink-0 text-[#4F46E5]" />
                                 <span className="truncate font-medium">
                                   {doc.fileName}
                                 </span>
                               </div>
-                              <span className="shrink-0 text-[10px] text-gray-500">
+                              <span className="shrink-0 text-[10px] text-[#777587]">
                                 {Number(doc.characterCount || 0).toLocaleString(
                                   "vi-VN"
                                 )}{" "}
@@ -581,7 +581,7 @@ export const AiMessage = React.memo(function AiMessage({
               return (
                 <div
                   key={index}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-indigo-600"
+                  className="flex w-full items-center justify-between gap-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.03] px-3 py-2 text-xs font-semibold text-[#4F46E5] dark:text-[#818CF8]"
                 >
                   <div className="flex min-w-0 items-center gap-1.5">
                     <BookOpen className="h-3.5 w-3.5 shrink-0" />
@@ -592,7 +592,7 @@ export const AiMessage = React.memo(function AiMessage({
                       href={part.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="shrink-0 hover:text-indigo-800"
+                      className="shrink-0 hover:text-[#3525CD]"
                     >
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </a>
@@ -601,7 +601,7 @@ export const AiMessage = React.memo(function AiMessage({
               );
             }
 
-            // 3. Hiển thị Tool 3: Kiểm tra danh sách & metadata tài liệu (getConversationDocumentsMetadata)
+            // 3. Tool 3: Kiểm tra danh sách & metadata tài liệu
             if (
               part.type === "tool-getConversationDocumentsMetadata" ||
               (part.type === "dynamic-tool" &&
@@ -629,51 +629,51 @@ export const AiMessage = React.memo(function AiMessage({
               return (
                 <details
                   key={index}
-                  className="group my-2 rounded-xl border border-indigo-100 bg-white p-2.5 text-xs text-gray-700 shadow-2xs"
+                  className="group my-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.03] p-2.5 text-xs text-[#464555] dark:text-[#EFF0F6] shadow-2xs"
                 >
-                  <summary className="flex cursor-pointer items-center gap-2 font-medium select-none">
+                  <summary className="flex cursor-pointer items-center gap-2 font-semibold select-none">
                     {isRunning && (
                       <>
-                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-indigo-600" />
-                        <span className="text-indigo-700">
-                          Đang kiểm tra danh sách tài liệu trong cuộc trò chuyện…
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#4F46E5]" />
+                        <span className="text-[#4F46E5] dark:text-[#818CF8]">
+                          Đang kiểm tra danh sách tài liệu…
                         </span>
                       </>
                     )}
                     {isDone && (
                       <>
-                        <FolderSearch className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                        <span className="text-gray-900">
+                        <FolderSearch className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[#0B1C30] dark:text-white">
                           Đã kiểm tra {totalDocuments} tài liệu ({readyDocumentsCount} sẵn sàng)
                         </span>
                       </>
                     )}
                     {isError && (
                       <>
-                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
-                        <span className="text-red-600">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                        <span className="text-rose-600 dark:text-rose-400">
                           Lỗi khi kiểm tra danh sách tài liệu
                         </span>
                       </>
                     )}
-                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform group-open:rotate-180" />
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-[#777587] transition-transform group-open:rotate-180" />
                   </summary>
 
                   {isDone && docsList.length > 0 && (
-                    <div className="mt-2.5 space-y-1 border-t border-gray-100 pt-2 text-[11px]">
+                    <div className="mt-2.5 space-y-1 border-t border-[#E5EEFF] dark:border-white/[0.08] pt-2 text-[11px]">
                       <ul className="space-y-1">
                         {docsList.map((doc) => (
                           <li
                             key={doc.documentId}
-                            className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2 py-1 text-gray-700"
+                            className="flex items-center justify-between gap-2 rounded-lg bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.08] px-2 py-1 text-[#464555] dark:text-neutral-300"
                           >
                             <div className="flex min-w-0 items-center gap-1.5">
-                              <FileText className="h-3 w-3 shrink-0 text-indigo-500" />
+                              <FileText className="h-3 w-3 shrink-0 text-[#4F46E5]" />
                               <span className="truncate font-medium">
                                 {doc.fileName}
                               </span>
                             </div>
-                            <span className="shrink-0 text-[10px] text-gray-500">
+                            <span className="shrink-0 text-[10px] text-[#777587]">
                               ~{doc.estimatedPages} trang (
                               {Number(doc.characterCount || 0).toLocaleString(
                                 "vi-VN"
@@ -689,7 +689,7 @@ export const AiMessage = React.memo(function AiMessage({
               );
             }
 
-            // 4. Hiển thị Tool 4: Hỏi người dùng làm rõ yêu cầu (askUserQuestion - Human-in-the-Loop)
+            // 4. Tool 4: Hỏi người dùng làm rõ yêu cầu (askUserQuestion)
             if (
               part.type === "tool-askUserQuestion" ||
               (part.type === "dynamic-tool" &&
@@ -704,7 +704,7 @@ export const AiMessage = React.memo(function AiMessage({
               );
             }
 
-            // 5. Hiển thị Tool 5: Tạo bản tóm tắt tài liệu & Badge mở trực tiếp Tab Tóm tắt (createDocumentSummary)
+            // 5. Tool 5: Tạo bản tóm tắt tài liệu & Badge mở trực tiếp Tab Tóm tắt
             if (
               part.type === "tool-createDocumentSummary" ||
               (part.type === "dynamic-tool" &&
@@ -724,14 +724,14 @@ export const AiMessage = React.memo(function AiMessage({
                 return (
                   <div
                     key={index}
-                    className="my-2 flex items-center gap-2.5 rounded-xl border border-indigo-100 bg-white p-3 text-xs text-indigo-700 shadow-2xs"
+                    className="my-2 flex items-center gap-2.5 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF] dark:bg-[#4F46E5]/10 p-3.5 text-xs text-[#4F46E5] dark:text-[#818CF8] shadow-2xs"
                   >
-                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-600" />
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#4F46E5]" />
                     <div className="space-y-0.5">
-                      <div className="font-semibold text-indigo-900">
+                      <div className="font-bold text-[#3525CD] dark:text-white">
                         Đang khởi tạo bản tóm tắt học tập bằng AI…
                       </div>
-                      <div className="text-[11px] text-gray-500">
+                      <div className="text-[11px] text-[#777587] dark:text-neutral-400">
                         Quá trình tổng hợp cấu trúc BlockNote có thể mất vài giây
                       </div>
                     </div>
@@ -743,9 +743,9 @@ export const AiMessage = React.memo(function AiMessage({
                 return (
                   <div
                     key={index}
-                    className="my-2 flex items-center gap-2 rounded-xl border border-red-100 bg-red-50/60 p-3 text-xs text-red-700"
+                    className="my-2 flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/20 p-3 text-xs text-[#BA1A1A] dark:text-rose-400"
                   >
-                    <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                    <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>Không thể tạo bản tóm tắt tài liệu. Vui lòng thử lại.</span>
                   </div>
                 );
@@ -774,28 +774,28 @@ export const AiMessage = React.memo(function AiMessage({
                     type="button"
                     onClick={handleBadgeClick}
                     title={`Nhấn để mở "${summaryTitle}" trong Tab Tóm tắt`}
-                    className="group my-2 flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-indigo-200/90 bg-gradient-to-r from-indigo-50/90 via-white to-indigo-50/50 px-3.5 py-2.5 text-left shadow-xs transition-all hover:border-indigo-400 hover:shadow-md active:scale-[0.99]"
+                    className="group my-2 flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/40 bg-gradient-to-r from-[#EEF2FF] via-white to-[#EEF2FF] dark:from-[#4F46E5]/20 dark:via-[#161922] dark:to-[#4F46E5]/10 p-3.5 text-left shadow-xs transition-all hover:border-[#4F46E5] hover:shadow-md active:scale-[0.99]"
                   >
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-2xs transition-transform group-hover:scale-105">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#4F46E5] text-white shadow-xs transition-transform group-hover:scale-105">
                         <Sparkles className="h-4 w-4" />
                       </span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">
+                          <span className="rounded-md bg-[#EEF2FF] dark:bg-[#4F46E5]/30 px-1.5 py-0.5 text-[10px] font-bold text-[#4F46E5] dark:text-[#818CF8]">
                             Bản tóm tắt AI
                           </span>
-                          <span className="text-[10px] font-medium text-emerald-600">
-                            • Đã tạo thành công
+                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            • Đã hoàn thành
                           </span>
                         </div>
-                        <div className="mt-0.5 truncate text-xs font-bold text-gray-900 group-hover:text-indigo-700">
+                        <div className="mt-1 truncate text-xs font-bold text-[#0B1C30] dark:text-white group-hover:text-[#4F46E5]">
                           {summaryTitle}
                         </div>
                       </div>
                     </div>
 
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700 transition-colors group-hover:bg-indigo-600 group-hover:text-white">
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.1] px-2.5 py-1 text-xs font-semibold text-[#4F46E5] dark:text-[#818CF8] transition-colors group-hover:bg-[#4F46E5] group-hover:text-white shadow-2xs">
                       <span>Mở</span>
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </span>
@@ -809,12 +809,12 @@ export const AiMessage = React.memo(function AiMessage({
               return (
                 <div
                   key={index}
-                  className="my-2 rounded-xl border border-gray-200 bg-white p-2.5 text-xs text-gray-700"
+                  className="my-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.03] p-2.5 text-xs text-[#464555] dark:text-neutral-300"
                 >
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-[#0B1C30] dark:text-white">
                     Công cụ: {invocation?.toolName}
                   </span>
-                  <div className="text-[11px] text-gray-500">
+                  <div className="text-[11px] text-[#777587]">
                     Trạng thái: {invocation?.state}
                   </div>
                 </div>
@@ -832,9 +832,9 @@ export const AiMessage = React.memo(function AiMessage({
           <ul className="space-y-2">
             {message.bullets.map((b, i) => (
               <li key={i} className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#4F46E5]" />
                 <p>
-                  <span className="font-semibold text-gray-900">{b.title}</span>{" "}
+                  <span className="font-bold text-[#0B1C30] dark:text-white">{b.title}</span>{" "}
                   <span>{b.desc}</span>
                 </p>
               </li>
@@ -844,7 +844,7 @@ export const AiMessage = React.memo(function AiMessage({
 
         {/* Trích dẫn riêng nếu có */}
         {message.citation && (
-          <div className="flex w-full items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-indigo-600">
+          <div className="flex w-full items-center justify-between gap-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.03] px-3 py-2 text-xs font-semibold text-[#4F46E5]">
             <div className="flex min-w-0 items-center gap-1.5">
               <BookOpen className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{message.citation}</span>

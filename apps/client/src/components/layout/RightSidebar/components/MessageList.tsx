@@ -46,7 +46,6 @@ export function MessageList({
   })();
 
   return (
-    // select-text: cho phép bôi đen / sao chép nội dung dù <aside> đang để select-none
     <div className="min-h-0 flex-1 select-text space-y-5 overflow-y-auto px-4 py-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
       {messages.map((msg, index) => {
         const isLastAssistantMessage =
@@ -68,24 +67,24 @@ export function MessageList({
 
             {/* Hiển thị Follow-up Pill Chips ngay bên dưới tin nhắn Assistant cuối cùng */}
             {isLastAssistantMessage && !isLoading && (
-              <div className="pt-1">
+              <div className="pt-1.5 select-none">
                 {isLoadingSuggestions && (
                   <div
                     aria-label="Đang xử lý..."
-                    className="flex items-center gap-1 px-1 py-1 text-gray-400"
+                    className="flex items-center gap-1.5 px-2 py-1 text-[#777587] dark:text-neutral-500"
                   >
-                    <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:-0.3s]" />
-                    <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:-0.15s]" />
-                    <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#4F46E5] animate-bounce [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#4F46E5] animate-bounce [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#4F46E5] animate-bounce" />
                   </div>
                 )}
 
                 {!isLoadingSuggestions &&
                   suggestions.length > 0 &&
                   onSelectSuggestion && (
-                    <div className="space-y-1.5">
-                      <p className="text-[11px] font-medium text-gray-500">
-                        Gợi ý câu hỏi tiếp theo:
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-[#777587] dark:text-neutral-400">
+                        Gợi ý câu hỏi tiếp theo
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {suggestions.map((item, sIdx) => (
@@ -93,9 +92,9 @@ export function MessageList({
                             key={`${item}-${sIdx}`}
                             type="button"
                             onClick={() => onSelectSuggestion(item)}
-                            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50/70 px-3 py-1.5 text-left text-xs font-medium text-indigo-700 shadow-2xs transition-all hover:border-indigo-200 hover:bg-indigo-100/80 active:scale-[0.99]"
+                            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF] dark:bg-[#4F46E5]/15 px-3.5 py-1.5 text-left text-xs font-semibold text-[#4F46E5] dark:text-[#818CF8] shadow-2xs transition-all hover:bg-[#E0E7FF] dark:hover:bg-[#4F46E5]/25 active:scale-[0.98]"
                           >
-                            <Lightbulb className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
+                            <Lightbulb className="h-3.5 w-3.5 shrink-0 text-[#4F46E5] dark:text-[#818CF8]" />
                             <span>{item}</span>
                           </button>
                         ))}
