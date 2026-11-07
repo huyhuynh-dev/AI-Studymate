@@ -82,6 +82,7 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -114,4 +115,153 @@ samp,
 .font-mono,
 .font-mono * {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LANDING PAGE ADDITIONS — dán vào CUỐI file src/app/globals.css
+   (không thay thế nội dung hiện có)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Token bổ sung: bề mặt theo trục Z (Light + Dark) */
+:root {
+  --surface-raised: #ffffff;
+  /* Level 2: thẻ nổi trên "giếng" */
+  --surface-well: rgba(11, 28, 48, 0.035);
+  /* Vùng lõm chứa mockup trong thẻ */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-raised: #1d212b;
+    /* sáng hơn card (#12151c) → Z cao hơn */
+    --surface-well: rgba(255, 255, 255, 0.035);
+  }
+}
+
+@theme inline {
+  --color-muted: var(--on-surface-variant);
+  --color-line: var(--border-subtle);
+  --color-hairline: var(--specular-hairline);
+  --color-raised: var(--surface-raised);
+  --color-well: var(--surface-well);
+  --ease-apple: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ───────── Scroll reveal (được điều khiển bởi <Reveal />) ───────── */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 32px, 0) scale(0.985);
+  filter: blur(6px);
+  transition:
+    opacity 0.9s var(--ease-apple),
+    transform 1s var(--ease-apple),
+    filter 0.9s var(--ease-apple);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.reveal[data-variant="scale"] {
+  transform: scale(0.94);
+}
+
+.reveal[data-variant="fade"] {
+  transform: none;
+  filter: none;
+}
+
+.reveal[data-in="true"] {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* ───────── Hero: khung ứng dụng "đứng dậy" theo tiến độ cuộn (--p: 0→1) ───────── */
+.hero-frame {
+  --p: 0.4;
+  transform-origin: 50% 0%;
+  transform: perspective(1800px) rotateX(calc((1 - var(--p)) * 10deg)) scale(calc(0.92 + var(--p) * 0.08));
+  opacity: calc(0.55 + var(--p) * 0.45);
+  will-change: transform, opacity;
+}
+
+/* Ánh sáng khí quyển (Atmospheric Glow) */
+.landing-glow {
+  background:
+    radial-gradient(60% 55% at 50% 0%,
+      color-mix(in oklab, var(--brand-primary) 16%, transparent),
+      transparent 70%),
+    radial-gradient(40% 40% at 90% 20%,
+      color-mix(in oklab, var(--brand-tertiary) 8%, transparent),
+      transparent 70%);
+}
+
+/* ───────── Micro-animations ───────── */
+@keyframes landing-float {
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+.landing-float {
+  animation: landing-float 6s ease-in-out infinite;
+}
+
+@keyframes landing-pop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.landing-pop {
+  animation: landing-pop 0.35s var(--ease-apple) both;
+}
+
+/* ───────── Accessibility ───────── */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal,
+  .reveal[data-in="true"] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+
+  .hero-frame {
+    transform: none;
+    opacity: 1;
+  }
+
+  .landing-float,
+  .landing-pop {
+    animation: none;
+  }
+}
+
+/* Không có JS → luôn hiện nội dung */
+@media (scripting: none) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
 }
