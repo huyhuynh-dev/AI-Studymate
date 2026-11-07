@@ -201,6 +201,7 @@ export type FlashcardDeckWhereInput = {
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   flashcards?: Prisma.FlashcardListRelationFilter
+  quizzes?: Prisma.QuizListRelationFilter
 }
 
 export type FlashcardDeckOrderByWithRelationInput = {
@@ -214,6 +215,7 @@ export type FlashcardDeckOrderByWithRelationInput = {
   conversation?: Prisma.ConversationOrderByWithRelationInput
   user?: Prisma.UserOrderByWithRelationInput
   flashcards?: Prisma.FlashcardOrderByRelationAggregateInput
+  quizzes?: Prisma.QuizOrderByRelationAggregateInput
 }
 
 export type FlashcardDeckWhereUniqueInput = Prisma.AtLeast<{
@@ -230,6 +232,7 @@ export type FlashcardDeckWhereUniqueInput = Prisma.AtLeast<{
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   flashcards?: Prisma.FlashcardListRelationFilter
+  quizzes?: Prisma.QuizListRelationFilter
 }, "id">
 
 export type FlashcardDeckOrderByWithAggregationInput = {
@@ -267,6 +270,7 @@ export type FlashcardDeckCreateInput = {
   conversation: Prisma.ConversationCreateNestedOneWithoutFlashcard_decksInput
   user: Prisma.UserCreateNestedOneWithoutFlashcard_decksInput
   flashcards?: Prisma.FlashcardCreateNestedManyWithoutDeckInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutSource_deckInput
 }
 
 export type FlashcardDeckUncheckedCreateInput = {
@@ -278,6 +282,7 @@ export type FlashcardDeckUncheckedCreateInput = {
   created_at?: Date | string
   updated_at?: Date | string
   flashcards?: Prisma.FlashcardUncheckedCreateNestedManyWithoutDeckInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutSource_deckInput
 }
 
 export type FlashcardDeckUpdateInput = {
@@ -289,6 +294,7 @@ export type FlashcardDeckUpdateInput = {
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutFlashcard_decksNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutFlashcard_decksNestedInput
   flashcards?: Prisma.FlashcardUpdateManyWithoutDeckNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutSource_deckNestedInput
 }
 
 export type FlashcardDeckUncheckedUpdateInput = {
@@ -300,6 +306,7 @@ export type FlashcardDeckUncheckedUpdateInput = {
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   flashcards?: Prisma.FlashcardUncheckedUpdateManyWithoutDeckNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutSource_deckNestedInput
 }
 
 export type FlashcardDeckCreateManyInput = {
@@ -373,6 +380,11 @@ export type FlashcardDeckMinOrderByAggregateInput = {
 export type FlashcardDeckScalarRelationFilter = {
   is?: Prisma.FlashcardDeckWhereInput
   isNot?: Prisma.FlashcardDeckWhereInput
+}
+
+export type FlashcardDeckNullableScalarRelationFilter = {
+  is?: Prisma.FlashcardDeckWhereInput | null
+  isNot?: Prisma.FlashcardDeckWhereInput | null
 }
 
 export type FlashcardDeckCreateNestedManyWithoutUserInput = {
@@ -473,6 +485,22 @@ export type FlashcardDeckUpdateOneRequiredWithoutFlashcardsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.FlashcardDeckUpdateToOneWithWhereWithoutFlashcardsInput, Prisma.FlashcardDeckUpdateWithoutFlashcardsInput>, Prisma.FlashcardDeckUncheckedUpdateWithoutFlashcardsInput>
 }
 
+export type FlashcardDeckCreateNestedOneWithoutQuizzesInput = {
+  create?: Prisma.XOR<Prisma.FlashcardDeckCreateWithoutQuizzesInput, Prisma.FlashcardDeckUncheckedCreateWithoutQuizzesInput>
+  connectOrCreate?: Prisma.FlashcardDeckCreateOrConnectWithoutQuizzesInput
+  connect?: Prisma.FlashcardDeckWhereUniqueInput
+}
+
+export type FlashcardDeckUpdateOneWithoutQuizzesNestedInput = {
+  create?: Prisma.XOR<Prisma.FlashcardDeckCreateWithoutQuizzesInput, Prisma.FlashcardDeckUncheckedCreateWithoutQuizzesInput>
+  connectOrCreate?: Prisma.FlashcardDeckCreateOrConnectWithoutQuizzesInput
+  upsert?: Prisma.FlashcardDeckUpsertWithoutQuizzesInput
+  disconnect?: Prisma.FlashcardDeckWhereInput | boolean
+  delete?: Prisma.FlashcardDeckWhereInput | boolean
+  connect?: Prisma.FlashcardDeckWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.FlashcardDeckUpdateToOneWithWhereWithoutQuizzesInput, Prisma.FlashcardDeckUpdateWithoutQuizzesInput>, Prisma.FlashcardDeckUncheckedUpdateWithoutQuizzesInput>
+}
+
 export type FlashcardDeckCreateWithoutUserInput = {
   id?: string
   name: string
@@ -481,6 +509,7 @@ export type FlashcardDeckCreateWithoutUserInput = {
   updated_at?: Date | string
   conversation: Prisma.ConversationCreateNestedOneWithoutFlashcard_decksInput
   flashcards?: Prisma.FlashcardCreateNestedManyWithoutDeckInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutSource_deckInput
 }
 
 export type FlashcardDeckUncheckedCreateWithoutUserInput = {
@@ -491,6 +520,7 @@ export type FlashcardDeckUncheckedCreateWithoutUserInput = {
   created_at?: Date | string
   updated_at?: Date | string
   flashcards?: Prisma.FlashcardUncheckedCreateNestedManyWithoutDeckInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutSource_deckInput
 }
 
 export type FlashcardDeckCreateOrConnectWithoutUserInput = {
@@ -540,6 +570,7 @@ export type FlashcardDeckCreateWithoutConversationInput = {
   updated_at?: Date | string
   user: Prisma.UserCreateNestedOneWithoutFlashcard_decksInput
   flashcards?: Prisma.FlashcardCreateNestedManyWithoutDeckInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutSource_deckInput
 }
 
 export type FlashcardDeckUncheckedCreateWithoutConversationInput = {
@@ -550,6 +581,7 @@ export type FlashcardDeckUncheckedCreateWithoutConversationInput = {
   created_at?: Date | string
   updated_at?: Date | string
   flashcards?: Prisma.FlashcardUncheckedCreateNestedManyWithoutDeckInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutSource_deckInput
 }
 
 export type FlashcardDeckCreateOrConnectWithoutConversationInput = {
@@ -586,6 +618,7 @@ export type FlashcardDeckCreateWithoutFlashcardsInput = {
   updated_at?: Date | string
   conversation: Prisma.ConversationCreateNestedOneWithoutFlashcard_decksInput
   user: Prisma.UserCreateNestedOneWithoutFlashcard_decksInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutSource_deckInput
 }
 
 export type FlashcardDeckUncheckedCreateWithoutFlashcardsInput = {
@@ -596,6 +629,7 @@ export type FlashcardDeckUncheckedCreateWithoutFlashcardsInput = {
   description?: string | null
   created_at?: Date | string
   updated_at?: Date | string
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutSource_deckInput
 }
 
 export type FlashcardDeckCreateOrConnectWithoutFlashcardsInput = {
@@ -622,6 +656,7 @@ export type FlashcardDeckUpdateWithoutFlashcardsInput = {
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutFlashcard_decksNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutFlashcard_decksNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutSource_deckNestedInput
 }
 
 export type FlashcardDeckUncheckedUpdateWithoutFlashcardsInput = {
@@ -632,6 +667,67 @@ export type FlashcardDeckUncheckedUpdateWithoutFlashcardsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutSource_deckNestedInput
+}
+
+export type FlashcardDeckCreateWithoutQuizzesInput = {
+  id?: string
+  name: string
+  description?: string | null
+  created_at?: Date | string
+  updated_at?: Date | string
+  conversation: Prisma.ConversationCreateNestedOneWithoutFlashcard_decksInput
+  user: Prisma.UserCreateNestedOneWithoutFlashcard_decksInput
+  flashcards?: Prisma.FlashcardCreateNestedManyWithoutDeckInput
+}
+
+export type FlashcardDeckUncheckedCreateWithoutQuizzesInput = {
+  id?: string
+  conversation_id: string
+  user_id: string
+  name: string
+  description?: string | null
+  created_at?: Date | string
+  updated_at?: Date | string
+  flashcards?: Prisma.FlashcardUncheckedCreateNestedManyWithoutDeckInput
+}
+
+export type FlashcardDeckCreateOrConnectWithoutQuizzesInput = {
+  where: Prisma.FlashcardDeckWhereUniqueInput
+  create: Prisma.XOR<Prisma.FlashcardDeckCreateWithoutQuizzesInput, Prisma.FlashcardDeckUncheckedCreateWithoutQuizzesInput>
+}
+
+export type FlashcardDeckUpsertWithoutQuizzesInput = {
+  update: Prisma.XOR<Prisma.FlashcardDeckUpdateWithoutQuizzesInput, Prisma.FlashcardDeckUncheckedUpdateWithoutQuizzesInput>
+  create: Prisma.XOR<Prisma.FlashcardDeckCreateWithoutQuizzesInput, Prisma.FlashcardDeckUncheckedCreateWithoutQuizzesInput>
+  where?: Prisma.FlashcardDeckWhereInput
+}
+
+export type FlashcardDeckUpdateToOneWithWhereWithoutQuizzesInput = {
+  where?: Prisma.FlashcardDeckWhereInput
+  data: Prisma.XOR<Prisma.FlashcardDeckUpdateWithoutQuizzesInput, Prisma.FlashcardDeckUncheckedUpdateWithoutQuizzesInput>
+}
+
+export type FlashcardDeckUpdateWithoutQuizzesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  conversation?: Prisma.ConversationUpdateOneRequiredWithoutFlashcard_decksNestedInput
+  user?: Prisma.UserUpdateOneRequiredWithoutFlashcard_decksNestedInput
+  flashcards?: Prisma.FlashcardUpdateManyWithoutDeckNestedInput
+}
+
+export type FlashcardDeckUncheckedUpdateWithoutQuizzesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  flashcards?: Prisma.FlashcardUncheckedUpdateManyWithoutDeckNestedInput
 }
 
 export type FlashcardDeckCreateManyUserInput = {
@@ -651,6 +747,7 @@ export type FlashcardDeckUpdateWithoutUserInput = {
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutFlashcard_decksNestedInput
   flashcards?: Prisma.FlashcardUpdateManyWithoutDeckNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutSource_deckNestedInput
 }
 
 export type FlashcardDeckUncheckedUpdateWithoutUserInput = {
@@ -661,6 +758,7 @@ export type FlashcardDeckUncheckedUpdateWithoutUserInput = {
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   flashcards?: Prisma.FlashcardUncheckedUpdateManyWithoutDeckNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutSource_deckNestedInput
 }
 
 export type FlashcardDeckUncheckedUpdateManyWithoutUserInput = {
@@ -689,6 +787,7 @@ export type FlashcardDeckUpdateWithoutConversationInput = {
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutFlashcard_decksNestedInput
   flashcards?: Prisma.FlashcardUpdateManyWithoutDeckNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutSource_deckNestedInput
 }
 
 export type FlashcardDeckUncheckedUpdateWithoutConversationInput = {
@@ -699,6 +798,7 @@ export type FlashcardDeckUncheckedUpdateWithoutConversationInput = {
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   flashcards?: Prisma.FlashcardUncheckedUpdateManyWithoutDeckNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutSource_deckNestedInput
 }
 
 export type FlashcardDeckUncheckedUpdateManyWithoutConversationInput = {
@@ -717,10 +817,12 @@ export type FlashcardDeckUncheckedUpdateManyWithoutConversationInput = {
 
 export type FlashcardDeckCountOutputType = {
   flashcards: number
+  quizzes: number
 }
 
 export type FlashcardDeckCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   flashcards?: boolean | FlashcardDeckCountOutputTypeCountFlashcardsArgs
+  quizzes?: boolean | FlashcardDeckCountOutputTypeCountQuizzesArgs
 }
 
 /**
@@ -740,6 +842,13 @@ export type FlashcardDeckCountOutputTypeCountFlashcardsArgs<ExtArgs extends runt
   where?: Prisma.FlashcardWhereInput
 }
 
+/**
+ * FlashcardDeckCountOutputType without action
+ */
+export type FlashcardDeckCountOutputTypeCountQuizzesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.QuizWhereInput
+}
+
 
 export type FlashcardDeckSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -752,6 +861,7 @@ export type FlashcardDeckSelect<ExtArgs extends runtime.Types.Extensions.Interna
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   flashcards?: boolean | Prisma.FlashcardDeck$flashcardsArgs<ExtArgs>
+  quizzes?: boolean | Prisma.FlashcardDeck$quizzesArgs<ExtArgs>
   _count?: boolean | Prisma.FlashcardDeckCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["flashcardDeck"]>
 
@@ -794,6 +904,7 @@ export type FlashcardDeckInclude<ExtArgs extends runtime.Types.Extensions.Intern
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   flashcards?: boolean | Prisma.FlashcardDeck$flashcardsArgs<ExtArgs>
+  quizzes?: boolean | Prisma.FlashcardDeck$quizzesArgs<ExtArgs>
   _count?: boolean | Prisma.FlashcardDeckCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type FlashcardDeckIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -811,6 +922,7 @@ export type $FlashcardDeckPayload<ExtArgs extends runtime.Types.Extensions.Inter
     conversation: Prisma.$ConversationPayload<ExtArgs>
     user: Prisma.$UserPayload<ExtArgs>
     flashcards: Prisma.$FlashcardPayload<ExtArgs>[]
+    quizzes: Prisma.$QuizPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1217,6 +1329,7 @@ export interface Prisma__FlashcardDeckClient<T, Null = never, ExtArgs extends ru
   conversation<T extends Prisma.ConversationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ConversationDefaultArgs<ExtArgs>>): Prisma.Prisma__ConversationClient<runtime.Types.Result.GetResult<Prisma.$ConversationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   flashcards<T extends Prisma.FlashcardDeck$flashcardsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FlashcardDeck$flashcardsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  quizzes<T extends Prisma.FlashcardDeck$quizzesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FlashcardDeck$quizzesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$QuizPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1675,6 +1788,30 @@ export type FlashcardDeck$flashcardsArgs<ExtArgs extends runtime.Types.Extension
   take?: number
   skip?: number
   distinct?: Prisma.FlashcardScalarFieldEnum | Prisma.FlashcardScalarFieldEnum[]
+}
+
+/**
+ * FlashcardDeck.quizzes
+ */
+export type FlashcardDeck$quizzesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Quiz
+   */
+  select?: Prisma.QuizSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Quiz
+   */
+  omit?: Prisma.QuizOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.QuizInclude<ExtArgs> | null
+  where?: Prisma.QuizWhereInput
+  orderBy?: Prisma.QuizOrderByWithRelationInput | Prisma.QuizOrderByWithRelationInput[]
+  cursor?: Prisma.QuizWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.QuizScalarFieldEnum | Prisma.QuizScalarFieldEnum[]
 }
 
 /**

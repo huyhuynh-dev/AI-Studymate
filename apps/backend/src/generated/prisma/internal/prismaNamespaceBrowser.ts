@@ -57,6 +57,10 @@ export const ModelName = {
   FlashcardDeck: 'FlashcardDeck',
   Flashcard: 'Flashcard',
   FlashcardReview: 'FlashcardReview',
+  Quiz: 'Quiz',
+  QuizQuestion: 'QuizQuestion',
+  QuizAttempt: 'QuizAttempt',
+  QuizAttemptAnswer: 'QuizAttemptAnswer',
   Document: 'Document',
   DocumentChunk: 'DocumentChunk',
   ChatSession: 'ChatSession',
@@ -170,6 +174,75 @@ export const FlashcardReviewScalarFieldEnum = {
 export type FlashcardReviewScalarFieldEnum = (typeof FlashcardReviewScalarFieldEnum)[keyof typeof FlashcardReviewScalarFieldEnum]
 
 
+export const QuizScalarFieldEnum = {
+  id: 'id',
+  conversation_id: 'conversation_id',
+  user_id: 'user_id',
+  source_deck_id: 'source_deck_id',
+  title: 'title',
+  description: 'description',
+  time_limit_sec: 'time_limit_sec',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type QuizScalarFieldEnum = (typeof QuizScalarFieldEnum)[keyof typeof QuizScalarFieldEnum]
+
+
+export const QuizQuestionScalarFieldEnum = {
+  id: 'id',
+  quiz_id: 'quiz_id',
+  question_type: 'question_type',
+  order_index: 'order_index',
+  question_text: 'question_text',
+  image_url: 'image_url',
+  audio_url: 'audio_url',
+  points: 'points',
+  options: 'options',
+  sample_answer: 'sample_answer',
+  grading_criteria: 'grading_criteria',
+  explanation: 'explanation',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type QuizQuestionScalarFieldEnum = (typeof QuizQuestionScalarFieldEnum)[keyof typeof QuizQuestionScalarFieldEnum]
+
+
+export const QuizAttemptScalarFieldEnum = {
+  id: 'id',
+  quiz_id: 'quiz_id',
+  user_id: 'user_id',
+  status: 'status',
+  score: 'score',
+  max_score: 'max_score',
+  time_spent_sec: 'time_spent_sec',
+  started_at: 'started_at',
+  completed_at: 'completed_at'
+} as const
+
+export type QuizAttemptScalarFieldEnum = (typeof QuizAttemptScalarFieldEnum)[keyof typeof QuizAttemptScalarFieldEnum]
+
+
+export const QuizAttemptAnswerScalarFieldEnum = {
+  id: 'id',
+  attempt_id: 'attempt_id',
+  question_id: 'question_id',
+  selected_option_ids: 'selected_option_ids',
+  text_answer: 'text_answer',
+  is_flagged: 'is_flagged',
+  evaluation_status: 'evaluation_status',
+  points_earned: 'points_earned',
+  matched_points: 'matched_points',
+  missing_points: 'missing_points',
+  ai_feedback: 'ai_feedback',
+  answered_at: 'answered_at',
+  updated_at: 'updated_at'
+} as const
+
+export type QuizAttemptAnswerScalarFieldEnum = (typeof QuizAttemptAnswerScalarFieldEnum)[keyof typeof QuizAttemptAnswerScalarFieldEnum]
+
+
 export const DocumentScalarFieldEnum = {
   id: 'id',
   conversation_id: 'conversation_id',
@@ -244,6 +317,14 @@ export const SortOrder = {
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const JsonNullValueInput = {

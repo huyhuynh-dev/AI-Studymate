@@ -26,3 +26,33 @@ export const CardStateEnum = {
 } as const
 
 export type CardStateEnum = (typeof CardStateEnum)[keyof typeof CardStateEnum]
+
+
+export const QuestionTypeEnum = {
+  single_choice: 'single_choice',
+  multiple_choice: 'multiple_choice',
+  true_false: 'true_false',
+  short_answer: 'short_answer',
+  essay: 'essay'
+} as const
+
+export type QuestionTypeEnum = (typeof QuestionTypeEnum)[keyof typeof QuestionTypeEnum]
+
+
+export const AttemptStatusEnum = {
+  in_progress: 'in_progress',
+  grading: 'grading',
+  submitted: 'submitted'
+} as const
+
+export type AttemptStatusEnum = (typeof AttemptStatusEnum)[keyof typeof AttemptStatusEnum]
+
+
+export const EvaluationStatusEnum = {
+  pending: 'pending',
+  correct: 'correct',
+  partial: 'partial',
+  incorrect: 'incorrect'
+} as const
+
+export type EvaluationStatusEnum = (typeof EvaluationStatusEnum)[keyof typeof EvaluationStatusEnum]

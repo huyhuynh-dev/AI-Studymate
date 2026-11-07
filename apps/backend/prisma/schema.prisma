@@ -26,25 +26,54 @@ enum CardStateEnum {
   @@map("card_state_enum")
 }
 
+enum QuestionTypeEnum {
+  single_choice
+  multiple_choice
+  true_false
+  short_answer
+  essay
+
+  @@map("question_type_enum")
+}
+
+enum AttemptStatusEnum {
+  in_progress
+  grading
+  submitted
+
+  @@map("attempt_status_enum")
+}
+
+enum EvaluationStatusEnum {
+  pending
+  correct
+  partial
+  incorrect
+
+  @@map("evaluation_status_enum")
+}
+
 model User {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email           String          @unique @db.VarChar(255)
-  password_hash   String?         @db.VarChar(255)
-  name            String          @db.VarChar(255)
-  avatar_url      String?         @db.VarChar(500)
-  role            String          @default("user") @db.VarChar(20)
-  is_active       Boolean         @default(true)
-  is_verified     Boolean         @default(false)
-  created_at      DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime        @default(now()) @updatedAt @db.Timestamptz(6)
-  provider        String?         @db.VarChar(20)
-  provider_id     String?         @db.VarChar(255)
-  refresh_token   String?         @db.VarChar(500)
-  subjects        Subject[]
-  conversations   Conversation[]
-  documents       Document[]
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email             String            @unique @db.VarChar(255)
+  password_hash     String?           @db.VarChar(255)
+  name              String            @db.VarChar(255)
+  avatar_url        String?           @db.VarChar(500)
+  role              String            @default("user") @db.VarChar(20)
+  is_active         Boolean           @default(true)
+  is_verified       Boolean           @default(false)
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  provider          String?           @db.VarChar(20)
+  provider_id       String?           @db.VarChar(255)
+  refresh_token     String?           @db.VarChar(500)
+  subjects          Subject[]
+  conversations     Conversation[]
+  documents         Document[]
   flashcard_decks   FlashcardDeck[]
   flashcard_reviews FlashcardReview[]
+  quizzes           Quiz[]
+  quiz_attempts     QuizAttempt[]
 
   @@map("users")
 }
@@ -79,6 +108,7 @@ model Conversation {
   chat_sessions   ChatSession[]
   summaries       Summary[]
   flashcard_decks FlashcardDeck[]
+  quizzes         Quiz[]
 
   @@map("conversations")
 }
@@ -95,6 +125,7 @@ model FlashcardDeck {
   conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
   flashcards   Flashcard[]
+  quizzes      Quiz[]
 
   @@map("flashcard_decks")
 }
@@ -121,7 +152,7 @@ model Flashcard {
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
-  deck FlashcardDeck @relation(fields: [deck_id], references: [id], onDelete: Cascade)
+  deck    FlashcardDeck     @relation(fields: [deck_id], references: [id], onDelete: Cascade)
   reviews FlashcardReview[]
 
   @@index([deck_id], map: "idx_flashcards_deck_id")
@@ -130,13 +161,13 @@ model Flashcard {
 }
 
 model FlashcardReview {
-  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  flashcard_id  String        @db.Uuid
-  user_id       String        @db.Uuid
-  rating        Int           @db.SmallInt
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  flashcard_id  String         @db.Uuid
+  user_id       String         @db.Uuid
+  rating        Int            @db.SmallInt
   state_before  CardStateEnum?
   time_taken_ms Int?
-  reviewed_at   DateTime      @default(now()) @db.Timestamptz(6)
+  reviewed_at   DateTime       @default(now()) @db.Timestamptz(6)
 
   flashcard Flashcard @relation(fields: [flashcard_id], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -144,6 +175,95 @@ model FlashcardReview {
   @@index([user_id, reviewed_at], map: "idx_reviews_user_date")
   @@index([flashcard_id], map: "idx_reviews_flashcard_id")
   @@map("flashcard_reviews")
+}
+
+model Quiz {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String   @db.Uuid
+  user_id         String   @db.Uuid
+  source_deck_id  String?  @db.Uuid
+  title           String   @db.VarChar(255)
+  description     String?  @db.Text
+  time_limit_sec  Int?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  conversation Conversation   @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  user         User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  source_deck  FlashcardDeck? @relation(fields: [source_deck_id], references: [id], onDelete: SetNull)
+  questions    QuizQuestion[]
+  attempts     QuizAttempt[]
+
+  @@index([conversation_id], map: "idx_quizzes_conversation_id")
+  @@index([user_id], map: "idx_quizzes_user_id")
+  @@index([source_deck_id], map: "idx_quizzes_source_deck_id")
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quiz_id          String           @db.Uuid
+  question_type    QuestionTypeEnum @default(single_choice)
+  order_index      Int              @default(0)
+  question_text    String           @db.Text
+  image_url        String?          @db.Text
+  audio_url        String?          @db.Text
+  points           Float            @default(1.0) @db.Real
+  options          Json?            @db.JsonB
+  sample_answer    String?          @db.Text
+  grading_criteria Json             @default("[]") @db.JsonB
+  explanation      String?          @db.Text
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime         @default(now()) @db.Timestamptz(6)
+
+  quiz            Quiz                @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  attempt_answers QuizAttemptAnswer[]
+
+  @@index([quiz_id, order_index], map: "idx_quiz_questions_quiz_order")
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quiz_id        String            @db.Uuid
+  user_id        String            @db.Uuid
+  status         AttemptStatusEnum @default(in_progress)
+  score          Float             @default(0) @db.Real
+  max_score      Float             @default(0) @db.Real
+  time_spent_sec Int               @default(0)
+  started_at     DateTime          @default(now()) @db.Timestamptz(6)
+  completed_at   DateTime?         @db.Timestamptz(6)
+
+  quiz    Quiz                @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  user    User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  answers QuizAttemptAnswer[]
+
+  @@index([quiz_id, user_id, started_at(sort: Desc)], map: "idx_quiz_attempts_user_quiz")
+  @@map("quiz_attempts")
+}
+
+model QuizAttemptAnswer {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attempt_id          String               @db.Uuid
+  question_id         String               @db.Uuid
+  selected_option_ids Json                 @default("[]") @db.JsonB
+  text_answer         String?              @db.Text
+  is_flagged          Boolean              @default(false)
+  evaluation_status   EvaluationStatusEnum @default(pending)
+  points_earned       Float                @default(0) @db.Real
+  matched_points      Json                 @default("[]") @db.JsonB
+  missing_points      Json                 @default("[]") @db.JsonB
+  ai_feedback         String?              @db.Text
+  answered_at         DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime             @default(now()) @db.Timestamptz(6)
+
+  attempt  QuizAttempt  @relation(fields: [attempt_id], references: [id], onDelete: Cascade)
+  question QuizQuestion @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@unique([attempt_id, question_id], map: "uq_attempt_question")
+  @@index([attempt_id], map: "idx_attempt_answers_attempt_id")
+  @@index([question_id], map: "idx_attempt_answers_question_id")
+  @@map("quiz_attempt_answers")
 }
 
 model Document {
