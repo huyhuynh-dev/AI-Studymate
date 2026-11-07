@@ -43,7 +43,8 @@ model User {
   subjects        Subject[]
   conversations   Conversation[]
   documents       Document[]
-  flashcard_decks FlashcardDeck[]
+  flashcard_decks   FlashcardDeck[]
+  flashcard_reviews FlashcardReview[]
 
   @@map("users")
 }
@@ -121,10 +122,28 @@ model Flashcard {
   updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   deck FlashcardDeck @relation(fields: [deck_id], references: [id], onDelete: Cascade)
+  reviews FlashcardReview[]
 
   @@index([deck_id], map: "idx_flashcards_deck_id")
   @@index([deck_id, state, due_date], map: "idx_flashcards_due_review")
   @@map("flashcards")
+}
+
+model FlashcardReview {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  flashcard_id  String        @db.Uuid
+  user_id       String        @db.Uuid
+  rating        Int           @db.SmallInt
+  state_before  CardStateEnum?
+  time_taken_ms Int?
+  reviewed_at   DateTime      @default(now()) @db.Timestamptz(6)
+
+  flashcard Flashcard @relation(fields: [flashcard_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, reviewed_at], map: "idx_reviews_user_date")
+  @@index([flashcard_id], map: "idx_reviews_flashcard_id")
+  @@map("flashcard_reviews")
 }
 
 model Document {

@@ -305,6 +305,7 @@ export type FlashcardWhereInput = {
   created_at?: Prisma.DateTimeFilter<"Flashcard"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"Flashcard"> | Date | string
   deck?: Prisma.XOR<Prisma.FlashcardDeckScalarRelationFilter, Prisma.FlashcardDeckWhereInput>
+  reviews?: Prisma.FlashcardReviewListRelationFilter
 }
 
 export type FlashcardOrderByWithRelationInput = {
@@ -324,6 +325,7 @@ export type FlashcardOrderByWithRelationInput = {
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   deck?: Prisma.FlashcardDeckOrderByWithRelationInput
+  reviews?: Prisma.FlashcardReviewOrderByRelationAggregateInput
 }
 
 export type FlashcardWhereUniqueInput = Prisma.AtLeast<{
@@ -346,6 +348,7 @@ export type FlashcardWhereUniqueInput = Prisma.AtLeast<{
   created_at?: Prisma.DateTimeFilter<"Flashcard"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"Flashcard"> | Date | string
   deck?: Prisma.XOR<Prisma.FlashcardDeckScalarRelationFilter, Prisma.FlashcardDeckWhereInput>
+  reviews?: Prisma.FlashcardReviewListRelationFilter
 }, "id">
 
 export type FlashcardOrderByWithAggregationInput = {
@@ -408,6 +411,7 @@ export type FlashcardCreateInput = {
   created_at?: Date | string
   updated_at?: Date | string
   deck: Prisma.FlashcardDeckCreateNestedOneWithoutFlashcardsInput
+  reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutFlashcardInput
 }
 
 export type FlashcardUncheckedCreateInput = {
@@ -426,6 +430,7 @@ export type FlashcardUncheckedCreateInput = {
   last_reviewed_at?: Date | string | null
   created_at?: Date | string
   updated_at?: Date | string
+  reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutFlashcardInput
 }
 
 export type FlashcardUpdateInput = {
@@ -444,6 +449,7 @@ export type FlashcardUpdateInput = {
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deck?: Prisma.FlashcardDeckUpdateOneRequiredWithoutFlashcardsNestedInput
+  reviews?: Prisma.FlashcardReviewUpdateManyWithoutFlashcardNestedInput
 }
 
 export type FlashcardUncheckedUpdateInput = {
@@ -462,6 +468,7 @@ export type FlashcardUncheckedUpdateInput = {
   last_reviewed_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutFlashcardNestedInput
 }
 
 export type FlashcardCreateManyInput = {
@@ -593,6 +600,11 @@ export type FlashcardSumOrderByAggregateInput = {
   ease_factor?: Prisma.SortOrder
 }
 
+export type FlashcardScalarRelationFilter = {
+  is?: Prisma.FlashcardWhereInput
+  isNot?: Prisma.FlashcardWhereInput
+}
+
 export type FlashcardCreateNestedManyWithoutDeckInput = {
   create?: Prisma.XOR<Prisma.FlashcardCreateWithoutDeckInput, Prisma.FlashcardUncheckedCreateWithoutDeckInput> | Prisma.FlashcardCreateWithoutDeckInput[] | Prisma.FlashcardUncheckedCreateWithoutDeckInput[]
   connectOrCreate?: Prisma.FlashcardCreateOrConnectWithoutDeckInput | Prisma.FlashcardCreateOrConnectWithoutDeckInput[]
@@ -663,6 +675,20 @@ export type NullableDateTimeFieldUpdateOperationsInput = {
   set?: Date | string | null
 }
 
+export type FlashcardCreateNestedOneWithoutReviewsInput = {
+  create?: Prisma.XOR<Prisma.FlashcardCreateWithoutReviewsInput, Prisma.FlashcardUncheckedCreateWithoutReviewsInput>
+  connectOrCreate?: Prisma.FlashcardCreateOrConnectWithoutReviewsInput
+  connect?: Prisma.FlashcardWhereUniqueInput
+}
+
+export type FlashcardUpdateOneRequiredWithoutReviewsNestedInput = {
+  create?: Prisma.XOR<Prisma.FlashcardCreateWithoutReviewsInput, Prisma.FlashcardUncheckedCreateWithoutReviewsInput>
+  connectOrCreate?: Prisma.FlashcardCreateOrConnectWithoutReviewsInput
+  upsert?: Prisma.FlashcardUpsertWithoutReviewsInput
+  connect?: Prisma.FlashcardWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.FlashcardUpdateToOneWithWhereWithoutReviewsInput, Prisma.FlashcardUpdateWithoutReviewsInput>, Prisma.FlashcardUncheckedUpdateWithoutReviewsInput>
+}
+
 export type FlashcardCreateWithoutDeckInput = {
   id?: string
   card_type?: $Enums.CardTypeEnum
@@ -678,6 +704,7 @@ export type FlashcardCreateWithoutDeckInput = {
   last_reviewed_at?: Date | string | null
   created_at?: Date | string
   updated_at?: Date | string
+  reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutFlashcardInput
 }
 
 export type FlashcardUncheckedCreateWithoutDeckInput = {
@@ -695,6 +722,7 @@ export type FlashcardUncheckedCreateWithoutDeckInput = {
   last_reviewed_at?: Date | string | null
   created_at?: Date | string
   updated_at?: Date | string
+  reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutFlashcardInput
 }
 
 export type FlashcardCreateOrConnectWithoutDeckInput = {
@@ -744,6 +772,94 @@ export type FlashcardScalarWhereInput = {
   updated_at?: Prisma.DateTimeFilter<"Flashcard"> | Date | string
 }
 
+export type FlashcardCreateWithoutReviewsInput = {
+  id?: string
+  card_type?: $Enums.CardTypeEnum
+  front_text: string
+  back_text: string
+  image_url?: string | null
+  audio_url?: string | null
+  state?: $Enums.CardStateEnum
+  step_index?: number
+  interval?: number
+  ease_factor?: number
+  due_date?: Date | string
+  last_reviewed_at?: Date | string | null
+  created_at?: Date | string
+  updated_at?: Date | string
+  deck: Prisma.FlashcardDeckCreateNestedOneWithoutFlashcardsInput
+}
+
+export type FlashcardUncheckedCreateWithoutReviewsInput = {
+  id?: string
+  deck_id: string
+  card_type?: $Enums.CardTypeEnum
+  front_text: string
+  back_text: string
+  image_url?: string | null
+  audio_url?: string | null
+  state?: $Enums.CardStateEnum
+  step_index?: number
+  interval?: number
+  ease_factor?: number
+  due_date?: Date | string
+  last_reviewed_at?: Date | string | null
+  created_at?: Date | string
+  updated_at?: Date | string
+}
+
+export type FlashcardCreateOrConnectWithoutReviewsInput = {
+  where: Prisma.FlashcardWhereUniqueInput
+  create: Prisma.XOR<Prisma.FlashcardCreateWithoutReviewsInput, Prisma.FlashcardUncheckedCreateWithoutReviewsInput>
+}
+
+export type FlashcardUpsertWithoutReviewsInput = {
+  update: Prisma.XOR<Prisma.FlashcardUpdateWithoutReviewsInput, Prisma.FlashcardUncheckedUpdateWithoutReviewsInput>
+  create: Prisma.XOR<Prisma.FlashcardCreateWithoutReviewsInput, Prisma.FlashcardUncheckedCreateWithoutReviewsInput>
+  where?: Prisma.FlashcardWhereInput
+}
+
+export type FlashcardUpdateToOneWithWhereWithoutReviewsInput = {
+  where?: Prisma.FlashcardWhereInput
+  data: Prisma.XOR<Prisma.FlashcardUpdateWithoutReviewsInput, Prisma.FlashcardUncheckedUpdateWithoutReviewsInput>
+}
+
+export type FlashcardUpdateWithoutReviewsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  card_type?: Prisma.EnumCardTypeEnumFieldUpdateOperationsInput | $Enums.CardTypeEnum
+  front_text?: Prisma.StringFieldUpdateOperationsInput | string
+  back_text?: Prisma.StringFieldUpdateOperationsInput | string
+  image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
+  step_index?: Prisma.IntFieldUpdateOperationsInput | number
+  interval?: Prisma.IntFieldUpdateOperationsInput | number
+  ease_factor?: Prisma.FloatFieldUpdateOperationsInput | number
+  due_date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  last_reviewed_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deck?: Prisma.FlashcardDeckUpdateOneRequiredWithoutFlashcardsNestedInput
+}
+
+export type FlashcardUncheckedUpdateWithoutReviewsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  deck_id?: Prisma.StringFieldUpdateOperationsInput | string
+  card_type?: Prisma.EnumCardTypeEnumFieldUpdateOperationsInput | $Enums.CardTypeEnum
+  front_text?: Prisma.StringFieldUpdateOperationsInput | string
+  back_text?: Prisma.StringFieldUpdateOperationsInput | string
+  image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
+  step_index?: Prisma.IntFieldUpdateOperationsInput | number
+  interval?: Prisma.IntFieldUpdateOperationsInput | number
+  ease_factor?: Prisma.FloatFieldUpdateOperationsInput | number
+  due_date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  last_reviewed_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type FlashcardCreateManyDeckInput = {
   id?: string
   card_type?: $Enums.CardTypeEnum
@@ -776,6 +892,7 @@ export type FlashcardUpdateWithoutDeckInput = {
   last_reviewed_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviews?: Prisma.FlashcardReviewUpdateManyWithoutFlashcardNestedInput
 }
 
 export type FlashcardUncheckedUpdateWithoutDeckInput = {
@@ -793,6 +910,7 @@ export type FlashcardUncheckedUpdateWithoutDeckInput = {
   last_reviewed_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutFlashcardNestedInput
 }
 
 export type FlashcardUncheckedUpdateManyWithoutDeckInput = {
@@ -813,6 +931,35 @@ export type FlashcardUncheckedUpdateManyWithoutDeckInput = {
 }
 
 
+/**
+ * Count Type FlashcardCountOutputType
+ */
+
+export type FlashcardCountOutputType = {
+  reviews: number
+}
+
+export type FlashcardCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  reviews?: boolean | FlashcardCountOutputTypeCountReviewsArgs
+}
+
+/**
+ * FlashcardCountOutputType without action
+ */
+export type FlashcardCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FlashcardCountOutputType
+   */
+  select?: Prisma.FlashcardCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * FlashcardCountOutputType without action
+ */
+export type FlashcardCountOutputTypeCountReviewsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FlashcardReviewWhereInput
+}
+
 
 export type FlashcardSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -831,6 +978,8 @@ export type FlashcardSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   created_at?: boolean
   updated_at?: boolean
   deck?: boolean | Prisma.FlashcardDeckDefaultArgs<ExtArgs>
+  reviews?: boolean | Prisma.Flashcard$reviewsArgs<ExtArgs>
+  _count?: boolean | Prisma.FlashcardCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["flashcard"]>
 
 export type FlashcardSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -892,6 +1041,8 @@ export type FlashcardSelectScalar = {
 export type FlashcardOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "deck_id" | "card_type" | "front_text" | "back_text" | "image_url" | "audio_url" | "state" | "step_index" | "interval" | "ease_factor" | "due_date" | "last_reviewed_at" | "created_at" | "updated_at", ExtArgs["result"]["flashcard"]>
 export type FlashcardInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   deck?: boolean | Prisma.FlashcardDeckDefaultArgs<ExtArgs>
+  reviews?: boolean | Prisma.Flashcard$reviewsArgs<ExtArgs>
+  _count?: boolean | Prisma.FlashcardCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type FlashcardIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   deck?: boolean | Prisma.FlashcardDeckDefaultArgs<ExtArgs>
@@ -904,6 +1055,7 @@ export type $FlashcardPayload<ExtArgs extends runtime.Types.Extensions.InternalA
   name: "Flashcard"
   objects: {
     deck: Prisma.$FlashcardDeckPayload<ExtArgs>
+    reviews: Prisma.$FlashcardReviewPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1316,6 +1468,7 @@ readonly fields: FlashcardFieldRefs;
 export interface Prisma__FlashcardClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   deck<T extends Prisma.FlashcardDeckDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FlashcardDeckDefaultArgs<ExtArgs>>): Prisma.Prisma__FlashcardDeckClient<runtime.Types.Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  reviews<T extends Prisma.Flashcard$reviewsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Flashcard$reviewsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FlashcardReviewPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1758,6 +1911,30 @@ export type FlashcardDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Int
    * Limit how many Flashcards to delete.
    */
   limit?: number
+}
+
+/**
+ * Flashcard.reviews
+ */
+export type Flashcard$reviewsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FlashcardReview
+   */
+  select?: Prisma.FlashcardReviewSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FlashcardReview
+   */
+  omit?: Prisma.FlashcardReviewOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FlashcardReviewInclude<ExtArgs> | null
+  where?: Prisma.FlashcardReviewWhereInput
+  orderBy?: Prisma.FlashcardReviewOrderByWithRelationInput | Prisma.FlashcardReviewOrderByWithRelationInput[]
+  cursor?: Prisma.FlashcardReviewWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FlashcardReviewScalarFieldEnum | Prisma.FlashcardReviewScalarFieldEnum[]
 }
 
 /**

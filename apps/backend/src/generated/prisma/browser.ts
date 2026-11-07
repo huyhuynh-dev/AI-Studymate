@@ -43,6 +43,11 @@ export type FlashcardDeck = Prisma.FlashcardDeckModel
  */
 export type Flashcard = Prisma.FlashcardModel
 /**
+ * Model FlashcardReview
+ * 
+ */
+export type FlashcardReview = Prisma.FlashcardReviewModel
+/**
  * Model Document
  * 
  */

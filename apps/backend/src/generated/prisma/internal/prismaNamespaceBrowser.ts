@@ -56,6 +56,7 @@ export const ModelName = {
   Conversation: 'Conversation',
   FlashcardDeck: 'FlashcardDeck',
   Flashcard: 'Flashcard',
+  FlashcardReview: 'FlashcardReview',
   Document: 'Document',
   DocumentChunk: 'DocumentChunk',
   ChatSession: 'ChatSession',
@@ -154,6 +155,19 @@ export const FlashcardScalarFieldEnum = {
 } as const
 
 export type FlashcardScalarFieldEnum = (typeof FlashcardScalarFieldEnum)[keyof typeof FlashcardScalarFieldEnum]
+
+
+export const FlashcardReviewScalarFieldEnum = {
+  id: 'id',
+  flashcard_id: 'flashcard_id',
+  user_id: 'user_id',
+  rating: 'rating',
+  state_before: 'state_before',
+  time_taken_ms: 'time_taken_ms',
+  reviewed_at: 'reviewed_at'
+} as const
+
+export type FlashcardReviewScalarFieldEnum = (typeof FlashcardReviewScalarFieldEnum)[keyof typeof FlashcardReviewScalarFieldEnum]
 
 
 export const DocumentScalarFieldEnum = {

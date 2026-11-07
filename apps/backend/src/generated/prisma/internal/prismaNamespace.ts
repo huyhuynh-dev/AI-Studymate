@@ -402,6 +402,7 @@ export const ModelName = {
   Conversation: 'Conversation',
   FlashcardDeck: 'FlashcardDeck',
   Flashcard: 'Flashcard',
+  FlashcardReview: 'FlashcardReview',
   Document: 'Document',
   DocumentChunk: 'DocumentChunk',
   ChatSession: 'ChatSession',
@@ -422,7 +423,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "subject" | "conversation" | "flashcardDeck" | "flashcard" | "document" | "documentChunk" | "chatSession" | "message" | "summary"
+    modelProps: "user" | "subject" | "conversation" | "flashcardDeck" | "flashcard" | "flashcardReview" | "document" | "documentChunk" | "chatSession" | "message" | "summary"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -793,6 +794,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.FlashcardCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.FlashcardCountAggregateOutputType> | number
+        }
+      }
+    }
+    FlashcardReview: {
+      payload: Prisma.$FlashcardReviewPayload<ExtArgs>
+      fields: Prisma.FlashcardReviewFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FlashcardReviewFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FlashcardReviewPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FlashcardReviewFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FlashcardReviewPayload>
+        }
+        findFirst: {
+          args: Prisma.FlashcardReviewFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FlashcardReviewPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FlashcardReviewFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FlashcardReviewPayload>
+        }
+        findMany: {
+          args: Prisma.FlashcardReviewFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FlashcardReviewPayload>[]
+        }
+        create: {
+          args: Prisma.FlashcardReviewCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FlashcardReviewPayload>
+        }
+        createMany: {
+          args: Prisma.FlashcardReviewCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FlashcardReviewCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FlashcardReviewPayload>[]
+        }
+        delete: {
+          args: Prisma.FlashcardReviewDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FlashcardReviewPayload>
+        }
+        update: {
+          args: Prisma.FlashcardReviewUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FlashcardReviewPayload>
+        }
+        deleteMany: {
+          args: Prisma.FlashcardReviewDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FlashcardReviewUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FlashcardReviewUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FlashcardReviewPayload>[]
+        }
+        upsert: {
+          args: Prisma.FlashcardReviewUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FlashcardReviewPayload>
+        }
+        aggregate: {
+          args: Prisma.FlashcardReviewAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFlashcardReview>
+        }
+        groupBy: {
+          args: Prisma.FlashcardReviewGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FlashcardReviewGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FlashcardReviewCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FlashcardReviewCountAggregateOutputType> | number
         }
       }
     }
@@ -1282,6 +1357,19 @@ export const FlashcardScalarFieldEnum = {
 export type FlashcardScalarFieldEnum = (typeof FlashcardScalarFieldEnum)[keyof typeof FlashcardScalarFieldEnum]
 
 
+export const FlashcardReviewScalarFieldEnum = {
+  id: 'id',
+  flashcard_id: 'flashcard_id',
+  user_id: 'user_id',
+  rating: 'rating',
+  state_before: 'state_before',
+  time_taken_ms: 'time_taken_ms',
+  reviewed_at: 'reviewed_at'
+} as const
+
+export type FlashcardReviewScalarFieldEnum = (typeof FlashcardReviewScalarFieldEnum)[keyof typeof FlashcardReviewScalarFieldEnum]
+
+
 export const DocumentScalarFieldEnum = {
   id: 'id',
   conversation_id: 'conversation_id',
@@ -1670,6 +1758,7 @@ export type GlobalOmitConfig = {
   conversation?: Prisma.ConversationOmit
   flashcardDeck?: Prisma.FlashcardDeckOmit
   flashcard?: Prisma.FlashcardOmit
+  flashcardReview?: Prisma.FlashcardReviewOmit
   document?: Prisma.DocumentOmit
   documentChunk?: Prisma.DocumentChunkOmit
   chatSession?: Prisma.ChatSessionOmit
