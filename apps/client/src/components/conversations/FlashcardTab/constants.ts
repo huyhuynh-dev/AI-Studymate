@@ -48,6 +48,7 @@ export const CARD_TYPE_TONE: Record<CardType, Tone> = {
 export const STATUS_META: Record<CardStatus, { label: string; tone: Tone }> = {
   new: { label: "Mới", tone: "blue" },
   learning: { label: "Đang học", tone: "amber" },
+  relearning: { label: "Học lại", tone: "red" },
   review: { label: "Ôn tập", tone: "green" },
 };
 

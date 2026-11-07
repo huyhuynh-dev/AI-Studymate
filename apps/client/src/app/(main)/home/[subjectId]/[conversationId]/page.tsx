@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use } from "react";
 import ConversationHeader from "@/components/conversations/ConversationHeader";
 import ConversationHeaderTabs, { TabKey } from "@/components/conversations/ConversationHeaderTabs";
-import DocumentsTab from "@/components/conversations/DocumentsTab";
+import DocumentsTab from "@/components/conversations/DocumentsTab/DocumentsTab";
 import SummaryTab from "@/components/conversations/SummaryTab/SummaryTab";
 import FlashcardsTab from "@/components/conversations/FlashcardTab";
 import QuizTab from "@/components/conversations/QuizTab";

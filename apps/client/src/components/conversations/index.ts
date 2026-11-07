@@ -19,17 +19,17 @@ export * from "./ConversationHeaderRoutes";
 export { default as ConversationHeaderTabs } from "./ConversationHeaderTabs";
 export * from "./ConversationHeaderTabs";
 
-export { default as DocumentsTab } from "./DocumentsTab";
-export * from "./DocumentsTab";
+export { default as DocumentsTab } from "./DocumentsTab/DocumentsTab";
+export * from "./DocumentsTab/DocumentsTab";
 
-export { default as DocumentImageViewer } from "./DocumentImageViewer";
-export * from "./DocumentImageViewer";
+export { default as DocumentImageViewer } from "./DocumentsTab/DocumentImageViewer";
+export * from "./DocumentsTab/DocumentImageViewer";
 
 export { default as SummaryTab } from "./SummaryTab/SummaryTab";
 export * from "./SummaryTab/SummaryTab";
 
-export { default as FlashcardsTab } from "./FlashcardsTab";
-export * from "./FlashcardsTab";
+export { default as FlashcardsTab } from "./FlashcardTab";
+export * from "./FlashcardTab";
 
 export { default as QuizTab } from "./QuizTab";
 export * from "./QuizTab";

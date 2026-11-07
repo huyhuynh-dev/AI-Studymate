@@ -1,7 +1,7 @@
 # Thay đổi trong page.tsx
 
 ```diff
--import FlashcardsTab from "@/components/conversations/FlashcardsTab";
+-import FlashcardsTab from "@/components/conversations/FlashcardTab";
 +import FlashcardsTab from "@/components/conversations/FlashcardTab";
 ```
 
