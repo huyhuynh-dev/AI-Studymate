@@ -1,180 +1,121 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, FolderPlus, BookOpen, Brain, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSubjects } from "@/hooks/useSubjects";
 import CreateWorkspaceModal from "./CreateWorkspaceModal";
 
 export interface WelcomeComponentProps {
-    /**
-     * Callback tùy chọn khi người dùng bấm nút tạo không gian học tập.
-     * Nếu không truyền, component sẽ tự mở CreateWorkspaceModal mặc định.
-     */
-    onCreateWorkspace?: () => void;
-    /** Class tùy chọn cho container bên ngoài */
-    className?: string;
+  /**
+   * Callback tùy chọn khi người dùng bấm nút tạo không gian học tập.
+   * Nếu không truyền, component sẽ tự mở CreateWorkspaceModal mặc định.
+   */
+  onCreateWorkspace?: () => void;
+  /** Class tùy chọn cho container bên ngoài */
+  className?: string;
 }
 
 export default function WelcomeComponent({
-    onCreateWorkspace,
-    className = "",
+  onCreateWorkspace,
+  className = "",
 }: WelcomeComponentProps) {
-    const router = useRouter();
-    const { createSubject } = useSubjects();
-    const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
+  const { createSubject } = useSubjects();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const handleClick = () => {
-        if (onCreateWorkspace) {
-            onCreateWorkspace();
-        } else {
-            setIsModalOpen(true);
-        }
-    };
+  const handleClick = () => {
+    if (onCreateWorkspace) {
+      onCreateWorkspace();
+    } else {
+      setIsModalOpen(true);
+    }
+  };
 
-    const handleWorkspaceCreated = async (data: { name: string; color: string }) => {
-        try {
-            const created = await createSubject(data);
-            setIsModalOpen(false);
-            if (created?.id) {
-                router.push(`/home/${created.id}`);
-            }
-        } catch (err) {
-            console.error("Lỗi khi tạo không gian học tập:", err);
-        }
-    };
+  const handleWorkspaceCreated = async (data: { name: string; color: string }) => {
+    try {
+      const created = await createSubject(data);
+      setIsModalOpen(false);
+      if (created?.id) {
+        router.push(`/home/${created.id}`);
+      }
+    } catch (err) {
+      console.error("Lỗi khi tạo không gian học tập:", err);
+    }
+  };
 
-    return (
-        <>
-            <div
-                className={`flex w-full max-w-2xl flex-col items-center justify-center rounded-3xl border border-gray-100 bg-white p-8 text-center shadow-xs transition-all sm:p-12 sm:shadow-sm ${className}`}
-            >
-                {/* Minh họa đồ họa trung tâm */}
-                <div className="relative mb-6 flex items-center justify-center sm:mb-8">
-                    <svg
-                        className="h-44 w-44 sm:h-52 sm:w-52 select-none"
-                        viewBox="0 0 200 200"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                    >
-                        {/* Vòng tròn nền pastel xanh tím nhạt */}
-                        <circle cx="100" cy="100" r="72" fill="#F0F4FF" />
+  return (
+    <>
+      <div
+        className={`relative flex w-full max-w-xl flex-col items-center justify-center rounded-[28px] border border-[#E5EEFF] dark:border-white/[0.08] bg-white/90 dark:bg-[#12151C]/90 backdrop-blur-xl p-8 text-center shadow-[0_8px_32px_-8px_rgba(11,28,48,0.06),0_1px_3px_rgba(11,28,48,0.03)] dark:shadow-[0_16px_40px_-8px_rgba(0,0,0,0.5)] transition-all sm:p-12 select-none ${className}`}
+      >
+        {/* ── Apple Spatial Glyph Lockup ── */}
+        <div className="relative mb-6 flex items-center justify-center">
+          {/* Ambient Diffused Glow */}
+          <div
+            className="absolute -inset-4 rounded-full bg-[#4F46E5]/10 dark:bg-[#4F46E5]/15 blur-2xl -z-10 pointer-events-none"
+            aria-hidden="true"
+          />
 
-                        {/* Các hạt bong bóng trang trí mờ nhẹ */}
-                        <circle cx="152" cy="44" r="5" fill="#C7D2FE" opacity="0.85" />
-                        <circle cx="44" cy="116" r="4.5" fill="#A5B4FC" opacity="0.85" />
-                        <circle cx="100" cy="154" r="3" fill="#818CF8" opacity="0.9" />
+          {/* Squircle Icon Container with Concentric G2 Curve & Specular Top Hairline */}
+          <div className="relative flex h-20 w-20 sm:h-22 sm:w-22 items-center justify-center rounded-[24px] sm:rounded-[26px] bg-gradient-to-b from-[#EEF2FF] to-[#E0E7FF] dark:from-[#4F46E5]/20 dark:to-[#4F46E5]/5 border border-[#C7D2FE]/70 dark:border-[#4F46E5]/30 shadow-md shadow-[#4F46E5]/10 dark:shadow-black/30 shadow-[inset_0px_1px_0px_rgba(255,255,255,0.8)] dark:shadow-[inset_0px_1px_0px_rgba(255,255,255,0.15)] ring-4 ring-[#4F46E5]/5 dark:ring-[#4F46E5]/10 apple-spring hover:scale-105">
+            <FolderPlus
+              className="h-9 w-9 sm:h-10 sm:w-10 text-[#4F46E5] dark:text-[#818CF8]"
+              strokeWidth={1.6}
+            />
+          </div>
+        </div>
 
-                        {/* Ngôi sao lấp lánh màu hồng (bên trái) */}
-                        <path
-                            d="M42 50 C42 56 46 60 52 60 C46 60 42 64 42 70 C42 64 38 60 32 60 C38 60 42 56 42 50 Z"
-                            fill="#F43F5E"
-                        />
+        {/* ── Title & Subtitle with Optical Sizing ── */}
+        <h2 className="text-2xl sm:text-[26px] font-bold tracking-[-0.025em] text-[#0B1C30] dark:text-[#EFF0F6] leading-tight">
+          Bạn chưa có không gian học tập nào
+        </h2>
 
-                        {/* Ngôi sao lấp lánh màu tím xanh (bên phải) */}
-                        <path
-                            d="M162 62 C162 68 166 72 172 72 C166 72 162 76 162 82 C162 76 158 72 152 72 C158 72 162 68 162 62 Z"
-                            fill="#6366F1"
-                        />
+        <p className="mt-2.5 max-w-md text-sm sm:text-[15px] leading-relaxed text-[#464555] dark:text-[#9DA3AF]">
+          Tạo không gian cho từng môn học để lưu trữ giáo trình, tạo bộ thẻ
+          Flashcard thông minh và trò chuyện ôn luyện cùng trợ lý AI.
+        </p>
 
-                        {/* Lá cờ xanh lá cắm trên màn hình */}
-                        <line
-                            x1="126"
-                            y1="44"
-                            x2="126"
-                            y2="24"
-                            stroke="#10B981"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                        />
-                        <circle cx="126" cy="23" r="2.5" fill="#10B981" />
-                        <path d="M126 25 L144 32 L126 39 Z" fill="#10B981" />
+        {/* ── The 1 Primary CTA Button (borderedProminent Apple HIG standard) ── */}
+        <div className="mt-7">
+          <button
+            type="button"
+            onClick={handleClick}
+            className="inline-flex items-center justify-center gap-2 h-12 px-6 sm:px-7 rounded-xl bg-[#4F46E5] hover:bg-[#3525CD] active:bg-[#312E81] text-white font-semibold text-[14px] sm:text-[15px] tracking-[-0.01em] shadow-[0_2px_8px_rgba(79,70,229,0.25)] shadow-[inset_0px_1px_0px_rgba(255,255,255,0.22)] apple-spring active:scale-[0.985] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]/50 focus-visible:ring-offset-2"
+          >
+            <Plus className="h-4.5 w-4.5" strokeWidth={2.2} />
+            <span>Tạo Không gian học tập đầu tiên</span>
+          </button>
+        </div>
 
-                        {/* Màn hình máy tính / thiết bị học tập */}
-                        <rect
-                            x="67"
-                            y="38"
-                            width="66"
-                            height="48"
-                            rx="8"
-                            fill="#FFFFFF"
-                            stroke="#312E81"
-                            strokeWidth="3.5"
-                        />
-                        {/* Vùng hiển thị màn hình bên trong */}
-                        <rect x="71" y="42" width="58" height="40" rx="5" fill="#F8FAFC" />
+        {/* ── Deferent Value Proposition Micro-Pills ── */}
+        <div className="mt-8 pt-6 border-t border-[#F0F4FF] dark:border-white/[0.06] w-full flex flex-wrap items-center justify-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F8F9FF] dark:bg-white/[0.04] border border-[#E5EEFF] dark:border-white/[0.08] text-[11px] font-medium text-[#464555] dark:text-[#9DA3AF]">
+            <BookOpen className="h-3.5 w-3.5 text-[#4F46E5] dark:text-[#818CF8]" strokeWidth={1.8} />
+            <span>Quản lý giáo trình</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F8F9FF] dark:bg-white/[0.04] border border-[#E5EEFF] dark:border-white/[0.08] text-[11px] font-medium text-[#464555] dark:text-[#9DA3AF]">
+            <Brain className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.8} />
+            <span>Flashcard thông minh</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F8F9FF] dark:bg-white/[0.04] border border-[#E5EEFF] dark:border-white/[0.08] text-[11px] font-medium text-[#464555] dark:text-[#9DA3AF]">
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" strokeWidth={1.8} />
+            <span>Trợ lý AI hỏi đáp</span>
+          </span>
+        </div>
+      </div>
 
-                        {/* Biểu tượng huy hiệu tròn ở trung tâm màn hình */}
-                        <circle
-                            cx="100"
-                            cy="62"
-                            r="11"
-                            fill="#EEF2FF"
-                            stroke="#4F46E5"
-                            strokeWidth="2"
-                        />
-                        {/* Dấu cộng / biểu tượng AI */}
-                        <path
-                            d="M100 57 V67 M95 62 H105"
-                            stroke="#4F46E5"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                        />
-
-                        {/* Các tầng đế xếp tầng dưới máy tính */}
-                        {/* Tầng trên (tím sáng) */}
-                        <rect x="68" y="86" width="64" height="10" rx="5" fill="#6366F1" />
-                        {/* Tầng giữa (xanh tím) */}
-                        <rect x="60" y="96" width="80" height="12" rx="6" fill="#4F46E5" />
-                        {/* Tầng đáy (xanh navy đậm) */}
-                        <rect x="52" y="108" width="96" height="14" rx="7" fill="#1E1B4B" />
-
-                        {/* Bóng mờ bên dưới đế */}
-                        <ellipse cx="100" cy="130" rx="34" ry="4" fill="#C7D2FE" opacity="0.6" />
-                    </svg>
-                </div>
-
-                {/* Tiêu đề chính */}
-                <h2 className="mb-3 text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">
-                    Bạn chưa có Không gian học tập nào
-                </h2>
-
-                {/* Mô tả phụ */}
-                <p className="mb-8 max-w-lg text-sm leading-relaxed text-gray-500 sm:text-base">
-                    Hãy tạo một không gian mới để bắt đầu thêm tài liệu, học Flashcard và trò chuyện cùng AI.
-                </p>
-
-                {/* Nút bấm Tạo Không gian học tập đầu tiên */}
-                <button
-                    type="button"
-                    onClick={handleClick}
-                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-indigo-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all duration-200 hover:bg-indigo-700 hover:shadow-indigo-500/35 active:scale-98 sm:text-base"
-                >
-                    <Plus className="h-5 w-5 stroke-[2.5]" />
-                    <span>Tạo Không gian học tập đầu tiên</span>
-                    {/* Biểu tượng ngôi sao 4 cánh */}
-                    <svg
-                        className="h-4 w-4 fill-white"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                    >
-                        <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
-                    </svg>
-                </button>
-            </div>
-
-            {/* Modal tạo không gian học tập dự phòng nếu không truyền callback */}
-            {!onCreateWorkspace && (
-                <CreateWorkspaceModal
-                    isOpen={isModalOpen}
-                    mode="create"
-                    onClose={() => setIsModalOpen(false)}
-                    onSubmit={handleWorkspaceCreated}
-                />
-            )}
-        </>
-    );
+      {/* Modal tạo không gian học tập dự phòng nếu không truyền callback */}
+      {!onCreateWorkspace && (
+        <CreateWorkspaceModal
+          isOpen={isModalOpen}
+          mode="create"
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleWorkspaceCreated}
+        />
+      )}
+    </>
+  );
 }
 
 export { WelcomeComponent };
