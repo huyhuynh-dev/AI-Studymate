@@ -113,7 +113,7 @@ export function QuizOverviewView({ quiz, attempts, onBack, onEdit, onDelete, onS
                 <li key={q.id} className="flex items-start gap-3 px-3 py-3">
                   <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--qz-fill)] text-[13px] font-semibold tabular-nums">{i + 1}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 text-[14.5px] leading-6" title={stripHtml(q.text)}><RichTextView html={q.text} className="!text-[14.5px] [&_p]:inline" /></p>
+                    <div className="line-clamp-2 text-[14.5px] leading-6" title={stripHtml(q.text)}><RichTextView html={q.text} className="!text-[14.5px] [&_p]:inline" /></div>
                     <div className="mt-1.5 flex gap-2"><TypeBadge type={q.type} /><Badge tone="neutral"><span className="tabular-nums">{fmtPoints(q.points)}</span> điểm</Badge></div>
                   </div>
                 </li>

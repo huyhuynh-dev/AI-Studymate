@@ -11,6 +11,7 @@
 import "./quiztab.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
+import { useFocusMode } from "@/components/layout";
 import type { DeckOption, FlashcardTarget, Quiz, QuizAttempt, QuizDraft, QuizSource, TestSetup, EvaluationStatus } from "./types";
 import type { QuizApi } from "./data/quizApi";
 import { createMockQuizApi } from "./data/mockApi";
@@ -33,6 +34,10 @@ export interface QuizTabProps {
   /** Lớp API thật. Bỏ trống để dùng dữ liệu giả lập. */
   api?: QuizApi;
   className?: string;
+  /** Không gian học tập đã có tài liệu chưa (đồng bộ với FlashcardTab). Mặc định: true */
+  hasDocuments?: boolean;
+  /** Chuyển sang tab Tài liệu khi chưa có tài liệu nguồn */
+  onUploadDocument?: () => void;
   /** Gọi sau khi tạo Flashcard từ câu sai — để tab Flashcard tải lại dữ liệu */
   onFlashcardsCreated?: (info: { deckId: string; created: number }) => void;
 }
@@ -45,7 +50,15 @@ type View =
   | { name: "grading"; quizId: string; attemptId: string }
   | { name: "result"; quizId: string; attemptId: string };
 
-export function QuizTab({ conversationId, decks = [], api, className, onFlashcardsCreated }: QuizTabProps) {
+export function QuizTab({
+  conversationId,
+  decks = [],
+  api,
+  className,
+  hasDocuments = true,
+  onUploadDocument,
+  onFlashcardsCreated,
+}: QuizTabProps) {
   const resolvedApi = useMemo(() => api ?? createMockQuizApi(conversationId), [api, conversationId]);
   const store = useQuizStore(resolvedApi, conversationId);
 
@@ -55,6 +68,13 @@ export function QuizTab({ conversationId, decks = [], api, className, onFlashcar
   const [deleting, setDeleting] = useState<Quiz | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const { setFocusMode } = useFocusMode();
+  const isFocus = view.name === "taking" || view.name === "grading";
+
+  useEffect(() => {
+    setFocusMode(isFocus);
+    return () => setFocusMode(false);
+  }, [isFocus, setFocusMode]);
 
   const notify = useCallback((msg: string) => {
     setToast(msg);
@@ -105,6 +125,9 @@ export function QuizTab({ conversationId, decks = [], api, className, onFlashcar
       <QuizListView
         quizzes={store.quizzes} attempts={store.attempts} loading={store.loading} error={store.error} onRetry={store.reload}
         onCreate={openCreate}
+        hasDocuments={hasDocuments}
+        hasDecks={decks.length > 0}
+        onUploadDocument={onUploadDocument}
         onOpen={(q) => go({ name: "detail", quizId: q.id })}
         onStart={(q) => {
           const running = (store.attempts[q.id] ?? []).find((a) => a.status === "in_progress");
@@ -172,8 +195,8 @@ export function QuizTab({ conversationId, decks = [], api, className, onFlashcar
   const setupQuiz = setup ? quizOf(setup.quizId) : null;
 
   return (
-    <div ref={scroller} className={cx("qz-root h-full min-h-0 overflow-y-auto bg-[var(--background)] text-foreground", className)}>
-      <div className="mx-auto w-full max-w-[1200px] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6 sm:px-6">{content}</div>
+    <div ref={scroller} className={cx("qz-root h-full min-h-0 overflow-y-auto text-foreground", className)}>
+      <div className={cx("mx-auto w-full max-w-[1200px] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6", isFocus ? "pt-0" : "pt-6")}>{content}</div>
 
       {createSource && (
         <CreateQuizDialog

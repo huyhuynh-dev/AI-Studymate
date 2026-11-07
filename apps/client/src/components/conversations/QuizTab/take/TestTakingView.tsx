@@ -103,6 +103,23 @@ export function TestTakingView({ quiz, attempt, onAnswer, onSubmit, onExit }: {
     return () => document.removeEventListener("keydown", onKey);
   });
 
+  // Esc: đang gõ trong ô nhập → bỏ focus; bấm lần nữa → lưu & thoát.
+  const exiting = useRef(false);
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || confirm || e.defaultPrevented || exiting.current) return;
+      const target = e.target as HTMLElement;
+      if (target.closest?.("input, textarea, select, [contenteditable='true']")) {
+        target.blur();
+        return;
+      }
+      exiting.current = true;
+      onExit(getElapsed());
+    };
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  });
+
   const danger = remaining != null && remaining <= 60;
   const unanswered = total - done;
 
@@ -111,6 +128,7 @@ export function TestTakingView({ quiz, attempt, onAnswer, onSubmit, onExit }: {
       <header className="apple-liquid-glass sticky top-0 z-30 -mx-4 mb-4 flex items-center gap-3 border-x-0! border-t-0! px-4 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:-mx-6 sm:px-6">
         <Button variant="tertiary" size="sm" icon={<X className="h-4 w-4" />} onClick={() => onExit(getElapsed())} aria-label="Lưu và thoát">
           <span className="hidden sm:inline">Lưu & thoát</span>
+          <kbd className="hidden rounded-md border border-[var(--border-outline)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--on-surface-variant)] md:inline">Esc</kbd>
         </Button>
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px]">

@@ -7,8 +7,9 @@ import { Button, Menu } from "../ui/primitives";
 import { QuizCard } from "./QuizCard";
 import { QuizEmptyState } from "./QuizEmptyState";
 
-export function QuizListView({ quizzes, attempts, loading, error, onRetry, onCreate, onOpen, onStart, onEdit, onDelete }: {
+export function QuizListView({ quizzes, attempts, loading, error, onRetry, hasDocuments, hasDecks, onUploadDocument, onCreate, onOpen, onStart, onEdit, onDelete }: {
   quizzes: Quiz[]; attempts: Record<string, QuizAttempt[]>; loading: boolean; error: string | null; onRetry: () => void;
+  hasDocuments: boolean; hasDecks: boolean; onUploadDocument?: () => void;
   onCreate: (s: QuizSource) => void; onOpen: (q: Quiz) => void; onStart: (q: Quiz) => void; onEdit: (q: Quiz) => void; onDelete: (q: Quiz) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -34,7 +35,7 @@ export function QuizListView({ quizzes, attempts, loading, error, onRetry, onCre
       </div>
     );
 
-  if (quizzes.length === 0) return <QuizEmptyState onCreate={onCreate} />;
+  if (quizzes.length === 0) return <QuizEmptyState onCreate={onCreate} hasDocuments={hasDocuments} hasDecks={hasDecks} onUploadDocument={onUploadDocument} />;
 
   return (
     <div>

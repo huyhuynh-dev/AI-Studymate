@@ -190,6 +190,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           {activeTab === "quiz" && (
             <QuizTab
               conversationId={conversationId}
+              hasDocuments={documents.length > 0}
+              onUploadDocument={handleGoToDocuments}
               className="w-full flex-1"
             />
           )}
