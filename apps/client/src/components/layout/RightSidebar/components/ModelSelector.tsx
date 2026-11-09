@@ -41,7 +41,7 @@ export function ModelSelector({ config, onChange }: ModelSelectorProps) {
         aria-haspopup="menu"
         aria-expanded={isOpen}
         title={`${model.name} · Độ ưu tiên: ${priorityLabel}`}
-        className="flex h-8 min-w-0 max-w-38 cursor-pointer items-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold text-[#464555] dark:text-[#EFF0F6] transition-all hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] hover:text-[#0B1C30] dark:hover:text-white focus-visible:outline-2 focus-visible:outline-[#4F46E5]"
+        className="flex h-8 min-w-0 max-w-38 cursor-pointer items-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold font-heading text-[#464555] dark:text-[#EFF0F6] transition-all hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] hover:text-[#0B1C30] dark:hover:text-white focus-visible:outline-2 focus-visible:outline-[#4F46E5]"
       >
         <span className="truncate">{model.name}</span>
         <ChevronDown
@@ -53,7 +53,7 @@ export function ModelSelector({ config, onChange }: ModelSelectorProps) {
 
       {isOpen && (
         <div className="absolute inset-x-0 bottom-full z-50 mb-2 max-h-[70vh] overflow-y-auto rounded-[22px] border border-[#E5EEFF] dark:border-white/[0.12] bg-white/95 dark:bg-[#161922]/95 backdrop-blur-xl shadow-2xl animate-in fade-in-50 zoom-in-95 duration-100 select-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <p className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-[#777587] dark:text-neutral-400">
+          <p className="px-4 pb-1 pt-3 text-[11px] font-semibold font-heading uppercase tracking-wider text-[#777587] dark:text-neutral-400">
             Mô hình AI
           </p>
 
@@ -76,7 +76,7 @@ export function ModelSelector({ config, onChange }: ModelSelectorProps) {
                   }`}
                 >
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-bold text-[#0B1C30] dark:text-[#EFF0F6]">
+                    <span className="block text-[13px] font-bold font-heading text-[#0B1C30] dark:text-[#EFF0F6]">
                       {m.name}
                     </span>
                     <span className="block truncate text-[11px] text-[#777587] dark:text-[#9DA3AF]">
@@ -92,7 +92,7 @@ export function ModelSelector({ config, onChange }: ModelSelectorProps) {
           </div>
 
           <div className="border-t border-[#E5EEFF] dark:border-white/[0.08] px-3.5 py-3">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#777587] dark:text-neutral-400">
+            <p className="mb-2 text-[11px] font-semibold font-heading uppercase tracking-wider text-[#777587] dark:text-neutral-400">
               Độ ưu tiên suy luận:
             </p>
             <div className="grid grid-cols-3 gap-1 rounded-xl bg-[#F8F9FF] dark:bg-white/[0.04] border border-[#E5EEFF] dark:border-white/[0.06] p-1">

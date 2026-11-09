@@ -15,7 +15,7 @@ export function Logo() {
   return (
     <span className="inline-flex items-center gap-2.5">
       <LogoMark />
-      <span className="text-[17px] font-semibold tracking-tight">
+      <span className="font-heading text-[17px] font-semibold tracking-tight">
         AI <span className="text-primary">StudyMate</span>
       </span>
     </span>

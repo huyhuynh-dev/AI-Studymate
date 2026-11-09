@@ -12,7 +12,7 @@ function Stepper({ value, onChange, min = 3, max = 30, label }: { value: number;
   return (
     <div className="flex items-center gap-3" role="group" aria-label={label}>
       <button type="button" className={btn} aria-label="Giảm" disabled={value <= min} onClick={() => onChange(value - 1)}><Minus className="h-4 w-4" /></button>
-      <span className="w-12 text-center text-[22px] font-semibold tabular-nums tracking-[-0.02em]" aria-live="polite">{value}</span>
+      <span className="w-12 text-center text-[22px] font-semibold font-heading tabular-nums tracking-[-0.02em]" aria-live="polite">{value}</span>
       <button type="button" className={btn} aria-label="Tăng" disabled={value >= max} onClick={() => onChange(value + 1)}><Plus className="h-4 w-4" /></button>
       <span className="text-[14px] text-[var(--on-surface-variant)]">câu hỏi</span>
     </div>
@@ -79,7 +79,7 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, onClos
             >
               <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${s.tone}`}><s.icon className="h-5 w-5" /></span>
               <span className="min-w-0">
-                <span className="block text-[15px] font-semibold">{s.title}</span>
+                <span className="block text-[15px] font-semibold font-heading">{s.title}</span>
                 <span className="mt-0.5 block text-[13px] leading-5 text-[var(--on-surface-variant)]">{s.desc}</span>
               </span>
             </button>

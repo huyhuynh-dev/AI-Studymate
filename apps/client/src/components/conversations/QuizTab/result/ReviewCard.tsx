@@ -14,7 +14,7 @@ function Box({ title, tone, children, className }: { title: string; tone?: "succ
   const bg = tone === "success" ? "bg-[var(--qz-success-soft)]" : tone === "danger" ? "bg-[var(--qz-danger-soft)]" : "bg-[var(--qz-fill)]";
   return (
     <div className={cx("rounded-2xl p-4", bg, className)}>
-      <p className="mb-2 text-[12.5px] font-semibold text-[var(--on-surface-variant)]">{title}</p>
+      <p className="mb-2 text-[12.5px] font-semibold font-heading text-[var(--on-surface-variant)]">{title}</p>
       {children}
     </div>
   );
@@ -35,7 +35,7 @@ export function ReviewCard({ index, q, a, onOverride }: {
     <article className="rounded-[24px] border border-[var(--border-subtle)] bg-card p-5 shadow-[var(--qz-shadow-card)] sm:p-6" aria-label={`Câu ${index + 1}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-[14px] font-semibold tabular-nums">Câu {index + 1}</span>
+          <span className="text-[14px] font-semibold font-heading tabular-nums">Câu {index + 1}</span>
           <TypeBadge type={q.type} />
         </div>
         <Badge tone={meta.tone}>

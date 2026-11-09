@@ -64,7 +64,7 @@ export default function WelcomeComponent({
         </div>
 
         {/* ── Title & Subtitle with Optical Sizing ── */}
-        <h2 className="text-2xl sm:text-[26px] font-bold tracking-[-0.025em] text-[#0B1C30] dark:text-[#EFF0F6] leading-tight">
+        <h2 className="text-2xl sm:text-[26px] font-bold font-heading tracking-[-0.025em] text-[#0B1C30] dark:text-[#EFF0F6] leading-tight">
           Bạn chưa có không gian học tập nào
         </h2>
 

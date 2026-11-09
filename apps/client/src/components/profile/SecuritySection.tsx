@@ -47,7 +47,7 @@ export default function SecuritySection({
                         <Lock className="h-5 w-5 text-amber-600" />
                     </div>
                     <div>
-                        <h2 className="text-base font-bold text-gray-900">
+                        <h2 className="text-base font-bold font-heading text-gray-900">
                             Bảo mật &amp; Phương thức đăng nhập
                         </h2>
                         <p className="text-xs text-gray-400 mt-0.5">
@@ -55,12 +55,12 @@ export default function SecuritySection({
                         </p>
                     </div>
                 </div>
-                <span className="text-xs font-medium text-gray-400">MỤC 02 / 03</span>
+                <span className="text-xs font-medium font-heading text-gray-400">MỤC 02 / 03</span>
             </div>
 
             {/* Connected Accounts */}
             <div className="mb-6">
-                <p className="mb-3 text-sm font-semibold text-gray-700">Tài khoản liên kết</p>
+                <p className="mb-3 text-sm font-semibold font-heading text-gray-700">Tài khoản liên kết</p>
                 <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                     <div className="flex items-center gap-3">
                         {/* Google logo */}
@@ -110,7 +110,7 @@ export default function SecuritySection({
 
             {/* Change Password */}
             <div>
-                <p className="text-sm font-semibold text-gray-700">Đổi mật khẩu tài khoản</p>
+                <p className="text-sm font-semibold font-heading text-gray-700">Đổi mật khẩu tài khoản</p>
                 <p className="mb-4 text-xs text-gray-400">
                     Nếu đăng nhập trực tiếp qua biểu mẫu, hãy đảm bảo mật khẩu có độ dài đủ tin cậy.
                 </p>

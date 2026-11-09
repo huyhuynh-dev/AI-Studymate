@@ -72,7 +72,7 @@ export function QuizBuilderView({ quiz, onCancel, onSave }: {
     <div className="mx-auto max-w-[820px]">
       <div className="apple-liquid-glass sticky top-0 z-20 -mx-4 mb-6 flex items-center justify-between gap-3 border-x-0! border-t-0! px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:-mx-6 sm:px-6">
         <Button variant="tertiary" size="sm" icon={<ArrowLeft className="h-4 w-4" />} onClick={onCancel}>Hủy</Button>
-        <p className="truncate text-[15px] font-semibold tracking-[-0.01em]">{quiz ? "Chỉnh sửa đề" : "Soạn đề mới"}</p>
+        <p className="truncate text-[15px] font-semibold font-heading tracking-[-0.01em]">{quiz ? "Chỉnh sửa đề" : "Soạn đề mới"}</p>
         <Button variant="primary" size="sm" loading={saving} onClick={submit}>Lưu đề</Button>
       </div>
 

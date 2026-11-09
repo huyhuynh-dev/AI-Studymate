@@ -355,7 +355,7 @@ export default function LeftSidebar({
           <div className="flex-1 min-h-0 flex flex-col space-y-3 overflow-y-auto no-scrollbar pr-0.5">
             {/* Header: macOS Split-View Title + Actions */}
             <div className="flex items-center justify-between px-2 pt-1 pb-1">
-              <span className="text-[11px] font-semibold tracking-wider text-[#777587] dark:text-neutral-400 uppercase">
+              <span className="text-[11px] font-semibold font-heading tracking-wider text-[#777587] dark:text-neutral-400 uppercase">
                 Không gian học tập
               </span>
               <div className="flex items-center gap-1">
@@ -427,7 +427,7 @@ export default function LeftSidebar({
                     <Folder className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-[#0B1C30] dark:text-neutral-300">
+                    <p className="text-xs font-semibold font-heading text-[#0B1C30] dark:text-neutral-300">
                       Chưa có không gian nào
                     </p>
                     <p className="text-[11px] text-[#777587] dark:text-neutral-500 mt-0.5">
@@ -542,7 +542,7 @@ export default function LeftSidebar({
                 />
               </div>
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-[#0B1C30] dark:text-neutral-100 truncate leading-snug">
+                <p className="text-[13px] font-semibold font-heading text-[#0B1C30] dark:text-neutral-100 truncate leading-snug">
                   {user.name}
                 </p>
                 <p className="text-[11px] text-[#777587] dark:text-neutral-500 truncate leading-none">

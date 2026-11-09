@@ -58,6 +58,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Mặc định toàn bộ thẻ tiêu đề ngữ nghĩa sử dụng Plus Jakarta Sans */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  }
+}
+
 /* Apple HIG Liquid Glass & Translucent Surfaces */
 .apple-liquid-glass {
   background: rgba(255, 255, 255, 0.85);
@@ -101,6 +113,19 @@ body {
 .prose,
 .prose * {
   font-family: var(--font-sans), sans-serif !important;
+}
+
+/* Bảo đảm tiêu đề trong Markdown Prose và BlockNote sử dụng font-heading */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6,
+.bn-root h1,
+.bn-root h2,
+.bn-root h3 {
+  font-family: var(--font-heading), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif !important;
 }
 
 /* Bảo đảm font KaTeX không bị ghi đè bởi font chữ thường */

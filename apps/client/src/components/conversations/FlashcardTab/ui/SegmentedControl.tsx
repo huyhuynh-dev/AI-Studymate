@@ -44,7 +44,7 @@ export function SegmentedControl<T extends string | number>({ options, value, on
             aria-selected={active}
             onClick={() => onChange(o.value)}
             className={cx(
-              "relative z-10 flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold tabular-nums transition-colors duration-200",
+              "relative z-10 flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold font-heading tabular-nums transition-colors duration-200",
               active
                 ? "text-neutral-900 dark:text-white"
                 : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"

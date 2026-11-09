@@ -383,7 +383,7 @@ export default function ConversationsListView({
               <Sparkles className="h-6 w-6 stroke-[1.8]" />
             </div>
             <div>
-              <p className="text-base font-bold text-[#0B1C30] dark:text-[#EFF0F6]">
+              <p className="text-base font-bold font-heading text-[#0B1C30] dark:text-[#EFF0F6]">
                 {searchQuery ? "Không tìm thấy phiên học nào" : "Chưa có phiên học nào"}
               </p>
               <p className="text-xs text-[#777587] dark:text-[#9DA3AF] mt-1 max-w-sm mx-auto">

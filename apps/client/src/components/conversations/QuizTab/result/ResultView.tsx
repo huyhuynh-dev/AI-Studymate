@@ -43,10 +43,10 @@ export function ResultView({ quiz, attempt, decks, onBack, onRetryAll, onRetryIn
         <div className="flex flex-col items-center gap-8 md:flex-row md:items-center">
           <div className="flex flex-col items-center text-center">
             <ScoreRing pct={pct} tone={tone} size={148} stroke={11}>
-              <span className={cx("text-[40px] font-semibold leading-none tabular-nums tracking-[-0.03em]", TONE[tone].text)}>{String(toScale10(attempt.score, attempt.maxScore)).replace(".", ",")}</span>
+              <span className={cx("text-[40px] font-semibold font-heading leading-none tabular-nums tracking-[-0.03em]", TONE[tone].text)}>{String(toScale10(attempt.score, attempt.maxScore)).replace(".", ",")}</span>
               <span className="mt-1 text-[13px] font-medium tabular-nums text-[var(--on-surface-variant)]">/ 10 · {pct}%</span>
             </ScoreRing>
-            <p className="mt-3 text-[17px] font-semibold tracking-[-0.01em]">{scoreLabel(pct)}</p>
+            <p className="mt-3 text-[17px] font-semibold font-heading tracking-[-0.01em]">{scoreLabel(pct)}</p>
             <p className="text-[13px] tabular-nums text-[var(--on-surface-variant)]">{fmtPoints(attempt.score)}/{fmtPoints(attempt.maxScore)} điểm</p>
           </div>
 
@@ -59,7 +59,7 @@ export function ResultView({ quiz, attempt, decks, onBack, onRetryAll, onRetryIn
             ].map((s) => (
               <div key={s.label} className="rounded-2xl bg-[var(--qz-fill)] p-4">
                 <p className="text-[12.5px] font-semibold text-[var(--on-surface-variant)]">{s.label}</p>
-                <p className={cx("mt-1 text-[24px] font-semibold leading-8 tabular-nums tracking-[-0.02em]", s.tone.text)}>{s.value}</p>
+                <p className={cx("mt-1 text-[24px] font-semibold font-heading leading-8 tabular-nums tracking-[-0.02em]", s.tone.text)}>{s.value}</p>
               </div>
             ))}
           </div>

@@ -16,7 +16,7 @@ function ModeCard({ selected, onClick, icon, title, desc }: { selected: boolean;
       )}
     >
       <span className={cx("flex h-9 w-9 items-center justify-center rounded-[10px]", selected ? "bg-primary text-white" : "bg-[var(--qz-fill)] text-[var(--on-surface-variant)]")}>{icon}</span>
-      <span className="text-[15px] font-semibold">{title}</span>
+      <span className="text-[15px] font-semibold font-heading">{title}</span>
       <span className="text-[13px] leading-5 text-[var(--on-surface-variant)]">{desc}</span>
     </button>
   );
@@ -25,7 +25,7 @@ function ModeCard({ selected, onClick, icon, title, desc }: { selected: boolean;
 function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="flex min-h-11 items-center justify-between gap-4">
-      <div className="min-w-0"><p className="text-[15px] font-medium">{label}</p>{hint && <p className="text-[13px] text-[var(--on-surface-variant)]">{hint}</p>}</div>
+      <div className="min-w-0"><p className="text-[15px] font-medium font-heading">{label}</p>{hint && <p className="text-[13px] text-[var(--on-surface-variant)]">{hint}</p>}</div>
       {children}
     </div>
   );

@@ -132,8 +132,8 @@ export function TestTakingView({ quiz, attempt, onAnswer, onSubmit, onExit }: {
         </Button>
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px]">
-            <span className="font-semibold tabular-nums">Đã làm {done}/{total} câu</span>
-            <span className={cx("font-semibold tabular-nums", danger ? "qz-anim-breathe text-[var(--qz-danger)]" : "text-[var(--on-surface-variant)]")} role={danger ? "alert" : undefined} aria-label={remaining != null ? `Còn lại ${formatClock(remaining)}` : `Đã làm ${formatClock(elapsed)}`}>
+            <span className="font-semibold font-heading tabular-nums">Đã làm {done}/{total} câu</span>
+            <span className={cx("font-semibold font-heading tabular-nums", danger ? "qz-anim-breathe text-[var(--qz-danger)]" : "text-[var(--on-surface-variant)]")} role={danger ? "alert" : undefined} aria-label={remaining != null ? `Còn lại ${formatClock(remaining)}` : `Đã làm ${formatClock(elapsed)}`}>
               {formatClock(remaining ?? elapsed)}
             </span>
           </div>
@@ -148,7 +148,7 @@ export function TestTakingView({ quiz, attempt, onAnswer, onSubmit, onExit }: {
         <article ref={cardRef} className="scroll-mt-24 rounded-[24px] border border-[var(--border-subtle)] bg-card p-5 shadow-[var(--qz-shadow-card)] sm:p-8" aria-labelledby="qz-qtitle">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span id="qz-qtitle" className="text-[14px] font-semibold tabular-nums">Câu {idx + 1}</span>
+              <span id="qz-qtitle" className="text-[14px] font-semibold font-heading tabular-nums">Câu {idx + 1}</span>
               <Badge>{QUESTION_TYPE_META[q.type].short}</Badge>
               <Badge tone="primary"><span className="tabular-nums">{fmtPoints(q.points)}</span>&nbsp;điểm</Badge>
             </div>

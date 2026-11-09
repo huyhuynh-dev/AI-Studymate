@@ -28,20 +28,20 @@ export default function DangerZoneSection({ onDeleteAccount }: DangerZoneSection
                         <AlertTriangle className="h-5 w-5 text-red-500" />
                     </div>
                     <div>
-                        <h2 className="text-base font-bold text-gray-900">Vùng nguy hiểm</h2>
+                        <h2 className="text-base font-bold font-heading text-gray-900">Vùng nguy hiểm</h2>
                         <p className="text-xs text-gray-400 mt-0.5">
                             Hành động vĩnh viễn không thể khôi phục dữ liệu đã lưu trữ.
                         </p>
                     </div>
                 </div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-red-500">CẢNH BÁO</span>
+                <span className="text-xs font-semibold font-heading uppercase tracking-wide text-red-500">CẢNH BÁO</span>
             </div>
 
             {/* Delete Account Card */}
             <div className="rounded-xl border border-red-100 bg-red-50/50 p-4">
                 <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-800">Xóa tài khoản vĩnh viễn</p>
+                        <p className="text-sm font-semibold font-heading text-gray-800">Xóa tài khoản vĩnh viễn</p>
                         <p className="mt-1 text-xs text-gray-500">
                             Mọi tài liệu tải lên, tóm tắt bài giảng AI và các bộ flashcards cá nhân sẽ bị xóa hoàn
                             toàn khỏi cơ sở dữ liệu.

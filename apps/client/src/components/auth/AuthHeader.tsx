@@ -190,6 +190,7 @@ export default function AuthHeader({
     if (controlledLocale) return;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved === "vi" || saved === "en") setInternalLocale(saved);
     } catch {
       /* localStorage có thể bị chặn — bỏ qua */
@@ -236,7 +237,7 @@ export default function AuthHeader({
           className="inline-flex items-center gap-2.5 justify-self-center rounded-full px-2 py-1 transition duration-350 ease-apple active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <LogoMark />
-          <span className="text-[17px] font-semibold tracking-tight">
+          <span className="text-[17px] font-semibold font-heading tracking-tight">
             AI <span className="text-primary">StudyMate</span>
           </span>
         </Link>

@@ -131,7 +131,7 @@ export function Field({ label, hint, error, children, className }: {
 }) {
   return (
     <label className={cx("block", className)}>
-      <span className="mb-2 block text-[14px] font-semibold text-foreground">{label}</span>
+      <span className="mb-2 block text-[14px] font-semibold font-heading text-foreground">{label}</span>
       {children}
       {error ? (
         <span role="alert" className="mt-1.5 block text-[13px] text-[var(--qz-danger)]">{error}</span>
@@ -203,7 +203,7 @@ export function Segmented<T extends string>({ options, value, onChange, label, c
             aria-checked={active}
             onClick={() => onChange(o.value)}
             className={cx(
-              "apple-spring h-10 flex-1 rounded-[8px] px-3 text-[14px] font-semibold active:scale-[0.98]",
+              "apple-spring h-10 flex-1 rounded-[8px] px-3 text-[14px] font-semibold font-heading active:scale-[0.98]",
               active
                 ? "bg-[var(--qz-elevated)] text-foreground shadow-[var(--qz-shadow-card)] ring-1 ring-[var(--border-subtle)]"
                 : "text-[var(--on-surface-variant)] hover:text-foreground",

@@ -34,13 +34,13 @@ export default function PersonalInfoSection({
                         <User className="h-5 w-5 text-violet-600" />
                     </div>
                     <div>
-                        <h2 className="text-base font-bold text-gray-900">Thông tin cá nhân</h2>
+                        <h2 className="text-base font-bold font-heading text-gray-900">Thông tin cá nhân</h2>
                         <p className="text-xs text-gray-400 mt-0.5">
                             Cập nhật danh xưng và địa chỉ thư điện tử nhận thông báo.
                         </p>
                     </div>
                 </div>
-                <span className="text-xs font-medium text-gray-400">MỤC 01 / 03</span>
+                <span className="text-xs font-medium font-heading text-gray-400">MỤC 01 / 03</span>
             </div>
 
             {/* Form */}

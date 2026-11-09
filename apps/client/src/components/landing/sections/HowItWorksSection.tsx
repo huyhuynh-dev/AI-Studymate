@@ -62,7 +62,7 @@ export function HowItWorksSection() {
             return (
               <li key={step.title}>
                 <Reveal>
-                  <span className="text-sm font-semibold tabular-nums text-primary">
+                  <span className="font-heading text-sm font-semibold tabular-nums text-primary">
                     Bước {i + 1}
                   </span>
                   <h3 className="mt-3 text-balance text-[clamp(1.5rem,5vw,2.25rem)] font-bold leading-[1.15] tracking-[-0.025em]">
@@ -105,7 +105,7 @@ export function HowItWorksSection() {
                         : "pointer-events-none translate-y-4 opacity-0 blur-sm",
                     )}
                   >
-                    <span className="text-sm font-semibold tabular-nums text-primary">
+                    <span className="font-heading text-sm font-semibold tabular-nums text-primary">
                       Bước {i + 1}
                     </span>
                     <h3 className="mt-3 text-balance text-[clamp(1.75rem,3vw,2.5rem)] font-bold leading-[1.12] tracking-[-0.025em]">

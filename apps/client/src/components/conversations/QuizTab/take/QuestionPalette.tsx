@@ -13,7 +13,7 @@ function Cell({ n, item, current, onClick, size }: { n: number; item: PaletteIte
       aria-current={current ? "step" : undefined}
       aria-label={`Câu ${n}${item.answered ? ", đã trả lời" : ", chưa trả lời"}${item.flagged ? ", đánh dấu xem lại" : ""}`}
       className={cx(
-        "apple-spring relative shrink-0 rounded-xl text-[14px] font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95",
+        "apple-spring relative shrink-0 rounded-xl text-[14px] font-semibold font-heading tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95",
         size,
         item.answered ? "bg-[var(--qz-primary-soft)] text-primary" : "border border-[var(--border-outline)] bg-card text-[var(--on-surface-variant)]",
         current && "!border-2 !border-primary",

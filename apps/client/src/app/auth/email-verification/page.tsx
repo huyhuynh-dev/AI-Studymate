@@ -67,7 +67,7 @@ function StepVerifyOtp({
 
       {/* Title & Subtitle */}
       <div className="text-center mb-5">
-        <h1 className="text-2xl sm:text-[26px] font-semibold text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
+        <h1 className="text-2xl sm:text-[26px] font-semibold font-heading text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
           Xác thực tài khoản
         </h1>
         <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -218,7 +218,7 @@ function StepSuccess({
 
       {/* Title */}
       <div className="text-center mb-6">
-        <h1 className="text-2xl sm:text-[26px] font-semibold text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
+        <h1 className="text-2xl sm:text-[26px] font-semibold font-heading text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
           Kích hoạt thành công
         </h1>
         <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -232,7 +232,7 @@ function StepSuccess({
 
       {/* Subtle Welcome Card */}
       <div className="p-4 rounded-xl bg-gray-50/80 dark:bg-white/[0.03] border border-gray-200/80 dark:border-white/10 mb-6 select-none">
-        <div className="flex items-center gap-2 mb-2 text-indigo-600 dark:text-indigo-400 font-semibold text-[13px]">
+        <div className="flex items-center gap-2 mb-2 text-indigo-600 dark:text-indigo-400 font-semibold font-heading text-[13px]">
           <Sparkles className="w-4 h-4" strokeWidth={2} />
           <span>Không gian học tập AI sẵn sàng</span>
         </div>

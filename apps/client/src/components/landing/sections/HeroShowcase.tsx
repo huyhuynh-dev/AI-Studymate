@@ -31,7 +31,7 @@ export function HeroShowcase() {
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/15 text-secondary">
           <BookCheck className="h-5 w-5" />
         </span>
-        <span className="text-sm font-semibold">Flashcard đã sẵn sàng</span>
+        <span className="font-heading text-sm font-semibold">Flashcard đã sẵn sàng</span>
       </div>
       <div
         className="apple-liquid-glass landing-float absolute -bottom-6 right-4 hidden items-center gap-3 rounded-2xl p-3 pr-5 [animation-delay:-3s] sm:flex lg:-right-8"
@@ -39,7 +39,7 @@ export function HeroShowcase() {
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Sparkles className="h-5 w-5" />
         </span>
-        <span className="text-sm font-semibold">Tóm tắt hoàn tất</span>
+        <span className="font-heading text-sm font-semibold">Tóm tắt hoàn tất</span>
       </div>
     </div>
   );

@@ -27,7 +27,7 @@ export function FaqSection() {
                     aria-expanded={isOpen}
                     aria-controls={`faq-panel-${i}`}
                     onClick={() => setOpen(isOpen ? null : i)}
-                    className="flex min-h-16 w-full items-center justify-between gap-6 py-5 text-left text-lg font-semibold tracking-tight transition-colors duration-350 ease-apple hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    className="font-heading flex min-h-16 w-full items-center justify-between gap-6 py-5 text-left text-lg font-semibold tracking-tight transition-colors duration-350 ease-apple hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
                     <span>{faq.question}</span>
                     <Plus

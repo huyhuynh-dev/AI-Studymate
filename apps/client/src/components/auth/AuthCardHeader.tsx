@@ -29,7 +29,7 @@ export function AuthCardHeader({
 
         {/* Apple Pill Badge (chỉ hiển thị khi thật sự có mục đích, mặc định tắt ở Login để tránh rác thị giác) */}
         {showBadge && (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium tracking-wide bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/40 select-none">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium font-heading tracking-wide bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/40 select-none">
             <Sparkles className="w-3 h-3 text-indigo-500 shrink-0" strokeWidth={2} />
             <span>Học tập cùng AI</span>
           </div>
@@ -38,7 +38,7 @@ export function AuthCardHeader({
 
       {/* Typography with Optical Sizing */}
       <div>
-        <h1 className="text-2xl sm:text-[26px] font-semibold text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
+        <h1 className="text-2xl sm:text-[26px] font-semibold font-heading text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
           {isLogin ? 'Đăng nhập vào AI StudyMate' : 'Tạo tài khoản AI StudyMate'}
         </h1>
         <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">

@@ -63,7 +63,7 @@ export function HistoryMenu({
 
       {isOpen && (
         <div className="absolute left-3 right-3 top-full z-50 mt-1 overflow-hidden rounded-[22px] border border-[#E5EEFF] dark:border-white/[0.12] bg-white/95 dark:bg-[#161922]/95 backdrop-blur-xl shadow-2xl animate-in fade-in-50 zoom-in-95 duration-100 select-none">
-          <p className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-[#777587] dark:text-neutral-400">
+          <p className="px-4 pb-1 pt-3 text-[11px] font-semibold font-heading uppercase tracking-wider text-[#777587] dark:text-neutral-400">
             Đoạn chat gần đây
           </p>
 

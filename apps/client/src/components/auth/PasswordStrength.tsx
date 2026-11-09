@@ -81,7 +81,7 @@ export default function PasswordStrength({
         <span className="text-gray-500 dark:text-gray-400 font-normal">
           {label}
         </span>
-        <span className={`tracking-tight ${getTextColor()}`}>{value}</span>
+        <span className={`font-heading tracking-tight ${getTextColor()}`}>{value}</span>
       </div>
     </div>
   );
