@@ -8,7 +8,7 @@ import { BlockNoteView } from "@blocknote/mantine";
 import { MantineProvider } from "@mantine/core";
 
 import "@mantine/core/styles.css";
-import "@blocknote/core/fonts/inter.css";
+// Inter font is managed centrally via next/font in @/app/font.ts
 import "@blocknote/mantine/style.css";
 import "@blocknote/xl-ai/style.css";
 // import "@blocknote/math-block/style.css";

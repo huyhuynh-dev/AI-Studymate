@@ -1,15 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Be_Vietnam_Pro } from "next/font/google";
+import { fontSans, fontHeading, fontMono } from "./font";
 import "./globals.css";
 import OAuthCallbackHandler from "@/components/auth/OAuthCallbackHandler";
-
-const beVietnamPro = Be_Vietnam_Pro({
-  weight: ["300", "400", "500", "600", "700", "800"],
-  subsets: ["vietnamese", "latin"],
-  variable: "--font-be-vietnam-pro",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "AI StudyMate - Nền tảng học tập thông minh",
@@ -32,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="vi"
-      className={`${beVietnamPro.variable} h-full antialiased`}
+      className={`${fontSans.variable} ${fontHeading.variable} ${fontMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col font-sans">

@@ -12,7 +12,7 @@ export const SQUIRCLE = { cornerShape: "squircle" } as CSSProperties;
 export const SPRING = "ease-[cubic-bezier(0.22,1,0.36,1)]";
 export const EASE_IOS = "ease-[cubic-bezier(0.32,0.72,0,1)]";
 
-export const FONT_HEADING = "font-sans tracking-tight";
+export const FONT_HEADING = "font-heading tracking-tight";
 
 /**
  * Hệ thống Bề mặt Trục Z (Z-Axis Luminance) & Viền Bắt sáng (Specular Hairline Border)

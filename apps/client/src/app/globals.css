@@ -27,7 +27,9 @@
   --color-secondary: var(--brand-secondary);
   --color-tertiary: var(--brand-tertiary);
   --color-error: var(--brand-error);
-  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", var(--font-be-vietnam-pro), system-ui, sans-serif;
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-heading: var(--font-heading), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -98,7 +100,7 @@ body {
 .bn-inline-content,
 .prose,
 .prose * {
-  font-family: var(--font-be-vietnam-pro), sans-serif !important;
+  font-family: var(--font-sans), sans-serif !important;
 }
 
 /* Bảo đảm font KaTeX không bị ghi đè bởi font chữ thường */
@@ -113,8 +115,12 @@ pre,
 kbd,
 samp,
 .font-mono,
-.font-mono * {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+.font-mono *,
+.bn-root pre,
+.bn-root code,
+.prose pre,
+.prose code {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
