@@ -4,6 +4,7 @@ import type {
   AttemptAnswer,
   AttemptConfig,
   EvaluationStatus,
+  FlashcardTarget,
   Quiz,
   QuizAttempt,
   QuizDraft,
@@ -213,7 +214,15 @@ export const quizApi: QuizApi = {
     return mapAttempt(res.data);
   },
 
-  convertToFlashcards: async (): Promise<{ deckId: string; created: number }> => {
-    throw new Error('Tính năng chuyển câu hỏi sang Flashcard sẽ được hỗ trợ trong Phase 2.');
+  convertToFlashcards: async (
+    attemptId: string,
+    questionIds: string[],
+    target: FlashcardTarget
+  ): Promise<{ deckId: string; created: number }> => {
+    const res = await axiosClient.post<{ deckId: string; created: number }>(
+      `/quiz/attempts/${attemptId}/convert-to-flashcards`,
+      { questionIds, target }
+    );
+    return res.data;
   },
 };

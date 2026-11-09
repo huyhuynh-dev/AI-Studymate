@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
+    ConvertToFlashcardsDto,
     CreateQuizDto,
     GenerateQuizWithAiDto,
     OverrideEvaluationDto,
@@ -13,6 +14,7 @@ import {
 import { QuizManageService } from './quiz-manage.service.js';
 import { QuizAttemptService } from './quiz-attempt.service.js';
 import { QuizGradingService } from './quiz-grading.service.js';
+import { QuizToFlashcardService } from './quiz-to-flashcard.service.js';
 import {
     AttemptAnswerResponse,
     AttemptConfigResponse,
@@ -67,7 +69,8 @@ export class QuizService {
     constructor(
         private readonly quizManageService: QuizManageService,
         private readonly quizAttemptService: QuizAttemptService,
-        private readonly quizGradingService: QuizGradingService
+        private readonly quizGradingService: QuizGradingService,
+        private readonly quizToFlashcardService: QuizToFlashcardService
     ) {}
 
     /* ==========================================================
@@ -183,6 +186,22 @@ export class QuizService {
             userId,
             attemptId,
             questionId,
+            dto
+        );
+    }
+
+    /* ==========================================================
+     * NHÓM 4: CHUYỂN ĐỔI FLASHCARD (RULE-BASED)
+     * ========================================================== */
+
+    async convertToFlashcards(
+        userId: string,
+        attemptId: string,
+        dto: ConvertToFlashcardsDto
+    ): Promise<{ deckId: string; created: number }> {
+        return this.quizToFlashcardService.convertToFlashcards(
+            userId,
+            attemptId,
             dto
         );
     }

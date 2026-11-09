@@ -120,6 +120,35 @@ export class DeckFlashcardRepoService {
         return await this.prisma.flashcard.create({ data });
     }
 
+    async createManyFlashcards(
+        deckId: string,
+        cards: Array<{
+            card_type: any;
+            front_text: string;
+            back_text: string;
+            image_url?: string | null;
+            audio_url?: string | null;
+            state?: any;
+        }>,
+        userId?: string
+    ): Promise<number> {
+        if (userId) {
+            await this.assertDeckOwnership(deckId, userId);
+        }
+        if (cards.length === 0) return 0;
+        const records = cards.map((c) => ({
+            deck_id: deckId,
+            card_type: c.card_type,
+            front_text: c.front_text,
+            back_text: c.back_text,
+            image_url: c.image_url ?? null,
+            audio_url: c.audio_url ?? null,
+            state: c.state ?? 'new',
+        }));
+        const res = await this.prisma.flashcard.createMany({ data: records });
+        return res.count;
+    }
+
     async getAllFlashcardsByDeckId(
         deckId: string,
         userId: string

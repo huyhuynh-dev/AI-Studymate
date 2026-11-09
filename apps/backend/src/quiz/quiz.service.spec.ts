@@ -12,6 +12,8 @@ import { QuizRepoService } from '../repo/quiz-repo/quiz-repo.service.js';
 import { QuizManageService } from './quiz-manage.service.js';
 import { QuizAttemptService } from './quiz-attempt.service.js';
 import { QuizGradingService } from './quiz-grading.service.js';
+import { QuizToFlashcardService } from './quiz-to-flashcard.service.js';
+import { DeckFlashcardRepoService } from '../repo/deck-flashcard-repo/deck-flashcard-repo.service.js';
 import {
     QuizService,
     sanitizeQuizHtml,
@@ -55,9 +57,18 @@ describe('QuizService', () => {
                 QuizManageService,
                 QuizAttemptService,
                 QuizGradingService,
+                QuizToFlashcardService,
                 {
                     provide: QuizRepoService,
                     useValue: mockQuizRepo,
+                },
+                {
+                    provide: DeckFlashcardRepoService,
+                    useValue: {
+                        getDeckById: vi.fn(),
+                        createDeck: vi.fn(),
+                        createManyFlashcards: vi.fn(),
+                    },
                 },
                 {
                     provide: QuizAiService,

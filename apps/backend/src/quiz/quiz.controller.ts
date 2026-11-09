@@ -16,6 +16,7 @@ import {
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import {
+    ConvertToFlashcardsDto,
     CreateQuizDto,
     GenerateQuizWithAiDto,
     OverrideEvaluationDto,
@@ -194,6 +195,27 @@ export class QuizController {
             this.getUserId(req),
             attemptId,
             questionId,
+            dto
+        );
+    }
+
+    /* ==========================================================
+     * NHÓM 4: CHUYỂN ĐỔI FLASHCARD (RULE-BASED)
+     * ========================================================== */
+
+    @Post('attempts/:attemptId/convert-to-flashcards')
+    async convertToFlashcards(
+        @Req() req: Request,
+        @Param('attemptId', new ParseUUIDPipe()) attemptId: string,
+        @Body() dto: ConvertToFlashcardsDto
+    ): Promise<{ deckId: string; created: number }> {
+        const userId = this.getUserId(req);
+        this.logger.log(
+            `[POST /quiz/attempts/${attemptId}/convert-to-flashcards] User ${userId} chuyển ${dto.questionIds?.length || 0} câu hỏi sang Flashcard`
+        );
+        return this.quizService.convertToFlashcards(
+            userId,
+            attemptId,
             dto
         );
     }

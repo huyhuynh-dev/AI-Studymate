@@ -198,3 +198,25 @@ export class GenerateQuizWithAiDto {
     })
     difficulty!: 'basic' | 'applied' | 'advanced';
 }
+
+export class FlashcardTargetDto {
+    @IsOptional()
+    @IsUUID('4', { message: 'ID bộ thẻ không hợp lệ' })
+    deckId?: string;
+
+    @IsOptional()
+    @IsString({ message: 'Tên bộ thẻ mới phải là chuỗi' })
+    @MaxLength(255, { message: 'Tên bộ thẻ không được vượt quá 255 ký tự' })
+    newDeckName?: string;
+}
+
+export class ConvertToFlashcardsDto {
+    @IsArray({ message: 'Danh sách ID câu hỏi phải là một mảng' })
+    @IsUUID('4', { each: true, message: 'ID câu hỏi không hợp lệ' })
+    questionIds!: string[];
+
+    @ValidateNested()
+    @Type(() => FlashcardTargetDto)
+    @IsObject({ message: 'Đích đến của bộ thẻ không hợp lệ' })
+    target!: FlashcardTargetDto;
+}
