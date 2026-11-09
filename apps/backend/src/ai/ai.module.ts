@@ -6,6 +6,7 @@ import { SummaryService } from './summary.service.js';
 import { BlocknoteService } from './blocknote.service.js';
 import { ChatAgentAiService } from './chat-agent-ai.service.js';
 import { AiModelFactory } from './ai-model.factory.js';
+import { QuizAiService } from './quiz-ai.service.js';
 
 @Module({
   providers: [
@@ -15,7 +16,8 @@ import { AiModelFactory } from './ai-model.factory.js';
     SummaryService,
     BlocknoteService,
     ChatAgentAiService,
-    AiModelFactory
+    AiModelFactory,
+    QuizAiService,
   ],
   exports: [
     AiService,
@@ -24,7 +26,8 @@ import { AiModelFactory } from './ai-model.factory.js';
     SummaryService,
     BlocknoteService,
     ChatAgentAiService,
-    AiModelFactory
+    AiModelFactory,
+    QuizAiService,
   ],
 })
 export class AiModule { }

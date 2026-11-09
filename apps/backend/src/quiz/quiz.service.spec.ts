@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AiService } from '../ai/ai.service.js';
+import { QuizAiService } from '../ai/quiz-ai.service.js';
 import {
     AttemptStatusEnum,
     EvaluationStatusEnum,
@@ -17,7 +17,7 @@ import {
 describe('QuizService', () => {
     let service: QuizService;
     let mockQuizRepo: any;
-    let mockAiService: any;
+    let mockQuizAiService: any;
 
     beforeEach(async () => {
         mockQuizRepo = {
@@ -35,8 +35,8 @@ describe('QuizService', () => {
             updateAnswerEvaluationAndScore: vi.fn(),
         };
 
-        mockAiService = {
-            generateObjectForTask: vi.fn(),
+        mockQuizAiService = {
+            gradeEssayQuestion: vi.fn(),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -47,8 +47,8 @@ describe('QuizService', () => {
                     useValue: mockQuizRepo,
                 },
                 {
-                    provide: AiService,
-                    useValue: mockAiService,
+                    provide: QuizAiService,
+                    useValue: mockQuizAiService,
                 },
             ],
         }).compile();
@@ -159,55 +159,8 @@ describe('QuizService', () => {
         });
     });
 
-    describe('Essay Grading with LLM & Fallback', () => {
-        it('uses AiService structured output to grade essay question', async () => {
-            mockAiService.generateObjectForTask.mockResolvedValue({
-                object: {
-                    evaluationStatus: 'partial',
-                    pointsEarned: 1.5,
-                    matchedPoints: ['Ý 1'],
-                    missingPoints: ['Ý 2'],
-                    aiFeedback: 'Nêu được ý 1 nhưng thiếu ý 2.',
-                },
-            });
-
-            const res = await service.gradeEssayQuestion(
-                {
-                    question_text: '<p>Giải thích Active Recall</p>',
-                    points: 3,
-                    sample_answer: '<p>Đáp án mẫu</p>',
-                    grading_criteria: ['Ý 1', 'Ý 2'],
-                },
-                '<p>Bài làm của sinh viên</p>'
-            );
-
-            expect(mockAiService.generateObjectForTask).toHaveBeenCalledOnce();
-            expect(res.evaluationStatus).toBe(EvaluationStatusEnum.partial);
-            expect(res.pointsEarned).toBe(1.5);
-            expect(res.matchedPoints).toEqual(['Ý 1']);
-            expect(res.missingPoints).toEqual(['Ý 2']);
-        });
-
-        it('returns 0 immediately without calling LLM if essay answer is empty', async () => {
-            const res = await service.gradeEssayQuestion(
-                {
-                    question_text: '<p>Giải thích</p>',
-                    points: 2,
-                    sample_answer: '<p>Mẫu</p>',
-                    grading_criteria: ['Tiêu chí 1'],
-                },
-                '<p>   </p>'
-            );
-
-            expect(mockAiService.generateObjectForTask).not.toHaveBeenCalled();
-            expect(res.evaluationStatus).toBe(EvaluationStatusEnum.incorrect);
-            expect(res.pointsEarned).toBe(0);
-            expect(res.missingPoints).toEqual(['Tiêu chí 1']);
-        });
-    });
-
     describe('submitAttempt & overrideEvaluation', () => {
-        it('grades both objective and essay questions on submitAttempt', async () => {
+        it('delegates essay grading to QuizAiService and grades objective questions on submitAttempt', async () => {
             const now = new Date();
             mockQuizRepo.getAttemptByIdWithDetails.mockResolvedValue({
                 id: 'att-1',
@@ -248,14 +201,12 @@ describe('QuizService', () => {
                 },
             });
 
-            mockAiService.generateObjectForTask.mockResolvedValue({
-                object: {
-                    evaluationStatus: 'correct',
-                    pointsEarned: 2,
-                    matchedPoints: ['Ý chính'],
-                    missingPoints: [],
-                    aiFeedback: 'Tốt!',
-                },
+            mockQuizAiService.gradeEssayQuestion.mockResolvedValue({
+                evaluationStatus: EvaluationStatusEnum.correct,
+                pointsEarned: 2,
+                matchedPoints: ['Ý chính'],
+                missingPoints: [],
+                aiFeedback: 'Tốt!',
             });
 
             mockQuizRepo.saveSubmittedAttempt.mockResolvedValue({
@@ -317,6 +268,15 @@ describe('QuizService', () => {
                 ],
             });
 
+            expect(mockQuizAiService.gradeEssayQuestion).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    questionText: '<p>Tự luận</p>',
+                    points: 2,
+                    sampleAnswer: '<p>Mẫu</p>',
+                    gradingCriteria: ['Ý chính'],
+                }),
+                '<p>Trả lời</p>'
+            );
             expect(result.status).toBe('submitted');
             expect(result.score).toBe(3);
             expect(result.answers['q-2'].aiFeedback).toBe('Tốt!');

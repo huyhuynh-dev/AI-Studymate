@@ -18,7 +18,8 @@ export type AiTask =
     | 'SUMMARIZE'
     | 'BLOCKNOTE_EDITOR'
     | 'CHAT_AGENT'
-    | 'AUTO_HEADER';
+    | 'AUTO_HEADER'
+    | 'QUIZ_AGENT';
 
 type TaskModel = EmbeddingModel | LanguageModel;
 
@@ -77,6 +78,8 @@ export class AiModelFactory {
             CHAT_AGENT: this.provider('cx/gpt-6-luna-medium'),
 
             AUTO_HEADER: ollama('qwen3.5:0.8b'),
+
+            QUIZ_AGENT: this.provider('cx/gpt-6-luna'),
         };
     }
 
