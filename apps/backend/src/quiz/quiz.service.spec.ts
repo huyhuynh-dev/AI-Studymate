@@ -9,6 +9,9 @@ import {
 } from '../generated/prisma/client.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import { QuizRepoService } from '../repo/quiz-repo/quiz-repo.service.js';
+import { QuizManageService } from './quiz-manage.service.js';
+import { QuizAttemptService } from './quiz-attempt.service.js';
+import { QuizGradingService } from './quiz-grading.service.js';
 import {
     QuizService,
     sanitizeQuizHtml,
@@ -49,6 +52,9 @@ describe('QuizService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 QuizService,
+                QuizManageService,
+                QuizAttemptService,
+                QuizGradingService,
                 {
                     provide: QuizRepoService,
                     useValue: mockQuizRepo,
