@@ -1,19 +1,27 @@
-export function LogoMark({ size = 32 }: { size?: number }) {
+import Image from "next/image";
+
+export function LogoMark({
+  size = 32,
+  className = "",
+}: {
+  size?: number;
+  className?: string;
+}) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <rect width="32" height="32" rx="10" className="fill-primary" />
-      <path
-        transform="translate(6 6) scale(0.83)"
-        fill="#fff"
-        d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z"
-      />
-    </svg>
+    <Image
+      src="/logo.svg"
+      alt="AI StudyMate Logo"
+      width={size}
+      height={size}
+      priority
+      className={`shrink-0 ${className}`.trim()}
+    />
   );
 }
 
-export function Logo() {
+export function Logo({ className = "" }: { className?: string }) {
   return (
-    <span className="inline-flex items-center gap-2.5">
+    <span className={`inline-flex items-center gap-2.5 ${className}`.trim()}>
       <LogoMark />
       <span className="font-heading text-[17px] font-semibold tracking-tight">
         AI <span className="text-primary">StudyMate</span>
