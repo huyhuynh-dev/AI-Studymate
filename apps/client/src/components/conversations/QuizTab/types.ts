@@ -103,6 +103,8 @@ export interface TestSetup {
 }
 
 export interface AIGenerateOptions {
+  /** Chỉ AI đọc các tài liệu này (id trong bảng documents) */
+  documentIds: string[];
   questionCount: number;
   types: QuestionType[];
   difficulty: Difficulty;
@@ -112,6 +114,14 @@ export interface DeckGenerateOptions {
   deckId: string;
   questionCount: number;
   types: QuestionType[];
+}
+
+/** Tài liệu hiển thị trong bộ chọn nguồn khi tạo đề bằng AI */
+export interface DocumentOption {
+  id: string;
+  name: string;
+  /** Dòng phụ, ví dụ "PDF · 24 trang" */
+  meta?: string;
 }
 
 export interface DeckOption {

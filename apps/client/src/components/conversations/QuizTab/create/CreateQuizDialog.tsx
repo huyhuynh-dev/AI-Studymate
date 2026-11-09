@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Layers, PenLine, Sparkles, Minus, Plus } from "lucide-react";
-import type { AIGenerateOptions, DeckGenerateOptions, DeckOption, Difficulty, QuestionType, QuizSource } from "../types";
+import type { AIGenerateOptions, DeckGenerateOptions, DeckOption, Difficulty, DocumentOption, QuestionType, QuizSource } from "../types";
+import { DocumentPicker } from "./DocumentPicker";
 import { Button, Field, Modal, Segmented, Select, ToggleChip } from "../ui/primitives";
 import { DIFFICULTY_OPTIONS, QUESTION_TYPES, QUESTION_TYPE_META } from "../constants";
 
@@ -33,8 +34,8 @@ const SOURCES: { key: QuizSource; icon: typeof Sparkles; title: string; desc: st
   { key: "manual", icon: PenLine, title: "Tự soạn đề", desc: "Tự viết từng câu hỏi và đáp án.", tone: "text-[var(--on-surface-variant)] bg-[var(--qz-fill)]" },
 ];
 
-export function CreateQuizDialog({ open, initialSource, decks, onClose, onGenerateAI, onGenerateDeck, onManual }: {
-  open: boolean; initialSource: QuizSource | null; decks: DeckOption[]; onClose: () => void;
+export function CreateQuizDialog({ open, initialSource, decks, documents, onClose, onGenerateAI, onGenerateDeck, onManual }: {
+  open: boolean; initialSource: QuizSource | null; decks: DeckOption[]; documents: DocumentOption[]; onClose: () => void;
   onGenerateAI: (o: AIGenerateOptions) => Promise<void>;
   onGenerateDeck: (o: DeckGenerateOptions) => Promise<void>;
   onManual: () => void;
@@ -45,6 +46,7 @@ export function CreateQuizDialog({ open, initialSource, decks, onClose, onGenera
   const [types, setTypes] = useState<QuestionType[]>(["single_choice", "essay"]);
   const [difficulty, setDifficulty] = useState<Difficulty>("applied");
   const [deckId, setDeckId] = useState(decks[0]?.id ?? "");
+  const [docIds, setDocIds] = useState<string[]>(() => documents.map((d) => d.id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +56,7 @@ export function CreateQuizDialog({ open, initialSource, decks, onClose, onGenera
   const run = async () => {
     setBusy(true); setError(null);
     try {
-      if (source === "ai") await onGenerateAI({ questionCount: count, types, difficulty });
+      if (source === "ai") await onGenerateAI({ questionCount: count, types, difficulty, documentIds: docIds });
       else if (source === "flashcard") await onGenerateDeck({ deckId, questionCount: Math.min(count, deckMax), types });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể tạo đề. Vui lòng thử lại.");
@@ -87,6 +89,8 @@ export function CreateQuizDialog({ open, initialSource, decks, onClose, onGenera
 
   const isAI = source === "ai";
   const noDecks = !isAI && decks.length === 0;
+  const noDocs = isAI && documents.length === 0;
+  const noSelection = isAI && documents.length > 0 && docIds.length === 0;
 
   return (
     <Modal
@@ -94,11 +98,11 @@ export function CreateQuizDialog({ open, initialSource, decks, onClose, onGenera
       onClose={busy ? () => undefined : onClose}
       dismissable={!busy}
       title={isAI ? "Tạo đề bằng AI" : "Tạo đề từ bộ Flashcard"}
-      description={isAI ? "AI sẽ đọc các tài liệu trong không gian học tập này." : "Chọn bộ thẻ và số câu muốn trích xuất."}
+      description={isAI ? "AI chỉ đọc những tài liệu bạn chọn bên dưới." : "Chọn bộ thẻ và số câu muốn trích xuất."}
       footer={
         <>
           {!initialSource && <Button variant="tertiary" disabled={busy} onClick={() => setPicked(null)}>Quay lại</Button>}
-          <Button variant="primary" loading={busy} disabled={noDecks} icon={isAI ? <Sparkles className="h-4 w-4" /> : undefined} onClick={run}>
+          <Button variant="primary" loading={busy} disabled={noDecks || noDocs || noSelection} icon={isAI ? <Sparkles className="h-4 w-4" /> : undefined} onClick={run}>
             {busy ? (isAI ? "Đang sinh đề…" : "Đang tạo…") : isAI ? "Bắt đầu sinh đề" : "Tạo bài kiểm tra"}
           </Button>
         </>
@@ -111,6 +115,15 @@ export function CreateQuizDialog({ open, initialSource, decks, onClose, onGenera
               {decks.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.cardCount} thẻ)</option>)}
             </Select>
           </Field>
+        )}
+        {isAI && (
+          noDocs ? (
+            <p className="rounded-2xl bg-[var(--qz-fill)] px-4 py-4 text-[14px] leading-5 text-[var(--on-surface-variant)]">
+              Chưa có tài liệu nào. Hãy tải tài liệu lên ở tab Tài liệu trước khi tạo đề bằng AI.
+            </p>
+          ) : (
+            <DocumentPicker documents={documents} value={docIds} onChange={setDocIds} error={noSelection ? "Chọn ít nhất 1 tài liệu để AI soạn đề." : null} />
+          )
         )}
         <div>
           <p className="mb-2 text-[14px] font-semibold">Số câu hỏi</p>

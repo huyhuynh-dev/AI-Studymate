@@ -90,6 +90,7 @@ describe('QuizService', () => {
 
             await expect(
                 service.generateWithAI('user-1', 'conv-1', {
+                    documentIds: [],
                     questionCount: 5,
                     types: [QuestionTypeEnum.single_choice],
                     difficulty: 'applied',
@@ -105,6 +106,12 @@ describe('QuizService', () => {
                     file_name: 'Chuong1.pdf',
                     ocr_status: 'done',
                     raw_text: 'Nội dung chương 1 về Spaced Repetition.',
+                },
+                {
+                    id: 'doc-2',
+                    file_name: 'Chuong2.pdf',
+                    ocr_status: 'done',
+                    raw_text: 'Nội dung chương 2 không được chọn.',
                 },
             ]);
 
@@ -158,6 +165,7 @@ describe('QuizService', () => {
             });
 
             const res = await service.generateWithAI('user-1', 'conv-1', {
+                documentIds: ['doc-1'],
                 questionCount: 5,
                 types: [QuestionTypeEnum.single_choice],
                 difficulty: 'applied',
@@ -167,11 +175,15 @@ describe('QuizService', () => {
                 mockQuizAiService.generateQuizFromContext
             ).toHaveBeenCalledWith(
                 expect.objectContaining({
+                    context: expect.stringContaining('Nội dung chương 1'),
                     count: 5,
                     types: [QuestionTypeEnum.single_choice],
                     difficulty: 'applied',
                 })
             );
+            expect(
+                mockQuizAiService.generateQuizFromContext.mock.calls[0][0].context
+            ).not.toContain('Nội dung chương 2');
             expect(mockQuizRepo.createQuizWithQuestions).toHaveBeenCalledWith(
                 'user-1',
                 'conv-1',

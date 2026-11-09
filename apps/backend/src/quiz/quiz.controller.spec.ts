@@ -67,6 +67,7 @@ describe('QuizController', () => {
         );
 
         await controller.generateWithAI(fakeReq, 'conv-1', {
+            documentIds: ['doc-1'],
             questionCount: 10,
             types: [QuestionTypeEnum.single_choice, QuestionTypeEnum.essay],
             difficulty: 'applied',
@@ -75,6 +76,7 @@ describe('QuizController', () => {
             'user-123',
             'conv-1',
             {
+                documentIds: ['doc-1'],
                 questionCount: 10,
                 types: [QuestionTypeEnum.single_choice, QuestionTypeEnum.essay],
                 difficulty: 'applied',

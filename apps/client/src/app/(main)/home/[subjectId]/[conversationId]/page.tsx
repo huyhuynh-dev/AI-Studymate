@@ -205,6 +205,11 @@ export default function ConversationPage({ params }: ConversationPageProps) {
             <QuizTab
               conversationId={conversationId}
               decks={deckOptions}
+              documents={documents.map((document) => ({
+                id: document.id,
+                name: document.file_name,
+                meta: `${document.mime_type.toUpperCase()} · ${Math.ceil(document.file_size / 1024)} KB`,
+              }))}
               api={quizApi}
               hasDocuments={documents.length > 0}
               onUploadDocument={handleGoToDocuments}

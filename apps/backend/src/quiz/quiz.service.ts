@@ -261,13 +261,19 @@ export class QuizService {
                 userId
             );
 
-        const readyDocs = docs.filter(
+        const selectedDocs =
+            dto.documentIds && dto.documentIds.length > 0
+                ? docs.filter((doc) => dto.documentIds!.includes(doc.id))
+                : docs;
+        const readyDocs = selectedDocs.filter(
             (d) => d.ocr_status === 'done' && d.raw_text && d.raw_text.trim()
         );
 
         if (readyDocs.length === 0) {
             throw new BadRequestException(
-                'Chưa có tài liệu nào trong không gian học tập được xử lý hoàn tất. Vui lòng tải lên hoặc chờ tài liệu xử lý xong trước khi tạo đề bằng AI.'
+                dto.documentIds && dto.documentIds.length > 0
+                    ? 'Không có tài liệu nào trong số các tài liệu bạn chọn đã được xử lý hoàn tất nội dung. Vui lòng kiểm tra lại hoặc chọn tài liệu khác.'
+                    : 'Chưa có tài liệu nào trong không gian học tập được xử lý hoàn tất. Vui lòng tải lên hoặc chờ tài liệu xử lý xong trước khi tạo đề bằng AI.'
             );
         }
 

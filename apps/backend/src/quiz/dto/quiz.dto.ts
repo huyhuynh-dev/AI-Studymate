@@ -9,6 +9,7 @@ import {
     IsObject,
     IsOptional,
     IsString,
+    IsUUID,
     MaxLength,
     Min,
     ValidateNested,
@@ -171,6 +172,14 @@ export class OverrideEvaluationDto {
 }
 
 export class GenerateQuizWithAiDto {
+    @IsOptional()
+    @IsArray({ message: 'Danh sách tài liệu phải là một mảng' })
+    @IsUUID('4', {
+        each: true,
+        message: 'ID tài liệu không hợp lệ',
+    })
+    documentIds?: string[];
+
     @Type(() => Number)
     @IsNumber()
     @Min(1, { message: 'Số lượng câu hỏi phải ít nhất là 1' })
