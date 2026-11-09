@@ -1,6 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { QuestionTypeEnum } from '../generated/prisma/client.js';
 import { QuizController } from './quiz.controller.js';
 import { QuizService } from './quiz.service.js';
 
@@ -14,13 +15,22 @@ describe('QuizController', () => {
             getQuizById: vi.fn().mockResolvedValue({ id: 'quiz-1' }),
             createQuiz: vi.fn().mockResolvedValue({ id: 'quiz-1' }),
             updateQuiz: vi.fn().mockResolvedValue({ id: 'quiz-1' }),
-            deleteQuiz: vi.fn().mockResolvedValue({ success: true, message: 'OK' }),
+            deleteQuiz: vi
+                .fn()
+                .mockResolvedValue({ success: true, message: 'OK' }),
+            generateWithAI: vi
+                .fn()
+                .mockResolvedValue({ id: 'quiz-ai-1', source: 'ai' }),
             listAttempts: vi.fn().mockResolvedValue([]),
             startAttempt: vi.fn().mockResolvedValue({ id: 'att-1' }),
             saveAnswer: vi.fn().mockResolvedValue({ success: true }),
             saveProgress: vi.fn().mockResolvedValue({ success: true }),
-            submitAttempt: vi.fn().mockResolvedValue({ id: 'att-1', status: 'submitted' }),
-            overrideEvaluation: vi.fn().mockResolvedValue({ id: 'att-1', score: 2 }),
+            submitAttempt: vi
+                .fn()
+                .mockResolvedValue({ id: 'att-1', status: 'submitted' }),
+            overrideEvaluation: vi
+                .fn()
+                .mockResolvedValue({ id: 'att-1', score: 2 }),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -47,13 +57,28 @@ describe('QuizController', () => {
         );
     });
 
-    it('delegates listQuizzes, startAttempt, submitAttempt, and overrideEvaluation to QuizService', async () => {
+    it('delegates listQuizzes, generateWithAI, startAttempt, submitAttempt, and overrideEvaluation to QuizService', async () => {
         const fakeReq = { user: { userId: 'user-123' } } as any;
 
         await controller.listQuizzes(fakeReq, 'conv-1');
         expect(mockQuizService.listQuizzes).toHaveBeenCalledWith(
             'user-123',
             'conv-1'
+        );
+
+        await controller.generateWithAI(fakeReq, 'conv-1', {
+            questionCount: 10,
+            types: [QuestionTypeEnum.single_choice, QuestionTypeEnum.essay],
+            difficulty: 'applied',
+        });
+        expect(mockQuizService.generateWithAI).toHaveBeenCalledWith(
+            'user-123',
+            'conv-1',
+            {
+                questionCount: 10,
+                types: [QuestionTypeEnum.single_choice, QuestionTypeEnum.essay],
+                difficulty: 'applied',
+            }
         );
 
         await controller.startAttempt(fakeReq, 'quiz-1', {

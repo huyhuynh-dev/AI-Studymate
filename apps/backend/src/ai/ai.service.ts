@@ -70,9 +70,12 @@ export class AiService {
     task: Exclude<AiTask, 'EMBEDDING'>,
     options: {
       schema: unknown;
+      schemaName?: string;
+      schemaDescription?: string;
       prompt: string;
       system?: string;
       temperature?: number;
+      maxRetries?: number;
       modelName?: string;
     },
   ): Promise<{ object: T }> {
@@ -84,10 +87,17 @@ export class AiService {
       model,
       output: Output.object({
         schema: options.schema as any,
+        ...(options.schemaName ? { name: options.schemaName } : {}),
+        ...(options.schemaDescription
+          ? { description: options.schemaDescription }
+          : {}),
       }),
       prompt: options.prompt,
       system: options.system,
       temperature: options.temperature,
+      ...(options.maxRetries !== undefined
+        ? { maxRetries: options.maxRetries }
+        : {}),
     });
     return { object: result.output as T };
   }

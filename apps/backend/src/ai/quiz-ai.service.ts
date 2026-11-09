@@ -1,7 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
 import { EvaluationStatusEnum } from '../generated/prisma/client.js';
 import { AiService } from './ai.service.js';
+import {
+    type AIQuestionType,
+    type GeneratedQuiz,
+    type QuizQuestionInsert,
+    buildQuizSchema,
+    partitionQuestions,
+    toQuizQuestionInserts,
+} from './schemas/quiz-ai.schema.js';
 
 export interface GradeEssayInput {
     questionText: string;
@@ -34,6 +42,58 @@ export const essayGradingSchema = z.object({
     aiFeedback: z.string(),
 });
 
+export const QUIZ_DIFFICULTY = {
+    basic: 'Cơ bản: nhớ và hiểu định nghĩa, khái niệm.',
+    applied: 'Vận dụng: áp dụng vào tình huống, so sánh, phân tích ví dụ.',
+    advanced: 'Nâng cao: phân tích, đánh giá, tổng hợp nhiều khái niệm.',
+} as const;
+
+export type QuizDifficulty = keyof typeof QUIZ_DIFFICULTY;
+
+const TYPE_RULES: Record<AIQuestionType, string> = {
+    single_choice:
+        "single_choice: 1 correctAnswer + 3 distractors hợp lý, cùng độ dài; cấm 'Tất cả đều đúng/sai'.",
+    multiple_choice:
+        "multiple_choice: 2–4 correctAnswers + 2–3 distractors; câu hỏi mở đầu bằng 'Chọn tất cả…'.",
+    true_false:
+        'true_false: một mệnh đề khẳng định rõ ràng; cân bằng số câu đúng/sai; không phủ định kép.',
+    short_answer:
+        'short_answer: đáp án duy nhất, ≤ 5 từ; acceptedAnswers liệt kê mọi cách viết đúng.',
+    essay: 'essay: sampleAnswer 80–200 từ; gradingCriteria 3–5 ý độc lập, kiểm chứng được, bắt đầu bằng động từ.',
+};
+
+export function buildQuizSystemPrompt(o: {
+    types: AIQuestionType[];
+    count: number;
+    difficulty: QuizDifficulty;
+}): string {
+    return [
+        'Bạn là giảng viên chuyên soạn đề kiểm tra. Chỉ dựa vào TÀI LIỆU được cung cấp; tuyệt đối không bịa kiến thức ngoài tài liệu.',
+        `Soạn tối đa ${o.count} câu hỏi. Nếu tài liệu không đủ nội dung, trả ít câu hơn thay vì bịa thêm.`,
+        `Mức độ — ${QUIZ_DIFFICULTY[o.difficulty]}`,
+        'Viết bằng ngôn ngữ của tài liệu. Các câu phải bao quát nhiều phần khác nhau, không trùng ý, mỗi câu tự đứng được.',
+        'Phân bổ đều giữa các loại câu hỏi được cho phép:',
+        ...o.types.map((t) => `- ${TYPE_RULES[t]}`),
+        "Định dạng văn bản: văn bản thuần, có thể dùng **in đậm** và dòng bắt đầu bằng '- ' cho danh sách; không dùng HTML/Markdown khác.",
+        'Không cần sắp xếp vị trí đáp án đúng: hệ thống sẽ tự xáo trộn.',
+    ].join('\n');
+}
+
+export interface GenerateQuizFromContextInput {
+    context: string;
+    count: number;
+    types: AIQuestionType[];
+    difficulty: QuizDifficulty;
+    quizId?: string;
+}
+
+export interface GenerateQuizFromContextResult {
+    title: string;
+    description: string;
+    rows: QuizQuestionInsert[];
+    rejected: { index: number; problems: string[] }[];
+}
+
 export function stripHtml(html?: string | null): string {
     if (!html) return '';
     return html
@@ -51,6 +111,68 @@ export class QuizAiService {
     private readonly logger = new Logger(QuizAiService.name);
 
     constructor(private readonly aiService: AiService) {}
+
+    /**
+     * Sinh đề kiểm tra (tiêu đề, mô tả, danh sách câu hỏi) từ văn bản tài liệu bằng model QUIZ_AGENT.
+     * Thực hiện kiểm định chất lượng qua partitionQuestions và chuyển sang dòng DB qua toQuizQuestionInserts.
+     */
+    async generateQuizFromContext(
+        args: GenerateQuizFromContextInput
+    ): Promise<GenerateQuizFromContextResult> {
+        const schema = buildQuizSchema(args.types);
+        const system = buildQuizSystemPrompt({
+            types: args.types,
+            count: args.count,
+            difficulty: args.difficulty,
+        });
+
+        const { object } =
+            await this.aiService.generateObjectForTask<GeneratedQuiz>(
+                'QUIZ_AGENT',
+                {
+                    schema,
+                    schemaName: 'QuizGeneration',
+                    schemaDescription:
+                        'Đề kiểm tra và danh sách câu hỏi sinh từ tài liệu học tập',
+                    system,
+                    prompt: `TÀI LIỆU:\n"""\n${args.context}\n"""`,
+                    temperature: 0.4,
+                    maxRetries: 2,
+                }
+            );
+
+        const rawQuestions = Array.isArray(object?.questions)
+            ? object.questions
+            : [];
+        const { valid, rejected } = partitionQuestions(rawQuestions);
+
+        if (rejected.length > 0) {
+            this.logger.warn(
+                `Đã loại ${rejected.length} câu hỏi không đạt chuẩn chất lượng: ${JSON.stringify(
+                    rejected
+                )}`
+            );
+        }
+
+        if (valid.length === 0) {
+            throw new BadRequestException(
+                'Không thể sinh câu hỏi hợp lệ từ nội dung tài liệu hiện tại. Vui lòng thử lại hoặc kiểm tra lại nội dung tài liệu.'
+            );
+        }
+
+        const rows = toQuizQuestionInserts(valid.slice(0, args.count), {
+            quizId: args.quizId,
+        });
+
+        return {
+            title: object?.title?.trim() || 'Đề ôn tập do AI tạo',
+            description:
+                object?.description?.trim() ||
+                'Được tạo tự động từ tài liệu trong không gian học tập.',
+            rows,
+            rejected,
+        };
+    }
 
     /**
      * Chuẩn bị dữ liệu và gọi LLM (qua AiService) để chấm điểm câu hỏi tự luận.

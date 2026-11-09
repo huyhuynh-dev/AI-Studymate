@@ -11,6 +11,7 @@ import {
     QuestionTypeEnum,
 } from '../generated/prisma/client.js';
 import { QuizAiService } from '../ai/quiz-ai.service.js';
+import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import {
     GradedAnswerPayload,
     QuestionCreatePayload,
@@ -18,6 +19,7 @@ import {
 } from '../repo/quiz-repo/quiz-repo.service.js';
 import {
     CreateQuizDto,
+    GenerateQuizWithAiDto,
     OverrideEvaluationDto,
     QuestionDraftDto,
     SaveAnswerDto,
@@ -170,7 +172,8 @@ export class QuizService {
 
     constructor(
         private readonly quizRepo: QuizRepoService,
-        private readonly quizAiService: QuizAiService
+        private readonly quizAiService: QuizAiService,
+        private readonly documentsRepo: DocumentsRepoService
     ) {}
 
     /* ==========================================================
@@ -245,6 +248,82 @@ export class QuizService {
             success: true,
             message: 'Xóa bài kiểm tra thành công',
         };
+    }
+
+    async generateWithAI(
+        userId: string,
+        conversationId: string,
+        dto: GenerateQuizWithAiDto
+    ): Promise<QuizResponse> {
+        const docs =
+            await this.documentsRepo.getAllDocumentsByConversationId(
+                conversationId,
+                userId
+            );
+
+        const readyDocs = docs.filter(
+            (d) => d.ocr_status === 'done' && d.raw_text && d.raw_text.trim()
+        );
+
+        if (readyDocs.length === 0) {
+            throw new BadRequestException(
+                'Chưa có tài liệu nào trong không gian học tập được xử lý hoàn tất. Vui lòng tải lên hoặc chờ tài liệu xử lý xong trước khi tạo đề bằng AI.'
+            );
+        }
+
+        const contextText = readyDocs
+            .map((doc, idx) => {
+                const header = doc.file_name
+                    ? `=== TÀI LIỆU ${idx + 1}: ${doc.file_name} ===`
+                    : `=== TÀI LIỆU ${idx + 1} ===`;
+                return `${header}\n${doc.raw_text!.trim()}\n`;
+            })
+            .join('\n\n');
+
+        const count = Math.max(1, Math.min(30, Number(dto.questionCount) || 10));
+        const types =
+            Array.isArray(dto.types) && dto.types.length > 0
+                ? dto.types
+                : [QuestionTypeEnum.single_choice];
+
+        const generated = await this.quizAiService.generateQuizFromContext({
+            context: contextText,
+            count,
+            types,
+            difficulty: dto.difficulty || 'applied',
+        });
+
+        const questionsPayload: QuestionCreatePayload[] = generated.rows.map(
+            (r, index) => ({
+                question_type: r.question_type as QuestionTypeEnum,
+                order_index: r.order_index ?? index,
+                question_text: r.question_text,
+                image_url: null,
+                audio_url: null,
+                points: r.points,
+                options: r.options
+                    ? (r.options as unknown as Prisma.InputJsonValue)
+                    : Prisma.DbNull,
+                sample_answer: r.sample_answer ?? null,
+                grading_criteria: (r.grading_criteria ??
+                    []) as unknown as Prisma.InputJsonValue,
+                explanation: r.explanation ?? null,
+            })
+        );
+
+        const created = await this.quizRepo.createQuizWithQuestions(
+            userId,
+            conversationId,
+            {
+                title: generated.title,
+                description: generated.description,
+                time_limit_sec: null,
+                source: 'ai',
+            },
+            questionsPayload
+        );
+
+        return this.mapQuizToResponse(created);
     }
 
     /* ==========================================================
@@ -710,7 +789,7 @@ export class QuizService {
         return raw.map((item: any, idx: number) => ({
             id: typeof item?.id === 'string' ? item.id : String(idx + 1),
             text: typeof item?.text === 'string' ? item.text : '',
-            isCorrect: Boolean(item?.isCorrect),
+            isCorrect: Boolean(item?.isCorrect ?? item?.is_correct),
         }));
     }
 

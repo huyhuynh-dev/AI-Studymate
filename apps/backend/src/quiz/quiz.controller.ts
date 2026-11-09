@@ -16,6 +16,7 @@ import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import {
     CreateQuizDto,
+    GenerateQuizWithAiDto,
     OverrideEvaluationDto,
     SaveAnswerDto,
     SaveProgressDto,
@@ -94,6 +95,19 @@ export class QuizController {
         @Param('quizId', new ParseUUIDPipe()) quizId: string
     ): Promise<{ success: boolean; message: string }> {
         return this.quizService.deleteQuiz(this.getUserId(req), quizId);
+    }
+
+    @Post('conversations/:conversationId/quizzes/generate')
+    async generateWithAI(
+        @Req() req: Request,
+        @Param('conversationId', new ParseUUIDPipe()) conversationId: string,
+        @Body() dto: GenerateQuizWithAiDto
+    ): Promise<QuizResponse> {
+        return this.quizService.generateWithAI(
+            this.getUserId(req),
+            conversationId,
+            dto
+        );
     }
 
     /* ==========================================================

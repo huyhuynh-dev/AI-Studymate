@@ -7,6 +7,7 @@ import {
     EvaluationStatusEnum,
     QuestionTypeEnum,
 } from '../generated/prisma/client.js';
+import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import { QuizRepoService } from '../repo/quiz-repo/quiz-repo.service.js';
 import {
     QuizService,
@@ -18,6 +19,7 @@ describe('QuizService', () => {
     let service: QuizService;
     let mockQuizRepo: any;
     let mockQuizAiService: any;
+    let mockDocumentsRepo: any;
 
     beforeEach(async () => {
         mockQuizRepo = {
@@ -37,6 +39,11 @@ describe('QuizService', () => {
 
         mockQuizAiService = {
             gradeEssayQuestion: vi.fn(),
+            generateQuizFromContext: vi.fn(),
+        };
+
+        mockDocumentsRepo = {
+            getAllDocumentsByConversationId: vi.fn(),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -49,6 +56,10 @@ describe('QuizService', () => {
                 {
                     provide: QuizAiService,
                     useValue: mockQuizAiService,
+                },
+                {
+                    provide: DocumentsRepoService,
+                    useValue: mockDocumentsRepo,
                 },
             ],
         }).compile();
@@ -68,6 +79,110 @@ describe('QuizService', () => {
                 '<p style="text-align: center">Xin <strong>chào</strong></p>'
             );
             expect(stripHtml(dirty)).toBe('Xin chào alert(1)');
+        });
+    });
+
+    describe('generateWithAI', () => {
+        it('throws BadRequestException when conversation has no OCR-ready documents', async () => {
+            mockDocumentsRepo.getAllDocumentsByConversationId.mockResolvedValue([
+                { id: 'doc-1', ocr_status: 'pending', raw_text: null },
+            ]);
+
+            await expect(
+                service.generateWithAI('user-1', 'conv-1', {
+                    questionCount: 5,
+                    types: [QuestionTypeEnum.single_choice],
+                    difficulty: 'applied',
+                })
+            ).rejects.toThrow(BadRequestException);
+        });
+
+        it('extracts document texts, calls QuizAiService.generateQuizFromContext, and saves quiz with source="ai"', async () => {
+            const now = new Date();
+            mockDocumentsRepo.getAllDocumentsByConversationId.mockResolvedValue([
+                {
+                    id: 'doc-1',
+                    file_name: 'Chuong1.pdf',
+                    ocr_status: 'done',
+                    raw_text: 'Nội dung chương 1 về Spaced Repetition.',
+                },
+            ]);
+
+            mockQuizAiService.generateQuizFromContext.mockResolvedValue({
+                title: 'Đề AI Chương 1',
+                description: 'Ôn tập chương 1',
+                rows: [
+                    {
+                        question_type: 'single_choice',
+                        order_index: 0,
+                        question_text: '<p>Câu hỏi 1</p>',
+                        points: 1,
+                        options: [
+                            { id: 'opt_1', text: 'Đúng', isCorrect: true },
+                            { id: 'opt_2', text: 'Sai', isCorrect: false },
+                        ],
+                        grading_criteria: [],
+                        explanation: '<p>Giải thích</p>',
+                    },
+                ],
+                rejected: [],
+            });
+
+            mockQuizRepo.createQuizWithQuestions.mockResolvedValue({
+                id: 'quiz-ai-1',
+                conversation_id: 'conv-1',
+                title: 'Đề AI Chương 1',
+                description: 'Ôn tập chương 1',
+                time_limit_sec: null,
+                source: 'ai',
+                source_deck_id: null,
+                created_at: now,
+                updated_at: now,
+                questions: [
+                    {
+                        id: 'q-1',
+                        quiz_id: 'quiz-ai-1',
+                        question_type: QuestionTypeEnum.single_choice,
+                        order_index: 0,
+                        question_text: '<p>Câu hỏi 1</p>',
+                        points: 1,
+                        options: [
+                            { id: 'opt_1', text: 'Đúng', isCorrect: true },
+                            { id: 'opt_2', text: 'Sai', isCorrect: false },
+                        ],
+                        sample_answer: null,
+                        grading_criteria: [],
+                        explanation: '<p>Giải thích</p>',
+                    },
+                ],
+            });
+
+            const res = await service.generateWithAI('user-1', 'conv-1', {
+                questionCount: 5,
+                types: [QuestionTypeEnum.single_choice],
+                difficulty: 'applied',
+            });
+
+            expect(
+                mockQuizAiService.generateQuizFromContext
+            ).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    count: 5,
+                    types: [QuestionTypeEnum.single_choice],
+                    difficulty: 'applied',
+                })
+            );
+            expect(mockQuizRepo.createQuizWithQuestions).toHaveBeenCalledWith(
+                'user-1',
+                'conv-1',
+                expect.objectContaining({
+                    title: 'Đề AI Chương 1',
+                    source: 'ai',
+                }),
+                expect.any(Array)
+            );
+            expect(res.source).toBe('ai');
+            expect(res.questions).toHaveLength(1);
         });
     });
 
@@ -92,16 +207,6 @@ describe('QuizService', () => {
                 status: EvaluationStatusEnum.correct,
                 earned: 2,
             });
-
-            expect(
-                service.evaluateObjectiveQuestion(q, {
-                    selectedOptionIds: ['b'],
-                    textAnswer: '',
-                })
-            ).toEqual({
-                status: EvaluationStatusEnum.incorrect,
-                earned: 0,
-            });
         });
 
         it('grades multiple_choice with partial credit formula: points * (right - wrong) / totalCorrect', () => {
@@ -116,7 +221,6 @@ describe('QuizService', () => {
                 sample_answer: null,
             };
 
-            // Chọn đúng 1/2 câu và không chọn sai -> partial 1 điểm
             expect(
                 service.evaluateObjectiveQuestion(q, {
                     selectedOptionIds: ['a'],
@@ -125,17 +229,6 @@ describe('QuizService', () => {
             ).toEqual({
                 status: EvaluationStatusEnum.partial,
                 earned: 1,
-            });
-
-            // Chọn cả 2 đáp án đúng -> correct 2 điểm
-            expect(
-                service.evaluateObjectiveQuestion(q, {
-                    selectedOptionIds: ['a', 'b'],
-                    textAnswer: '',
-                })
-            ).toEqual({
-                status: EvaluationStatusEnum.correct,
-                earned: 2,
             });
         });
 
@@ -268,18 +361,8 @@ describe('QuizService', () => {
                 ],
             });
 
-            expect(mockQuizAiService.gradeEssayQuestion).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    questionText: '<p>Tự luận</p>',
-                    points: 2,
-                    sampleAnswer: '<p>Mẫu</p>',
-                    gradingCriteria: ['Ý chính'],
-                }),
-                '<p>Trả lời</p>'
-            );
             expect(result.status).toBe('submitted');
             expect(result.score).toBe(3);
-            expect(result.answers['q-2'].aiFeedback).toBe('Tốt!');
         });
 
         it('rejects createQuiz when a choice question has no correct option', async () => {

@@ -169,3 +169,23 @@ export class OverrideEvaluationDto {
     })
     status!: 'correct' | 'partial' | 'incorrect';
 }
+
+export class GenerateQuizWithAiDto {
+    @Type(() => Number)
+    @IsNumber()
+    @Min(1, { message: 'Số lượng câu hỏi phải ít nhất là 1' })
+    questionCount!: number;
+
+    @IsArray({ message: 'Danh sách loại câu hỏi phải là một mảng' })
+    @IsEnum(QuestionTypeEnum, {
+        each: true,
+        message: 'Loại câu hỏi không hợp lệ',
+    })
+    types!: QuestionTypeEnum[];
+
+    @IsString()
+    @IsIn(['basic', 'applied', 'advanced'], {
+        message: 'Mức độ khó phải là basic, applied hoặc advanced',
+    })
+    difficulty!: 'basic' | 'applied' | 'advanced';
+}

@@ -1,5 +1,6 @@
 import { axiosClient } from '@/lib/axios.client';
 import type {
+  AIGenerateOptions,
   AttemptAnswer,
   AttemptConfig,
   EvaluationStatus,
@@ -150,8 +151,15 @@ export const quizApi: QuizApi = {
     await axiosClient.delete(`/quiz/quizzes/${quizId}`);
   },
 
-  generateWithAI: async (): Promise<Quiz> => {
-    throw new Error('Tính năng tạo đề bằng AI sẽ được hỗ trợ trong Phase 2.');
+  generateWithAI: async (
+    conversationId: string,
+    opts: AIGenerateOptions
+  ): Promise<Quiz> => {
+    const res = await axiosClient.post(
+      `/quiz/conversations/${conversationId}/quizzes/generate`,
+      opts
+    );
+    return mapQuiz(res.data);
   },
 
   generateFromDeck: async (): Promise<Quiz> => {
