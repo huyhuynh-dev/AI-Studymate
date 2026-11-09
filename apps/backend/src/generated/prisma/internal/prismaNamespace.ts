@@ -1675,6 +1675,7 @@ export const QuizScalarFieldEnum = {
   conversation_id: 'conversation_id',
   user_id: 'user_id',
   source_deck_id: 'source_deck_id',
+  source: 'source',
   title: 'title',
   description: 'description',
   time_limit_sec: 'time_limit_sec',
@@ -1713,6 +1714,7 @@ export const QuizAttemptScalarFieldEnum = {
   score: 'score',
   max_score: 'max_score',
   time_spent_sec: 'time_spent_sec',
+  config: 'config',
   started_at: 'started_at',
   completed_at: 'completed_at'
 } as const

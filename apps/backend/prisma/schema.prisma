@@ -182,6 +182,7 @@ model Quiz {
   conversation_id String   @db.Uuid
   user_id         String   @db.Uuid
   source_deck_id  String?  @db.Uuid
+  source          String   @default("manual") @db.VarChar(20)
   title           String   @db.VarChar(255)
   description     String?  @db.Text
   time_limit_sec  Int?
@@ -231,6 +232,7 @@ model QuizAttempt {
   score          Float             @default(0) @db.Real
   max_score      Float             @default(0) @db.Real
   time_spent_sec Int               @default(0)
+  config         Json              @default("{}") @db.JsonB
   started_at     DateTime          @default(now()) @db.Timestamptz(6)
   completed_at   DateTime?         @db.Timestamptz(6)
 
