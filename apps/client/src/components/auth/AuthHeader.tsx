@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Check, ChevronDown, ChevronLeft, CircleHelp, Globe } from "lucide-react";
 
@@ -50,16 +51,16 @@ const pill =
   "transition duration-350 ease-apple hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.97] " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 
-function LogoMark() {
+function LogoMark({ size = 28 }: { size?: number }) {
   return (
-    <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <rect width="32" height="32" rx="10" className="fill-primary" />
-      <path
-        transform="translate(6 6) scale(0.83)"
-        fill="#fff"
-        d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z"
-      />
-    </svg>
+    <Image
+      src="/logo.svg"
+      alt="AI StudyMate Logo"
+      width={size}
+      height={size}
+      priority
+      className="shrink-0"
+    />
   );
 }
 
