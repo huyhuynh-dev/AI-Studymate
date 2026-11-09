@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, use, useMemo } from "react";
 import ConversationHeader from "@/components/conversations/ConversationHeader";
 import ConversationHeaderTabs, { TabKey } from "@/components/conversations/ConversationHeaderTabs";
 import DocumentsTab from "@/components/conversations/DocumentsTab/DocumentsTab";
@@ -11,6 +11,8 @@ import { useFocusMode } from "@/components/layout";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useConversations } from "@/hooks/useConversations";
 import { useDocuments } from "@/hooks/useDocuments";
+import { useDecks } from "@/hooks/useDecks";
+import { quizApi } from "@/services/quiz.api";
 
 interface ConversationPageProps {
   params: Promise<{
@@ -76,6 +78,18 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     deleteDocument,
     downloadDocument,
   } = useDocuments(conversationId);
+
+  // Hook quản lý danh sách bộ thẻ flashcard để liên kết với QuizTab
+  const { decks } = useDecks(conversationId);
+  const deckOptions = useMemo(
+    () =>
+      decks.map((d) => ({
+        id: d.id,
+        name: d.name,
+        cardCount: d.stats?.total ?? 0,
+      })),
+    [decks]
+  );
 
   const currentSubject = subjects.find((s) => s.id === subjectId);
   const currentConversation = conversations.find((c) => c.id === conversationId);
@@ -190,6 +204,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           {activeTab === "quiz" && (
             <QuizTab
               conversationId={conversationId}
+              decks={deckOptions}
+              api={quizApi}
               hasDocuments={documents.length > 0}
               onUploadDocument={handleGoToDocuments}
               className="w-full flex-1"
