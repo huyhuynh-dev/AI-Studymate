@@ -32,6 +32,7 @@ import { QuizRepoService } from './quiz-repo/quiz-repo.service.js';
     SummariesRepoService,
     ChatAgentRepoService,
     DeckFlashcardRepoService,
+    QuizRepoService,
   ],
 })
 export class RepoModule { }
