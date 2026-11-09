@@ -119,6 +119,11 @@ export class QuizAiService {
     async generateQuizFromContext(
         args: GenerateQuizFromContextInput
     ): Promise<GenerateQuizFromContextResult> {
+        const startTime = Date.now();
+        this.logger.log(
+            `[generateQuizFromContext] Bắt đầu gọi model QUIZ_AGENT sinh đề từ ngữ cảnh (${args.context.length} ký tự). Yêu cầu: ${args.count} câu, types: [${args.types.join(', ')}], độ khó: ${args.difficulty}`
+        );
+
         const schema = buildQuizSchema(args.types);
         const system = buildQuizSystemPrompt({
             types: args.types,
@@ -141,20 +146,33 @@ export class QuizAiService {
                 }
             );
 
+        const llmDuration = Date.now() - startTime;
         const rawQuestions = Array.isArray(object?.questions)
             ? object.questions
             : [];
+
+        this.logger.log(
+            `[generateQuizFromContext] Model QUIZ_AGENT phản hồi sau ${llmDuration}ms: tiêu đề "${object?.title}", nhận được ${rawQuestions.length} câu hỏi thô từ AI`
+        );
+
         const { valid, rejected } = partitionQuestions(rawQuestions);
 
         if (rejected.length > 0) {
             this.logger.warn(
-                `Đã loại ${rejected.length} câu hỏi không đạt chuẩn chất lượng: ${JSON.stringify(
+                `[generateQuizFromContext] Đã loại ${rejected.length} câu hỏi không đạt chuẩn chất lượng: ${JSON.stringify(
                     rejected
                 )}`
             );
         }
 
+        this.logger.log(
+            `[generateQuizFromContext] Kết quả kiểm định chất lượng: ${valid.length} câu hợp lệ, ${rejected.length} câu bị loại`
+        );
+
         if (valid.length === 0) {
+            this.logger.error(
+                `[generateQuizFromContext] Không có câu hỏi nào đạt chuẩn sau khi kiểm định từ ${rawQuestions.length} câu AI sinh ra`
+            );
             throw new BadRequestException(
                 'Không thể sinh câu hỏi hợp lệ từ nội dung tài liệu hiện tại. Vui lòng thử lại hoặc kiểm tra lại nội dung tài liệu.'
             );
@@ -163,6 +181,10 @@ export class QuizAiService {
         const rows = toQuizQuestionInserts(valid.slice(0, args.count), {
             quizId: args.quizId,
         });
+
+        this.logger.log(
+            `[generateQuizFromContext] Đã chuyển đổi thành công ${rows.length} câu hỏi sang định dạng DB và HTML TipTap (Tổng thời gian xử lý AI: ${Date.now() - startTime}ms)`
+        );
 
         return {
             title: object?.title?.trim() || 'Đề ôn tập do AI tạo',

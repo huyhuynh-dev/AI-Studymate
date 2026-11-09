@@ -255,21 +255,44 @@ export class QuizService {
         conversationId: string,
         dto: GenerateQuizWithAiDto
     ): Promise<QuizResponse> {
+        const startTime = Date.now();
+        this.logger.log(
+            `[generateWithAI] Bắt đầu xử lý tạo đề bằng AI cho conversation ${conversationId} (User: ${userId})`
+        );
+
         const docs =
             await this.documentsRepo.getAllDocumentsByConversationId(
                 conversationId,
                 userId
             );
 
+        this.logger.log(
+            `[generateWithAI] Tổng số tài liệu tìm thấy trong conversation: ${docs.length}`
+        );
+
         const selectedDocs =
             dto.documentIds && dto.documentIds.length > 0
                 ? docs.filter((doc) => dto.documentIds!.includes(doc.id))
                 : docs;
+
+        if (dto.documentIds && dto.documentIds.length > 0) {
+            this.logger.log(
+                `[generateWithAI] Lọc theo ${dto.documentIds.length} tài liệu được chỉ định -> còn ${selectedDocs.length} tài liệu khớp`
+            );
+        }
+
         const readyDocs = selectedDocs.filter(
             (d) => d.ocr_status === 'done' && d.raw_text && d.raw_text.trim()
         );
 
+        this.logger.log(
+            `[generateWithAI] Số tài liệu hoàn tất OCR sẵn sàng sử dụng: ${readyDocs.length}/${selectedDocs.length} (${readyDocs.map((d) => d.file_name || d.id).join(', ') || 'không có'})`
+        );
+
         if (readyDocs.length === 0) {
+            this.logger.warn(
+                `[generateWithAI] Không có tài liệu nào hoàn tất OCR để tạo đề (conversation: ${conversationId})`
+            );
             throw new BadRequestException(
                 dto.documentIds && dto.documentIds.length > 0
                     ? 'Không có tài liệu nào trong số các tài liệu bạn chọn đã được xử lý hoàn tất nội dung. Vui lòng kiểm tra lại hoặc chọn tài liệu khác.'
@@ -292,12 +315,20 @@ export class QuizService {
                 ? dto.types
                 : [QuestionTypeEnum.single_choice];
 
+        this.logger.log(
+            `[generateWithAI] Tổng hợp ngữ cảnh: ${contextText.length} ký tự từ ${readyDocs.length} tài liệu. Bắt đầu gọi QuizAiService sinh ${count} câu hỏi (Types: [${types.join(', ')}], Độ khó: ${dto.difficulty})...`
+        );
+
         const generated = await this.quizAiService.generateQuizFromContext({
             context: contextText,
             count,
             types,
             difficulty: dto.difficulty || 'applied',
         });
+
+        this.logger.log(
+            `[generateWithAI] QuizAiService hoàn tất: tiêu đề "${generated.title}", nhận ${generated.rows.length} câu hỏi hợp lệ (bị loại: ${generated.rejected.length})`
+        );
 
         const questionsPayload: QuestionCreatePayload[] = generated.rows.map(
             (r, index) => ({
@@ -317,6 +348,10 @@ export class QuizService {
             })
         );
 
+        this.logger.log(
+            `[generateWithAI] Đang lưu đề kiểm tra vào CSDL qua QuizRepoService (${questionsPayload.length} câu hỏi)...`
+        );
+
         const created = await this.quizRepo.createQuizWithQuestions(
             userId,
             conversationId,
@@ -327,6 +362,11 @@ export class QuizService {
                 source: 'ai',
             },
             questionsPayload
+        );
+
+        const totalDuration = Date.now() - startTime;
+        this.logger.log(
+            `[generateWithAI] Hoàn thành tạo đề AI thành công trong ${totalDuration}ms | Quiz ID: ${created.id}, Tiêu đề: "${created.title}", Số câu hỏi: ${created.questions.length}`
         );
 
         return this.mapQuizToResponse(created);

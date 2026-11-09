@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Layers, PenLine, Sparkles, Minus, Plus } from "lucide-react";
 import type { AIGenerateOptions, DeckGenerateOptions, DeckOption, Difficulty, DocumentOption, QuestionType, QuizSource } from "../types";
-import { DocumentPicker } from "./DocumentPicker";
+import { DocumentPicker, type DocumentSelection } from "../../FlashcardTab/ai/DocumentPicker";
 import { Button, Field, Modal, Segmented, Select, ToggleChip } from "../ui/primitives";
 import { DIFFICULTY_OPTIONS, QUESTION_TYPES, QUESTION_TYPE_META } from "../constants";
 
@@ -52,11 +52,13 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, onClos
 
   const deck = decks.find((d) => d.id === deckId);
   const deckMax = Math.max(3, deck?.cardCount ?? 30);
+  const availableDocumentIds = new Set(documents.map((document) => document.id));
+  const validDocIds = docIds.filter((id) => availableDocumentIds.has(id));
 
   const run = async () => {
     setBusy(true); setError(null);
     try {
-      if (source === "ai") await onGenerateAI({ questionCount: count, types, difficulty, documentIds: docIds });
+      if (source === "ai") await onGenerateAI({ questionCount: count, types, difficulty, documentIds: validDocIds });
       else if (source === "flashcard") await onGenerateDeck({ deckId, questionCount: Math.min(count, deckMax), types });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể tạo đề. Vui lòng thử lại.");
@@ -90,7 +92,7 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, onClos
   const isAI = source === "ai";
   const noDecks = !isAI && decks.length === 0;
   const noDocs = isAI && documents.length === 0;
-  const noSelection = isAI && documents.length > 0 && docIds.length === 0;
+  const noSelection = isAI && documents.length > 0 && validDocIds.length === 0;
 
   return (
     <Modal
@@ -122,7 +124,16 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, onClos
               Chưa có tài liệu nào. Hãy tải tài liệu lên ở tab Tài liệu trước khi tạo đề bằng AI.
             </p>
           ) : (
-            <DocumentPicker documents={documents} value={docIds} onChange={setDocIds} error={noSelection ? "Chọn ít nhất 1 tài liệu để AI soạn đề." : null} />
+            <>
+              <DocumentPicker
+                documents={documents}
+                value={validDocIds}
+                onChange={(selection: DocumentSelection) =>
+                  setDocIds(selection === "all" ? documents.map((document) => document.id) : selection)
+                }
+              />
+              {noSelection && <p role="alert" className="mt-1.5 text-[13px] text-[var(--qz-danger)]">Chọn ít nhất 1 tài liệu để AI soạn đề.</p>}
+            </>
           )
         )}
         <div>

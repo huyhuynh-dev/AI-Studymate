@@ -3,6 +3,7 @@ import {
     Controller,
     Delete,
     Get,
+    Logger,
     Param,
     ParseUUIDPipe,
     Patch,
@@ -33,6 +34,8 @@ import {
 @Controller('quiz')
 @UseGuards(JwtAuthGuard)
 export class QuizController {
+    private readonly logger = new Logger(QuizController.name);
+
     constructor(private readonly quizService: QuizService) {}
 
     private getUserId(req: Request): string {
@@ -103,8 +106,12 @@ export class QuizController {
         @Param('conversationId', new ParseUUIDPipe()) conversationId: string,
         @Body() dto: GenerateQuizWithAiDto
     ): Promise<QuizResponse> {
+        const userId = this.getUserId(req);
+        this.logger.log(
+            `[POST /quiz/conversations/${conversationId}/quizzes/generate] User ${userId} yêu cầu tạo đề AI | Số câu: ${dto.questionCount}, Loại: [${dto.types?.join(', ')}], Độ khó: ${dto.difficulty}, Tài liệu chọn: ${dto.documentIds?.length ? `${dto.documentIds.length} file` : 'tất cả'}`
+        );
         return this.quizService.generateWithAI(
-            this.getUserId(req),
+            userId,
             conversationId,
             dto
         );

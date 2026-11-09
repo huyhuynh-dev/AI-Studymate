@@ -12,11 +12,12 @@ import { CardEditorModal } from "./editor/CardEditorModal";
 import { useDecks } from "@/hooks/useDecks";
 import { useFlashcards } from "@/hooks/useFlashcards";
 import { StudyView } from "./study/StudyView";
-import type { AiConfig, CardDraft, Deck, DeckStats, Flashcard } from "./types";
+import type { AiConfig, AiDocument, CardDraft, Deck, DeckStats, Flashcard } from "./types";
 import { ConfirmDialog, cx } from "./ui";
 
 export interface FlashcardsTabProps {
   conversationId?: string;
+  documents?: AiDocument[];
   onUploadDocument?: () => void;
   /** Phiên học đã có tài liệu nguồn chưa (quyết định nút AI ở Empty State) */
   hasDocuments?: boolean;
@@ -30,6 +31,7 @@ type View =
 
 export default function FlashcardsTab({
   conversationId,
+  documents,
   onUploadDocument,
   hasDocuments = true,
   className,
@@ -272,7 +274,7 @@ export default function FlashcardsTab({
 
       <DeckFormModal open={deckForm.open} deck={deckForm.deck} onClose={() => setDeckForm({ open: false, deck: null })} onSubmit={submitDeck} />
       <CardEditorModal open={cardEditor.open} card={cardEditor.card} onClose={() => setCardEditor((s) => ({ ...s, open: false }))} onSave={saveCard} />
-      <AiGeneratorModal target={ai} onClose={() => setAi(null)} onGenerate={generateAi} />
+      <AiGeneratorModal target={ai} documents={documents} onClose={() => setAi(null)} onGenerate={generateAi} />
 
       <ConfirmDialog
         open={!!deckToDelete}

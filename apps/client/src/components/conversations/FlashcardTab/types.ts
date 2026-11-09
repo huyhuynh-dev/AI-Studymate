@@ -41,9 +41,19 @@ export interface Flashcard {
 
 export type CardDraft = Pick<Flashcard, "type" | "front" | "back" | "imageUrl" | "audioUrl">;
 
+/** Một tài liệu trong phiên học, dùng cho bộ chọn nguồn của AI */
+export interface AiDocument {
+  id: string;
+  name: string;
+  /** Dòng phụ, ví dụ "PDF · 24 trang" */
+  meta?: string;
+}
+
 export interface AiConfig {
   count: number;
   types: CardType[];
   instructions: string;
   deckName?: string;
+  /** "all" = toàn bộ tài liệu của phiên; mảng id = chỉ các tài liệu đã chọn */
+  documentIds?: string[] | "all";
 }

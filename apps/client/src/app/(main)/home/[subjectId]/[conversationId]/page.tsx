@@ -195,6 +195,11 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           {activeTab === "flashcard" && (
             <FlashcardsTab
               conversationId={conversationId}
+              documents={documents.map((document) => ({
+                id: document.id,
+                name: document.file_name,
+                meta: `${document.mime_type.toUpperCase()} · ${Math.ceil(document.file_size / 1024)} KB`,
+              }))}
               onUploadDocument={handleGoToDocuments}
               hasDocuments={documents.length > 0}
               className="w-full flex-1"
