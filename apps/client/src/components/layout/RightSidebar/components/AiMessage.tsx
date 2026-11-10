@@ -281,6 +281,21 @@ export const AiMessage = React.memo(function AiMessage({
     return message.content || "";
   }, [normalizedParts, message.content]);
 
+  // Kiểm tra xem message có ít nhất một part có thể hiển thị nội dung hay không
+  // (tránh trường hợp chỉ có duy nhất các part kỹ thuật như step-start khiến fallback content bị chặn)
+  const hasDisplayableParts = useMemo(() => {
+    if (!normalizedParts || normalizedParts.length === 0) return false;
+    return normalizedParts.some(
+      (p: any) =>
+        (p.type === "text" && typeof p.text === "string" && p.text.trim().length > 0) ||
+        p.type === "reasoning" ||
+        (typeof p.type === "string" && p.type.startsWith("tool-")) ||
+        p.type === "dynamic-tool" ||
+        p.type === "tool-invocation" ||
+        p.type === "source"
+    );
+  }, [normalizedParts]);
+
   const hasCitation =
     message.hasCitation ||
     (normalizedParts &&
@@ -321,7 +336,7 @@ export const AiMessage = React.memo(function AiMessage({
       {/* Nội dung */}
       <div className="space-y-2.5 rounded-[20px] rounded-tl-[4px] border border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#161922] px-4 py-3 text-[13.5px] leading-relaxed text-[#0B1C30] dark:text-[#EFF0F6] shadow-xs">
         {/* Render theo Typed Parts (chuẩn Vercel AI SDK) */}
-        {normalizedParts && normalizedParts.length > 0 ? (
+        {hasDisplayableParts ? (
           normalizedParts.map((part: any, index: number) => {
             if (part.type === "text" || typeof part.text === "string") {
               return <MarkdownRenderer key={index} content={part.text || ""} />;

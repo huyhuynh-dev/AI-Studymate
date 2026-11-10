@@ -205,6 +205,8 @@ export class ChatAgentAiService {
       (streamResult as any).consumeStream();
     }
 
+    (streamResult as any).tracker = tracker;
+
     return streamResult;
   }
 

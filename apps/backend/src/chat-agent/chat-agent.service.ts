@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, Optional } from '@nestjs/common';
-import type { UIMessage } from 'ai';
+import { createIdGenerator, type UIMessage } from 'ai';
 import { ChatAgentRepoService } from '../repo/chat-agent-repo/chat-agent-repo.service.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
@@ -184,6 +184,73 @@ export class ChatAgentService {
     });
   }
 
+  /**
+   * Tạo luồng UI Message Stream chuẩn hóa theo Vercel AI SDK v6 với đầy đủ tính năng:
+   *  - Gán ID ổn định (đồng bộ giữa Client và Server) qua `createIdGenerator`
+   *  - Bật chế độ persistence qua `originalMessages`
+   *  - Lưu trữ tin nhắn AI (`UIMessage`) hoàn chỉnh vào Database qua callback `onFinish`
+   */
+  createChatUIMessageStream(params: {
+    streamResult: any;
+    chatSessionId: string;
+    originalMessages: UIMessage[];
+  }) {
+    const { streamResult, chatSessionId, originalMessages } = params;
+
+    const tracker = streamResult?.tracker;
+    const getSourceChunkIds = (): string[] => {
+      if (tracker && typeof tracker.getCollectedChunkIds === 'function') {
+        return Array.from(tracker.getCollectedChunkIds());
+      }
+      return [];
+    };
+
+    return streamResult.toUIMessageStream({
+      originalMessages,
+      generateMessageId: createIdGenerator({
+        prefix: 'msg-',
+        size: 16,
+      }),
+      onFinish: async ({
+        responseMessage,
+        isAborted,
+      }: {
+        responseMessage?: UIMessage;
+        isAborted?: boolean;
+      }) => {
+        if (isAborted) {
+          console.log(
+            `[ChatAgentService] Stream bị hủy cho session ${chatSessionId}`,
+          );
+          return;
+        }
+
+        if (
+          responseMessage &&
+          Array.isArray(responseMessage.parts) &&
+          responseMessage.parts.length > 0
+        ) {
+          const sourceChunkIds = getSourceChunkIds();
+          console.log(
+            `[ChatAgentService] toUIMessageStream onFinish -> Lưu tin nhắn AI: id=${responseMessage.id}, partsCount=${responseMessage.parts.length}, sourceChunks=${sourceChunkIds.length}`,
+          );
+          await this.saveUIMessage(
+            chatSessionId,
+            responseMessage,
+            sourceChunkIds,
+          );
+        }
+      },
+      onError: (error: unknown) => {
+        console.error(
+          `[ChatAgentService] Stream onError cho session ${chatSessionId}:`,
+          error,
+        );
+        return 'AI chat stream encountered an error';
+      },
+    });
+  }
+
   // ── 2. Kích hoạt luồng Stream AI qua ChatAgentAiService ──
   async executeAiChatStream(
     chatSessionId: string,
@@ -219,20 +286,8 @@ export class ChatAgentService {
         text,
       }) => {
         console.log(
-          `[ChatAgentService] executeAiChatStream onFinish: text length=${text?.length}, parts count=${assistantUIMessage?.parts?.length}, sourceChunkIds=${sourceChunkIds?.length ?? 0}`,
+          `[ChatAgentService] executeAiChatStream fallback onFinish: text length=${text?.length}, parts count=${assistantUIMessage?.parts?.length}, sourceChunkIds=${sourceChunkIds?.length ?? 0}`,
         );
-
-        if (
-          assistantUIMessage &&
-          Array.isArray(assistantUIMessage.parts) &&
-          assistantUIMessage.parts.length > 0
-        ) {
-          await this.saveUIMessage(
-            chatSessionId,
-            assistantUIMessage,
-            sourceChunkIds,
-          );
-        }
       },
       abortSignal,
       ragContext

@@ -293,4 +293,62 @@ describe('ChatAgentService', () => {
       topK: 20,
     });
   });
+
+  it('createChatUIMessageStream nên cấu hình toUIMessageStream chuẩn Vercel và lưu tin nhắn AI khi hoàn thành', async () => {
+    let capturedOptions: any = null;
+    const fakeStreamResult = {
+      toUIMessageStream: vi.fn().mockImplementation((options) => {
+        capturedOptions = options;
+        return 'mocked-stream';
+      }),
+      tracker: {
+        getCollectedChunkIds: () => new Set(['chunk-uuid-1', 'chunk-uuid-2']),
+      },
+    };
+
+    const originalMessages = [
+      {
+        id: 'msg-u1',
+        role: 'user' as const,
+        parts: [{ type: 'text', text: 'Xin chào' }],
+      },
+    ];
+
+    const stream = service.createChatUIMessageStream({
+      streamResult: fakeStreamResult,
+      chatSessionId: 'session-1',
+      originalMessages,
+    });
+
+    expect(stream).toBe('mocked-stream');
+    expect(fakeStreamResult.toUIMessageStream).toHaveBeenCalledTimes(1);
+    expect(capturedOptions).toBeDefined();
+    expect(capturedOptions.originalMessages).toEqual(originalMessages);
+    expect(typeof capturedOptions.generateMessageId).toBe('function');
+    expect(typeof capturedOptions.onFinish).toBe('function');
+
+    // Giả lập callback onFinish được Vercel AI SDK gọi khi hoàn tất stream
+    const assistantResponseMessage = {
+      id: 'msg-ai-1',
+      role: 'assistant' as const,
+      parts: [
+        { type: 'step-start' },
+        { type: 'text', text: 'Chào bạn, tôi là StudyMate AI!' },
+      ],
+    };
+
+    // Spy hàm saveUIMessage
+    const saveSpy = vi.spyOn(service, 'saveUIMessage').mockResolvedValue({} as any);
+
+    await capturedOptions.onFinish({
+      responseMessage: assistantResponseMessage,
+      isAborted: false,
+    });
+
+    expect(saveSpy).toHaveBeenCalledWith(
+      'session-1',
+      assistantResponseMessage,
+      ['chunk-uuid-1', 'chunk-uuid-2'],
+    );
+  });
 });

@@ -125,10 +125,13 @@ export class ChatAgentController {
     const abortController = new AbortController();
 
     req.on('close', () => {
-      console.log(
-        `[ChatAgentController] Client closed connection for session ${id}`,
-      );
-      abortController.abort();
+      // Chỉ abort khi client chủ động ngắt kết nối trước khi response hoàn tất
+      if (!response.writableEnded) {
+        console.log(
+          `[ChatAgentController] Client prematurely closed connection for session ${id}`,
+        );
+        abortController.abort();
+      }
     });
 
     try {
@@ -144,17 +147,15 @@ export class ChatAgentController {
         },
       );
 
+      const stream = this.chatAgentService.createChatUIMessageStream({
+        streamResult: result,
+        chatSessionId: id,
+        originalMessages: data.messages,
+      });
+
       await pipeUIMessageStreamToResponse({
         response,
-        stream: result.toUIMessageStream({
-          onError: (error) => {
-            console.error(
-              `[ChatAgentController] Stream onError for session ${id}:`,
-              error,
-            );
-            return 'AI chat stream encountered an error';
-          },
-        }),
+        stream,
       });
     } catch (error) {
       console.error(
