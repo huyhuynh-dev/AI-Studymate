@@ -75,7 +75,7 @@ export default function DeleteWorkspaceModal({
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#0B1C30] dark:text-white tracking-tight">
+              <h3 className="text-base font-bold font-heading text-[#0B1C30] dark:text-white tracking-tight">
                 Xác nhận xóa không gian
               </h3>
               <p className="text-xs text-[#777587] dark:text-neutral-400">

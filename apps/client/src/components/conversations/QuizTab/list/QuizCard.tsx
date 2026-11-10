@@ -71,7 +71,7 @@ export function QuizCard({ quiz, attempts, onOpen, onStart, onEdit, onDelete }: 
             {[["Cao nhất", s.bestPct!], ["Gần nhất", s.lastPct!]].map(([label, pct]) => (
               <div key={label as string}>
                 <p className="text-[12px] font-semibold text-[var(--on-surface-variant)]">{label}</p>
-                <p className={`mt-0.5 text-[22px] font-semibold leading-7 tabular-nums tracking-[-0.02em] ${TONE[toneForPct(pct as number)].text}`}>
+                <p className={`mt-0.5 text-[22px] font-semibold font-heading leading-7 tabular-nums tracking-[-0.02em] ${TONE[toneForPct(pct as number)].text}`}>
                   {scoreText(pct as number)}<span className="text-[13px] font-medium text-[var(--on-surface-variant)]"> /10</span>
                 </p>
               </div>

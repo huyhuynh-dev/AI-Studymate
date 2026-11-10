@@ -13,7 +13,7 @@ export function FlashcardsVisual() {
       </div>
       <div className={`${raised} relative w-[88%] max-w-xs translate-y-4 p-6`}>
         <p className="text-xs font-medium text-primary">Câu hỏi</p>
-        <p className="mt-2 text-lg font-semibold leading-snug tracking-tight">
+        <p className="font-heading mt-2 text-lg font-semibold leading-snug tracking-tight">
           Ti thể có chức năng gì trong tế bào?
         </p>
         <div className="mt-4 border-t border-hairline pt-4">
@@ -99,7 +99,7 @@ export function AnalyticsVisual() {
   return (
     <div className="flex h-full items-end justify-between gap-4 p-5">
       <div className="pb-2">
-        <p className="text-5xl font-bold tabular-nums tracking-tight">72%</p>
+        <p className="font-heading text-5xl font-bold tabular-nums tracking-tight">72%</p>
         <p className="mt-1 text-sm text-muted">Mức nắm vững tuần này</p>
       </div>
       <div className="flex h-28 flex-1 max-w-64 items-end gap-2">
@@ -120,7 +120,7 @@ export function AnalyticsVisual() {
 export function SecurityVisual() {
   return (
     <div className="flex h-full flex-col justify-center p-6">
-      <p className="text-[clamp(2.5rem,6vw,4rem)] font-bold leading-none tracking-[-0.04em]">
+      <p className="font-heading text-[clamp(2.5rem,6vw,4rem)] font-bold leading-none tracking-[-0.04em]">
         AES-256
       </p>
       <p className="mt-3 text-sm text-muted">Mã hóa dữ liệu lưu trữ</p>

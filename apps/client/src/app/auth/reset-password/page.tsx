@@ -53,7 +53,7 @@ function AppleStepProgress({ currentStep }: { currentStep: 1 | 2 | 3 }) {
           />
         ))}
       </div>
-      <div className="flex items-center justify-between mt-2 text-[11px] text-gray-400 dark:text-gray-500 font-medium tracking-tight">
+      <div className="flex items-center justify-between mt-2 text-[11px] font-heading text-gray-400 dark:text-gray-500 font-medium tracking-tight">
         <span>
           Bước {currentStep}/3: {steps[currentStep - 1].label}
         </span>
@@ -93,7 +93,7 @@ function StepEmail({
 
       {/* Title & Subtitle */}
       <div className="text-center mb-6">
-        <h1 className="text-2xl sm:text-[26px] font-semibold text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
+        <h1 className="text-2xl sm:text-[26px] font-semibold font-heading text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
           Quên mật khẩu?
         </h1>
         <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -216,7 +216,7 @@ function StepOtp({
 
       {/* Title */}
       <div className="text-center mb-4">
-        <h1 className="text-2xl sm:text-[26px] font-semibold text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
+        <h1 className="text-2xl sm:text-[26px] font-semibold font-heading text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
           Xác thực mã OTP
         </h1>
         <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -414,7 +414,7 @@ function StepNewPassword({
 
       {/* Title */}
       <div className="text-center mb-6">
-        <h1 className="text-2xl sm:text-[26px] font-semibold text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
+        <h1 className="text-2xl sm:text-[26px] font-semibold font-heading text-gray-900 dark:text-white tracking-[-0.025em] leading-tight">
           Tạo mật khẩu mới
         </h1>
         <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">

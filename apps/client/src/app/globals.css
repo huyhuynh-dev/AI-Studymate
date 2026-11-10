@@ -27,7 +27,9 @@
   --color-secondary: var(--brand-secondary);
   --color-tertiary: var(--brand-tertiary);
   --color-error: var(--brand-error);
-  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", var(--font-be-vietnam-pro), system-ui, sans-serif;
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-heading: var(--font-heading), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -54,6 +56,18 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mặc định toàn bộ thẻ tiêu đề ngữ nghĩa sử dụng Plus Jakarta Sans */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  }
 }
 
 /* Apple HIG Liquid Glass & Translucent Surfaces */
@@ -98,7 +112,20 @@ body {
 .bn-inline-content,
 .prose,
 .prose * {
-  font-family: var(--font-be-vietnam-pro), sans-serif !important;
+  font-family: var(--font-sans), sans-serif !important;
+}
+
+/* Bảo đảm tiêu đề trong Markdown Prose và BlockNote sử dụng font-heading */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6,
+.bn-root h1,
+.bn-root h2,
+.bn-root h3 {
+  font-family: var(--font-heading), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif !important;
 }
 
 /* Bảo đảm font KaTeX không bị ghi đè bởi font chữ thường */
@@ -113,8 +140,12 @@ pre,
 kbd,
 samp,
 .font-mono,
-.font-mono * {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+.font-mono *,
+.bn-root pre,
+.bn-root code,
+.prose pre,
+.prose code {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

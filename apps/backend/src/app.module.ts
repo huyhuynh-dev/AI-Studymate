@@ -20,6 +20,7 @@ import { AiModule } from './ai/ai.module.js';
 import { SummariesModule } from './summaries/summaries.module.js';
 import { ChatAgentModule } from './chat-agent/chat-agent.module.js';
 import { DeckFlashcardModule } from './deck-flashcard/deck-flashcard.module.js';
+import { QuizModule } from './quiz/quiz.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -56,6 +57,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     SummariesModule,
     ChatAgentModule,
     DeckFlashcardModule,
+    QuizModule,
   ],
   controllers: [AppController],
   providers: [

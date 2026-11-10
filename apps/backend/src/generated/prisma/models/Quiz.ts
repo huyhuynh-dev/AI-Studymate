@@ -39,6 +39,7 @@ export type QuizMinAggregateOutputType = {
   conversation_id: string | null
   user_id: string | null
   source_deck_id: string | null
+  source: string | null
   title: string | null
   description: string | null
   time_limit_sec: number | null
@@ -51,6 +52,7 @@ export type QuizMaxAggregateOutputType = {
   conversation_id: string | null
   user_id: string | null
   source_deck_id: string | null
+  source: string | null
   title: string | null
   description: string | null
   time_limit_sec: number | null
@@ -63,6 +65,7 @@ export type QuizCountAggregateOutputType = {
   conversation_id: number
   user_id: number
   source_deck_id: number
+  source: number
   title: number
   description: number
   time_limit_sec: number
@@ -85,6 +88,7 @@ export type QuizMinAggregateInputType = {
   conversation_id?: true
   user_id?: true
   source_deck_id?: true
+  source?: true
   title?: true
   description?: true
   time_limit_sec?: true
@@ -97,6 +101,7 @@ export type QuizMaxAggregateInputType = {
   conversation_id?: true
   user_id?: true
   source_deck_id?: true
+  source?: true
   title?: true
   description?: true
   time_limit_sec?: true
@@ -109,6 +114,7 @@ export type QuizCountAggregateInputType = {
   conversation_id?: true
   user_id?: true
   source_deck_id?: true
+  source?: true
   title?: true
   description?: true
   time_limit_sec?: true
@@ -208,6 +214,7 @@ export type QuizGroupByOutputType = {
   conversation_id: string
   user_id: string
   source_deck_id: string | null
+  source: string
   title: string
   description: string | null
   time_limit_sec: number | null
@@ -243,6 +250,7 @@ export type QuizWhereInput = {
   conversation_id?: Prisma.UuidFilter<"Quiz"> | string
   user_id?: Prisma.UuidFilter<"Quiz"> | string
   source_deck_id?: Prisma.UuidNullableFilter<"Quiz"> | string | null
+  source?: Prisma.StringFilter<"Quiz"> | string
   title?: Prisma.StringFilter<"Quiz"> | string
   description?: Prisma.StringNullableFilter<"Quiz"> | string | null
   time_limit_sec?: Prisma.IntNullableFilter<"Quiz"> | number | null
@@ -260,6 +268,7 @@ export type QuizOrderByWithRelationInput = {
   conversation_id?: Prisma.SortOrder
   user_id?: Prisma.SortOrder
   source_deck_id?: Prisma.SortOrderInput | Prisma.SortOrder
+  source?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   time_limit_sec?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -280,6 +289,7 @@ export type QuizWhereUniqueInput = Prisma.AtLeast<{
   conversation_id?: Prisma.UuidFilter<"Quiz"> | string
   user_id?: Prisma.UuidFilter<"Quiz"> | string
   source_deck_id?: Prisma.UuidNullableFilter<"Quiz"> | string | null
+  source?: Prisma.StringFilter<"Quiz"> | string
   title?: Prisma.StringFilter<"Quiz"> | string
   description?: Prisma.StringNullableFilter<"Quiz"> | string | null
   time_limit_sec?: Prisma.IntNullableFilter<"Quiz"> | number | null
@@ -297,6 +307,7 @@ export type QuizOrderByWithAggregationInput = {
   conversation_id?: Prisma.SortOrder
   user_id?: Prisma.SortOrder
   source_deck_id?: Prisma.SortOrderInput | Prisma.SortOrder
+  source?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   time_limit_sec?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -317,6 +328,7 @@ export type QuizScalarWhereWithAggregatesInput = {
   conversation_id?: Prisma.UuidWithAggregatesFilter<"Quiz"> | string
   user_id?: Prisma.UuidWithAggregatesFilter<"Quiz"> | string
   source_deck_id?: Prisma.UuidNullableWithAggregatesFilter<"Quiz"> | string | null
+  source?: Prisma.StringWithAggregatesFilter<"Quiz"> | string
   title?: Prisma.StringWithAggregatesFilter<"Quiz"> | string
   description?: Prisma.StringNullableWithAggregatesFilter<"Quiz"> | string | null
   time_limit_sec?: Prisma.IntNullableWithAggregatesFilter<"Quiz"> | number | null
@@ -326,6 +338,7 @@ export type QuizScalarWhereWithAggregatesInput = {
 
 export type QuizCreateInput = {
   id?: string
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -343,6 +356,7 @@ export type QuizUncheckedCreateInput = {
   conversation_id: string
   user_id: string
   source_deck_id?: string | null
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -354,6 +368,7 @@ export type QuizUncheckedCreateInput = {
 
 export type QuizUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -371,6 +386,7 @@ export type QuizUncheckedUpdateInput = {
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   source_deck_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -385,6 +401,7 @@ export type QuizCreateManyInput = {
   conversation_id: string
   user_id: string
   source_deck_id?: string | null
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -394,6 +411,7 @@ export type QuizCreateManyInput = {
 
 export type QuizUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -406,6 +424,7 @@ export type QuizUncheckedUpdateManyInput = {
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   source_deck_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -428,6 +447,7 @@ export type QuizCountOrderByAggregateInput = {
   conversation_id?: Prisma.SortOrder
   user_id?: Prisma.SortOrder
   source_deck_id?: Prisma.SortOrder
+  source?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrder
   time_limit_sec?: Prisma.SortOrder
@@ -444,6 +464,7 @@ export type QuizMaxOrderByAggregateInput = {
   conversation_id?: Prisma.SortOrder
   user_id?: Prisma.SortOrder
   source_deck_id?: Prisma.SortOrder
+  source?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrder
   time_limit_sec?: Prisma.SortOrder
@@ -456,6 +477,7 @@ export type QuizMinOrderByAggregateInput = {
   conversation_id?: Prisma.SortOrder
   user_id?: Prisma.SortOrder
   source_deck_id?: Prisma.SortOrder
+  source?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrder
   time_limit_sec?: Prisma.SortOrder
@@ -628,6 +650,7 @@ export type QuizUpdateOneRequiredWithoutAttemptsNestedInput = {
 
 export type QuizCreateWithoutUserInput = {
   id?: string
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -643,6 +666,7 @@ export type QuizUncheckedCreateWithoutUserInput = {
   id?: string
   conversation_id: string
   source_deck_id?: string | null
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -686,6 +710,7 @@ export type QuizScalarWhereInput = {
   conversation_id?: Prisma.UuidFilter<"Quiz"> | string
   user_id?: Prisma.UuidFilter<"Quiz"> | string
   source_deck_id?: Prisma.UuidNullableFilter<"Quiz"> | string | null
+  source?: Prisma.StringFilter<"Quiz"> | string
   title?: Prisma.StringFilter<"Quiz"> | string
   description?: Prisma.StringNullableFilter<"Quiz"> | string | null
   time_limit_sec?: Prisma.IntNullableFilter<"Quiz"> | number | null
@@ -695,6 +720,7 @@ export type QuizScalarWhereInput = {
 
 export type QuizCreateWithoutConversationInput = {
   id?: string
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -710,6 +736,7 @@ export type QuizUncheckedCreateWithoutConversationInput = {
   id?: string
   user_id: string
   source_deck_id?: string | null
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -747,6 +774,7 @@ export type QuizUpdateManyWithWhereWithoutConversationInput = {
 
 export type QuizCreateWithoutSource_deckInput = {
   id?: string
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -762,6 +790,7 @@ export type QuizUncheckedCreateWithoutSource_deckInput = {
   id?: string
   conversation_id: string
   user_id: string
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -799,6 +828,7 @@ export type QuizUpdateManyWithWhereWithoutSource_deckInput = {
 
 export type QuizCreateWithoutQuestionsInput = {
   id?: string
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -815,6 +845,7 @@ export type QuizUncheckedCreateWithoutQuestionsInput = {
   conversation_id: string
   user_id: string
   source_deck_id?: string | null
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -841,6 +872,7 @@ export type QuizUpdateToOneWithWhereWithoutQuestionsInput = {
 
 export type QuizUpdateWithoutQuestionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -857,6 +889,7 @@ export type QuizUncheckedUpdateWithoutQuestionsInput = {
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   source_deck_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -867,6 +900,7 @@ export type QuizUncheckedUpdateWithoutQuestionsInput = {
 
 export type QuizCreateWithoutAttemptsInput = {
   id?: string
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -883,6 +917,7 @@ export type QuizUncheckedCreateWithoutAttemptsInput = {
   conversation_id: string
   user_id: string
   source_deck_id?: string | null
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -909,6 +944,7 @@ export type QuizUpdateToOneWithWhereWithoutAttemptsInput = {
 
 export type QuizUpdateWithoutAttemptsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -925,6 +961,7 @@ export type QuizUncheckedUpdateWithoutAttemptsInput = {
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   source_deck_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -937,6 +974,7 @@ export type QuizCreateManyUserInput = {
   id?: string
   conversation_id: string
   source_deck_id?: string | null
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -946,6 +984,7 @@ export type QuizCreateManyUserInput = {
 
 export type QuizUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -961,6 +1000,7 @@ export type QuizUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   source_deck_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -974,6 +1014,7 @@ export type QuizUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   source_deck_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -985,6 +1026,7 @@ export type QuizCreateManyConversationInput = {
   id?: string
   user_id: string
   source_deck_id?: string | null
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -994,6 +1036,7 @@ export type QuizCreateManyConversationInput = {
 
 export type QuizUpdateWithoutConversationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -1009,6 +1052,7 @@ export type QuizUncheckedUpdateWithoutConversationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   source_deck_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -1022,6 +1066,7 @@ export type QuizUncheckedUpdateManyWithoutConversationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   source_deck_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -1033,6 +1078,7 @@ export type QuizCreateManySource_deckInput = {
   id?: string
   conversation_id: string
   user_id: string
+  source?: string
   title: string
   description?: string | null
   time_limit_sec?: number | null
@@ -1042,6 +1088,7 @@ export type QuizCreateManySource_deckInput = {
 
 export type QuizUpdateWithoutSource_deckInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -1057,6 +1104,7 @@ export type QuizUncheckedUpdateWithoutSource_deckInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -1070,6 +1118,7 @@ export type QuizUncheckedUpdateManyWithoutSource_deckInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   time_limit_sec?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -1122,6 +1171,7 @@ export type QuizSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   conversation_id?: boolean
   user_id?: boolean
   source_deck_id?: boolean
+  source?: boolean
   title?: boolean
   description?: boolean
   time_limit_sec?: boolean
@@ -1140,6 +1190,7 @@ export type QuizSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   conversation_id?: boolean
   user_id?: boolean
   source_deck_id?: boolean
+  source?: boolean
   title?: boolean
   description?: boolean
   time_limit_sec?: boolean
@@ -1155,6 +1206,7 @@ export type QuizSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   conversation_id?: boolean
   user_id?: boolean
   source_deck_id?: boolean
+  source?: boolean
   title?: boolean
   description?: boolean
   time_limit_sec?: boolean
@@ -1170,6 +1222,7 @@ export type QuizSelectScalar = {
   conversation_id?: boolean
   user_id?: boolean
   source_deck_id?: boolean
+  source?: boolean
   title?: boolean
   description?: boolean
   time_limit_sec?: boolean
@@ -1177,7 +1230,7 @@ export type QuizSelectScalar = {
   updated_at?: boolean
 }
 
-export type QuizOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversation_id" | "user_id" | "source_deck_id" | "title" | "description" | "time_limit_sec" | "created_at" | "updated_at", ExtArgs["result"]["quiz"]>
+export type QuizOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversation_id" | "user_id" | "source_deck_id" | "source" | "title" | "description" | "time_limit_sec" | "created_at" | "updated_at", ExtArgs["result"]["quiz"]>
 export type QuizInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1211,6 +1264,7 @@ export type $QuizPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     conversation_id: string
     user_id: string
     source_deck_id: string | null
+    source: string
     title: string
     description: string | null
     time_limit_sec: number | null
@@ -1648,6 +1702,7 @@ export interface QuizFieldRefs {
   readonly conversation_id: Prisma.FieldRef<"Quiz", 'String'>
   readonly user_id: Prisma.FieldRef<"Quiz", 'String'>
   readonly source_deck_id: Prisma.FieldRef<"Quiz", 'String'>
+  readonly source: Prisma.FieldRef<"Quiz", 'String'>
   readonly title: Prisma.FieldRef<"Quiz", 'String'>
   readonly description: Prisma.FieldRef<"Quiz", 'String'>
   readonly time_limit_sec: Prisma.FieldRef<"Quiz", 'Int'>

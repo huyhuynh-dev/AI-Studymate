@@ -30,7 +30,7 @@ export function StudyHeader({ progress, remaining, onExit, onEdit }: Props) {
             style={{ width: `${pct}%` }}
           />
         </div>
-        <div className="flex items-center gap-4 text-[11px] font-semibold tabular-nums">
+        <div className="flex items-center gap-4 text-[11px] font-semibold font-heading tabular-nums">
           <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400" title="Thẻ mới">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
             {remaining.new} mới

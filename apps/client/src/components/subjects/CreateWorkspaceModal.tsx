@@ -144,7 +144,7 @@ function WorkspaceDialog({
               {isEditMode ? <Edit3 className="h-4 w-4" /> : <FolderPlus className="h-4 w-4" />}
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#0B1C30] dark:text-[#EFF0F6] tracking-tight">
+              <h3 className="text-base font-bold font-heading text-[#0B1C30] dark:text-[#EFF0F6] tracking-tight">
                 {isEditMode ? "Chỉnh sửa không gian" : "Tạo không gian học tập"}
               </h3>
               <p className="text-xs text-[#777587] dark:text-neutral-400">
@@ -172,7 +172,7 @@ function WorkspaceDialog({
           <div className="space-y-1.5">
             <label
               htmlFor="workspace-name"
-              className="block text-[11px] font-semibold text-[#777587] dark:text-neutral-400 uppercase tracking-wider"
+              className="block text-[11px] font-semibold font-heading text-[#777587] dark:text-neutral-400 uppercase tracking-wider"
             >
               Tên không gian <span className="text-[#BA1A1A]">*</span>
             </label>
@@ -199,7 +199,7 @@ function WorkspaceDialog({
           {/* Field: Color Selector */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-[11px] font-semibold text-[#777587] dark:text-neutral-400 uppercase tracking-wider">
+              <label className="block text-[11px] font-semibold font-heading text-[#777587] dark:text-neutral-400 uppercase tracking-wider">
                 Màu sắc nhận diện
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer text-xs text-[#4F46E5] hover:text-[#3525CD] font-medium transition-colors">

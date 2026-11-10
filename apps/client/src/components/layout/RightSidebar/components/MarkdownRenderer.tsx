@@ -64,7 +64,7 @@ function CodeBlock({ language, value }: CodeBlockProps) {
           codeTagProps={{
             style: {
               fontFamily:
-                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                "var(--font-mono), monospace",
             },
           }}
         >

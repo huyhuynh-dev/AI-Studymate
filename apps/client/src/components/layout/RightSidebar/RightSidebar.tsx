@@ -386,7 +386,12 @@ export default function RightSidebar({
     setMessages([]);
     setInputValue("");
     clearFiles();
-  }, [setMessages, clearFiles]);
+    if (typeof window !== "undefined" && conversationId) {
+      window.sessionStorage.removeItem(
+        `studymate:active-session:${conversationId}`
+      );
+    }
+  }, [setMessages, clearFiles, conversationId]);
 
   // Chuyển sang Conversation khác → bỏ đoạn chat / tin nhắn của Conversation cũ
   const [trackedConversationId, setTrackedConversationId] = useState(conversationId);
@@ -400,6 +405,12 @@ export default function RightSidebar({
     async (id: string) => {
       setActiveChatId(id);
       activeChatIdRef.current = id;
+      if (typeof window !== "undefined" && conversationId) {
+        window.sessionStorage.setItem(
+          `studymate:active-session:${conversationId}`,
+          id
+        );
+      }
       setSuggestions([]);
       setIsLoadingSuggestions(false);
       try {
@@ -416,8 +427,29 @@ export default function RightSidebar({
         setIsLoadingMessages(false);
       }
     },
-    [setMessages]
+    [setMessages, conversationId]
   );
+
+  // Tự động phục hồi phiên chat đang mở khi người dùng refresh trình duyệt
+  useEffect(() => {
+    if (
+      !conversationId ||
+      activeChatId ||
+      isLoading ||
+      chatSessions.length === 0
+    ) {
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      const savedSessionId = window.sessionStorage.getItem(
+        `studymate:active-session:${conversationId}`
+      );
+      if (savedSessionId && chatSessions.some((s) => s.id === savedSessionId)) {
+        void handleSelectChat(savedSessionId);
+      }
+    }
+  }, [conversationId, activeChatId, isLoading, chatSessions, handleSelectChat]);
 
   /** Ném lỗi nếu API thất bại → HistorySessionRow tự hiển thị thông báo */
   const handleRenameChat = useCallback(
@@ -461,6 +493,12 @@ export default function RightSidebar({
               sessionId = created.id;
               activeChatIdRef.current = created.id;
               setActiveChatId(created.id);
+              if (typeof window !== "undefined" && conversationId) {
+                window.sessionStorage.setItem(
+                  `studymate:active-session:${conversationId}`,
+                  created.id
+                );
+              }
             }
           } catch (createError) {
             console.error("Lỗi khi tạo ChatSession trên server:", createError);

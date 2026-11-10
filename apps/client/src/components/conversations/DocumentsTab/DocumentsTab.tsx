@@ -509,7 +509,7 @@ export default function DocumentsTab({
                 <ImageIcon className="h-6 w-6 text-emerald-500" />
               )}
             </div>
-            <p className="text-sm font-semibold text-neutral-900 dark:text-white">
+            <p className="text-sm font-semibold font-heading text-neutral-900 dark:text-white">
               Không có tài liệu {filterType === "pdf" ? "PDF" : "hình ảnh"} nào
             </p>
             <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">

@@ -12,10 +12,10 @@ export default function ProfilePage() {
             <div className="mb-6 flex items-start justify-between">
                 <div>
                     <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+                        <h1 className="text-2xl font-bold font-heading tracking-tight text-gray-900">
                             Hồ sơ &amp; Cài đặt tài khoản
                         </h1>
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold font-heading text-emerald-700 border border-emerald-200">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                             Tài khoản đang hoạt động
                         </span>

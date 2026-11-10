@@ -133,7 +133,7 @@ export default function SummaryToolbar({
             type="button"
             onClick={() => setIsVersionDropdownOpen(!isVersionDropdownOpen)}
             title="Nhấn để đổi bản tóm tắt khác"
-            className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.03] px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-neutral-800 dark:text-neutral-200 shadow-2xs hover:bg-black/[0.05] dark:hover:bg-white/[0.06] hover:border-indigo-300 dark:hover:border-indigo-700 active:scale-98 transition-all cursor-pointer max-w-[150px] xs:max-w-[190px] sm:max-w-[260px] md:max-w-[320px]"
+            className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.03] px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold font-heading text-neutral-800 dark:text-neutral-200 shadow-2xs hover:bg-black/[0.05] dark:hover:bg-white/[0.06] hover:border-indigo-300 dark:hover:border-indigo-700 active:scale-98 transition-all cursor-pointer max-w-[150px] xs:max-w-[190px] sm:max-w-[260px] md:max-w-[320px]"
           >
             <Sparkles className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
             <span className="truncate">
@@ -145,7 +145,7 @@ export default function SummaryToolbar({
           {/* Menu Dropdown - Apple Popover */}
           {isVersionDropdownOpen && (
             <div className="absolute left-0 top-full mt-1.5 z-50 w-72 sm:w-80 rounded-[20px] border border-black/[0.08] dark:border-white/[0.12] bg-white dark:bg-[#1A1E29] p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 border-b border-black/[0.06] dark:border-white/[0.08]">
+              <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold font-heading uppercase tracking-wider text-neutral-400 dark:text-neutral-500 border-b border-black/[0.06] dark:border-white/[0.08]">
                 <span>Các bản tóm tắt ({summaries.length})</span>
                 {onBackToList && (
                   <button

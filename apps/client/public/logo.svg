@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <style>
+    #light-logo { display: block; }
+    #dark-logo { display: none; }
+
+    @media (prefers-color-scheme: dark) {
+      #light-logo { display: none; }
+      #dark-logo { display: block; }
+    }
+  </style>
+
+  <defs>
+    <!-- ============================================================== -->
+    <!--                   LIGHT MODE DEFINITIONS                       -->
+    <!-- ============================================================== -->
+
+    <!-- 1. Nền Squircle Light: Chuyển sắc Indigo dịu mát, không bị hòa tan vào nền web trắng (#FFFFFF) hoặc canvas (#F8F9FF) -->
+    <linearGradient id="bg-light-base" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EEF2FF"/>
+      <stop offset="100%" stop-color="#D6E4FF"/>
+    </linearGradient>
+
+    <!-- 2. Viền Squircle Light: Gradient Indigo thương hiệu tạo khung sắc nét trên nền sáng -->
+    <linearGradient id="squircle-rim-light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+
+    <!-- 3. Nửa trên chữ S Light: Royal Indigo (#3525CD) -> Brand Primary (#4F46E5) -> Deep Violet (#6F3DD9) -->
+    <linearGradient id="ribbon-top-light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3525CD"/>
+      <stop offset="55%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#6F3DD9"/>
+    </linearGradient>
+
+    <!-- 4. Nửa dưới chữ S Light: Brand Secondary (#006C49) -> Indigo (#3525CD) -> Mint (#6CF8BB) -->
+    <linearGradient id="ribbon-bot-light" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#006C49"/>
+      <stop offset="45%" stop-color="#3525CD"/>
+      <stop offset="100%" stop-color="#6CF8BB"/>
+    </linearGradient>
+
+    <!-- 5. Bóng đổ nổi khối cho Logo Squircle trên nền sáng -->
+    <filter id="tile-shadow-light" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#3525CD" flood-opacity="0.10"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0B1C30" flood-opacity="0.04"/>
+    </filter>
+
+    <!-- 6. Bóng đổ 3D cho Dải lụa S-Ribbon Light (Chuẩn hóa scale 1024) -->
+    <filter id="ribbon-shadow-light" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="32" stdDeviation="32" flood-color="#3525CD" flood-opacity="0.26"/>
+    </filter>
+
+    <!-- ============================================================== -->
+    <!--                    DARK MODE DEFINITIONS                       -->
+    <!-- ============================================================== -->
+
+    <!-- 1. Lớp nền Dark Studio: Nâng độ sáng trục Z (#161B30 -> #080B14) không bị chìm vào nền web tối (#090B10 / #12151C) -->
+    <linearGradient id="bg-dark-base" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#161B30"/>
+      <stop offset="50%" stop-color="#0E1322"/>
+      <stop offset="100%" stop-color="#080B14"/>
+    </linearGradient>
+
+    <!-- 2. Quầng sáng Studio hướng tâm phía sau chữ S (Subtle Radial Glow) -->
+    <radialGradient id="bg-ambient-glow" cx="50%" cy="50%" r="48%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.25"/>
+      <stop offset="55%" stop-color="#3525CD" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#0B1C30" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 3. Viền bắt sáng quang học (Specular Rim Light): Tương phản sắc bén > 6.5:1 trên nền tối -->
+    <linearGradient id="squircle-rim-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8" stop-opacity="0.95"/>
+      <stop offset="50%" stop-color="#6366F1" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#34D399" stop-opacity="0.85"/>
+    </linearGradient>
+
+    <!-- 4. Dải màu Nửa trên chữ S Dark: Luminous Indigo -> Deep Violet -->
+    <linearGradient id="s-upper-dark" x1="15%" y1="10%" x2="85%" y2="90%">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="45%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+
+    <!-- 5. Dải màu Nửa dưới chữ S Dark: Indigo -> Sage Focus -> Luminous Mint -->
+    <linearGradient id="s-lower-dark" x1="80%" y1="10%" x2="15%" y2="95%">
+      <stop offset="0%" stop-color="#3525CD"/>
+      <stop offset="42%" stop-color="#3B2FE0"/>
+      <stop offset="72%" stop-color="#0D9488"/>
+      <stop offset="100%" stop-color="#6CF8BB"/>
+    </linearGradient>
+
+    <!-- 6. Nền và viền Huy hiệu tròn trung tâm (Dark Glass Core) -->
+    <linearGradient id="center-disc-fill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#192138"/>
+      <stop offset="100%" stop-color="#0B1120"/>
+    </linearGradient>
+
+    <linearGradient id="center-disc-stroke" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A5B4FC"/>
+      <stop offset="50%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#6CF8BB"/>
+    </linearGradient>
+
+    <!-- 7. Màu Ngôi sao AI 4 cánh (Luminous Starlight) -->
+    <linearGradient id="ai-spark-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="65%" stop-color="#E2DFFF"/>
+      <stop offset="100%" stop-color="#9DF4C8"/>
+    </linearGradient>
+
+    <!-- 8. Bóng đổ nâng khối cho Logo Squircle trên nền tối -->
+    <filter id="tile-shadow-dark" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="20" stdDeviation="30" flood-color="#000000" flood-opacity="0.65"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="#4F46E5" flood-opacity="0.18"/>
+    </filter>
+
+    <!-- 9. Bóng đổ phát sáng cho Dải lụa Möbius Dark -->
+    <filter id="mobius-glow-dark" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="24" flood-color="#000000" flood-opacity="0.65"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="18" flood-color="#4F46E5" flood-opacity="0.32"/>
+    </filter>
+
+    <!-- 10. Bóng đổ cho Huy hiệu trung tâm Dark -->
+    <filter id="disc-shadow-dark" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.70"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#6366F1" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- ============================================================== -->
+  <!--                      LIGHT MODE LOGO                           -->
+  <!-- ============================================================== -->
+  <g id="light-logo">
+    <!-- Khung G2 Squircle chuẩn hóa tọa độ 50,50 -> 924x924, rx=220 kèm viền bắt sáng và bóng đổ -->
+    <g filter="url(#tile-shadow-light)">
+      <rect x="50" y="50" width="924" height="924" rx="220" fill="url(#bg-light-base)"/>
+    </g>
+    <rect x="50" y="50" width="924" height="924" rx="220" fill="none" stroke="url(#squircle-rim-light)" stroke-width="4"/>
+
+    <!-- Dải lụa 3D Sculpted S-Ribbon (Chuẩn hóa tọa độ 1024) -->
+    <g filter="url(#ribbon-shadow-light)">
+      <!-- Nửa trên chữ S kiêm vòng lặp vô cực -->
+      <path d="M 684 332 C 684 236, 572 196, 464 216 C 332 240, 268 352, 348 448 C 404 512, 520 524, 620 564 L 676 464 C 584 428, 480 416, 444 372 C 412 332, 448 296, 512 296 C 564 296, 596 316, 608 356 Z" fill="url(#ribbon-top-light)"/>
+
+      <!-- Nửa dưới chữ S giao thoa -->
+      <path d="M 340 692 C 340 788, 452 828, 560 808 C 692 784, 756 672, 676 576 C 620 512, 504 500, 404 460 L 348 560 C 440 596, 544 608, 580 652 C 612 692, 576 728, 512 728 C 460 728, 428 708, 416 668 Z" fill="url(#ribbon-bot-light)"/>
+
+      <!-- Điểm nút giao thoa kính mờ ở tâm -->
+      <circle cx="512" cy="512" r="68" fill="#FFFFFF" fill-opacity="0.95" stroke="#4F46E5" stroke-width="4"/>
+      <path d="M 512 464 C 518 496, 528 506, 560 512 C 528 518, 518 528, 512 560 C 506 528, 496 518, 464 512 C 496 506, 506 496, 512 464 Z" fill="#3525CD"/>
+    </g>
+  </g>
+
+  <!-- ============================================================== -->
+  <!--                      DARK MODE LOGO                            -->
+  <!-- ============================================================== -->
+  <g id="dark-logo">
+    <!-- Khung G2 Squircle chuẩn hóa tọa độ 50,50 -> 924x924, rx=220 kèm viền bắt sáng và bóng đổ -->
+    <g filter="url(#tile-shadow-dark)">
+      <rect x="50" y="50" width="924" height="924" rx="220" fill="url(#bg-dark-base)"/>
+    </g>
+    <!-- Lớp quầng sáng studio âm bản -->
+    <rect x="52" y="52" width="920" height="920" rx="218" fill="url(#bg-ambient-glow)"/>
+    <!-- Viền bắt sáng quang học (Specular Rim) -->
+    <rect x="50" y="50" width="924" height="924" rx="220" fill="none" stroke="url(#squircle-rim-dark)" stroke-width="5"/>
+
+    <!-- Dải lụa Möbius chữ S Dark phát quang -->
+    <g filter="url(#mobius-glow-dark)">
+      <!-- Nửa trên chữ S -->
+      <path d="M 632 340 C 612 240, 372 240, 372 348 C 372 440, 520 468, 640 508" fill="none" stroke="url(#s-upper-dark)" stroke-width="116" stroke-linecap="butt"/>
+
+      <!-- Nửa dưới chữ S -->
+      <path d="M 384 516 C 504 556, 652 584, 652 676 C 652 784, 412 784, 392 684" fill="none" stroke="url(#s-lower-dark)" stroke-width="116" stroke-linecap="butt"/>
+    </g>
+
+    <!-- Điểm giao thoa AI Dark Glass Core -->
+    <g filter="url(#disc-shadow-dark)">
+      <circle cx="500" cy="512" r="68" fill="url(#center-disc-fill)" stroke="url(#center-disc-stroke)" stroke-width="5"/>
+      <path d="M 500 464 Q 500 512 548 512 Q 500 512 500 560 Q 500 512 452 512 Q 500 512 500 464 Z" fill="url(#ai-spark-dark)"/>
+    </g>
+  </g>
+</svg>

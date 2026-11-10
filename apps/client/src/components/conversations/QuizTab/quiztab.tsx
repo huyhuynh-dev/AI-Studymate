@@ -12,9 +12,10 @@ import "./quiztab.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { useFocusMode } from "@/components/layout";
-import type { DeckOption, FlashcardTarget, Quiz, QuizAttempt, QuizDraft, QuizSource, TestSetup, EvaluationStatus } from "./types";
+import type { DeckOption, DocumentOption, FlashcardTarget, Quiz, QuizAttempt, QuizDraft, QuizSource, TestSetup, EvaluationStatus } from "./types";
 import type { QuizApi } from "./data/quizApi";
 import { createMockQuizApi } from "./data/mockApi";
+import { MOCK_DOCUMENTS } from "./data/mockDocuments";
 import { useQuizStore } from "./hooks/useQuizStore";
 import { Button, Modal } from "./ui/primitives";
 import { cx } from "./utils";
@@ -31,12 +32,14 @@ export interface QuizTabProps {
   conversationId: string;
   /** Các bộ Flashcard của không gian học tập (dùng cho "Tạo từ Flashcard" và "Chuyển câu sai thành Flashcard") */
   decks?: DeckOption[];
+  /** Tài liệu của không gian học tập, dùng cho bộ chọn nguồn khi tạo đề bằng AI. Bỏ trống = dữ liệu giả để test. */
+  documents?: DocumentOption[];
   /** Lớp API thật. Bỏ trống để dùng dữ liệu giả lập. */
   api?: QuizApi;
   className?: string;
   /** Không gian học tập đã có tài liệu chưa (đồng bộ với FlashcardTab). Mặc định: true */
   hasDocuments?: boolean;
-  /** Chuyển sang tab Tài liệu khi chưa có tài liệu nguồn */
+  /** Chuyển sang tab Tài liệu (dùng ở Empty State khi chưa có tài liệu) */
   onUploadDocument?: () => void;
   /** Gọi sau khi tạo Flashcard từ câu sai — để tab Flashcard tải lại dữ liệu */
   onFlashcardsCreated?: (info: { deckId: string; created: number }) => void;
@@ -50,15 +53,7 @@ type View =
   | { name: "grading"; quizId: string; attemptId: string }
   | { name: "result"; quizId: string; attemptId: string };
 
-export function QuizTab({
-  conversationId,
-  decks = [],
-  api,
-  className,
-  hasDocuments = true,
-  onUploadDocument,
-  onFlashcardsCreated,
-}: QuizTabProps) {
+export function QuizTab({ conversationId, decks = [], documents = MOCK_DOCUMENTS, api, className, hasDocuments = true, onUploadDocument, onFlashcardsCreated }: QuizTabProps) {
   const resolvedApi = useMemo(() => api ?? createMockQuizApi(conversationId), [api, conversationId]);
   const store = useQuizStore(resolvedApi, conversationId);
 
@@ -69,8 +64,9 @@ export function QuizTab({
   const [toast, setToast] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const { setFocusMode } = useFocusMode();
-  const isFocus = view.name === "taking" || view.name === "grading";
 
+  // Focus Mode: chỉ bật khi đang làm bài / chờ AI chấm. Layout cha tự ẩn Header, Tab, Sidebar.
+  const isFocus = view.name === "taking" || view.name === "grading";
   useEffect(() => {
     setFocusMode(isFocus);
     return () => setFocusMode(false);
@@ -117,7 +113,7 @@ export function QuizTab({
 
   /* ------------------------------ Render theo view ------------------------------ */
   let content: React.ReactNode;
-  const quizId = view.name === "list" ? null : view.quizId;
+  const quizId = "quizId" in view ? view.quizId : null;
   const quiz = quizId ? quizOf(quizId) : null;
 
   if (view.name === "list") {
@@ -125,17 +121,12 @@ export function QuizTab({
       <QuizListView
         quizzes={store.quizzes} attempts={store.attempts} loading={store.loading} error={store.error} onRetry={store.reload}
         onCreate={openCreate}
-        hasDocuments={hasDocuments}
-        hasDecks={decks.length > 0}
-        onUploadDocument={onUploadDocument}
+        hasDocuments={hasDocuments} hasDecks={decks.length > 0} onUploadDocument={onUploadDocument}
         onOpen={(q) => go({ name: "detail", quizId: q.id })}
         onStart={(q) => {
           const running = (store.attempts[q.id] ?? []).find((a) => a.status === "in_progress");
-          if (running) {
-            go({ name: "taking", quizId: q.id, attemptId: running.id });
-          } else {
-            setSetup({ quizId: q.id });
-          }
+          if (running) go({ name: "taking", quizId: q.id, attemptId: running.id });
+          else setSetup({ quizId: q.id });
         }}
         onEdit={(q) => go({ name: "builder", quizId: q.id })}
         onDelete={setDeleting}
@@ -202,7 +193,7 @@ export function QuizTab({
 
       {createSource && (
         <CreateQuizDialog
-          open key={createSource} initialSource={createSource} decks={decks} onClose={() => setCreateSource(null)} onManual={() => undefined}
+          open key={createSource} initialSource={createSource} decks={decks} documents={documents} onClose={() => setCreateSource(null)} onManual={() => undefined}
           onGenerateAI={async (o) => { const q = await store.generateWithAI(o); setCreateSource(null); notify("AI đã tạo xong đề kiểm tra"); go({ name: "detail", quizId: q.id }); }}
           onGenerateDeck={async (o) => { const q = await store.generateFromDeck(o); setCreateSource(null); notify("Đã tạo bài kiểm tra từ bộ thẻ"); go({ name: "detail", quizId: q.id }); }}
         />

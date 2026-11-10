@@ -36,7 +36,7 @@ export function FlashcardBridgeDialog({ quizTitle, questions, decks, onClose, on
     >
       <div className="flex flex-col gap-6">
         <div>
-          <p className="mb-2 text-[14px] font-semibold">Lưu vào</p>
+          <p className="mb-2 text-[14px] font-semibold font-heading">Lưu vào</p>
           {decks.length > 0 && <Segmented label="Nơi lưu" value={mode} onChange={setMode} options={[{ value: "existing", label: "Bộ thẻ có sẵn" }, { value: "new", label: "Bộ thẻ mới" }]} />}
           <div className="mt-3">
             {mode === "existing" ? (
@@ -47,7 +47,7 @@ export function FlashcardBridgeDialog({ quizTitle, questions, decks, onClose, on
           </div>
         </div>
         <div>
-          <p className="mb-2 text-[14px] font-semibold">Câu hỏi được chuyển <span className="font-normal tabular-nums text-[var(--on-surface-variant)]">({selected.length}/{questions.length})</span></p>
+          <p className="mb-2 text-[14px] font-semibold font-heading">Câu hỏi được chuyển <span className="font-normal tabular-nums text-[var(--on-surface-variant)]">({selected.length}/{questions.length})</span></p>
           <ul className="flex flex-col gap-1">
             {questions.map((q) => {
               const on = selected.includes(q.id);

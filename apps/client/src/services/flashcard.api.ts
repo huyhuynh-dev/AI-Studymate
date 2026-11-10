@@ -32,6 +32,27 @@ export function splitMultiCloze(front: string): string[] {
   return splitClozeHtml(front);
 }
 
+export interface GenerateFlashcardsAiRequest {
+  conversationId: string;
+  target: { kind: 'new' } | { kind: 'deck'; deckId: string };
+  documentIds: string[] | 'all';
+  count: number;
+  types: ('basic' | 'cloze' | 'type_in' | 'typein')[];
+  instructions?: string;
+  deckName?: string;
+}
+
+export interface GenerateFlashcardsAiResponse {
+  deckId: string;
+  cards: any[];
+  stats: {
+    requested: number;
+    saved: number;
+    dropped: number;
+    truncatedDocuments: number;
+  };
+}
+
 export const flashcardApi = {
   getByDeckId: async (deckId: string): Promise<Flashcard[]> => {
     const res = await axiosClient.get(`/deck-flashcard/decks/${deckId}/flashcards`);
@@ -95,5 +116,10 @@ export const flashcardApi = {
   review: async (id: string, rating: Rating): Promise<Flashcard> => {
     const res = await axiosClient.post(`/deck-flashcard/flashcards/${id}/review`, { rating });
     return mapBackendToClientCard(res.data);
+  },
+
+  generateWithAi: async (payload: GenerateFlashcardsAiRequest): Promise<GenerateFlashcardsAiResponse> => {
+    const res = await axiosClient.post<GenerateFlashcardsAiResponse>('/deck-flashcard/ai-generate', payload);
+    return res.data;
   },
 };

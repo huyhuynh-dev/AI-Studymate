@@ -69,8 +69,8 @@ export default function ProfileSidebar({
 
             {/* Name */}
             <div className="text-center">
-                <p className="text-base font-bold text-gray-900">{user.name}</p>
-                <span className="mt-1 inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-700">
+                <p className="text-base font-bold font-heading text-gray-900">{user.name}</p>
+                <span className="mt-1 inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium font-heading text-violet-700">
                     {user.memberType}
                 </span>
             </div>

@@ -44,7 +44,7 @@ export function QuizOverviewView({ quiz, attempts, onBack, onEdit, onDelete, onS
               ].map(([k, v]) => (
                 <div key={k}>
                   <dt className="text-[12px] font-semibold text-[var(--on-surface-variant)]">{k}</dt>
-                  <dd className="mt-0.5 text-[17px] font-semibold tabular-nums tracking-[-0.01em]">{v}</dd>
+                  <dd className="mt-0.5 text-[17px] font-semibold font-heading tabular-nums tracking-[-0.01em]">{v}</dd>
                 </div>
               ))}
             </dl>
@@ -60,7 +60,7 @@ export function QuizOverviewView({ quiz, attempts, onBack, onEdit, onDelete, onS
         {attempts.length === 0 ? (
           <Card className="px-6 py-10 text-center">
             <Trophy className="mx-auto h-8 w-8 text-[var(--on-surface-variant)]" aria-hidden />
-            <p className="mt-3 text-[15px] font-semibold">Chưa có lượt làm bài nào</p>
+            <p className="mt-3 text-[15px] font-semibold font-heading">Chưa có lượt làm bài nào</p>
             <p className="mx-auto mt-1 max-w-[360px] text-[14px] text-[var(--on-surface-variant)]">Làm xong lượt đầu tiên, biểu đồ tiến bộ sẽ xuất hiện ở đây.</p>
           </Card>
         ) : (
@@ -83,7 +83,7 @@ export function QuizOverviewView({ quiz, attempts, onBack, onEdit, onDelete, onS
                         </p>
                       </div>
                       {done && (
-                        <p className={cx("text-right text-[18px] font-semibold tabular-nums tracking-[-0.02em]", TONE[toneForPct(pct)].text)}>
+                        <p className={cx("text-right text-[18px] font-semibold font-heading tabular-nums tracking-[-0.02em]", TONE[toneForPct(pct)].text)}>
                           {String(toScale10(a.score, a.maxScore)).replace(".", ",")}<span className="text-[12px] font-medium text-[var(--on-surface-variant)]"> /10</span>
                         </p>
                       )}
@@ -102,7 +102,7 @@ export function QuizOverviewView({ quiz, attempts, onBack, onEdit, onDelete, onS
           type="button" aria-expanded={showQuestions} onClick={() => setShowQuestions((v) => !v)}
           className="apple-spring flex min-h-11 w-full items-center justify-between rounded-2xl px-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          <span className="text-[20px] font-semibold tracking-[-0.015em]">Xem trước câu hỏi <span className="text-[15px] font-medium tabular-nums text-[var(--on-surface-variant)]">({s.questionCount})</span></span>
+          <span className="text-[20px] font-semibold font-heading tracking-[-0.015em]">Xem trước câu hỏi <span className="text-[15px] font-medium tabular-nums text-[var(--on-surface-variant)]">({s.questionCount})</span></span>
           <ChevronDown className={cx("apple-spring h-5 w-5 text-[var(--on-surface-variant)]", showQuestions && "rotate-180")} aria-hidden />
         </button>
         {showQuestions && (

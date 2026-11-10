@@ -38,7 +38,7 @@ export function ChatHeader({
     <header className="relative flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] px-4 select-none">
       <div className="min-w-0 flex-1 flex items-center gap-2">
         <h2
-          className="truncate text-[14px] font-bold text-[#0B1C30] dark:text-[#EFF0F6] tracking-tight leading-tight"
+          className="truncate text-[14px] font-bold font-heading text-[#0B1C30] dark:text-[#EFF0F6] tracking-tight leading-tight"
           title={title}
         >
           {title}

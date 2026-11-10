@@ -58,7 +58,7 @@ export function AuthInput({
       <div className="flex items-center justify-between">
         <label
           htmlFor={inputId}
-          className="text-[13px] font-medium text-gray-700 dark:text-gray-300 select-none cursor-pointer"
+          className="text-[13px] font-medium font-heading text-gray-700 dark:text-gray-300 select-none cursor-pointer"
         >
           {label}
         </label>

@@ -12,10 +12,10 @@ export function StorySection() {
         </Reveal>
         <ScrollWords
           text={STORY.text}
-          className="text-pretty text-[clamp(1.75rem,4.2vw,3.5rem)] font-semibold leading-[1.18] tracking-[-0.025em]"
+          className="font-heading text-pretty text-[clamp(1.75rem,4.2vw,3.5rem)] font-semibold leading-[1.18] tracking-[-0.025em]"
         />
         <Reveal className="mt-10">
-          <p className="text-xl font-semibold tracking-tight text-muted sm:text-2xl">{STORY.closing}</p>
+          <p className="font-heading text-xl font-semibold tracking-tight text-muted sm:text-2xl">{STORY.closing}</p>
         </Reveal>
       </div>
     </section>

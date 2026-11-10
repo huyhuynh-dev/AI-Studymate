@@ -39,7 +39,7 @@ export function PricingSection() {
                 <p className="mt-1 text-sm text-muted">{plan.description}</p>
 
                 <p className="mt-8 flex items-baseline gap-1">
-                  <span className="text-5xl font-bold tabular-nums tracking-[-0.03em]">
+                  <span className="font-heading text-5xl font-bold tabular-nums tracking-[-0.03em]">
                     {plan.price}
                     {hasPrice && "đ"}
                   </span>

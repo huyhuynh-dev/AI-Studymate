@@ -110,7 +110,7 @@ export default function SummaryConfigModal({
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
           {/* 1. Chọn Nguồn tài liệu (Scope) */}
           <div className="space-y-2.5">
-            <label className="text-xs font-bold tracking-wider text-neutral-400 dark:text-neutral-500 uppercase">
+            <label className="text-xs font-bold font-heading tracking-wider text-neutral-400 dark:text-neutral-500 uppercase">
               1. Chọn nguồn tài liệu (Scope)
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -253,7 +253,7 @@ export default function SummaryConfigModal({
 
           {/* 2. Kiểu tóm tắt (Summary Mode / Style) */}
           <div className="space-y-2.5">
-            <label className="text-xs font-bold tracking-wider text-neutral-400 dark:text-neutral-500 uppercase">
+            <label className="text-xs font-bold font-heading tracking-wider text-neutral-400 dark:text-neutral-500 uppercase">
               2. Kiểu tóm tắt (Style)
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -327,7 +327,7 @@ export default function SummaryConfigModal({
 
           {/* 3. Độ dài mong muốn (Length) - Apple Segmented Control */}
           <div className="space-y-2.5">
-            <label className="text-xs font-bold tracking-wider text-neutral-400 dark:text-neutral-500 uppercase">
+            <label className="text-xs font-bold font-heading tracking-wider text-neutral-400 dark:text-neutral-500 uppercase">
               3. Độ dài mong muốn (Length)
             </label>
             <div className="grid grid-cols-3 gap-1 rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] p-1 border border-black/[0.04] dark:border-white/[0.06]">

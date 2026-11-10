@@ -82,7 +82,7 @@ function DialogBody({
           <div className="min-w-0">
             <h3
               id="confirm-delete-title"
-              className="text-base font-bold text-[#0B1C30] dark:text-[#EFF0F6] tracking-tight"
+              className="text-base font-bold font-heading text-[#0B1C30] dark:text-[#EFF0F6] tracking-tight"
             >
               Xóa đoạn chat này?
             </h3>

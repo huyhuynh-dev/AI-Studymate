@@ -117,7 +117,7 @@ export default function SubjectCardListView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-[#E5EEFF] dark:border-white/[0.08]">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0B1C30] dark:text-[#EFF0F6]">
+            <h1 className="text-2xl sm:text-3xl font-bold font-heading tracking-tight text-[#0B1C30] dark:text-[#EFF0F6]">
               Không gian học tập
             </h1>
             <span className="tabular-nums text-xs font-semibold text-[#4F46E5] dark:text-[#818CF8] bg-[#EEF2FF] dark:bg-[#4F46E5]/20 border border-[#C7D2FE] dark:border-[#4F46E5]/30 px-2.5 py-0.5 rounded-full shadow-2xs">
@@ -176,7 +176,7 @@ export default function SubjectCardListView() {
 
                   {/* Top-Right: Quick Tag + Context Menu */}
                   <div className="flex items-center gap-1.5">
-                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F8F9FF] dark:bg-white/[0.06] border border-[#E5EEFF] dark:border-white/[0.1] text-[10px] font-semibold text-[#777587] dark:text-[#EFF0F6] uppercase tracking-wider">
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F8F9FF] dark:bg-white/[0.06] border border-[#E5EEFF] dark:border-white/[0.1] text-[10px] font-semibold font-heading text-[#777587] dark:text-[#EFF0F6] uppercase tracking-wider">
                       <BookOpen className="h-2.5 w-2.5" />
                       Môn học
                     </span>
@@ -235,7 +235,7 @@ export default function SubjectCardListView() {
 
                 {/* ── Middle: Typography & Subject Overview ── */}
                 <div className="space-y-1 my-2">
-                  <h3 className="font-bold text-[#0B1C30] dark:text-[#EFF0F6] text-base sm:text-lg line-clamp-1 tracking-tight group-hover:text-[#4F46E5] dark:group-hover:text-[#818CF8] transition-colors">
+                  <h3 className="font-bold font-heading text-[#0B1C30] dark:text-[#EFF0F6] text-base sm:text-lg line-clamp-1 tracking-tight group-hover:text-[#4F46E5] dark:group-hover:text-[#818CF8] transition-colors">
                     {subject.name}
                   </h3>
                   <p className="text-xs text-[#777587] dark:text-[#9DA3AF] line-clamp-1">
@@ -246,7 +246,7 @@ export default function SubjectCardListView() {
                 {/* ── Bottom Bar: Structured Metadata & Interactive Circle Button ── */}
                 <div className="flex items-center justify-between pt-3 border-t border-[#F0F4FF] dark:border-white/[0.08]">
                   {/* Status chip with glowing colored dot */}
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F8F9FF] dark:bg-white/[0.06] border border-[#E5EEFF] dark:border-white/[0.1] text-[11px] font-semibold text-[#464555] dark:text-[#EFF0F6]">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F8F9FF] dark:bg-white/[0.06] border border-[#E5EEFF] dark:border-white/[0.1] text-[11px] font-semibold font-heading text-[#464555] dark:text-[#EFF0F6]">
                     <span
                       className="h-2 w-2 rounded-full shadow-xs"
                       style={{ backgroundColor: subjectColor }}

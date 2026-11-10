@@ -138,7 +138,7 @@ export default function ConversationHeaderTabs({
               disabled={tab.disabled}
               onClick={() => handleTabClick(tab.id, tab.disabled)}
               title={tab.tooltip || tab.label}
-              className={`group relative flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 py-2 px-1.5 sm:px-3 text-xs sm:text-[13.5px] font-medium rounded-xl transition-all duration-200 cursor-pointer ${
+              className={`group relative flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 py-2 px-1.5 sm:px-3 text-xs sm:text-[13.5px] font-heading font-medium rounded-xl transition-all duration-200 cursor-pointer ${
                 tab.disabled
                   ? "opacity-40 pointer-events-none"
                   : isActive

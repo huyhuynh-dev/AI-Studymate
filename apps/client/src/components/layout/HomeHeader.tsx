@@ -87,12 +87,12 @@ export default function HomeHeader({
                             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition-transform group-hover:scale-105">
                                 <BookOpen className="h-5 w-5" />
                             </div>
-                            <span className="text-base sm:text-lg font-bold tracking-tight text-gray-900 group-hover:text-indigo-600 transition-colors">
+                            <span className="text-base sm:text-lg font-bold font-heading tracking-tight text-gray-900 group-hover:text-indigo-600 transition-colors">
                                 AI StudyMate
                             </span>
                         </Link>
 
-                        <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-600 border border-indigo-100/80">
+                        <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold font-heading text-indigo-600 border border-indigo-100/80">
                             Pro v2.4
                         </span>
                     </div>
@@ -122,7 +122,7 @@ export default function HomeHeader({
                             className="flex items-center gap-1.5 rounded-full border border-emerald-200/90 bg-emerald-50/50 px-3 py-1.5 text-xs sm:text-sm font-medium text-emerald-800 shadow-2xs hover:bg-emerald-100/70 hover:border-emerald-300 transition-all cursor-pointer"
                         >
                             <Timer className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <span>Tập trung: {focusTime}</span>
+                            <span>Tập trung: <span className="font-heading tabular-nums">{focusTime}</span></span>
                         </button>
 
                         {/* Notification Bell */}

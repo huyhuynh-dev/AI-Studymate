@@ -23,7 +23,7 @@ export function TestimonialsSection() {
                     {t.name.split(" ").pop()?.charAt(0)}
                   </span>
                   <span>
-                    <span className="block text-sm font-semibold">{t.name}</span>
+                    <span className="font-heading block text-sm font-semibold">{t.name}</span>
                     <span className="block text-sm text-muted">{t.role}</span>
                   </span>
                 </figcaption>

@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" fill="none">
+  <style>
+    #light-simple { display: block; }
+    #dark-simple { display: none; }
+
+    @media (prefers-color-scheme: dark) {
+      #light-simple { display: none; }
+      #dark-simple { display: block; }
+    }
+  </style>
+
+  <defs>
+    <!-- ============================================================== -->
+    <!--                   LIGHT MODE DEFINITIONS                       -->
+    <!-- ============================================================== -->
+
+    <!-- Ngôi sao AI chính: Royal Indigo (#3525CD) -> Brand Primary (#4F46E5) -> Deep Violet (#6F3DD9) -->
+    <linearGradient id="sim-l-star" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3525CD"/>
+      <stop offset="50%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#6F3DD9"/>
+    </linearGradient>
+
+    <!-- Quỹ đạo Gyroscope & Ngôi sao phụ: Brand Secondary (#006C49) -> Teal (#0D9488) -> Mint (#10B981) -->
+    <linearGradient id="sim-l-orbit" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#006C49"/>
+      <stop offset="50%" stop-color="#0D9488"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+
+    <!-- ============================================================== -->
+    <!--                    DARK MODE DEFINITIONS                       -->
+    <!-- ============================================================== -->
+
+    <!-- Ngôi sao AI chính Dark: Luminous Indigo (#6366F1) -> Indigo-400 (#818CF8) -> Purple (#A855F7) -->
+    <linearGradient id="sim-d-star" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="50%" stop-color="#818CF8"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+
+    <!-- Quỹ đạo Gyroscope & Ngôi sao phụ Dark: Indigo (#6366F1) -> Emerald (#10B981) -> Signature Mint (#6CF8BB) -->
+    <linearGradient id="sim-d-orbit" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="50%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#6CF8BB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ============================================================== -->
+  <!--                      LIGHT MODE GROUP                          -->
+  <!-- ============================================================== -->
+  <g id="light-simple">
+    <!-- 1. Vòng quỹ đạo Gyroscope nghiêng -28 độ ôm lấy hạt nhân AI -->
+    <g transform="rotate(-28 460 520)">
+      <ellipse cx="460" cy="520" rx="400" ry="160" fill="none" stroke="url(#sim-l-orbit)" stroke-width="52" stroke-linecap="round"/>
+    </g>
+
+    <!-- 2. Ngôi sao AI 4 cánh chính tâm (Tỉ lệ vàng Apple Sparkle) -->
+    <path d="M 460 160 Q 460 520 820 520 Q 460 520 460 880 Q 460 520 100 520 Q 460 520 460 160 Z" fill="url(#sim-l-star)"/>
+
+    <!-- 3. Ngôi sao AI vệ tinh phụ (Góc trên bên phải) -->
+    <path d="M 800 130 Q 800 220 890 220 Q 800 220 800 310 Q 800 220 710 220 Q 800 220 800 130 Z" fill="url(#sim-l-orbit)"/>
+
+    <!-- 4. Ngôi sao AI vi mô (Góc dưới bên trái cân bằng thị giác) -->
+    <path d="M 180 770 Q 180 820 230 820 Q 180 820 180 870 Q 180 820 130 820 Q 180 820 180 770 Z" fill="url(#sim-l-star)"/>
+
+    <!-- 5. Hạt photon vệ tinh phát sáng -->
+    <circle cx="870" cy="370" r="22" fill="#0D9488"/>
+  </g>
+
+  <!-- ============================================================== -->
+  <!--                      DARK MODE GROUP                           -->
+  <!-- ============================================================== -->
+  <g id="dark-simple">
+    <!-- 1. Vòng quỹ đạo Gyroscope phát quang -->
+    <g transform="rotate(-28 460 520)">
+      <ellipse cx="460" cy="520" rx="400" ry="160" fill="none" stroke="url(#sim-d-orbit)" stroke-width="52" stroke-linecap="round"/>
+    </g>
+
+    <!-- 2. Ngôi sao AI chính Dark phát quang -->
+    <path d="M 460 160 Q 460 520 820 520 Q 460 520 460 880 Q 460 520 100 520 Q 460 520 460 160 Z" fill="url(#sim-d-star)"/>
+
+    <!-- 3. Ngôi sao AI vệ tinh phụ Mint phát sáng -->
+    <path d="M 800 130 Q 800 220 890 220 Q 800 220 800 310 Q 800 220 710 220 Q 800 220 800 130 Z" fill="#6CF8BB"/>
+
+    <!-- 4. Ngôi sao AI vi mô góc dưới bên trái -->
+    <path d="M 180 770 Q 180 820 230 820 Q 180 820 180 870 Q 180 820 130 820 Q 180 820 180 770 Z" fill="#818CF8"/>
+
+    <!-- 5. Hạt photon vệ tinh Mint -->
+    <circle cx="870" cy="370" r="22" fill="#6CF8BB"/>
+  </g>
+</svg>

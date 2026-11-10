@@ -15,7 +15,7 @@ const rowCls =
 function RegisterVisual() {
   return (
     <Well>
-      <p className="text-lg font-semibold tracking-tight">Chào mừng bạn</p>
+      <p className="font-heading text-lg font-semibold tracking-tight">Chào mừng bạn</p>
       <div className="flex h-12 items-center justify-center gap-2 rounded-xl border border-hairline bg-raised text-sm font-medium">
         Tiếp tục với Google
       </div>

@@ -6,25 +6,37 @@ import { SummaryService } from './summary.service.js';
 import { BlocknoteService } from './blocknote.service.js';
 import { ChatAgentAiService } from './chat-agent-ai.service.js';
 import { AiModelFactory } from './ai-model.factory.js';
+import { QuizAiService } from './quiz-ai.service.js';
+import { FlashcardAiService } from './flashcard-ai.service.js';
+import { PromptRegistryService } from './prompts/prompt-registry.service.js';
+import { ToolRegistryService } from './tools/tool-registry.service.js';
 
 @Module({
   providers: [
+    AiModelFactory,
+    PromptRegistryService,
+    ToolRegistryService,
     AiService,
     EmbeddingService,
     VisionService,
     SummaryService,
     BlocknoteService,
     ChatAgentAiService,
-    AiModelFactory
+    QuizAiService,
+    FlashcardAiService,
   ],
   exports: [
+    AiModelFactory,
+    PromptRegistryService,
+    ToolRegistryService,
     AiService,
     EmbeddingService,
     VisionService,
     SummaryService,
     BlocknoteService,
     ChatAgentAiService,
-    AiModelFactory
+    QuizAiService,
+    FlashcardAiService,
   ],
 })
-export class AiModule { }
+export class AiModule {}
