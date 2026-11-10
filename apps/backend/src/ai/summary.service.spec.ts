@@ -191,9 +191,7 @@ describe('SummaryService & BlockNote Schema', () => {
                     mode: 'key_takeaways',
                     length: 'standard',
                 }),
-                expect.objectContaining({
-                    schema: summaryOutputSchema,
-                }),
+                undefined,
             );
 
             expect(result.title).toBe('Bản Tóm Tắt Tự Động');

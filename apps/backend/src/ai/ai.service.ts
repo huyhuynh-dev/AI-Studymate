@@ -10,6 +10,11 @@ import type { AiTask } from './ai-model.factory.js';
 import { PromptRegistryService } from './prompts/prompt-registry.service.js';
 import { FEATURE_MAP } from './configs/feature-mapping.config.js';
 import type { FeatureKey, PromptPayloadMap } from './prompts/types.js';
+import {
+  resolveFeatureSchema,
+  type FeatureOutputMap,
+  type StructuredFeatureKey,
+} from './schemas/index.js';
 
 @Injectable()
 export class AiService {
@@ -44,38 +49,73 @@ export class AiService {
   }
 
   /**
-   * Sinh cấu trúc dữ liệu (Object Output) theo FeatureKey
+   * Chuẩn bị dữ liệu cho tác vụ sinh Structured Output (Model + Prompt + Schema chuẩn từ registry)
    */
-  async generateObjectForFeature<T = unknown, K extends FeatureKey = FeatureKey>(
+  prepareObject<K extends StructuredFeatureKey>(
     feature: K,
     payload: PromptPayloadMap[K],
-    options: {
-      schema: unknown;
+    modelNameOverride?: string,
+  ) {
+    const base = this.prepare(feature, payload, modelNameOverride);
+    const schemaConfig = resolveFeatureSchema(feature, payload);
+
+    return {
+      ...base,
+      schema: schemaConfig.schema,
+      schemaName: schemaConfig.schemaName,
+      schemaDescription: schemaConfig.schemaDescription,
+    };
+  }
+
+  /**
+   * Sinh cấu trúc dữ liệu (Object Output) theo FeatureKey với Schema tự động từ registry
+   */
+  async generateObjectForFeature<
+    TOutput = never,
+    K extends StructuredFeatureKey = StructuredFeatureKey,
+  >(
+    feature: K,
+    payload: PromptPayloadMap[K],
+    options?: {
+      schema?: unknown;
       schemaName?: string;
       schemaDescription?: string;
       modelName?: string;
       temperature?: number;
       maxRetries?: number;
     },
-  ): Promise<{ object: T }> {
-    const prepared = this.prepare(feature, payload, options.modelName);
+  ): Promise<{
+    object: [TOutput] extends [never] ? FeatureOutputMap[K] : TOutput;
+  }> {
+    const preparedObj = this.prepareObject(
+      feature,
+      payload,
+      options?.modelName,
+    );
+
+    const targetSchema = (options?.schema ?? preparedObj.schema) as any;
+    const targetSchemaName = options?.schemaName ?? preparedObj.schemaName;
+    const targetSchemaDesc =
+      options?.schemaDescription ?? preparedObj.schemaDescription;
 
     const result = await generateText({
-      model: prepared.model,
+      model: preparedObj.model,
       output: Output.object({
-        schema: options.schema as any,
-        ...(options.schemaName ? { name: options.schemaName } : {}),
-        ...(options.schemaDescription
-          ? { description: options.schemaDescription }
-          : {}),
+        schema: targetSchema,
+        ...(targetSchemaName ? { name: targetSchemaName } : {}),
+        ...(targetSchemaDesc ? { description: targetSchemaDesc } : {}),
       }),
-      prompt: prepared.prompt,
-      system: prepared.system,
-      temperature: options.temperature ?? prepared.temperature,
-      maxRetries: options.maxRetries ?? prepared.maxRetries,
+      prompt: preparedObj.prompt,
+      system: preparedObj.system,
+      temperature: options?.temperature ?? preparedObj.temperature,
+      maxRetries: options?.maxRetries ?? preparedObj.maxRetries,
     });
 
-    return { object: result.output as T };
+    return {
+      object: result.output as [TOutput] extends [never]
+        ? FeatureOutputMap[K]
+        : TOutput,
+    };
   }
 
   /**

@@ -221,9 +221,6 @@ describe('QuizAiService & QuizAiSchema', () => {
                     count: 5,
                     difficulty: 'applied',
                 }),
-                expect.objectContaining({
-                    schemaName: 'QuizGeneration',
-                })
             );
             expect(res.title).toBe('Đề ôn tập Trí nhớ');
             expect(res.rows).toHaveLength(1);
@@ -303,9 +300,6 @@ describe('QuizAiService & QuizAiSchema', () => {
                     questionPlain: 'Giải thích Active Recall',
                     points: 3,
                 }),
-                expect.objectContaining({
-                    schema: expect.any(Object),
-                })
             );
             expect(res.evaluationStatus).toBe(EvaluationStatusEnum.partial);
             expect(res.pointsEarned).toBe(1.5);

@@ -1,14 +1,13 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { z } from 'zod';
 import { EvaluationStatusEnum } from '../generated/prisma/client.js';
 import { AiService } from './ai.service.js';
 import {
   type AIQuestionType,
-  type GeneratedQuiz,
   type QuizQuestionInsert,
-  buildQuizSchema,
   partitionQuestions,
   toQuizQuestionInserts,
+  essayGradingSchema,
+  type EssayGradingOutput,
 } from './schemas/quiz-ai.schema.js';
 import {
   QUIZ_DIFFICULTY,
@@ -16,7 +15,13 @@ import {
   buildQuizSystemPrompt,
 } from './prompts/templates/quiz.prompt.js';
 
-export { QUIZ_DIFFICULTY, type QuizDifficulty, buildQuizSystemPrompt };
+export {
+  QUIZ_DIFFICULTY,
+  type QuizDifficulty,
+  buildQuizSystemPrompt,
+  essayGradingSchema,
+  type EssayGradingOutput,
+};
 
 export interface GradeEssayInput {
   questionText: string;
@@ -32,22 +37,6 @@ export interface GradeEssayResult {
   missingPoints: string[];
   aiFeedback: string;
 }
-
-interface EssayGradingOutput {
-  evaluationStatus: 'correct' | 'partial' | 'incorrect';
-  pointsEarned: number;
-  matchedPoints: string[];
-  missingPoints: string[];
-  aiFeedback: string;
-}
-
-export const essayGradingSchema = z.object({
-  evaluationStatus: z.enum(['correct', 'partial', 'incorrect']),
-  pointsEarned: z.number(),
-  matchedPoints: z.array(z.string()),
-  missingPoints: z.array(z.string()),
-  aiFeedback: z.string(),
-});
 
 export interface GenerateQuizFromContextInput {
   context: string;
@@ -94,24 +83,15 @@ export class QuizAiService {
       `[generateQuizFromContext] Bắt đầu gọi model QUIZ_GENERATE sinh đề từ ngữ cảnh (${args.context.length} ký tự). Yêu cầu: ${args.count} câu, types: [${args.types.join(', ')}], độ khó: ${args.difficulty}`,
     );
 
-    const schema = buildQuizSchema(args.types);
-
-    const { object } =
-      await this.aiService.generateObjectForFeature<GeneratedQuiz>(
-        'QUIZ_GENERATE',
-        {
-          context: args.context,
-          count: args.count,
-          types: args.types,
-          difficulty: args.difficulty,
-        },
-        {
-          schema,
-          schemaName: 'QuizGeneration',
-          schemaDescription:
-            'Đề kiểm tra và danh sách câu hỏi sinh từ tài liệu học tập',
-        },
-      );
+    const { object } = await this.aiService.generateObjectForFeature(
+      'QUIZ_GENERATE',
+      {
+        context: args.context,
+        count: args.count,
+        types: args.types,
+        difficulty: args.difficulty,
+      },
+    );
 
     const llmDuration = Date.now() - startTime;
     const rawQuestions = Array.isArray(object?.questions)
@@ -190,20 +170,16 @@ export class QuizAiService {
     const questionPlain = stripHtml(question.questionText);
 
     try {
-      const { object } =
-        await this.aiService.generateObjectForFeature<EssayGradingOutput>(
-          'ESSAY_GRADE',
-          {
-            questionPlain,
-            points: question.points,
-            samplePlain,
-            criteria,
-            plainAnswer,
-          },
-          {
-            schema: essayGradingSchema,
-          },
-        );
+      const { object } = await this.aiService.generateObjectForFeature(
+        'ESSAY_GRADE',
+        {
+          questionPlain,
+          points: question.points,
+          samplePlain,
+          criteria,
+          plainAnswer,
+        },
+      );
 
       const clampedPoints = Math.min(
         question.points,

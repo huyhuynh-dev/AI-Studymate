@@ -462,3 +462,28 @@ export function toQuizQuestionInserts(
         }
     });
 }
+
+/* ------------------------------------------------------------------ */
+/* 4) Schema chấm điểm câu hỏi tự luận (Essay Grading)                 */
+/* ------------------------------------------------------------------ */
+
+export const essayGradingSchema = z.object({
+    evaluationStatus: z
+        .enum(['correct', 'partial', 'incorrect'])
+        .describe(
+            "Trạng thái đánh giá: 'correct' (đạt >= 80%), 'partial' (đạt 25% đến dưới 80%), 'incorrect' (sai hoặc lạc đề)",
+        ),
+    pointsEarned: z.number().describe('Điểm số đạt được của câu trả lời'),
+    matchedPoints: z
+        .array(z.string())
+        .describe('Danh sách các ý/tiêu chí người học đã trình bày đúng'),
+    missingPoints: z
+        .array(z.string())
+        .describe('Danh sách các ý/tiêu chí người học còn thiếu hoặc làm sai'),
+    aiFeedback: z
+        .string()
+        .describe('Nhận xét ngắn gọn (1-3 câu) mang tính xây dựng bằng tiếng Việt'),
+});
+
+export type EssayGradingOutput = z.infer<typeof essayGradingSchema>;
+

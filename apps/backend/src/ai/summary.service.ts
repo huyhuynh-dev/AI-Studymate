@@ -1,10 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { AiService } from './ai.service.js';
-import {
-  summaryOutputSchema,
-  type SummaryOutput,
-} from './schemas/blocknote.schema.js';
 
 export interface GenerateSummaryOptions {
   documentTexts: Array<{ fileName?: string; text: string }>;
@@ -60,7 +56,7 @@ export class SummaryService {
       );
 
       const { object } =
-        await this.aiService.generateObjectForFeature<SummaryOutput>(
+        await this.aiService.generateObjectForFeature(
           'SUMMARIZE_GENERATE',
           {
             contextText,
@@ -70,10 +66,7 @@ export class SummaryService {
             sectionInfo: options.sectionInfo,
             customInstruction: options.customInstruction,
           },
-          {
-            schema: summaryOutputSchema,
-            ...(options.modelName ? { modelName: options.modelName } : {}),
-          },
+          options.modelName ? { modelName: options.modelName } : undefined,
         );
 
       return this.ensureBlockNoteCompatibility(object.blocks, object.title);
@@ -104,14 +97,11 @@ export class SummaryService {
       );
 
       const { object } =
-        await this.aiService.generateObjectForFeature<SummaryOutput>(
+        await this.aiService.generateObjectForFeature(
           'SUMMARIZE_REFINE',
           {
             currentBlocksJson: JSON.stringify(currentBlocks, null, 2),
             instruction,
-          },
-          {
-            schema: summaryOutputSchema,
           },
         );
 

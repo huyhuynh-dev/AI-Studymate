@@ -27,7 +27,7 @@ type TaskModel = EmbeddingModel | LanguageModel;
 
 @Injectable()
 export class AiModelFactory {
-    private readonly provider: ReturnType<typeof createOpenAICompatible>;
+    private readonly customProvider: ReturnType<typeof createOpenAICompatible>;
     private readonly models: Record<ModelProfile, LanguageModel>;
     private readonly embeddingModel: EmbeddingModel;
 
@@ -46,7 +46,7 @@ export class AiModelFactory {
         });
 
         // OpenAI Compatible Provider
-        this.provider = createOpenAICompatible({
+        this.customProvider = createOpenAICompatible({
             name: 'providerName',
             apiKey: this.configService.get<string>('PROVIDER_API_KEY'),
             baseURL: this.configService.get<string>('PROVIDER_BASE_URL')
@@ -68,9 +68,9 @@ export class AiModelFactory {
 
         // 4 Model Profiles chuẩn hóa
         this.models = {
-            FAST: this.provider('groq/openai/gpt-oss-120b'),
-            STANDARD: this.provider('cx/gpt-6-luna'),
-            REASONING: this.provider('cx/gpt-6-luna-medium'),
+            FAST: this.customProvider('groq/openai/gpt-oss-120b'),
+            STANDARD: this.customProvider('cx/gpt-6-luna'),
+            REASONING: this.customProvider('cx/gpt-6-luna-medium'),
             VISION: google('gemini-3.5-flash-lite'),
         };
 
@@ -101,7 +101,7 @@ export class AiModelFactory {
      * Lấy Language Model tùy biến theo tên (cho dynamic model selection)
      */
     getCustomModel(modelName: string): LanguageModel {
-        return this.provider(modelName);
+        return this.customProvider(modelName);
     }
 
     /**

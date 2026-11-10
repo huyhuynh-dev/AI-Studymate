@@ -9,11 +9,13 @@ import { AiModelFactory } from './ai-model.factory.js';
 import { QuizAiService } from './quiz-ai.service.js';
 import { FlashcardAiService } from './flashcard-ai.service.js';
 import { PromptRegistryService } from './prompts/prompt-registry.service.js';
+import { ToolRegistryService } from './tools/tool-registry.service.js';
 
 @Module({
   providers: [
     AiModelFactory,
     PromptRegistryService,
+    ToolRegistryService,
     AiService,
     EmbeddingService,
     VisionService,
@@ -26,6 +28,7 @@ import { PromptRegistryService } from './prompts/prompt-registry.service.js';
   exports: [
     AiModelFactory,
     PromptRegistryService,
+    ToolRegistryService,
     AiService,
     EmbeddingService,
     VisionService,

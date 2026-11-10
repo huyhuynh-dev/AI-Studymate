@@ -173,21 +173,13 @@ export class FlashcardAiService {
     for (let attempt = 1; attempt <= LLM_ATTEMPTS; attempt++) {
       try {
         const { object } =
-          await this.aiService.generateObjectForFeature<LlmFlashcardOutput>(
+          await this.aiService.generateObjectForFeature(
             'FLASHCARD_GENERATE',
             {
               req: ctx.req,
               docs: ctx.docs,
               existingFronts: ctx.existingFronts,
               deckName: ctx.deckName,
-            },
-            {
-              schema,
-              schemaName: ctx.isNewDeck
-                ? 'FlashcardNewDeckGeneration'
-                : 'FlashcardMoreCardsGeneration',
-              schemaDescription:
-                'Bộ thẻ ghi nhớ (Flashcards) sinh từ tài liệu học tập',
             },
           );
 
