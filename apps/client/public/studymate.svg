@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <style>
+    #light-ai { display: block; }
+    #dark-ai { display: none; }
+
+    @media (prefers-color-scheme: dark) {
+      #light-ai { display: none; }
+      #dark-ai { display: block; }
+    }
+  </style>
+
+  <defs>
+    <!-- ============================================================== -->
+    <!--                   LIGHT MODE DEFINITIONS                       -->
+    <!-- ============================================================== -->
+
+    <!-- Nền Squircle Light: Indigo dịu mát, không bị chìm vào nền chatbox/web trắng (#FFFFFF / #F8F9FF) -->
+    <linearGradient id="a1-l-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EEF2FF"/>
+      <stop offset="100%" stop-color="#D6E4FF"/>
+    </linearGradient>
+
+    <!-- Viền Squircle Light: Gradient Indigo thương hiệu tạo biên sắc nét cho Avatar -->
+    <linearGradient id="a1-l-rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+
+    <!-- Quỹ đạo Gyroscope 1: Royal Indigo (#3525CD) -> Brand Primary (#4F46E5) -> Deep Violet (#6F3DD9) -->
+    <linearGradient id="a1-l-orbit1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3525CD"/>
+      <stop offset="50%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#6F3DD9"/>
+    </linearGradient>
+
+    <!-- Quỹ đạo Gyroscope 2: Brand Secondary (#006C49) -> Teal (#0D9488) -> Mint (#6CF8BB) -->
+    <linearGradient id="a1-l-orbit2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#006C49"/>
+      <stop offset="50%" stop-color="#0D9488"/>
+      <stop offset="100%" stop-color="#6CF8BB"/>
+    </linearGradient>
+
+    <!-- Bóng đổ nổi khối cho Avatar Light trên bong bóng chat / card -->
+    <filter id="a1-l-tile-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#3525CD" flood-opacity="0.10"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0B1C30" flood-opacity="0.04"/>
+    </filter>
+
+    <!-- Hào quang 3D cho Lõi AI và Quỹ đạo Light -->
+    <filter id="a1-l-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#3525CD" flood-opacity="0.22"/>
+    </filter>
+
+    <!-- ============================================================== -->
+    <!--                    DARK MODE DEFINITIONS                       -->
+    <!-- ============================================================== -->
+
+    <!-- Nền Squircle Dark: Phân tầng trục Z (#161B30 -> #080B14) không bị chìm vào nền chatbox tối (#090B10 / #12151C) -->
+    <linearGradient id="a1-d-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#161B30"/>
+      <stop offset="100%" stop-color="#080B14"/>
+    </linearGradient>
+
+    <!-- Quầng sáng AI Aura hướng tâm phát quang -->
+    <radialGradient id="a1-d-aura" cx="50%" cy="50%" r="48%">
+      <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.35"/>
+      <stop offset="60%" stop-color="#3525CD" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#080B14" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Viền bắt sáng quang học (Specular Rim) tương phản cao trên nền tối -->
+    <linearGradient id="a1-d-rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8" stop-opacity="0.95"/>
+      <stop offset="50%" stop-color="#6366F1" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#34D399" stop-opacity="0.85"/>
+    </linearGradient>
+
+    <!-- Quỹ đạo Gyroscope 1 Dark: Luminous Indigo -> Bright Purple -->
+    <linearGradient id="a1-d-orbit1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+
+    <!-- Quỹ đạo Gyroscope 2 Dark: Indigo -> Teal -> Luminous Mint -->
+    <linearGradient id="a1-d-orbit2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="50%" stop-color="#0D9488"/>
+      <stop offset="100%" stop-color="#6CF8BB"/>
+    </linearGradient>
+
+    <!-- Bóng đổ nổi khối cho Avatar Dark -->
+    <filter id="a1-d-tile-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.65"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#4F46E5" flood-opacity="0.20"/>
+    </filter>
+
+    <!-- Hiệu ứng phát quang phát sáng (Luminous Glow) cho Lõi AI Dark -->
+    <filter id="a1-d-glow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="20" flood-color="#000000" flood-opacity="0.60"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#6366F1" flood-opacity="0.40"/>
+    </filter>
+  </defs>
+
+  <!-- ============================================================== -->
+  <!--                      LIGHT MODE AI ICON                        -->
+  <!-- ============================================================== -->
+  <g id="light-ai">
+    <!-- Khung Squircle tương thích Avatar (Khối bo Apple Squircle) -->
+    <g filter="url(#a1-l-tile-shadow)">
+      <rect x="40" y="40" width="944" height="944" rx="224" fill="url(#a1-l-bg)"/>
+    </g>
+    <rect x="40" y="40" width="944" height="944" rx="224" fill="none" stroke="url(#a1-l-rim)" stroke-width="12"/>
+
+    <!-- 2 Dải băng quỹ đạo Gyroscope ôm lấy lõi AI -->
+    <g filter="url(#a1-l-glow)">
+      <!-- Quỹ đạo Möbius Indigo (Nghiêng -28 độ) -->
+      <g transform="rotate(-28 512 512)">
+        <ellipse cx="512" cy="512" rx="330" ry="148" fill="none" stroke="url(#a1-l-orbit1)" stroke-width="64" stroke-dasharray="920 260" stroke-linecap="butt"/>
+      </g>
+      <!-- Quỹ đạo Möbius Sage Mint (Nghiêng +32 độ) -->
+      <g transform="rotate(32 512 512)">
+        <ellipse cx="512" cy="512" rx="330" ry="148" fill="none" stroke="url(#a1-l-orbit2)" stroke-width="64" stroke-dasharray="920 260" stroke-linecap="butt"/>
+      </g>
+
+      <!-- Hạt nhân trung tâm: Quả cầu AI thông thái -->
+      <circle cx="512" cy="512" r="156" fill="#FFFFFF" stroke="#4F46E5" stroke-width="14"/>
+      <!-- Ngôi sao 4 cánh chính + tia sáng vệ tinh -->
+      <path d="M 512 396 Q 512 512 628 512 Q 512 512 512 628 Q 512 512 396 512 Q 512 512 512 396 Z" fill="url(#a1-l-orbit1)"/>
+      <circle cx="585" cy="435" r="16" fill="#006C49"/>
+    </g>
+  </g>
+
+  <!-- ============================================================== -->
+  <!--                      DARK MODE AI ICON                         -->
+  <!-- ============================================================== -->
+  <g id="dark-ai">
+    <!-- Khung Squircle Avatar Dark kèm bóng đổ và viền bắt sáng -->
+    <g filter="url(#a1-d-tile-shadow)">
+      <rect x="40" y="40" width="944" height="944" rx="224" fill="url(#a1-d-bg)"/>
+    </g>
+    <!-- Quầng sáng AI Aura -->
+    <rect x="44" y="44" width="936" height="936" rx="220" fill="url(#a1-d-aura)"/>
+    <!-- Viền bắt sáng quang học (Specular Rim) -->
+    <rect x="40" y="40" width="944" height="944" rx="224" fill="none" stroke="url(#a1-d-rim)" stroke-width="12"/>
+
+    <!-- Hệ thống Gyroscope & Lõi AI Dark phát quang -->
+    <g filter="url(#a1-d-glow)">
+      <!-- Quỹ đạo Möbius Indigo (Nghiêng -28 độ) -->
+      <g transform="rotate(-28 512 512)">
+        <ellipse cx="512" cy="512" rx="330" ry="148" fill="none" stroke="url(#a1-d-orbit1)" stroke-width="64" stroke-dasharray="920 260" stroke-linecap="butt"/>
+      </g>
+      <!-- Quỹ đạo Möbius Sage Mint (Nghiêng +32 độ) -->
+      <g transform="rotate(32 512 512)">
+        <ellipse cx="512" cy="512" rx="330" ry="148" fill="none" stroke="url(#a1-d-orbit2)" stroke-width="64" stroke-dasharray="920 260" stroke-linecap="butt"/>
+      </g>
+
+      <!-- Hạt nhân trung tâm Dark Glass Core -->
+      <circle cx="512" cy="512" r="156" fill="#0B1122" stroke="#818CF8" stroke-width="14"/>
+      <!-- Ngôi sao 4 cánh phát sáng trắng tinh khiết -->
+      <path d="M 512 396 Q 512 512 628 512 Q 512 512 512 628 Q 512 512 396 512 Q 512 512 512 396 Z" fill="#FFFFFF"/>
+      <!-- Hạt photon vệ tinh phát quang Mint -->
+      <circle cx="585" cy="435" r="16" fill="#6CF8BB"/>
+    </g>
+  </g>
+</svg>

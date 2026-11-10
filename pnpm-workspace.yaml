@@ -2,8 +2,16 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
+  '@google/genai': true
   '@prisma/engines': true
+  bcrypt: true
   esbuild: true
+  msgpackr-extract: true
   prisma: true
+  protobufjs: true
+  puppeteer: true
   unrs-resolver: true
   workerd: true
+minimumReleaseAgeExclude:
+  - '@ai-sdk/openai-compatible@2.0.90'
+  - '@ai-sdk/provider-utils@4.0.64'

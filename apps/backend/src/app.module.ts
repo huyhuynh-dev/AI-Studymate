@@ -1,7 +1,27 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { AuthModule } from './auth/auth.module.js';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard.js';
+import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './prisma/prisma.module.js';
+import { UsersModule } from './users/users.module.js';
+import { RepoModule } from './repo/repo.module.js';
+import { MailModule } from './mail/mail.module.js';
+import { RedisModule } from './redis/redis.module.js';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { SubjectsModule } from './subjects/subjects.module.js';
+import { ConversationsModule } from './conversations/conversations.module.js';
+import { DocumentsModule } from './documents/documents.module.js';
+import { StorageModule } from './storage/storage.module.js';
+import { AiModule } from './ai/ai.module.js';
+import { SummariesModule } from './summaries/summaries.module.js';
+import { ChatAgentModule } from './chat-agent/chat-agent.module.js';
+import { DeckFlashcardModule } from './deck-flashcard/deck-flashcard.module.js';
+import { QuizModule } from './quiz/quiz.module.js';
+
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -14,8 +34,38 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       appSecret: 'YOUR_APP_SECRET',
       serviceId: 'backend',
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 60,
+      },
+    ]),
+    AuthModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    PrismaModule,
+    UsersModule,
+    RepoModule,
+    MailModule,
+    RedisModule,
+    SubjectsModule,
+    ConversationsModule,
+    DocumentsModule,
+    StorageModule,
+    AiModule,
+    SummariesModule,
+    ChatAgentModule,
+    DeckFlashcardModule,
+    QuizModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
-export class AppModule {}
+export class AppModule { }

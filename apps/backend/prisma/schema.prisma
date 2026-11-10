@@ -1,11 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "./src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
   previewFeatures = ["postgresqlExtensions"]
 }
 
@@ -14,16 +9,346 @@ datasource db {
   extensions = [vector]
 }
 
+enum CardTypeEnum {
+  basic
+  cloze
+  type_in
+
+  @@map("card_type_enum")
+}
+
+enum CardStateEnum {
+  new
+  learning
+  review
+  relearning
+
+  @@map("card_state_enum")
+}
+
+enum QuestionTypeEnum {
+  single_choice
+  multiple_choice
+  true_false
+  short_answer
+  essay
+
+  @@map("question_type_enum")
+}
+
+enum AttemptStatusEnum {
+  in_progress
+  grading
+  submitted
+
+  @@map("attempt_status_enum")
+}
+
+enum EvaluationStatusEnum {
+  pending
+  correct
+  partial
+  incorrect
+
+  @@map("evaluation_status_enum")
+}
+
 model User {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email         String   @unique @db.VarChar(255)
-  password_hash String?  @db.VarChar(255)
-  name          String   @db.VarChar(255)
-  avatar_url    String?  @db.VarChar(500)
-  role          String   @default("user") @db.VarChar(20)
-  is_active     Boolean  @default(true)
-  created_at    DateTime @default(now()) @db.Timestamptz()
-  updated_at    DateTime @default(now()) @updatedAt @db.Timestamptz()
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email             String            @unique @db.VarChar(255)
+  password_hash     String?           @db.VarChar(255)
+  name              String            @db.VarChar(255)
+  avatar_url        String?           @db.VarChar(500)
+  role              String            @default("user") @db.VarChar(20)
+  is_active         Boolean           @default(true)
+  is_verified       Boolean           @default(false)
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  provider          String?           @db.VarChar(20)
+  provider_id       String?           @db.VarChar(255)
+  refresh_token     String?           @db.VarChar(500)
+  subjects          Subject[]
+  conversations     Conversation[]
+  documents         Document[]
+  flashcard_decks   FlashcardDeck[]
+  flashcard_reviews FlashcardReview[]
+  quizzes           Quiz[]
+  quiz_attempts     QuizAttempt[]
 
   @@map("users")
+}
+
+model Subject {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  name       String   @db.VarChar(255)
+  color      String?  @db.VarChar(7)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  conversations Conversation[]
+
+  @@map("subjects")
+}
+
+model Conversation {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  subject_id String   @db.Uuid
+  user_id    String   @db.Uuid
+  title      String   @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  subject Subject @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  documents       Document[]
+  chat_sessions   ChatSession[]
+  summaries       Summary[]
+  flashcard_decks FlashcardDeck[]
+  quizzes         Quiz[]
+
+  @@map("conversations")
+}
+
+model FlashcardDeck {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String   @db.Uuid
+  user_id         String   @db.Uuid
+  name            String   @db.VarChar(255)
+  description     String?  @db.Text
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  flashcards   Flashcard[]
+  quizzes      Quiz[]
+
+  @@map("flashcard_decks")
+}
+
+model Flashcard {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deck_id String @db.Uuid
+
+  // Nội dung (Content & Media)
+  card_type  CardTypeEnum @default(basic)
+  front_text String       @db.Text
+  back_text  String       @db.Text
+  image_url  String?      @db.Text
+  audio_url  String?      @db.Text
+
+  //Thông số SRS (SM-2 Algorithm)
+  state            CardStateEnum @default(new)
+  step_index       Int           @default(0)
+  interval         Int           @default(0)
+  ease_factor      Float         @default(2.5) @db.Real
+  due_date         DateTime      @default(now()) @db.Timestamptz(6)
+  last_reviewed_at DateTime?     @db.Timestamptz(6)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  deck    FlashcardDeck     @relation(fields: [deck_id], references: [id], onDelete: Cascade)
+  reviews FlashcardReview[]
+
+  @@index([deck_id], map: "idx_flashcards_deck_id")
+  @@index([deck_id, state, due_date], map: "idx_flashcards_due_review")
+  @@map("flashcards")
+}
+
+model FlashcardReview {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  flashcard_id  String         @db.Uuid
+  user_id       String         @db.Uuid
+  rating        Int            @db.SmallInt
+  state_before  CardStateEnum?
+  time_taken_ms Int?
+  reviewed_at   DateTime       @default(now()) @db.Timestamptz(6)
+
+  flashcard Flashcard @relation(fields: [flashcard_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, reviewed_at], map: "idx_reviews_user_date")
+  @@index([flashcard_id], map: "idx_reviews_flashcard_id")
+  @@map("flashcard_reviews")
+}
+
+model Quiz {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String   @db.Uuid
+  user_id         String   @db.Uuid
+  source_deck_id  String?  @db.Uuid
+  source          String   @default("manual") @db.VarChar(20)
+  title           String   @db.VarChar(255)
+  description     String?  @db.Text
+  time_limit_sec  Int?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  conversation Conversation   @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  user         User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  source_deck  FlashcardDeck? @relation(fields: [source_deck_id], references: [id], onDelete: SetNull)
+  questions    QuizQuestion[]
+  attempts     QuizAttempt[]
+
+  @@index([conversation_id], map: "idx_quizzes_conversation_id")
+  @@index([user_id], map: "idx_quizzes_user_id")
+  @@index([source_deck_id], map: "idx_quizzes_source_deck_id")
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quiz_id          String           @db.Uuid
+  question_type    QuestionTypeEnum @default(single_choice)
+  order_index      Int              @default(0)
+  question_text    String           @db.Text
+  image_url        String?          @db.Text
+  audio_url        String?          @db.Text
+  points           Float            @default(1.0) @db.Real
+  options          Json?            @db.JsonB
+  sample_answer    String?          @db.Text
+  grading_criteria Json             @default("[]") @db.JsonB
+  explanation      String?          @db.Text
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime         @default(now()) @db.Timestamptz(6)
+
+  quiz            Quiz                @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  attempt_answers QuizAttemptAnswer[]
+
+  @@index([quiz_id, order_index], map: "idx_quiz_questions_quiz_order")
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quiz_id        String            @db.Uuid
+  user_id        String            @db.Uuid
+  status         AttemptStatusEnum @default(in_progress)
+  score          Float             @default(0) @db.Real
+  max_score      Float             @default(0) @db.Real
+  time_spent_sec Int               @default(0)
+  config         Json              @default("{}") @db.JsonB
+  started_at     DateTime          @default(now()) @db.Timestamptz(6)
+  completed_at   DateTime?         @db.Timestamptz(6)
+
+  quiz    Quiz                @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  user    User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  answers QuizAttemptAnswer[]
+
+  @@index([quiz_id, user_id, started_at(sort: Desc)], map: "idx_quiz_attempts_user_quiz")
+  @@map("quiz_attempts")
+}
+
+model QuizAttemptAnswer {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attempt_id          String               @db.Uuid
+  question_id         String               @db.Uuid
+  selected_option_ids Json                 @default("[]") @db.JsonB
+  text_answer         String?              @db.Text
+  is_flagged          Boolean              @default(false)
+  evaluation_status   EvaluationStatusEnum @default(pending)
+  points_earned       Float                @default(0) @db.Real
+  matched_points      Json                 @default("[]") @db.JsonB
+  missing_points      Json                 @default("[]") @db.JsonB
+  ai_feedback         String?              @db.Text
+  answered_at         DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime             @default(now()) @db.Timestamptz(6)
+
+  attempt  QuizAttempt  @relation(fields: [attempt_id], references: [id], onDelete: Cascade)
+  question QuizQuestion @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@unique([attempt_id, question_id], map: "uq_attempt_question")
+  @@index([attempt_id], map: "idx_attempt_answers_attempt_id")
+  @@index([question_id], map: "idx_attempt_answers_question_id")
+  @@map("quiz_attempt_answers")
+}
+
+model Document {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id  String   @db.Uuid
+  user_id          String   @db.Uuid
+  file_name        String   @db.VarChar(500)
+  mime_type        String   @db.VarChar(100)
+  file_size        BigInt   @db.BigInt // bytes
+  storage_key      String   @db.VarChar(1000) // key trên R2/MinIO
+  raw_text         String?  @db.Text // text đã extract
+  processing_error String?  @db.Text
+  uploaded_at      DateTime @default(now()) @db.Timestamptz(6)
+  ocr_status       String   @default("pending") @db.VarChar(20) // 'pending'|'processing'|'done'|'failed'
+  embed_status     String   @default("pending") @db.VarChar(20) // 'pending'|'processing'|'done'|'failed'
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  conversation Conversation    @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  chunks       DocumentChunk[]
+  summaries    Summary[]
+
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id           String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id  String                      @db.Uuid
+  chunk_index  Int
+  page_numbers Int[]                       @default([])
+  content      String                      @db.Text
+  embedding    Unsupported("vector(768)")? // pgvector; Gemini text-embedding-004 = 768 dims
+  created_at   DateTime                    @default(now()) @db.Timestamptz(6)
+
+  document Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
+
+  @@index([document_id])
+  // INDEX ON embedding USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)
+  @@map("document_chunks")
+}
+
+model ChatSession {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String   @db.Uuid
+  title           String   @db.VarChar(255)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  messages     Message[]
+
+  @@index([conversation_id])
+  @@map("chat_sessions")
+}
+
+model Message {
+  id              String   @id @db.VarChar(255)
+  chat_session_id String   @db.Uuid
+  role            String   @db.VarChar(20) // 'user' | 'assistant'
+  message_json    Json     @db.JsonB
+  source_chunks   String[] @db.Uuid // chunk IDs dùng làm context
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  chat_session ChatSession @relation(fields: [chat_session_id], references: [id], onDelete: Cascade)
+
+  @@index([chat_session_id])
+  @@map("messages")
+}
+
+model Summary {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String   @db.Uuid
+  document_id     String?  @db.Uuid // NULL = tóm tắt toàn bộ conversation
+  title           String   @db.VarChar(255)
+  content_json    Json     @db.JsonB // BlockNote JSON format
+  pdf_storage_key String?  @db.VarChar(1000) // key PDF đã export, NULL nếu chưa export
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  document     Document?    @relation(fields: [document_id], references: [id], onDelete: SetNull)
+
+  @@index([conversation_id])
+  @@index([document_id])
+  @@map("summaries")
 }

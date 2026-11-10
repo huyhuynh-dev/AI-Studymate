@@ -1,0 +1,298 @@
+@import "tailwindcss";
+
+:root {
+  /* EdTech Brand Palette from DESIGN.md */
+  --background: #f8f9ff;
+  --foreground: #0b1c30;
+  --surface-canvas: #f8f9ff;
+  --surface-card: #ffffff;
+  --on-surface-variant: #464555;
+  --border-subtle: #e5eeff;
+  --border-outline: #c7c4d8;
+  --brand-primary: #4f46e5;
+  --brand-primary-hover: #3525cd;
+  --brand-secondary: #006c49;
+  --brand-tertiary: #571ac0;
+  --brand-error: #ba1a1a;
+  --specular-hairline: rgba(11, 28, 48, 0.06);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-canvas: var(--surface-canvas);
+  --color-card: var(--surface-card);
+  --color-primary: var(--brand-primary);
+  --color-primary-hover: var(--brand-primary-hover);
+  --color-secondary: var(--brand-secondary);
+  --color-tertiary: var(--brand-tertiary);
+  --color-error: var(--brand-error);
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-heading: var(--font-heading), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #090b10;
+    --foreground: #eff0f6;
+    --surface-canvas: #090b10;
+    --surface-card: #12151c;
+    --on-surface-variant: #9da3af;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-outline: rgba(255, 255, 255, 0.15);
+    --brand-primary: #6366f1;
+    --brand-primary-hover: #4f46e5;
+    --brand-secondary: #10b981;
+    --brand-tertiary: #8b5cf6;
+    --brand-error: #ef4444;
+    --specular-hairline: rgba(255, 255, 255, 0.08);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mặc định toàn bộ thẻ tiêu đề ngữ nghĩa sử dụng Plus Jakarta Sans */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  }
+}
+
+/* Apple HIG Liquid Glass & Translucent Surfaces */
+.apple-liquid-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border-subtle);
+}
+
+@media (prefers-color-scheme: dark) {
+  .apple-liquid-glass {
+    background: rgba(18, 21, 28, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Apple Spring Physics Transition Utility */
+.apple-spring {
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Hide scrollbar while preserving scrolling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Tabular figures for numbers to prevent layout jitter */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.bn-root,
+.bn-editor,
+.bn-inline-content,
+.prose,
+.prose * {
+  font-family: var(--font-sans), sans-serif !important;
+}
+
+/* Bảo đảm tiêu đề trong Markdown Prose và BlockNote sử dụng font-heading */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6,
+.bn-root h1,
+.bn-root h2,
+.bn-root h3 {
+  font-family: var(--font-heading), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif !important;
+}
+
+/* Bảo đảm font KaTeX không bị ghi đè bởi font chữ thường */
+.katex,
+.katex * {
+  font-family: KaTeX_Main, KaTeX_Math, KaTeX_AMS, KaTeX_Caligraphic, KaTeX_Fraktur, KaTeX_SansSerif, KaTeX_Script, KaTeX_Typewriter, serif !important;
+}
+
+/* Bảo đảm font monospace cho Code không bị ghi đè */
+code,
+pre,
+kbd,
+samp,
+.font-mono,
+.font-mono *,
+.bn-root pre,
+.bn-root code,
+.prose pre,
+.prose code {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LANDING PAGE ADDITIONS — dán vào CUỐI file src/app/globals.css
+   (không thay thế nội dung hiện có)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Token bổ sung: bề mặt theo trục Z (Light + Dark) */
+:root {
+  --surface-raised: #ffffff;
+  /* Level 2: thẻ nổi trên "giếng" */
+  --surface-well: rgba(11, 28, 48, 0.035);
+  /* Vùng lõm chứa mockup trong thẻ */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-raised: #1d212b;
+    /* sáng hơn card (#12151c) → Z cao hơn */
+    --surface-well: rgba(255, 255, 255, 0.035);
+  }
+}
+
+@theme inline {
+  --color-muted: var(--on-surface-variant);
+  --color-line: var(--border-subtle);
+  --color-hairline: var(--specular-hairline);
+  --color-raised: var(--surface-raised);
+  --color-well: var(--surface-well);
+  --ease-apple: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ───────── Scroll reveal (được điều khiển bởi <Reveal />) ───────── */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 32px, 0) scale(0.985);
+  filter: blur(6px);
+  transition:
+    opacity 0.9s var(--ease-apple),
+    transform 1s var(--ease-apple),
+    filter 0.9s var(--ease-apple);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.reveal[data-variant="scale"] {
+  transform: scale(0.94);
+}
+
+.reveal[data-variant="fade"] {
+  transform: none;
+  filter: none;
+}
+
+.reveal[data-in="true"] {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* ───────── Hero: khung ứng dụng "đứng dậy" theo tiến độ cuộn (--p: 0→1) ───────── */
+.hero-frame {
+  --p: 0.4;
+  transform-origin: 50% 0%;
+  transform: perspective(1800px) rotateX(calc((1 - var(--p)) * 10deg)) scale(calc(0.92 + var(--p) * 0.08));
+  opacity: calc(0.55 + var(--p) * 0.45);
+  will-change: transform, opacity;
+}
+
+/* Ánh sáng khí quyển (Atmospheric Glow) */
+.landing-glow {
+  background:
+    radial-gradient(60% 55% at 50% 0%,
+      color-mix(in oklab, var(--brand-primary) 16%, transparent),
+      transparent 70%),
+    radial-gradient(40% 40% at 90% 20%,
+      color-mix(in oklab, var(--brand-tertiary) 8%, transparent),
+      transparent 70%);
+}
+
+/* ───────── Micro-animations ───────── */
+@keyframes landing-float {
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+.landing-float {
+  animation: landing-float 6s ease-in-out infinite;
+}
+
+@keyframes landing-pop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.landing-pop {
+  animation: landing-pop 0.35s var(--ease-apple) both;
+}
+
+/* ───────── Accessibility ───────── */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal,
+  .reveal[data-in="true"] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+
+  .hero-frame {
+    transform: none;
+    opacity: 1;
+  }
+
+  .landing-float,
+  .landing-pop {
+    animation: none;
+  }
+}
+
+/* Không có JS → luôn hiện nội dung */
+@media (scripting: none) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}

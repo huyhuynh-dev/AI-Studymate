@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <style>
+    #light-mode { display: block; }
+    #dark-mode { display: none; }
+
+    @media (prefers-color-scheme: dark) {
+      #light-mode { display: none; }
+      #dark-mode { display: block; }
+    }
+  </style>
+
+  <defs>
+    <!-- ================= LIGHT MODE DEFINITIONS ================= -->
+    <!-- Nền squircle có sắc thái periwinkle/indigo nhẹ, không bị hòa tan vào tab trắng (#FFFFFF) -->
+    <linearGradient id="f1-l-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EEF2FF"/>
+      <stop offset="100%" stop-color="#D6E4FF"/>
+    </linearGradient>
+
+    <!-- Viền Squircle tương phản cao với tab sáng (Chrome/Safari Light: #FFFFFF / #E8EAED) -->
+    <linearGradient id="f1-l-rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+
+    <!-- Nét trên chữ S: Indigo hoàng gia (#312E81) chuyển sang Royal Violet (#571AC0) -->
+    <linearGradient id="f1-l-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#312E81"/>
+      <stop offset="100%" stop-color="#571AC0"/>
+    </linearGradient>
+
+    <!-- Nét dưới chữ S: Cặp màu bổ túc Indigo (#3525CD) chuyển sang Emerald (#006C49 -> #059669) -->
+    <linearGradient id="f1-l-bot" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3525CD"/>
+      <stop offset="52%" stop-color="#006C49"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+
+    <!-- ================= DARK MODE DEFINITIONS ================= -->
+    <!-- Nền squircle phân tầng trục Z (Z-axis elevation: #161B30 -> #0B0F1C), nổi bật trên tab đen (#202124) -->
+    <linearGradient id="f1-d-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#161B30"/>
+      <stop offset="100%" stop-color="#0B0F1C"/>
+    </linearGradient>
+
+    <!-- Viền bắt sáng quang học (Specular Luminous Rim): Tương phản cực cao > 6:1 trên tab tối -->
+    <linearGradient id="f1-d-rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8"/>
+      <stop offset="50%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#34D399"/>
+    </linearGradient>
+
+    <!-- Nét trên chữ S Dark: Luminous Indigo (#818CF8) chuyển sang Vibrant Violet (#8B5CF6) -->
+    <linearGradient id="f1-d-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+
+    <!-- Nét dưới chữ S Dark: Indigo (#6366F1) chuyển sang Emerald (#10B981) và Mint sáng (#6CF8BB) -->
+    <linearGradient id="f1-d-bot" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="50%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#6CF8BB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ================= LIGHT MODE GROUP ================= -->
+  <g id="light-mode">
+    <!-- Khung Squircle tràn viền 96% với viền tương phản sắc nét -->
+    <rect x="32" y="32" width="960" height="960" rx="228" fill="url(#f1-l-bg)" stroke="url(#f1-l-rim)" stroke-width="18"/>
+    <!-- Nét chữ S độ dày 164px với độ tương phản cao, chống nhòe ở 16px -->
+    <path d="M 690 310 C 660 175, 320 175, 320 325 C 320 445, 520 475, 685 520" fill="none" stroke="url(#f1-l-top)" stroke-width="164" stroke-linecap="butt"/>
+    <path d="M 339 504 C 504 549, 704 579, 704 699 C 704 849, 364 849, 334 714" fill="none" stroke="url(#f1-l-bot)" stroke-width="164" stroke-linecap="butt"/>
+    <!-- Tâm điểm vòng tròn đồng tâm tương phản chuẩn Apple HIG -->
+    <circle cx="512" cy="512" r="108" fill="#FFFFFF" stroke="#4F46E5" stroke-width="18"/>
+    <!-- Ngôi sao 4 cánh Sparkle trung tâm -->
+    <path d="M 512 430 Q 512 512 594 512 Q 512 512 512 594 Q 512 512 430 512 Q 512 512 512 430 Z" fill="#3525CD"/>
+  </g>
+
+  <!-- ================= DARK MODE GROUP ================= -->
+  <g id="dark-mode">
+    <!-- Khung Squircle tràn viền 96% với viền bắt sáng quang học (Specular Rim) -->
+    <rect x="32" y="32" width="960" height="960" rx="228" fill="url(#f1-d-bg)" stroke="url(#f1-d-rim)" stroke-width="18"/>
+    <!-- Nét chữ S phát quang rực rỡ, độ dày 164px -->
+    <path d="M 690 310 C 660 175, 320 175, 320 325 C 320 445, 520 475, 685 520" fill="none" stroke="url(#f1-d-top)" stroke-width="164" stroke-linecap="butt"/>
+    <path d="M 339 504 C 504 549, 704 579, 704 699 C 704 849, 364 849, 334 714" fill="none" stroke="url(#f1-d-bot)" stroke-width="164" stroke-linecap="butt"/>
+    <!-- Tâm điểm vòng tròn đêm -->
+    <circle cx="512" cy="512" r="108" fill="#0B0F1C" stroke="#818CF8" stroke-width="18"/>
+    <!-- Ngôi sao 4 cánh Mint phát sáng rực rỡ -->
+    <path d="M 512 430 Q 512 512 594 512 Q 512 512 512 594 Q 512 512 430 512 Q 512 512 512 430 Z" fill="#6CF8BB"/>
+  </g>
+</svg>
