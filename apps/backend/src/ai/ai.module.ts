@@ -7,6 +7,7 @@ import { BlocknoteService } from './blocknote.service.js';
 import { ChatAgentAiService } from './chat-agent-ai.service.js';
 import { AiModelFactory } from './ai-model.factory.js';
 import { QuizAiService } from './quiz-ai.service.js';
+import { FlashcardAiService } from './flashcard-ai.service.js';
 
 @Module({
   providers: [
@@ -18,6 +19,7 @@ import { QuizAiService } from './quiz-ai.service.js';
     ChatAgentAiService,
     AiModelFactory,
     QuizAiService,
+    FlashcardAiService,
   ],
   exports: [
     AiService,
@@ -28,6 +30,7 @@ import { QuizAiService } from './quiz-ai.service.js';
     ChatAgentAiService,
     AiModelFactory,
     QuizAiService,
+    FlashcardAiService,
   ],
 })
 export class AiModule { }

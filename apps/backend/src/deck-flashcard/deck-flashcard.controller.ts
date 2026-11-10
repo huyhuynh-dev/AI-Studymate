@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     Body,
     Controller,
     Delete,
@@ -13,9 +14,15 @@ import {
     UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { z } from 'zod';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { GenerateFlashcardsRequestSchema } from '../ai/schemas/flashcard-ai.schema.js';
 import { DeckService, DeckItemResponse } from './deck/deck.service.js';
 import { FlashcardService } from './flashcard/flashcard.service.js';
+import {
+    FlashcardAiManageService,
+    GenerateFlashcardsWithAiResponse,
+} from './flashcard-ai-manage.service.js';
 import { CreateDeckDto, GetDecksQueryDto, UpdateDeckDto } from './dto/deck.dto.js';
 import {
     CreateFlashcardDto,
@@ -29,7 +36,8 @@ import { Prisma } from '../generated/prisma/client.js';
 export class DeckFlashcardController {
     constructor(
         private readonly deckService: DeckService,
-        private readonly flashcardService: FlashcardService
+        private readonly flashcardService: FlashcardService,
+        private readonly flashcardAiManageService: FlashcardAiManageService
     ) {}
 
     private getUserId(req: Request): string {
@@ -138,5 +146,25 @@ export class DeckFlashcardController {
         @Body() data: ReviewFlashcardDto
     ): Promise<Prisma.FlashcardModel> {
         return this.flashcardService.reviewFlashcard(id, this.getUserId(req), data.rating);
+    }
+
+    /* ==========================================================
+     * ENDPOINT TẠO FLASHCARD BẰNG AI (FLASHCARD TAB & DECK VIEW)
+     * ========================================================== */
+
+    @Post('ai-generate')
+    async generateWithAi(
+        @Req() req: Request,
+        @Body() body: unknown
+    ): Promise<GenerateFlashcardsWithAiResponse> {
+        const parsed = GenerateFlashcardsRequestSchema.safeParse(body);
+        if (!parsed.success) {
+            throw new BadRequestException(z.flattenError(parsed.error));
+        }
+
+        return this.flashcardAiManageService.generateWithAi(
+            this.getUserId(req),
+            parsed.data
+        );
     }
 }
