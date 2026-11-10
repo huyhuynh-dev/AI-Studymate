@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check } from "lucide-react";
 import { useFocusMode } from "@/components/layout";
 import { AiGeneratorModal, type AiTarget } from "./ai/AiGeneratorModal";
-import { buildAiCards } from "./data/demoData";
 import { DeckFormModal } from "./decks/DeckFormModal";
 import { DecksEmptyState } from "./decks/DecksEmptyState";
 import { DecksView } from "./decks/DecksView";
@@ -11,6 +11,7 @@ import { DeckDetailView } from "./detail/DeckDetailView";
 import { CardEditorModal } from "./editor/CardEditorModal";
 import { useDecks } from "@/hooks/useDecks";
 import { useFlashcards } from "@/hooks/useFlashcards";
+import { flashcardApi } from "@/services/flashcard.api";
 import { StudyView } from "./study/StudyView";
 import type { AiConfig, AiDocument, CardDraft, Deck, DeckStats, Flashcard } from "./types";
 import { ConfirmDialog, cx } from "./ui";
@@ -43,16 +44,22 @@ export default function FlashcardsTab({
   const [cardEditor, setCardEditor] = useState<{ open: boolean; card: Flashcard | null; deckId: string }>({ open: false, card: null, deckId: "" });
   const [cardToDelete, setCardToDelete] = useState<Flashcard | null>(null);
   const [ai, setAi] = useState<AiTarget | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const activeDeckId = view.name !== "decks" ? view.deckId : undefined;
   const {
     cards: deckCards,
     createCard,
-    createCards,
     updateCard,
     deleteCard,
     reviewCard,
+    refreshCards,
   } = useFlashcards(activeDeckId);
+
+  const notify = useCallback((msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast((t) => (t === msg ? null : t)), 3200);
+  }, []);
 
   const statsByDeck = useMemo(() => {
     const map: Record<string, DeckStats> = {};
@@ -126,20 +133,32 @@ export default function FlashcardsTab({
 
   const generateAi = async (cfg: AiConfig) => {
     if (!ai) return;
-    const drafts = buildAiCards(cfg);
+    if (!conversationId) {
+      throw new Error("Không tìm thấy thông tin phiên học.");
+    }
+
+    const payload = {
+      conversationId,
+      target:
+        ai.kind === "new"
+          ? ({ kind: "new" } as const)
+          : ({ kind: "deck", deckId: ai.deckId } as const),
+      documentIds: cfg.documentIds ?? "all",
+      count: cfg.count,
+      types: cfg.types,
+      instructions: cfg.instructions,
+      deckName: cfg.deckName?.trim() || undefined,
+    };
+
+    const res = await flashcardApi.generateWithAi(payload);
+
     if (ai.kind === "new") {
-      const createdDeck = await createDeck({
-        name: cfg.deckName?.trim() || "Bộ thẻ AI",
-        description: "Được tạo tự động từ tài liệu của bạn.",
-      });
-      if (createdDeck) {
-        await createCards(drafts);
-        refreshDecks();
-        setView({ name: "detail", deckId: createdDeck.id });
-      }
+      await refreshDecks();
+      notify(`Đã tạo bộ thẻ với ${res.stats.saved} thẻ ghi nhớ`);
+      setView({ name: "detail", deckId: res.deckId });
     } else {
-      await createCards(drafts);
-      refreshDecks();
+      await Promise.all([refreshCards(), refreshDecks()]);
+      notify(`Đã thêm ${res.stats.saved} thẻ vào bộ thẻ`);
     }
   };
 
@@ -292,6 +311,16 @@ export default function FlashcardsTab({
         onConfirm={confirmDeleteCard}
         onClose={() => setCardToDelete(null)}
       />
+
+      {toast && (
+        <div
+          role="status"
+          className="apple-liquid-glass pointer-events-none fixed inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[110] mx-auto flex w-fit max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-neutral-900 dark:text-white shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200"
+        >
+          <Check className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden />
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

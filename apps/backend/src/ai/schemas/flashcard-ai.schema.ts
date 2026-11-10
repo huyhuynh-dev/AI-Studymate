@@ -128,8 +128,15 @@ export const clozeRe = (): RegExp => /\{\{c(\d+)::([\s\S]+?)\}\}/g;
 
 /** Đánh số lại chỗ trống theo thứ tự xuất hiện: c3, c7 -> c1, c2 (cùng số = cùng một chỗ trống, giữ nguyên nhóm) */
 export function renumberCloze(text: string): string {
+    // Nếu LLM dùng {{đáp án}} thay vì {{c1::đáp án}} -> tự động chuyển thành {{c1::đáp án}}
+    let normalized = text;
+    if (!/\{\{c\d+::/i.test(normalized) && /\{\{([\s\S]+?)\}\}/.test(normalized)) {
+        let autoIdx = 1;
+        normalized = normalized.replace(/\{\{([\s\S]+?)\}\}/g, (_m, body) => `{{c${autoIdx++}::${body}}}`);
+    }
+
     const map = new Map<string, number>();
-    return text.replace(clozeRe(), (_m, idx: string, body: string) => {
+    return normalized.replace(clozeRe(), (_m, idx: string, body: string) => {
         if (!map.has(idx)) {
             map.set(idx, map.size + 1);
         }
@@ -386,14 +393,60 @@ export interface FlashcardInsertRow {
 }
 
 /**
+ * Tách một câu Cloze đa chỗ trống thành câu con chỉ giữ lại nhóm chỗ trống targetIndex:
+ * - Chỗ trống thuộc targetIndex: giữ nguyên {{c1::...}}
+ * - Chỗ trống thuộc nhóm khác: gỡ bỏ cú pháp {{cN::...}}, hiển thị chữ bình thường
+ */
+export function isolateClozeIndex(raw: string, targetIndex: number): string {
+    return raw.replace(clozeRe(), (_m, idxStr: string, body: string) => {
+        const idx = Number(idxStr);
+        if (idx === targetIndex) {
+            return `{{c1::${body.trim()}}}`;
+        }
+        return body.trim();
+    });
+}
+
+/**
  * Chuyển đổi 1 thẻ đã qua bước chuẩn hóa & kiểm định sang định dạng lưu vào bảng `flashcards`.
+ * - Nếu thẻ cloze có từ 2 nhóm chỗ trống trở lên (c1, c2...): tự động tách thành N thẻ con độc lập,
+ *   mỗi thẻ con chỉ che đúng 1 vị trí và hiện các vị trí còn lại (chuẩn Anki c1, c2).
  * - Mặt trước thẻ cloze giữ `<span data-cloze="true">...</span>`.
  * - Mặt sau thẻ type_in được bọc `<p>...</p>` (đã escape HTML) để đồng nhất với sanitizeFlashcardHtml & QuizToFlashcardService.
  */
 export function toFlashcardRows(c: LlmCard): FlashcardInsertRow[] {
-    const isCloze = c.card_type === 'cloze';
-    const frontHtml = textToRichHtml(c.front_text, isCloze);
+    if (c.card_type === 'cloze') {
+        const distinctIndices = [
+            ...new Set(
+                [...c.front_text.matchAll(clozeRe())].map((m) => Number(m[1]))
+            ),
+        ].sort((a, b) => a - b);
 
+        const backHtml = textToRichHtml(c.back_text, false);
+
+        if (distinctIndices.length <= 1) {
+            const frontHtml = textToRichHtml(c.front_text, true);
+            return [
+                {
+                    card_type: c.card_type,
+                    front_text: frontHtml,
+                    back_text: backHtml,
+                },
+            ];
+        }
+
+        return distinctIndices.map((idx) => {
+            const isolatedText = isolateClozeIndex(c.front_text, idx);
+            const frontHtml = textToRichHtml(isolatedText, true);
+            return {
+                card_type: c.card_type,
+                front_text: frontHtml,
+                back_text: backHtml,
+            };
+        });
+    }
+
+    const frontHtml = textToRichHtml(c.front_text, false);
     let backHtml = '';
     if (c.card_type === 'type_in') {
         const plainAnswer = stripToPlain(c.back_text);
