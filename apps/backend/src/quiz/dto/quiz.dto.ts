@@ -220,3 +220,22 @@ export class ConvertToFlashcardsDto {
     @IsObject({ message: 'Đích đến của bộ thẻ không hợp lệ' })
     target!: FlashcardTargetDto;
 }
+
+export class GenerateQuizFromDeckDto {
+    @IsUUID('4', { message: 'ID bộ thẻ không hợp lệ' })
+    @IsNotEmpty({ message: 'ID bộ thẻ không được để trống' })
+    deckId!: string;
+
+    @Type(() => Number)
+    @IsNumber()
+    @Min(1, { message: 'Số lượng câu hỏi phải ít nhất là 1' })
+    questionCount!: number;
+
+    @IsOptional()
+    @IsArray({ message: 'Danh sách loại câu hỏi phải là một mảng' })
+    @IsEnum(QuestionTypeEnum, {
+        each: true,
+        message: 'Loại câu hỏi không hợp lệ (chỉ chấp nhận single_choice, true_false, short_answer)',
+    })
+    types?: QuestionTypeEnum[];
+}

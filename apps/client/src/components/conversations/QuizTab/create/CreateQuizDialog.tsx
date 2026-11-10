@@ -43,7 +43,11 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, onClos
   const [picked, setPicked] = useState<QuizSource | null>(initialSource);
   const source = initialSource ?? picked;
   const [count, setCount] = useState(10);
-  const [types, setTypes] = useState<QuestionType[]>(["single_choice", "essay"]);
+  const [types, setTypes] = useState<QuestionType[]>(() =>
+    initialSource === "flashcard"
+      ? ["single_choice", "true_false", "short_answer"]
+      : ["single_choice", "essay"]
+  );
   const [difficulty, setDifficulty] = useState<Difficulty>("applied");
   const [deckId, setDeckId] = useState(decks[0]?.id ?? "");
   const [docIds, setDocIds] = useState<string[]>(() => documents.map((d) => d.id));
@@ -59,7 +63,14 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, onClos
     setBusy(true); setError(null);
     try {
       if (source === "ai") await onGenerateAI({ questionCount: count, types, difficulty, documentIds: validDocIds });
-      else if (source === "flashcard") await onGenerateDeck({ deckId, questionCount: Math.min(count, deckMax), types });
+      else if (source === "flashcard") {
+        const allowedTypes = types.filter((t) => ["single_choice", "true_false", "short_answer"].includes(t));
+        await onGenerateDeck({
+          deckId,
+          questionCount: Math.min(count, deckMax),
+          types: allowedTypes.length > 0 ? allowedTypes : ["single_choice", "true_false", "short_answer"],
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể tạo đề. Vui lòng thử lại.");
     } finally { setBusy(false); }
@@ -74,7 +85,16 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, onClos
             <button
               key={s.key}
               type="button"
-              onClick={() => (s.key === "manual" ? onManual() : setPicked(s.key))}
+              onClick={() => {
+                if (s.key === "manual") {
+                  onManual();
+                } else {
+                  if (s.key === "flashcard") {
+                    setTypes(["single_choice", "true_false", "short_answer"]);
+                  }
+                  setPicked(s.key);
+                }
+              }}
               className="apple-spring flex items-center gap-4 rounded-2xl border border-[var(--border-outline)] bg-card p-4 text-left outline-none hover:border-primary hover:bg-[var(--qz-primary-soft)] focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.99]"
             >
               <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${s.tone}`}><s.icon className="h-5 w-5" /></span>
@@ -142,7 +162,21 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, onClos
         </div>
         <div>
           <p className="mb-2 text-[14px] font-semibold">Dạng câu hỏi</p>
-          <TypePicker value={types} onChange={setTypes} allowed={isAI ? QUESTION_TYPES : ["single_choice", "true_false", "short_answer", "essay"]} />
+          <TypePicker
+            value={types}
+            onChange={setTypes}
+            allowed={
+              isAI
+                ? QUESTION_TYPES
+                : [
+                    "single_choice",
+                    "true_false",
+                    "short_answer",
+                    // "multiple_choice", // Tạm thời comment out theo chiến lược Rule-based (FromFlashcard2Deck)
+                    // "essay", // Tạm thời comment out theo chiến lược Rule-based (FromFlashcard2Deck)
+                  ]
+            }
+          />
         </div>
         {isAI && (
           <div>

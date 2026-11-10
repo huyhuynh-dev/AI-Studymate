@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import {
     ConvertToFlashcardsDto,
     CreateQuizDto,
+    GenerateQuizFromDeckDto,
     GenerateQuizWithAiDto,
     OverrideEvaluationDto,
     SaveAnswerDto,
@@ -112,6 +113,23 @@ export class QuizController {
             `[POST /quiz/conversations/${conversationId}/quizzes/generate] User ${userId} yêu cầu tạo đề AI | Số câu: ${dto.questionCount}, Loại: [${dto.types?.join(', ')}], Độ khó: ${dto.difficulty}, Tài liệu chọn: ${dto.documentIds?.length ? `${dto.documentIds.length} file` : 'tất cả'}`
         );
         return this.quizService.generateWithAI(
+            userId,
+            conversationId,
+            dto
+        );
+    }
+
+    @Post('conversations/:conversationId/quizzes/generate-from-deck')
+    async generateFromDeck(
+        @Req() req: Request,
+        @Param('conversationId', new ParseUUIDPipe()) conversationId: string,
+        @Body() dto: GenerateQuizFromDeckDto
+    ): Promise<QuizResponse> {
+        const userId = this.getUserId(req);
+        this.logger.log(
+            `[POST /quiz/conversations/${conversationId}/quizzes/generate-from-deck] User ${userId} yêu cầu tạo Quiz từ bộ thẻ ${dto.deckId} | Số câu: ${dto.questionCount}`
+        );
+        return this.quizService.generateFromDeck(
             userId,
             conversationId,
             dto

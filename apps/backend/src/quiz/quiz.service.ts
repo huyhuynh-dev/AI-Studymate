@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
     ConvertToFlashcardsDto,
     CreateQuizDto,
+    GenerateQuizFromDeckDto,
     GenerateQuizWithAiDto,
     OverrideEvaluationDto,
     QuestionDraftDto,
@@ -15,6 +16,7 @@ import { QuizManageService } from './quiz-manage.service.js';
 import { QuizAttemptService } from './quiz-attempt.service.js';
 import { QuizGradingService } from './quiz-grading.service.js';
 import { QuizToFlashcardService } from './quiz-to-flashcard.service.js';
+import { DeckToQuizService } from './deck-to-quiz.service.js';
 import {
     AttemptAnswerResponse,
     AttemptConfigResponse,
@@ -70,7 +72,8 @@ export class QuizService {
         private readonly quizManageService: QuizManageService,
         private readonly quizAttemptService: QuizAttemptService,
         private readonly quizGradingService: QuizGradingService,
-        private readonly quizToFlashcardService: QuizToFlashcardService
+        private readonly quizToFlashcardService: QuizToFlashcardService,
+        private readonly deckToQuizService: DeckToQuizService
     ) {}
 
     /* ==========================================================
@@ -117,6 +120,18 @@ export class QuizService {
         dto: GenerateQuizWithAiDto
     ): Promise<QuizResponse> {
         return this.quizManageService.generateWithAI(
+            userId,
+            conversationId,
+            dto
+        );
+    }
+
+    async generateFromDeck(
+        userId: string,
+        conversationId: string,
+        dto: GenerateQuizFromDeckDto
+    ): Promise<QuizResponse> {
+        return this.deckToQuizService.generateQuizFromDeck(
             userId,
             conversationId,
             dto

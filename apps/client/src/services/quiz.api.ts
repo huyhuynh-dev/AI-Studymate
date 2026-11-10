@@ -3,6 +3,7 @@ import type {
   AIGenerateOptions,
   AttemptAnswer,
   AttemptConfig,
+  DeckGenerateOptions,
   EvaluationStatus,
   FlashcardTarget,
   Quiz,
@@ -163,8 +164,15 @@ export const quizApi: QuizApi = {
     return mapQuiz(res.data);
   },
 
-  generateFromDeck: async (): Promise<Quiz> => {
-    throw new Error('Tính năng tạo đề từ bộ thẻ Flashcard sẽ được hỗ trợ trong Phase 2.');
+  generateFromDeck: async (
+    conversationId: string,
+    opts: DeckGenerateOptions
+  ): Promise<Quiz> => {
+    const res = await axiosClient.post(
+      `/quiz/conversations/${conversationId}/quizzes/generate-from-deck`,
+      opts
+    );
+    return mapQuiz(res.data);
   },
 
   startAttempt: async (quizId: string, config: AttemptConfig): Promise<QuizAttempt> => {
