@@ -8,6 +8,7 @@ describe('SummaryService & BlockNote Schema', () => {
 
     beforeEach(() => {
         aiService = {
+            generateObjectForFeature: vi.fn(),
             generateObjectForTask: vi.fn(),
         };
         service = new SummaryService(aiService);
@@ -129,8 +130,8 @@ describe('SummaryService & BlockNote Schema', () => {
     });
 
     describe('generateSummary', () => {
-        it('nên gọi aiService.generateObjectForTask với đúng schema và chuẩn hóa triệt để giá trị null', async () => {
-            aiService.generateObjectForTask.mockResolvedValue({
+        it('nên gọi aiService.generateObjectForFeature với đúng schema và chuẩn hóa triệt để giá trị null', async () => {
+            aiService.generateObjectForFeature.mockResolvedValue({
                 object: {
                     title: 'Bản Tóm Tắt Tự Động',
                     blocks: [
@@ -184,8 +185,12 @@ describe('SummaryService & BlockNote Schema', () => {
                 scope: 'document',
             });
 
-            expect(aiService.generateObjectForTask).toHaveBeenCalledWith(
-                'SUMMARIZE',
+            expect(aiService.generateObjectForFeature).toHaveBeenCalledWith(
+                'SUMMARIZE_GENERATE',
+                expect.objectContaining({
+                    mode: 'key_takeaways',
+                    length: 'standard',
+                }),
                 expect.objectContaining({
                     schema: summaryOutputSchema,
                 }),
@@ -220,7 +225,7 @@ describe('SummaryService & BlockNote Schema', () => {
 
     describe('refineSummary', () => {
         it('nên tinh chỉnh bản tóm tắt và chuẩn hóa kết quả', async () => {
-            aiService.generateObjectForTask.mockResolvedValue({
+            aiService.generateObjectForFeature.mockResolvedValue({
                 object: {
                     title: 'Bản Tóm Tắt Đã Tinh Chỉnh',
                     blocks: [

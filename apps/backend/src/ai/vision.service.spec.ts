@@ -4,10 +4,14 @@ import { VisionService } from './vision.service.js';
 
 describe('VisionService', () => {
   let service: VisionService;
-  let aiService: { generateText: ReturnType<typeof vi.fn> };
+  let aiService: {
+    prepare: ReturnType<typeof vi.fn>;
+    generateText: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     aiService = {
+      prepare: vi.fn().mockReturnValue({ prompt: 'mocked-ocr-prompt' }),
       generateText: vi.fn(),
     };
 

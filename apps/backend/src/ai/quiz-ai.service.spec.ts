@@ -22,6 +22,7 @@ describe('QuizAiService & QuizAiSchema', () => {
 
     beforeEach(async () => {
         mockAiService = {
+            generateObjectForFeature: vi.fn(),
             generateObjectForTask: vi.fn(),
         };
 
@@ -185,8 +186,8 @@ describe('QuizAiService & QuizAiSchema', () => {
     });
 
     describe('generateQuizFromContext', () => {
-        it('calls AiService with QUIZ_AGENT and transforms valid questions into DB rows', async () => {
-            mockAiService.generateObjectForTask.mockResolvedValue({
+        it('calls AiService with QUIZ_GENERATE and transforms valid questions into DB rows', async () => {
+            mockAiService.generateObjectForFeature.mockResolvedValue({
                 object: {
                     title: 'Đề ôn tập Trí nhớ',
                     description: 'Kiểm tra kiến thức về Spaced Repetition.',
@@ -214,12 +215,14 @@ describe('QuizAiService & QuizAiSchema', () => {
                 difficulty: 'applied',
             });
 
-            expect(mockAiService.generateObjectForTask).toHaveBeenCalledWith(
-                'QUIZ_AGENT',
+            expect(mockAiService.generateObjectForFeature).toHaveBeenCalledWith(
+                'QUIZ_GENERATE',
+                expect.objectContaining({
+                    count: 5,
+                    difficulty: 'applied',
+                }),
                 expect.objectContaining({
                     schemaName: 'QuizGeneration',
-                    temperature: 0.4,
-                    maxRetries: 2,
                 })
             );
             expect(res.title).toBe('Đề ôn tập Trí nhớ');
@@ -228,7 +231,7 @@ describe('QuizAiService & QuizAiSchema', () => {
         });
 
         it('throws BadRequestException when all generated questions fail quality validation', async () => {
-            mockAiService.generateObjectForTask.mockResolvedValue({
+            mockAiService.generateObjectForFeature.mockResolvedValue({
                 object: {
                     title: 'Đề lỗi',
                     description: 'Mô tả',
@@ -273,8 +276,8 @@ describe('QuizAiService & QuizAiSchema', () => {
             );
         });
 
-        it('calls AiService with QUIZ_AGENT task and returns parsed evaluation', async () => {
-            mockAiService.generateObjectForTask.mockResolvedValue({
+        it('calls AiService with ESSAY_GRADE feature and returns parsed evaluation', async () => {
+            mockAiService.generateObjectForFeature.mockResolvedValue({
                 object: {
                     evaluationStatus: 'partial',
                     pointsEarned: 1.5,
@@ -294,11 +297,14 @@ describe('QuizAiService & QuizAiSchema', () => {
                 '<p>Bài làm của sinh viên</p>'
             );
 
-            expect(mockAiService.generateObjectForTask).toHaveBeenCalledWith(
-                'QUIZ_AGENT',
+            expect(mockAiService.generateObjectForFeature).toHaveBeenCalledWith(
+                'ESSAY_GRADE',
+                expect.objectContaining({
+                    questionPlain: 'Giải thích Active Recall',
+                    points: 3,
+                }),
                 expect.objectContaining({
                     schema: expect.any(Object),
-                    temperature: 0.2,
                 })
             );
             expect(res.evaluationStatus).toBe(EvaluationStatusEnum.partial);

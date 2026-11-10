@@ -12,6 +12,8 @@ import type {
     LanguageModel,
 } from 'ai';
 
+export type ModelProfile = 'FAST' | 'STANDARD' | 'REASONING' | 'VISION';
+
 export type AiTask =
     | 'EMBEDDING'
     | 'VISION_ANALYZE'
@@ -26,7 +28,8 @@ type TaskModel = EmbeddingModel | LanguageModel;
 @Injectable()
 export class AiModelFactory {
     private readonly provider: ReturnType<typeof createOpenAICompatible>;
-    private readonly taskModels: Record<AiTask, TaskModel>;
+    private readonly models: Record<ModelProfile, LanguageModel>;
+    private readonly embeddingModel: EmbeddingModel;
 
     constructor(
         private readonly configService: ConfigService,
@@ -63,43 +66,71 @@ export class AiModelFactory {
                 : `${ollamaServerUrl}/api`,
         });
 
-        // Task Models Registry
-        this.taskModels = {
-            EMBEDDING: ollama.embeddingModel(
-                'nomic-embed-text-v2-moe:latest',
-            ),
-
-            VISION_ANALYZE: google('gemini-3.5-flash-lite'),
-
-            SUMMARIZE: this.provider('cx/gpt-6-luna'),
-
-            BLOCKNOTE_EDITOR: this.provider('cx/gpt-6-luna'),
-
-            CHAT_AGENT: this.provider('cx/gpt-6-luna-medium'),
-
-            AUTO_HEADER: ollama('qwen3.5:0.8b'),
-
-            QUIZ_AGENT: this.provider('cx/gpt-6-luna'),
+        // 4 Model Profiles chuẩn hóa
+        this.models = {
+            FAST: this.provider('groq/openai/gpt-oss-120b'),
+            STANDARD: this.provider('cx/gpt-6-luna'),
+            REASONING: this.provider('cx/gpt-6-luna-medium'),
+            VISION: google('gemini-3.5-flash-lite'),
         };
+
+        this.embeddingModel = ollama.embeddingModel(
+            'nomic-embed-text-v2-moe:latest',
+        );
     }
 
-    getChatAgentModel(modelName: string): LanguageModel {
+    /**
+     * Lấy Language Model theo tầng năng lực chuẩn hóa
+     */
+    getModel(profile: ModelProfile): LanguageModel {
+        const model = this.models[profile];
+        if (!model) {
+            throw new Error(`No model found for profile: ${profile}`);
+        }
+        return model;
+    }
+
+    /**
+     * Lấy Embedding Model
+     */
+    getEmbeddingModel(): EmbeddingModel {
+        return this.embeddingModel;
+    }
+
+    /**
+     * Lấy Language Model tùy biến theo tên (cho dynamic model selection)
+     */
+    getCustomModel(modelName: string): LanguageModel {
         return this.provider(modelName);
     }
 
+    /**
+     * Backward-compatible alias cho Chat Agent
+     */
+    getChatAgentModel(modelName: string): LanguageModel {
+        return this.getCustomModel(modelName);
+    }
+
+    /**
+     * Backward-compatible method cho các caller cũ dùng AiTask
+     */
     getModelForTask(task: 'EMBEDDING'): EmbeddingModel;
-
-    getModelForTask(
-        task: Exclude<AiTask, 'EMBEDDING'>,
-    ): LanguageModel;
-
+    getModelForTask(task: Exclude<AiTask, 'EMBEDDING'>): LanguageModel;
     getModelForTask(task: AiTask): TaskModel {
-        const model = this.taskModels[task];
-
-        if (!model) {
-            throw new Error(`No model found for task: ${task}`);
+        if (task === 'EMBEDDING') {
+            return this.embeddingModel;
         }
 
-        return model;
+        const taskToProfileMap: Record<Exclude<AiTask, 'EMBEDDING'>, ModelProfile> = {
+            VISION_ANALYZE: 'VISION',
+            SUMMARIZE: 'STANDARD',
+            BLOCKNOTE_EDITOR: 'STANDARD',
+            CHAT_AGENT: 'REASONING',
+            AUTO_HEADER: 'FAST',
+            QUIZ_AGENT: 'STANDARD',
+        };
+
+        const profile = taskToProfileMap[task];
+        return this.getModel(profile);
     }
 }

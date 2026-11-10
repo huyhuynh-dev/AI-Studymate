@@ -4,10 +4,14 @@ import { BlocknoteService } from './blocknote.service.js';
 
 describe('BlocknoteService', () => {
   let service: BlocknoteService;
-  let aiService: { streamText: ReturnType<typeof vi.fn> };
+  let aiService: {
+    prepare: ReturnType<typeof vi.fn>;
+    streamText: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     aiService = {
+      prepare: vi.fn().mockReturnValue({ system: 'mocked-system-prompt' }),
       streamText: vi.fn().mockReturnValue('stream'),
     };
 

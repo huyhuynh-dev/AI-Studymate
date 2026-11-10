@@ -8,29 +8,32 @@ import { ChatAgentAiService } from './chat-agent-ai.service.js';
 import { AiModelFactory } from './ai-model.factory.js';
 import { QuizAiService } from './quiz-ai.service.js';
 import { FlashcardAiService } from './flashcard-ai.service.js';
+import { PromptRegistryService } from './prompts/prompt-registry.service.js';
 
 @Module({
   providers: [
+    AiModelFactory,
+    PromptRegistryService,
     AiService,
     EmbeddingService,
     VisionService,
     SummaryService,
     BlocknoteService,
     ChatAgentAiService,
-    AiModelFactory,
     QuizAiService,
     FlashcardAiService,
   ],
   exports: [
+    AiModelFactory,
+    PromptRegistryService,
     AiService,
     EmbeddingService,
     VisionService,
     SummaryService,
     BlocknoteService,
     ChatAgentAiService,
-    AiModelFactory,
     QuizAiService,
     FlashcardAiService,
   ],
 })
-export class AiModule { }
+export class AiModule {}

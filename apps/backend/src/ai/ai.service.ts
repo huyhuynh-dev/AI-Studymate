@@ -7,14 +7,102 @@ import {
 } from 'ai';
 import { AiModelFactory } from './ai-model.factory.js';
 import type { AiTask } from './ai-model.factory.js';
+import { PromptRegistryService } from './prompts/prompt-registry.service.js';
+import { FEATURE_MAP } from './configs/feature-mapping.config.js';
+import type { FeatureKey, PromptPayloadMap } from './prompts/types.js';
 
 @Injectable()
 export class AiService {
-  constructor(private readonly aiModelFactory: AiModelFactory) { }
+  constructor(
+    private readonly aiModelFactory: AiModelFactory,
+    private readonly promptRegistry: PromptRegistryService,
+  ) {}
+
+  /**
+   * Chuẩn bị đầy đủ Model, Config và Prompt đã render cho 1 tính năng
+   */
+  prepare<T extends FeatureKey>(
+    feature: T,
+    payload: PromptPayloadMap[T],
+    modelNameOverride?: string,
+  ) {
+    const config = FEATURE_MAP[feature];
+    const model = modelNameOverride
+      ? this.aiModelFactory.getCustomModel(modelNameOverride)
+      : this.aiModelFactory.getModel(config.profile);
+
+    const { system, prompt } = this.promptRegistry.render(feature, payload);
+
+    return {
+      model,
+      system,
+      prompt,
+      temperature: config.temperature,
+      maxRetries: config.maxRetries,
+      providerOptions: config.providerOptions,
+    };
+  }
+
+  /**
+   * Sinh cấu trúc dữ liệu (Object Output) theo FeatureKey
+   */
+  async generateObjectForFeature<T = unknown, K extends FeatureKey = FeatureKey>(
+    feature: K,
+    payload: PromptPayloadMap[K],
+    options: {
+      schema: unknown;
+      schemaName?: string;
+      schemaDescription?: string;
+      modelName?: string;
+      temperature?: number;
+      maxRetries?: number;
+    },
+  ): Promise<{ object: T }> {
+    const prepared = this.prepare(feature, payload, options.modelName);
+
+    const result = await generateText({
+      model: prepared.model,
+      output: Output.object({
+        schema: options.schema as any,
+        ...(options.schemaName ? { name: options.schemaName } : {}),
+        ...(options.schemaDescription
+          ? { description: options.schemaDescription }
+          : {}),
+      }),
+      prompt: prepared.prompt,
+      system: prepared.system,
+      temperature: options.temperature ?? prepared.temperature,
+      maxRetries: options.maxRetries ?? prepared.maxRetries,
+    });
+
+    return { object: result.output as T };
+  }
+
+  /**
+   * Sinh văn bản theo FeatureKey
+   */
+  async generateTextForFeature<K extends FeatureKey = FeatureKey>(
+    feature: K,
+    payload: PromptPayloadMap[K],
+    options?: {
+      modelName?: string;
+      temperature?: number;
+    },
+  ) {
+    const prepared = this.prepare(feature, payload, options?.modelName);
+
+    return generateText({
+      model: prepared.model,
+      prompt: prepared.prompt,
+      system: prepared.system,
+      temperature: options?.temperature ?? prepared.temperature,
+      providerOptions: prepared.providerOptions as any,
+    });
+  }
 
   embedMany(values: string[]) {
     return embedMany({
-      model: this.aiModelFactory.getModelForTask('EMBEDDING'),
+      model: this.aiModelFactory.getEmbeddingModel(),
       values,
       providerOptions: {
         google: {
@@ -28,7 +116,7 @@ export class AiService {
     messages: NonNullable<Parameters<typeof generateText>[0]['messages']>,
   ) {
     return generateText({
-      model: this.aiModelFactory.getModelForTask('VISION_ANALYZE'),
+      model: this.aiModelFactory.getModel('VISION'),
       messages,
     });
   }
@@ -80,7 +168,7 @@ export class AiService {
     },
   ): Promise<{ object: T }> {
     const model = options.modelName
-      ? this.aiModelFactory.getChatAgentModel(options.modelName)
+      ? this.aiModelFactory.getCustomModel(options.modelName)
       : this.aiModelFactory.getModelForTask(task);
 
     const result = await generateText({
@@ -112,7 +200,7 @@ export class AiService {
   ) {
     return streamText({
       ...options,
-      model: this.aiModelFactory.getModelForTask('BLOCKNOTE_EDITOR'),
+      model: this.aiModelFactory.getModel('STANDARD'),
     });
   }
 
@@ -145,7 +233,7 @@ export class AiService {
     const { temperature, maxOutputTokens, ...rest } = options;
     return streamText({
       ...rest,
-      model: this.aiModelFactory.getChatAgentModel(modelName),
+      model: this.aiModelFactory.getCustomModel(modelName),
       temperature,
       maxOutputTokens,
     });
