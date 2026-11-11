@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import type { DocumentItem } from "@/types";
 import type { AttachedFile, WorkspaceDoc } from "../types";
 import { createId } from "../utils";
@@ -8,6 +8,7 @@ export interface UseAttachmentsOptions {
     file: File,
     onProgress?: (percent: number) => void
   ) => Promise<DocumentItem | undefined>;
+  documents?: DocumentItem[];
 }
 
 /**
@@ -15,9 +16,41 @@ export interface UseAttachmentsOptions {
  * và tài liệu chọn từ Không gian học tập (qua Popover nhúng hoặc Mention @).
  */
 export function useAttachments(options?: UseAttachmentsOptions) {
-  const { uploadFile } = options || {};
+  const { uploadFile, documents } = options || {};
   const [files, setFiles] = useState<AttachedFile[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Tự động đồng bộ trạng thái thực tế từ danh sách documents (SWR Polling)
+  useEffect(() => {
+    if (!documents || documents.length === 0) return;
+    const docMap = new Map(documents.map((d) => [d.id, d]));
+
+    setFiles((prev) => {
+      let hasChange = false;
+      const next = prev.map((f) => {
+        if (!f.documentId) return f;
+        const doc = docMap.get(f.documentId);
+        if (!doc) return f;
+
+        const isReady = doc.ocr_status === "done" && doc.embed_status === "done";
+        const isFailed = doc.ocr_status === "failed" || doc.embed_status === "failed";
+        const nextStatus: AttachedFile["status"] = isReady ? "ready" : isFailed ? "error" : "processing";
+        const nextErrMsg = isFailed ? (doc.processing_error || "Xử lý tài liệu thất bại") : f.errorMessage;
+
+        if (f.status !== nextStatus || f.errorMessage !== nextErrMsg) {
+          hasChange = true;
+          return {
+            ...f,
+            status: nextStatus,
+            errorMessage: nextErrMsg,
+          };
+        }
+        return f;
+      });
+
+      return hasChange ? next : prev;
+    });
+  }, [documents]);
 
   const openLocalPicker = useCallback(() => {
     inputRef.current?.click();
@@ -70,6 +103,10 @@ export function useAttachments(options?: UseAttachmentsOptions) {
             });
 
             if (newDoc) {
+              const isDocReady = newDoc.ocr_status === "done" && newDoc.embed_status === "done";
+              const isDocFailed = newDoc.ocr_status === "failed" || newDoc.embed_status === "failed";
+              const docStatus: AttachedFile["status"] = isDocReady ? "ready" : isDocFailed ? "error" : "processing";
+
               setFiles((prev) =>
                 prev.map((item) =>
                   item.id === task.tempId
@@ -79,8 +116,11 @@ export function useAttachments(options?: UseAttachmentsOptions) {
                         name: newDoc.file_name,
                         size: Number(newDoc.file_size),
                         source: "workspace",
-                        status: "ready",
+                        status: docStatus,
                         progress: 100,
+                        errorMessage: isDocFailed
+                          ? (newDoc.processing_error || "Xử lý tài liệu thất bại")
+                          : undefined,
                       }
                     : item
                 )
@@ -118,53 +158,93 @@ export function useAttachments(options?: UseAttachmentsOptions) {
     [uploadLocalFiles]
   );
 
-  const addWorkspaceDoc = useCallback((docOrName: WorkspaceDoc | string) => {
-    setFiles((prev) => {
-      if (typeof docOrName === "string") {
+  const addWorkspaceDoc = useCallback(
+    (docOrName: WorkspaceDoc | string) => {
+      setFiles((prev) => {
+        if (typeof docOrName === "string") {
+          return [
+            ...prev,
+            { id: createId("ws"), name: docOrName, source: "workspace", status: "ready" },
+          ];
+        }
+
+        // Tránh thêm trùng lặp cùng một tài liệu Workspace
+        if (prev.some((f) => f.source === "workspace" && f.documentId === docOrName.id)) {
+          return prev;
+        }
+
+        const matched = documents?.find((d) => d.id === docOrName.id);
+        let status: AttachedFile["status"] = "ready";
+        let errorMessage: string | undefined;
+
+        if (matched) {
+          if (matched.ocr_status === "failed" || matched.embed_status === "failed") {
+            status = "error";
+            errorMessage = matched.processing_error || "Xử lý tài liệu thất bại";
+          } else if (matched.ocr_status !== "done" || matched.embed_status !== "done") {
+            status = "processing";
+          }
+        }
+
         return [
           ...prev,
-          { id: createId("ws"), name: docOrName, source: "workspace" },
+          {
+            id: docOrName.id,
+            documentId: docOrName.id,
+            name: docOrName.file_name,
+            source: "workspace",
+            status,
+            errorMessage,
+          },
         ];
-      }
+      });
+    },
+    [documents]
+  );
 
-      // Tránh thêm trùng lặp cùng một tài liệu Workspace
-      if (prev.some((f) => f.source === "workspace" && f.documentId === docOrName.id)) {
-        return prev;
-      }
+  const addWorkspaceDocs = useCallback(
+    (docs: WorkspaceDoc[]) => {
+      setFiles((prev) => {
+        const existingDocIds = new Set(
+          prev
+            .filter((f) => f.source === "workspace" && f.documentId)
+            .map((f) => f.documentId)
+        );
 
-      return [
-        ...prev,
-        {
-          id: docOrName.id,
-          documentId: docOrName.id,
-          name: docOrName.file_name,
-          source: "workspace",
-        },
-      ];
-    });
-  }, []);
+        const docMap = new Map((documents || []).map((d) => [d.id, d]));
 
-  const addWorkspaceDocs = useCallback((docs: WorkspaceDoc[]) => {
-    setFiles((prev) => {
-      const existingDocIds = new Set(
-        prev
-          .filter((f) => f.source === "workspace" && f.documentId)
-          .map((f) => f.documentId)
-      );
+        const toAdd: AttachedFile[] = docs
+          .filter((doc) => !existingDocIds.has(doc.id))
+          .map((doc) => {
+            const matched = docMap.get(doc.id);
+            let status: AttachedFile["status"] = "ready";
+            let errorMessage: string | undefined;
 
-      const toAdd: AttachedFile[] = docs
-        .filter((doc) => !existingDocIds.has(doc.id))
-        .map((doc) => ({
-          id: doc.id,
-          documentId: doc.id,
-          name: doc.file_name,
-          source: "workspace",
-        }));
+            if (matched) {
+              if (matched.ocr_status === "failed" || matched.embed_status === "failed") {
+                status = "error";
+                errorMessage = matched.processing_error || "Xử lý tài liệu thất bại";
+              } else if (matched.ocr_status !== "done" || matched.embed_status !== "done") {
+                status = "processing";
+              }
+            }
 
-      if (toAdd.length === 0) return prev;
-      return [...prev, ...toAdd];
-    });
-  }, []);
+            return {
+              id: doc.id,
+              documentId: doc.id,
+              name: doc.file_name,
+              source: "workspace",
+              status,
+              errorMessage,
+            };
+          });
+
+        if (toAdd.length === 0) return prev;
+        return [...prev, ...toAdd];
+      });
+    },
+    [documents]
+  );
 
   const removeFile = useCallback((fileId: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
@@ -172,8 +252,14 @@ export function useAttachments(options?: UseAttachmentsOptions) {
 
   const clearFiles = useCallback(() => setFiles([]), []);
 
+  const restoreFiles = useCallback((filesToRestore: AttachedFile[]) => {
+    setFiles(filesToRestore);
+  }, []);
+
   return {
     files,
+    setFiles,
+    restoreFiles,
     inputRef,
     openLocalPicker,
     handleLocalInputChange,

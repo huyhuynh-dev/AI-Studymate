@@ -56,3 +56,25 @@ export const EvaluationStatusEnum = {
 } as const
 
 export type EvaluationStatusEnum = (typeof EvaluationStatusEnum)[keyof typeof EvaluationStatusEnum]
+
+
+export const ProcessingStatus = {
+  pending: 'pending',
+  processing: 'processing',
+  done: 'done',
+  failed: 'failed'
+} as const
+
+export type ProcessingStatus = (typeof ProcessingStatus)[keyof typeof ProcessingStatus]
+
+
+export const ChunkType = {
+  text: 'text',
+  table: 'table',
+  code: 'code',
+  formula: 'formula',
+  image_desc: 'image_desc',
+  mixed: 'mixed'
+} as const
+
+export type ChunkType = (typeof ChunkType)[keyof typeof ChunkType]

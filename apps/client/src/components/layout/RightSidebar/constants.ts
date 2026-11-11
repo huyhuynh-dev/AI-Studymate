@@ -18,6 +18,9 @@ import type {
 
 export const ASSISTANT_NAME = "StudyMate AI";
 
+/** Thời gian chờ tối đa cho quá trình xử lý tài liệu (OCR + Embedding) trước khi timeout hủy gửi (ms) */
+export const ATTACHMENT_PROCESSING_TIMEOUT_MS = 60_000;
+
 export const AVAILABLE_MODELS: AIModelItem[] = [
   {
     id: "studymate-flash",

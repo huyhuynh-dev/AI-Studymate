@@ -139,6 +139,13 @@ export class DocumentChunksRepoService {
             pageNumbers: number[];
             content: string;
             embedding: number[];
+            rawContent?: string;
+            headings?: string[];
+            bboxes?: unknown[];
+            chunkType?: 'text' | 'table' | 'code' | 'formula' | 'image_desc' | 'mixed';
+            hasImage?: boolean;
+            hasTable?: boolean;
+            metadata?: Record<string, unknown>;
         }>
     ): Promise<number> {
         for (const chunk of chunks) {
@@ -161,13 +168,24 @@ export class DocumentChunksRepoService {
                 const vector = `[${chunk.embedding.join(',')}]`;
                 await tx.$executeRaw(
                     Prisma.sql`
-                        INSERT INTO "document_chunks" ("id", "document_id", "chunk_index", "page_numbers", "content", "embedding", "created_at")
+                        INSERT INTO "document_chunks" (
+                            "id", "document_id", "chunk_index", "page_numbers", "content",
+                            "raw_content", "headings", "bboxes", "chunk_metadata",
+                            "chunk_type", "has_image", "has_table", "embedding", "created_at"
+                        )
                         VALUES (
                             gen_random_uuid(),
                             ${documentId}::uuid,
                             ${chunk.chunkIndex},
                             ${chunk.pageNumbers}::integer[],
                             ${chunk.content},
+                            ${chunk.rawContent ?? null},
+                            ${chunk.headings ?? []}::text[],
+                            ${chunk.bboxes ? JSON.stringify(chunk.bboxes) : null}::jsonb,
+                            ${chunk.metadata ? JSON.stringify(chunk.metadata) : null}::jsonb,
+                            ${chunk.chunkType ?? 'text'}::"ChunkType",
+                            ${chunk.hasImage ?? false},
+                            ${chunk.hasTable ?? false},
                             ${vector}::vector,
                             NOW()
                         )

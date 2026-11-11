@@ -34,6 +34,7 @@ export class StorageService {
         this.s3Client = new S3Client({
             region: "auto",
             endpoint: this.endpoint,
+            forcePathStyle: true,
             credentials: {
                 accessKeyId: this.accessKeyId,
                 secretAccessKey: this.secretAccessKey,
@@ -51,7 +52,7 @@ export class StorageService {
             Key: key,
             ResponseContentDisposition: fileName
                 ? `attachment; filename="${encodeURIComponent(fileName)}"`
-                : undefined,
+                : 'inline',
         });
         return await getSignedUrl(this.s3Client, command, { expiresIn });
     }

@@ -102,6 +102,11 @@ export type Document = Prisma.DocumentModel
  */
 export type DocumentChunk = Prisma.DocumentChunkModel
 /**
+ * Model DocumentAsset
+ * 
+ */
+export type DocumentAsset = Prisma.DocumentAssetModel
+/**
  * Model ChatSession
  * 
  */

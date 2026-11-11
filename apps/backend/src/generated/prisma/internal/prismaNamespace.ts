@@ -409,6 +409,7 @@ export const ModelName = {
   QuizAttemptAnswer: 'QuizAttemptAnswer',
   Document: 'Document',
   DocumentChunk: 'DocumentChunk',
+  DocumentAsset: 'DocumentAsset',
   ChatSession: 'ChatSession',
   Message: 'Message',
   Summary: 'Summary'
@@ -427,7 +428,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "subject" | "conversation" | "flashcardDeck" | "flashcard" | "flashcardReview" | "quiz" | "quizQuestion" | "quizAttempt" | "quizAttemptAnswer" | "document" | "documentChunk" | "chatSession" | "message" | "summary"
+    modelProps: "user" | "subject" | "conversation" | "flashcardDeck" | "flashcard" | "flashcardReview" | "quiz" | "quizQuestion" | "quizAttempt" | "quizAttemptAnswer" | "document" | "documentChunk" | "documentAsset" | "chatSession" | "message" | "summary"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1319,6 +1320,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    DocumentAsset: {
+      payload: Prisma.$DocumentAssetPayload<ExtArgs>
+      fields: Prisma.DocumentAssetFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DocumentAssetFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAssetPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DocumentAssetFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAssetPayload>
+        }
+        findFirst: {
+          args: Prisma.DocumentAssetFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAssetPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DocumentAssetFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAssetPayload>
+        }
+        findMany: {
+          args: Prisma.DocumentAssetFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAssetPayload>[]
+        }
+        create: {
+          args: Prisma.DocumentAssetCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAssetPayload>
+        }
+        createMany: {
+          args: Prisma.DocumentAssetCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DocumentAssetCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAssetPayload>[]
+        }
+        delete: {
+          args: Prisma.DocumentAssetDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAssetPayload>
+        }
+        update: {
+          args: Prisma.DocumentAssetUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAssetPayload>
+        }
+        deleteMany: {
+          args: Prisma.DocumentAssetDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DocumentAssetUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DocumentAssetUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAssetPayload>[]
+        }
+        upsert: {
+          args: Prisma.DocumentAssetUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentAssetPayload>
+        }
+        aggregate: {
+          args: Prisma.DocumentAssetAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDocumentAsset>
+        }
+        groupBy: {
+          args: Prisma.DocumentAssetGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DocumentAssetGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DocumentAssetCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DocumentAssetCountAggregateOutputType> | number
+        }
+      }
+    }
     ChatSession: {
       payload: Prisma.$ChatSessionPayload<ExtArgs>
       fields: Prisma.ChatSessionFieldRefs
@@ -1748,8 +1823,12 @@ export const DocumentScalarFieldEnum = {
   file_name: 'file_name',
   mime_type: 'mime_type',
   file_size: 'file_size',
+  file_hash: 'file_hash',
   storage_key: 'storage_key',
+  docling_json_key: 'docling_json_key',
   raw_text: 'raw_text',
+  page_count: 'page_count',
+  doc_metadata: 'doc_metadata',
   processing_error: 'processing_error',
   uploaded_at: 'uploaded_at',
   ocr_status: 'ocr_status',
@@ -1765,12 +1844,37 @@ export const DocumentChunkScalarFieldEnum = {
   id: 'id',
   document_id: 'document_id',
   chunk_index: 'chunk_index',
-  page_numbers: 'page_numbers',
   content: 'content',
+  raw_content: 'raw_content',
+  token_count: 'token_count',
+  chunk_type: 'chunk_type',
+  headings: 'headings',
+  has_image: 'has_image',
+  has_table: 'has_table',
+  page_numbers: 'page_numbers',
+  bboxes: 'bboxes',
+  chunk_metadata: 'chunk_metadata',
   created_at: 'created_at'
 } as const
 
 export type DocumentChunkScalarFieldEnum = (typeof DocumentChunkScalarFieldEnum)[keyof typeof DocumentChunkScalarFieldEnum]
+
+
+export const DocumentAssetScalarFieldEnum = {
+  id: 'id',
+  document_id: 'document_id',
+  chunk_id: 'chunk_id',
+  asset_type: 'asset_type',
+  self_ref: 'self_ref',
+  page_no: 'page_no',
+  bbox: 'bbox',
+  storage_key: 'storage_key',
+  caption: 'caption',
+  vlm_description: 'vlm_description',
+  created_at: 'created_at'
+} as const
+
+export type DocumentAssetScalarFieldEnum = (typeof DocumentAssetScalarFieldEnum)[keyof typeof DocumentAssetScalarFieldEnum]
 
 
 export const ChatSessionScalarFieldEnum = {
@@ -2023,6 +2127,34 @@ export type BigIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 
 export type ListBigIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BigInt[]'>
     
 
+
+/**
+ * Reference to a field of type 'ProcessingStatus'
+ */
+export type EnumProcessingStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProcessingStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'ProcessingStatus[]'
+ */
+export type ListEnumProcessingStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProcessingStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ChunkType'
+ */
+export type EnumChunkTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ChunkType'>
+    
+
+
+/**
+ * Reference to a field of type 'ChunkType[]'
+ */
+export type ListEnumChunkTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ChunkType[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -2186,6 +2318,7 @@ export type GlobalOmitConfig = {
   quizAttemptAnswer?: Prisma.QuizAttemptAnswerOmit
   document?: Prisma.DocumentOmit
   documentChunk?: Prisma.DocumentChunkOmit
+  documentAsset?: Prisma.DocumentAssetOmit
   chatSession?: Prisma.ChatSessionOmit
   message?: Prisma.MessageOmit
   summary?: Prisma.SummaryOmit
