@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
 import { Job, Worker } from 'bullmq';
 import { Prisma } from '../../generated/prisma/client.js';
-import type { Document } from '../../generated/prisma/client.js';
+import type { Document, DocumentAsset } from '../../generated/prisma/client.js';
 import { StorageService } from '../../storage/storage.service.js';
 import { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.service.js';
 import {
@@ -210,6 +210,7 @@ export class DocumentIngestionProcessor
 
   /**
    * Kiểm tra và tái sử dụng kết quả nếu trong cùng conversation đã có tài liệu trùng SHA-256
+   * và dữ liệu chunks/assets của tài liệu nguồn đã đầy đủ 100%.
    */
   private async tryReuseDuplicateDocument(
     doc: Document,
@@ -226,15 +227,26 @@ export class DocumentIngestionProcessor
       return false;
     }
 
+    const existingAssets =
+      await this.documentAssetsRepo.findAssetsByDocumentId(existingDoc.id);
+
+    // Nếu tài liệu cũ có asset bị thiếu chunk_id hoặc thiếu vlm_description (từ bản chạy cũ chưa chuẩn),
+    // không tái sử dụng mà chạy lại pipeline mới để làm giàu đủ 100% dữ liệu.
+    if (existingAssets.some((a) => !a.chunk_id || !a.vlm_description)) {
+      this.logger.log(
+        `Tài liệu trùng file_hash [${existingDoc.id}] có asset chưa đủ chunk_id/vlm_description, tiến hành xử lý mới cho [${doc.id}]`,
+      );
+      return false;
+    }
+
     const copiedChunks = await this.documentChunksRepo.cloneChunksFromDocument(
       existingDoc.id,
       doc.id,
     );
 
-    const existingAssets =
-      await this.documentAssetsRepo.findAssetsByDocumentId(existingDoc.id);
+    let createdAssets: DocumentAsset[] = [];
     if (existingAssets.length > 0) {
-      await this.documentAssetsRepo.replaceDocumentAssets(
+      createdAssets = await this.documentAssetsRepo.replaceDocumentAssets(
         doc.id,
         existingAssets.map((a) => ({
           assetType: a.asset_type,
@@ -245,6 +257,16 @@ export class DocumentIngestionProcessor
           caption: a.caption,
           vlmDescription: a.vlm_description,
         })),
+      );
+    }
+
+    if (createdAssets.length > 0 && typeof this.documentChunksRepo.findChunkRecordsByDocumentId === 'function') {
+      const clonedChunkRecords =
+        await this.documentChunksRepo.findChunkRecordsByDocumentId(doc.id);
+      await this.linkInsertedChunksToAssets(
+        doc.id,
+        clonedChunkRecords,
+        createdAssets,
       );
     }
 
@@ -313,6 +335,14 @@ export class DocumentIngestionProcessor
         rawContent: chunk.raw_content.trim(),
         tokenCount: Math.max(1, Math.ceil(chunk.content.length / 4)),
         headings: chunk.headings,
+        bboxes: [
+          {
+            self_ref: '#/pictures/0',
+            label: visionOutput.image_category,
+            page_no: 1,
+            bbox: null,
+          },
+        ],
         chunkType: chunk.chunk_type,
         hasTable: chunk.has_table,
         hasImage: chunk.has_image,
@@ -423,8 +453,8 @@ export class DocumentIngestionProcessor
   /**
    * TRƯỜNG HỢP 1B (Cách 3A): Xử lý tệp tài liệu có cấu trúc (PDF, DOCX, PPTX, XLSX, CSV...)
    * Bước 1: Convert qua Docling (lấy md_content + json_content + ảnh crop + VLM Tiếng Việt).
-   * Bước 2: Truyền json_docling nhẹ sang API HybridChunker (không chạy lại OCR/VLM lần 2).
-   * Bước 3: Tạo Vector Embedding, lưu document_chunks và ánh xạ chunk_id vào document_assets.
+   * Bước 2: Truyền json_docling nhẹ sang API HybridChunker + Giải tham chiếu JSON Pointer & Post-Chunking Enrichment.
+   * Bước 3: Tạo Vector Embedding, lưu document_chunks và ánh xạ đa tầng chunk_id vào document_assets (đạt 100%).
    */
   private async processStructuredDocument(
     doc: Document,
@@ -441,7 +471,7 @@ export class DocumentIngestionProcessor
       fileName,
     );
 
-    // Upload file .docling.json (đã xóa chuỗi base64 nặng) lên R2
+    // Upload file .docling.json (đã làm nhẹ base64 bằng PNG 1x1) lên R2
     let doclingJsonKey: string | null = null;
     if (conversion.sanitizedJsonContent) {
       doclingJsonKey = `users/${doc.user_id}/conversations/${doc.conversation_id}/docling/${doc.id}.docling.json`;
@@ -457,8 +487,9 @@ export class DocumentIngestionProcessor
     }
 
     // Upload các ảnh crop (pictures) lên R2 và lưu vào bảng document_assets
+    let createdAssets: DocumentAsset[] = [];
     if (conversion.extractedPictures.length > 0) {
-      await this.uploadAndSaveExtractedPictures(
+      createdAssets = await this.uploadAndSaveExtractedPictures(
         doc,
         conversion.extractedPictures,
       );
@@ -497,6 +528,7 @@ export class DocumentIngestionProcessor
         chunks = await this.doclingService.chunkFromDoclingJson(
           conversion.sanitizedJsonContent,
           fileName,
+          conversion.extractedPictures,
         );
       } catch (err: unknown) {
         this.logger.warn(
@@ -508,17 +540,30 @@ export class DocumentIngestionProcessor
     // Dự phòng an toàn (Fallback): Chỉ khi json_docling thất bại hoặc trả về 0 chunks
     if (chunks.length === 0 && conversion.mdContent.length > 0) {
       this.logger.log(
-        `[Nhánh Tài liệu] Chạy fallback chunking qua Markdown cho [${doc.id}]...`,
+        `[Nhánh Tài liệu] Chạy fallback chunking qua Markdown kết hợp Post-Chunking Enrichment cho [${doc.id}]...`,
       );
-      chunks = await this.doclingService.chunkMarkdownHybrid(
+      const rawMarkdownChunks = await this.doclingService.chunkMarkdownHybrid(
         conversion.mdContent,
         fileName,
       );
+      chunks =
+        typeof this.doclingService.enrichChunksWithDoclingJson === 'function'
+          ? this.doclingService.enrichChunksWithDoclingJson(
+              rawMarkdownChunks,
+              conversion.sanitizedJsonContent,
+              conversion.extractedPictures,
+            )
+          : rawMarkdownChunks;
     }
 
-    // Bước 3: Tạo Embedding, lưu document_chunks và liên kết chunk_id sang document_assets
+    // Bước 3: Tạo Embedding, lưu document_chunks và liên kết đa tầng chunk_id sang document_assets
     const insertedChunks = await this.embedAndSaveChunks(doc.id, chunks);
-    await this.linkInsertedChunksToAssets(doc.id, insertedChunks);
+    await this.linkInsertedChunksToAssets(
+      doc.id,
+      insertedChunks,
+      createdAssets,
+      conversion.extractedPictures,
+    );
 
     await this.documentsRepo.updateDocumentById(doc.id, {
       embed_status: 'done',
@@ -533,7 +578,7 @@ export class DocumentIngestionProcessor
   private async uploadAndSaveExtractedPictures(
     doc: Document,
     pictures: ExtractedDoclingPicture[],
-  ): Promise<void> {
+  ): Promise<DocumentAsset[]> {
     const assetInputs: CreateDocumentAssetInput[] = [];
 
     for (const pic of pictures) {
@@ -557,7 +602,10 @@ export class DocumentIngestionProcessor
       });
     }
 
-    await this.documentAssetsRepo.replaceDocumentAssets(doc.id, assetInputs);
+    return await this.documentAssetsRepo.replaceDocumentAssets(
+      doc.id,
+      assetInputs,
+    );
   }
 
   private async embedAndSaveChunks(
@@ -592,12 +640,23 @@ export class DocumentIngestionProcessor
     );
   }
 
+  /**
+   * Liên kết đa tầng 100% từ document_chunks sang document_assets.chunk_id:
+   * - Tầng 1: Khớp chính xác qua self_ref (ví dụ "#/pictures/0") trong chunk.metadata.self_refs
+   * - Tầng 2: Khớp chunk có cùng page_no và nội dung chứa asset.caption hoặc asset.vlm_description
+   * - Tầng 3: Khớp chunk có cùng page_no (ưu tiên chunk có hasImage = true hoặc chunk đầu tiên trên trang đó)
+   */
   private async linkInsertedChunksToAssets(
     documentId: string,
     insertedChunks: InsertedChunkRecord[],
+    createdAssets?: DocumentAsset[],
+    extractedPictures?: ExtractedDoclingPicture[],
   ): Promise<void> {
-    const selfRefToChunkId = new Map<string, string>();
+    if (insertedChunks.length === 0) {
+      return;
+    }
 
+    const selfRefToChunkId = new Map<string, string>();
     for (const record of insertedChunks) {
       const refs = record.metadata?.self_refs;
       if (!Array.isArray(refs)) continue;
@@ -613,12 +672,142 @@ export class DocumentIngestionProcessor
       }
     }
 
+    // Bổ sung fallback qua danh sách extractedPictures nếu selfRefToChunkId còn thiếu
+    if (extractedPictures && extractedPictures.length > 0) {
+      for (const pic of extractedPictures) {
+        if (selfRefToChunkId.has(pic.selfRef)) continue;
+        const fallbackChunk = this.findFallbackChunkForAsset(insertedChunks, {
+          pageNo: pic.pageNo,
+          caption: pic.caption,
+          vlmDescription: pic.vlmDescription,
+        });
+        if (fallbackChunk) {
+          selfRefToChunkId.set(pic.selfRef, fallbackChunk.id);
+        }
+      }
+    }
+
     if (selfRefToChunkId.size > 0) {
       await this.documentAssetsRepo.linkAssetsToChunksBySelfRef(
         documentId,
         selfRefToChunkId,
       );
     }
+
+    // Kiểm tra trên danh sách bản ghi document_assets thực tế để đảm bảo 100% có chunk_id
+    const assetsToVerify =
+      createdAssets && createdAssets.length > 0
+        ? createdAssets
+        : await this.documentAssetsRepo.findAssetsByDocumentId(documentId);
+
+    if (!assetsToVerify || assetsToVerify.length === 0) {
+      return;
+    }
+
+    const assetIdToChunkId = new Map<string, string>();
+    for (const asset of assetsToVerify) {
+      if (asset.chunk_id) continue;
+
+      const bySelfRef =
+        asset.self_ref && selfRefToChunkId.has(asset.self_ref)
+          ? selfRefToChunkId.get(asset.self_ref)
+          : undefined;
+      if (bySelfRef) {
+        assetIdToChunkId.set(asset.id, bySelfRef);
+        continue;
+      }
+
+      const fallbackChunk = this.findFallbackChunkForAsset(insertedChunks, {
+        pageNo: asset.page_no,
+        caption: asset.caption,
+        vlmDescription: asset.vlm_description,
+      });
+      if (fallbackChunk) {
+        assetIdToChunkId.set(asset.id, fallbackChunk.id);
+      }
+    }
+
+    if (
+      assetIdToChunkId.size > 0 &&
+      typeof this.documentAssetsRepo.linkAssetsToChunksById === 'function'
+    ) {
+      await this.documentAssetsRepo.linkAssetsToChunksById(
+        documentId,
+        assetIdToChunkId,
+      );
+    }
+  }
+
+  private findFallbackChunkForAsset(
+    insertedChunks: InsertedChunkRecord[],
+    assetInfo: {
+      pageNo: number | null;
+      caption: string | null;
+      vlmDescription: string | null;
+    },
+  ): InsertedChunkRecord | null {
+    if (insertedChunks.length === 0) return null;
+
+    const samePageChunks =
+      assetInfo.pageNo !== null
+        ? insertedChunks.filter(
+            (c) =>
+              Array.isArray(c.pageNumbers) &&
+              c.pageNumbers.includes(assetInfo.pageNo!),
+          )
+        : [];
+    const candidatePool =
+      samePageChunks.length > 0 ? samePageChunks : insertedChunks;
+
+    const captionProbe = this.buildNormalizedProbe(assetInfo.caption);
+    const vlmProbe = this.buildNormalizedProbe(assetInfo.vlmDescription);
+
+    if (captionProbe || vlmProbe) {
+      for (const chunk of candidatePool) {
+        const normContent = this.normalizeText(chunk.content ?? '');
+        if (
+          (captionProbe && normContent.includes(captionProbe)) ||
+          (vlmProbe && normContent.includes(vlmProbe))
+        ) {
+          return chunk;
+        }
+      }
+
+      if (candidatePool !== insertedChunks) {
+        for (const chunk of insertedChunks) {
+          const normContent = this.normalizeText(chunk.content ?? '');
+          if (
+            (captionProbe && normContent.includes(captionProbe)) ||
+            (vlmProbe && normContent.includes(vlmProbe))
+          ) {
+            return chunk;
+          }
+        }
+      }
+    }
+
+    if (samePageChunks.length > 0) {
+      const imageChunk = samePageChunks.find((c) => c.hasImage === true);
+      return imageChunk ?? samePageChunks[0];
+    }
+
+    return insertedChunks[0];
+  }
+
+  private normalizeText(text: string): string {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private buildNormalizedProbe(text: string | null | undefined): string | null {
+    if (!text) return null;
+    const norm = this.normalizeText(text);
+    if (norm.length < 6) return null;
+    return norm.length > 64 ? norm.slice(0, 64) : norm;
   }
 
   private isImageDocument(mimeType: string, fileName: string): boolean {

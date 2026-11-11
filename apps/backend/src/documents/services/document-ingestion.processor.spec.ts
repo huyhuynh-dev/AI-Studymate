@@ -27,10 +27,12 @@ describe('DocumentIngestionProcessor', () => {
   let documentChunksRepo: {
     replaceChunksWithEmbeddings: ReturnType<typeof vi.fn>;
     cloneChunksFromDocument: ReturnType<typeof vi.fn>;
+    findChunkRecordsByDocumentId: ReturnType<typeof vi.fn>;
   };
   let documentAssetsRepo: {
     replaceDocumentAssets: ReturnType<typeof vi.fn>;
     linkAssetsToChunksBySelfRef: ReturnType<typeof vi.fn>;
+    linkAssetsToChunksById: ReturnType<typeof vi.fn>;
     findAssetsByDocumentId: ReturnType<typeof vi.fn>;
   };
   let embeddingService: {
@@ -44,6 +46,7 @@ describe('DocumentIngestionProcessor', () => {
     convertDocument: ReturnType<typeof vi.fn>;
     chunkFromDoclingJson: ReturnType<typeof vi.fn>;
     chunkMarkdownHybrid: ReturnType<typeof vi.fn>;
+    enrichChunksWithDoclingJson: ReturnType<typeof vi.fn>;
     extractTocFromMarkdown: ReturnType<typeof vi.fn>;
   };
   let documentsQueueService: {
@@ -78,14 +81,32 @@ describe('DocumentIngestionProcessor', () => {
         {
           id: 'chunk-uuid-1',
           chunkIndex: 0,
+          pageNumbers: [1],
+          content: '# Chapter 1\nSample text',
+          hasImage: true,
           metadata: { self_refs: ['#/pictures/0'] },
         },
       ]),
       cloneChunksFromDocument: vi.fn().mockResolvedValue(2),
+      findChunkRecordsByDocumentId: vi.fn().mockResolvedValue([]),
     };
     documentAssetsRepo = {
-      replaceDocumentAssets: vi.fn().mockResolvedValue([]),
+      replaceDocumentAssets: vi.fn().mockResolvedValue([
+        {
+          id: 'asset-uuid-1',
+          document_id: 'doc-1',
+          chunk_id: null,
+          asset_type: 'chart',
+          self_ref: '#/pictures/0',
+          page_no: 1,
+          bbox: { l: 0, t: 0, r: 50, b: 50 },
+          storage_key: 'key',
+          caption: 'Figure 1',
+          vlm_description: 'Mô tả biểu đồ tiếng Việt',
+        },
+      ]),
       linkAssetsToChunksBySelfRef: vi.fn().mockResolvedValue(undefined),
+      linkAssetsToChunksById: vi.fn().mockResolvedValue(undefined),
       findAssetsByDocumentId: vi.fn().mockResolvedValue([]),
     };
     embeddingService = {
@@ -103,6 +124,7 @@ describe('DocumentIngestionProcessor', () => {
       convertDocument: vi.fn(),
       chunkFromDoclingJson: vi.fn(),
       chunkMarkdownHybrid: vi.fn(),
+      enrichChunksWithDoclingJson: vi.fn((chunks) => chunks),
       extractTocFromMarkdown: vi.fn().mockReturnValue([]),
     };
     documentsQueueService = {
@@ -195,6 +217,92 @@ describe('DocumentIngestionProcessor', () => {
         embed_status: 'done',
         processing_error: null,
       }),
+    );
+  });
+
+  it('links assets via fallback page_no and caption/vlmDescription when self_refs do not directly match', async () => {
+    doclingService.convertDocument.mockResolvedValue({
+      mdContent: '# Page 2\nFigure 2: Depth-First Search Tree',
+      sanitizedJsonContent: { pages: { '1': {}, '2': {} }, pictures: [] },
+      pageCount: 2,
+      docMetadata: {
+        toc: [{ text: 'Page 2', level: 1, page_no: 2 }],
+        processing_time: 2.0,
+        total_tables: 0,
+        total_pictures: 1,
+      },
+      extractedPictures: [
+        {
+          index: 1,
+          selfRef: '#/pictures/1',
+          assetType: 'diagram',
+          pageNo: 2,
+          bbox: { l: 10, t: 10, r: 100, b: 100 },
+          caption: 'Figure 2: Depth-First Search Tree',
+          vlmDescription: 'Sơ đồ cây tìm kiếm theo chiều sâu DFS',
+          mimeType: 'image/png',
+          buffer: Buffer.from('cropped-png-2'),
+        },
+      ],
+    });
+
+    documentAssetsRepo.replaceDocumentAssets.mockResolvedValue([
+      {
+        id: 'asset-uuid-2',
+        document_id: 'doc-1',
+        chunk_id: null,
+        asset_type: 'diagram',
+        self_ref: '#/pictures/1',
+        page_no: 2,
+        bbox: { l: 10, t: 10, r: 100, b: 100 },
+        storage_key: 'key-2',
+        caption: 'Figure 2: Depth-First Search Tree',
+        vlm_description: 'Sơ đồ cây tìm kiếm theo chiều sâu DFS',
+      },
+    ]);
+
+    doclingService.chunkFromDoclingJson.mockResolvedValue([
+      {
+        index: 0,
+        pageNumbers: [2],
+        content: '# Page 2\nFigure 2: Depth-First Search Tree',
+        rawContent: 'Figure 2: Depth-First Search Tree',
+        tokenCount: 12,
+        headings: ['Page 2'],
+        chunkType: 'text',
+        hasImage: false,
+        hasTable: false,
+        metadata: { self_refs: [] },
+      },
+    ]);
+
+    documentChunksRepo.replaceChunksWithEmbeddings.mockResolvedValue([
+      {
+        id: 'chunk-uuid-page-2',
+        chunkIndex: 0,
+        pageNumbers: [2],
+        content: '# Page 2\nFigure 2: Depth-First Search Tree',
+        hasImage: false,
+        metadata: { self_refs: [] },
+      },
+    ]);
+
+    await invokeJob({
+      documentId: 'doc-1',
+      mimeType: 'application/pdf',
+      storageKey: mockDocument.storage_key,
+      fileName: 'test.pdf',
+    });
+
+    expect(
+      documentAssetsRepo.linkAssetsToChunksBySelfRef,
+    ).toHaveBeenCalledWith(
+      'doc-1',
+      new Map([['#/pictures/1', 'chunk-uuid-page-2']]),
+    );
+    expect(documentAssetsRepo.linkAssetsToChunksById).toHaveBeenCalledWith(
+      'doc-1',
+      new Map([['asset-uuid-2', 'chunk-uuid-page-2']]),
     );
   });
 

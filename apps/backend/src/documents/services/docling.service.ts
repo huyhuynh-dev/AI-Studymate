@@ -79,10 +79,42 @@ export class DoclingTaskError extends Error {
   }
 }
 
+interface DomProvEntry {
+  page_no: number | null;
+  bbox: Record<string, unknown> | null;
+}
+
+interface DomIndexedItem {
+  selfRef: string;
+  label: string;
+  provs: DomProvEntry[];
+  normalizedText: string;
+}
+
+interface PictureEnrichmentMeta {
+  selfRef: string;
+  assetType: string;
+  pageNo: number | null;
+  bbox: Record<string, unknown> | null;
+  caption: string | null;
+  vlmDescription: string | null;
+}
+
+interface DoclingDomLookupIndex {
+  byRef: Map<string, DomIndexedItem>;
+  childOrCaptionToParentRefs: Map<string, string[]>;
+  pictures: PictureEnrichmentMeta[];
+}
+
 const DATA_URI_IMAGE_REGEX =
   /^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)$/;
 const MARKDOWN_BASE64_IMAGE_REGEX =
   /!\[([^\]]*)\]\(data:image\/[a-zA-Z0-9.+-]+;base64,[^)]+\)/g;
+const MARKDOWN_PICTURE_REF_REGEX = /#\/pictures\/\d+/g;
+const MARKDOWN_TABLE_SEPARATOR_REGEX = /\|\s*:?-{3,}:?\s*\|/;
+const MARKDOWN_CODE_FENCE_REGEX = /```/;
+const MARKDOWN_DISPLAY_FORMULA_REGEX = /\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]/;
+const MARKDOWN_IMAGE_TAG_REGEX = /!\[[^\]]*\]/;
 
 export const TRANSPARENT_1X1_PNG_DATA_URI =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
@@ -182,7 +214,7 @@ export class DoclingService {
   /**
    * Chuyển đổi tài liệu (PDF, DOCX, PPTX, XLSX, CSV...) sang Enriched Markdown + DoclingDocument JSON.
    * Đồng thời bóc tách các hình ảnh nhúng (base64), trích xuất mục lục (TOC), số trang,
-   * và làm sạch chuỗi Base64 nặng trong JSON để sẵn sàng lưu R2 & chuyển tiếp sang HybridChunker.
+   * và làm nhẹ chuỗi Base64 nặng trong JSON bằng PNG 1x1 hợp lệ để sẵn sàng lưu R2 & chuyển tiếp sang HybridChunker.
    */
   async convertDocument(
     fileBuffer: Buffer,
@@ -287,24 +319,31 @@ export class DoclingService {
 
   /**
    * Cách 3A: Phân mảnh tài liệu bằng cách truyền trực tiếp cây DOM json_docling
-   * đã được Convert ở Bước 1 sang API HybridChunker.
-   * Giúp Docling Server KHÔNG phải chạy lại OCR, TableFormer hay gọi lại VLM API lần 2.
+   * đã được Convert ở Bước 1 sang API HybridChunker, sau đó giải tham chiếu JSON Pointer
+   * và làm giàu đầy đủ bboxes, page_numbers, self_refs, chunk_type.
    */
   async chunkFromDoclingJson(
     sanitizedJsonContent: Record<string, unknown>,
     originalFileName: string,
+    extractedPictures?: ExtractedDoclingPicture[],
   ): Promise<DoclingChunkResult[]> {
     const jsonString = JSON.stringify(sanitizedJsonContent);
     const base64String = Buffer.from(jsonString, 'utf-8').toString('base64');
     const baseName = originalFileName.replace(/\.[^.]+$/, '') || 'document';
     const jsonFileName = `${baseName}.json`;
 
-    return this.executeHybridChunk({
+    const rawChunks = await this.executeHybridChunk({
       base64String,
       fileName: jsonFileName,
       mode: 'json_docling',
       actionDesc: `chunk json_docling [${jsonFileName}]`,
     });
+
+    return this.enrichChunksWithDoclingJson(
+      rawChunks,
+      sanitizedJsonContent,
+      extractedPictures,
+    );
   }
 
   /**
@@ -351,6 +390,39 @@ export class DoclingService {
     });
   }
 
+  /**
+   * Post-Chunking Enrichment:
+   * 1. Giải tham chiếu trực tiếp các JSON Pointer trong chunk.metadata.self_refs (ví dụ "#/texts/0", "#/tables/0", "#/pictures/1")
+   *    sang tọa độ prov[].bbox, prov[].page_no và label từ sanitizedJsonContent.
+   * 2. Hỗ trợ liên kết bắc cầu: nếu chunk chứa caption (#/texts/k) của một ảnh (#/pictures/m) hoặc bảng (#/tables/n),
+   *    tự động gắn thêm self_ref và bbox của ảnh/bảng đó vào chunk.
+   * 3. Ánh xạ ngược theo nội dung/trang khi chunk đến từ Fallback Markdown (bboxes hoặc self_refs rỗng).
+   * 4. Đảm bảo 100% hình ảnh (extractedPictures / pictures) được gắn vào chunk phù hợp nhất.
+   * 5. Phát hiện trực tiếp trên chunk.content cho bảng Markdown (| --- |), khối code (```), công thức ($$) và ảnh.
+   */
+  public enrichChunksWithDoclingJson(
+    chunks: DoclingChunkResult[],
+    sanitizedJsonContent?: Record<string, unknown> | null,
+    extractedPictures?: ExtractedDoclingPicture[],
+  ): DoclingChunkResult[] {
+    if (chunks.length === 0) {
+      return [];
+    }
+
+    const domIndex = this.buildDomLookupIndex(
+      sanitizedJsonContent ?? null,
+      extractedPictures ?? [],
+    );
+
+    const enriched = chunks.map((chunk) =>
+      this.enrichSingleChunkFromDom(chunk, domIndex),
+    );
+
+    this.assignUnmatchedPicturesToChunks(enriched, domIndex.pictures);
+
+    return enriched.map((chunk) => this.finalizeChunkClassification(chunk));
+  }
+
   private normalizeConvertFileName(fileName: string): string {
     const trimmed = fileName?.trim() || 'document.pdf';
     if (trimmed.toLowerCase().endsWith('.txt')) {
@@ -395,16 +467,18 @@ export class DoclingService {
     const pageKeys = Object.keys(pagesObj);
     const pageCount = Math.max(1, pageKeys.length);
 
-    // Xóa chuỗi base64 ảnh chụp toàn trang trong pages.*.image.uri (nếu có)
+    // Làm nhẹ chuỗi base64 ảnh chụp toàn trang trong pages.*.image.uri bằng PNG 1x1 hợp lệ
     for (const pageKey of pageKeys) {
       const pageItem = pagesObj[pageKey];
       if (
         pageItem &&
         typeof pageItem === 'object' &&
         pageItem.image &&
-        typeof pageItem.image === 'object'
+        typeof pageItem.image === 'object' &&
+        'uri' in pageItem.image
       ) {
-        delete (pageItem.image as Record<string, unknown>).uri;
+        (pageItem.image as Record<string, unknown>).uri =
+          TRANSPARENT_1X1_PNG_DATA_URI;
       }
     }
 
@@ -451,19 +525,10 @@ export class DoclingService {
           ? pic.self_ref.trim()
           : `#/pictures/${idx}`;
 
-      const provArr = Array.isArray(pic.prov)
-        ? (pic.prov as Array<Record<string, unknown>>)
-        : [];
-      const firstProv = provArr[0];
-      const pageNo =
-        typeof firstProv?.page_no === 'number' &&
-        Number.isInteger(firstProv.page_no)
-          ? firstProv.page_no
-          : null;
-      const bbox =
-        firstProv?.bbox && typeof firstProv.bbox === 'object'
-          ? (firstProv.bbox as Record<string, unknown>)
-          : null;
+      const provs = this.extractProvEntries(pic.prov);
+      const firstProv = provs[0];
+      const pageNo = firstProv?.page_no ?? null;
+      const bbox = firstProv?.bbox ?? null;
 
       const { assetType, vlmDescription } = this.extractPictureAnnotations(pic);
       const caption = this.extractPictureCaption(pic, textsArr);
@@ -504,6 +569,10 @@ export class DoclingService {
     return results;
   }
 
+  /**
+   * Trích xuất assetType và vlmDescription từ cả chuẩn mới `pic.meta` (Docling 2.x PictureMeta)
+   * lẫn chuẩn cũ `pic.annotations` (legacy PictureDataType[]).
+   */
   private extractPictureAnnotations(pic: Record<string, unknown>): {
     assetType: string;
     vlmDescription: string | null;
@@ -511,15 +580,53 @@ export class DoclingService {
     let assetType = typeof pic.label === 'string' ? pic.label : 'picture';
     const descriptions: string[] = [];
 
+    const addDescription = (text: unknown) => {
+      if (typeof text !== 'string') return;
+      const trimmed = text.trim();
+      if (trimmed && !descriptions.includes(trimmed)) {
+        descriptions.push(trimmed);
+      }
+    };
+
+    // 1. Đọc từ pic.meta (Docling 2.x PictureMeta: description + classification)
+    const picMeta =
+      pic.meta && typeof pic.meta === 'object'
+        ? (pic.meta as Record<string, unknown>)
+        : null;
+    if (picMeta) {
+      const descField =
+        picMeta.description && typeof picMeta.description === 'object'
+          ? (picMeta.description as Record<string, unknown>)
+          : null;
+      if (descField) {
+        addDescription(descField.text);
+      }
+
+      const classField =
+        picMeta.classification && typeof picMeta.classification === 'object'
+          ? (picMeta.classification as Record<string, unknown>)
+          : null;
+      const predictions = Array.isArray(classField?.predictions)
+        ? (classField.predictions as Array<Record<string, unknown>>)
+        : [];
+      const topPrediction = predictions[0];
+      if (
+        typeof topPrediction?.class_name === 'string' &&
+        topPrediction.class_name.trim()
+      ) {
+        assetType = topPrediction.class_name.trim();
+      }
+    }
+
+    // 2. Đọc từ pic.annotations (Legacy PictureDataType[])
     const annotations = Array.isArray(pic.annotations)
       ? (pic.annotations as Array<Record<string, unknown>>)
       : [];
 
     for (const ann of annotations) {
       if (!ann || typeof ann !== 'object') continue;
-      if (typeof ann.text === 'string' && ann.text.trim()) {
-        descriptions.push(ann.text.trim());
-      }
+      addDescription(ann.text);
+
       const classes = Array.isArray(ann.predicted_classes)
         ? (ann.predicted_classes as Array<Record<string, unknown>>)
         : [];
@@ -707,28 +814,49 @@ export class DoclingService {
           ? c.raw_content.trim()
           : content;
 
-    const meta =
+    const topMetadata =
+      c.metadata && typeof c.metadata === 'object'
+        ? (c.metadata as Record<string, unknown>)
+        : {};
+    const legacyMeta =
       c.meta && typeof c.meta === 'object'
         ? (c.meta as Record<string, unknown>)
         : {};
+    const meta: Record<string, unknown> = {
+      ...legacyMeta,
+      ...topMetadata,
+    };
 
-    const headings = Array.isArray(meta.headings)
-      ? meta.headings.filter((h): h is string => typeof h === 'string')
-      : Array.isArray(c.headings)
-        ? c.headings.filter((h): h is string => typeof h === 'string')
+    const headings = Array.isArray(c.headings)
+      ? c.headings.filter((h): h is string => typeof h === 'string')
+      : Array.isArray(meta.headings)
+        ? meta.headings.filter((h): h is string => typeof h === 'string')
         : [];
 
-    const docItems = Array.isArray(meta.doc_items)
-      ? (meta.doc_items as Array<Record<string, unknown>>)
-      : [];
+    const captions = Array.isArray(c.captions)
+      ? c.captions.filter((cap): cap is string => typeof cap === 'string')
+      : Array.isArray(meta.captions)
+        ? meta.captions.filter((cap): cap is string => typeof cap === 'string')
+        : [];
+
+    const rawDocItems = Array.isArray(c.doc_items)
+      ? c.doc_items
+      : Array.isArray(meta.doc_items)
+        ? meta.doc_items
+        : [];
 
     const { pageNumbers, bboxes, selfRefs, labels } =
-      this.extractDocItemsDetails(docItems, c.page_numbers);
+      this.extractDocItemsDetails(rawDocItems, c.page_numbers);
+
+    this.applyContentHeuristics(content, selfRefs, labels);
 
     const hasTable =
       c.has_table === true ||
+      meta.has_table === true ||
       labels.has('table') ||
-      labels.has('document_index');
+      labels.has('document_index') ||
+      selfRefs.some((ref) => ref.startsWith('#/tables/'));
+
     const hasImage =
       c.has_image === true ||
       meta.has_image === true ||
@@ -746,6 +874,14 @@ export class DoclingService {
           ? c.token_count
           : Math.max(1, Math.ceil(content.length / 4));
 
+    const chunkMetadata: Record<string, unknown> = {
+      ...meta,
+      self_refs: selfRefs,
+    };
+    if (captions.length > 0) {
+      chunkMetadata.captions = captions;
+    }
+
     return {
       index: typeof c.chunk_index === 'number' ? c.chunk_index : defaultIdx,
       pageNumbers,
@@ -757,15 +893,17 @@ export class DoclingService {
       chunkType,
       hasImage,
       hasTable,
-      metadata: {
-        ...meta,
-        self_refs: selfRefs,
-      },
+      metadata: chunkMetadata,
     };
   }
 
+  /**
+   * Đọc danh sách doc_items hỗ trợ cả 2 định dạng:
+   * 1. Chuỗi JSON Pointer từ ChunkedDocumentResultItem của docling-serve ("#/texts/0", "#/tables/0", "#/pictures/1")
+   * 2. Object inline ({ self_ref, label, prov })
+   */
   private extractDocItemsDetails(
-    docItems: Array<Record<string, unknown>>,
+    docItems: unknown[],
     topLevelPageNumbers: unknown,
   ): {
     pageNumbers: number[];
@@ -787,40 +925,45 @@ export class DoclingService {
     }
 
     for (const item of docItems) {
+      if (typeof item === 'string') {
+        const ref = item.trim();
+        if (!ref) continue;
+        selfRefSet.add(ref);
+        this.inferLabelFromPointer(ref, labels);
+        continue;
+      }
+
       if (!item || typeof item !== 'object') continue;
+      const itemObj = item as Record<string, unknown>;
       const selfRef =
-        typeof item.self_ref === 'string' ? item.self_ref : null;
-      const label = typeof item.label === 'string' ? item.label : null;
-
-      if (selfRef) selfRefSet.add(selfRef);
-      if (label) labels.add(label.toLowerCase());
-
-      const provList = Array.isArray(item.prov)
-        ? (item.prov as Array<Record<string, unknown>>)
-        : [];
-
-      for (const prov of provList) {
-        if (!prov || typeof prov !== 'object') continue;
-        const pageNo =
-          typeof prov.page_no === 'number' &&
-          Number.isInteger(prov.page_no) &&
-          prov.page_no > 0
-            ? prov.page_no
+        typeof itemObj.self_ref === 'string' && itemObj.self_ref.trim()
+          ? itemObj.self_ref.trim()
+          : typeof itemObj.ref === 'string' && itemObj.ref.trim()
+            ? itemObj.ref.trim()
             : null;
-        if (pageNo !== null) {
-          pageSet.add(pageNo);
+      const label =
+        typeof itemObj.label === 'string' && itemObj.label.trim()
+          ? itemObj.label.trim()
+          : null;
+
+      if (selfRef) {
+        selfRefSet.add(selfRef);
+        this.inferLabelFromPointer(selfRef, labels);
+      }
+      if (label) {
+        labels.add(label.toLowerCase());
+      }
+
+      const provs = this.extractProvEntries(itemObj.prov);
+      for (const prov of provs) {
+        if (prov.page_no !== null) {
+          pageSet.add(prov.page_no);
         }
-
-        const bbox =
-          prov.bbox && typeof prov.bbox === 'object'
-            ? (prov.bbox as Record<string, unknown>)
-            : null;
-
         bboxes.push({
           self_ref: selfRef,
           label,
-          page_no: pageNo,
-          bbox,
+          page_no: prov.page_no,
+          bbox: prov.bbox,
         });
       }
     }
@@ -832,6 +975,52 @@ export class DoclingService {
       selfRefs: Array.from(selfRefSet),
       labels,
     };
+  }
+
+  private inferLabelFromPointer(ref: string, labels: Set<string>): void {
+    if (ref.startsWith('#/tables/')) {
+      labels.add('table');
+    } else if (ref.startsWith('#/pictures/')) {
+      labels.add('picture');
+    }
+  }
+
+  /**
+   * Phát hiện trực tiếp trên nội dung văn bản của chunk:
+   * - Bảng Markdown (| --- | hoặc |---|)
+   * - Khối code (```)
+   * - Công thức toán học ($$ ... $$ hoặc \[ ... \])
+   * - Tham chiếu hình ảnh (#/pictures/idx hoặc ![...])
+   */
+  private applyContentHeuristics(
+    content: string,
+    selfRefs: string[],
+    labels: Set<string>,
+  ): void {
+    if (!content) return;
+
+    if (MARKDOWN_TABLE_SEPARATOR_REGEX.test(content)) {
+      labels.add('table');
+    }
+    if (MARKDOWN_CODE_FENCE_REGEX.test(content)) {
+      labels.add('code');
+    }
+    if (MARKDOWN_DISPLAY_FORMULA_REGEX.test(content)) {
+      labels.add('formula');
+    }
+    if (MARKDOWN_IMAGE_TAG_REGEX.test(content)) {
+      labels.add('picture');
+    }
+
+    const matchedPicRefs = content.match(MARKDOWN_PICTURE_REF_REGEX);
+    if (matchedPicRefs) {
+      for (const picRef of matchedPicRefs) {
+        if (!selfRefs.includes(picRef)) {
+          selfRefs.push(picRef);
+        }
+        labels.add('picture');
+      }
+    }
   }
 
   private inferChunkType(
@@ -850,10 +1039,29 @@ export class DoclingService {
       return explicitType as DoclingChunkType;
     }
 
+    return this.computeChunkTypeFromSignals(labels, hasTable, hasImage);
+  }
+
+  private computeChunkTypeFromSignals(
+    labels: Set<string>,
+    hasTable: boolean,
+    hasImage: boolean,
+  ): DoclingChunkType {
     const specializedCategories = new Set<DoclingChunkType>();
-    if (hasTable) specializedCategories.add('table');
-    if (hasImage) specializedCategories.add('image_desc');
-    if (labels.has('code')) specializedCategories.add('code');
+    if (hasTable || labels.has('table') || labels.has('document_index')) {
+      specializedCategories.add('table');
+    }
+    if (
+      hasImage ||
+      labels.has('picture') ||
+      labels.has('figure') ||
+      labels.has('chart')
+    ) {
+      specializedCategories.add('image_desc');
+    }
+    if (labels.has('code')) {
+      specializedCategories.add('code');
+    }
     if (labels.has('formula') || labels.has('equation')) {
       specializedCategories.add('formula');
     }
@@ -865,6 +1073,647 @@ export class DoclingService {
       return Array.from(specializedCategories)[0];
     }
     return 'text';
+  }
+
+  /**
+   * Xây dựng chỉ mục tra cứu O(1) từ sanitizedJsonContent và extractedPictures
+   */
+  private buildDomLookupIndex(
+    sanitizedJsonContent: Record<string, unknown> | null,
+    extractedPictures: ExtractedDoclingPicture[],
+  ): DoclingDomLookupIndex {
+    const byRef = new Map<string, DomIndexedItem>();
+    const childOrCaptionToParentRefs = new Map<string, string[]>();
+    const picturesMap = new Map<string, PictureEnrichmentMeta>();
+
+    for (const pic of extractedPictures) {
+      picturesMap.set(pic.selfRef, {
+        selfRef: pic.selfRef,
+        assetType: pic.assetType || 'picture',
+        pageNo: pic.pageNo,
+        bbox: pic.bbox,
+        caption: pic.caption,
+        vlmDescription: pic.vlmDescription,
+      });
+    }
+
+    if (!sanitizedJsonContent) {
+      return {
+        byRef,
+        childOrCaptionToParentRefs,
+        pictures: Array.from(picturesMap.values()),
+      };
+    }
+
+    const textsArr = Array.isArray(sanitizedJsonContent.texts)
+      ? (sanitizedJsonContent.texts as Array<Record<string, unknown>>)
+      : [];
+    this.indexDomCollection(textsArr, 'texts', 'text', byRef);
+
+    const tablesArr = Array.isArray(sanitizedJsonContent.tables)
+      ? (sanitizedJsonContent.tables as Array<Record<string, unknown>>)
+      : [];
+    this.indexDomTables(
+      tablesArr,
+      textsArr,
+      byRef,
+      childOrCaptionToParentRefs,
+    );
+
+    const picturesArr = Array.isArray(sanitizedJsonContent.pictures)
+      ? (sanitizedJsonContent.pictures as Array<Record<string, unknown>>)
+      : [];
+    this.indexDomPictures(
+      picturesArr,
+      textsArr,
+      byRef,
+      childOrCaptionToParentRefs,
+      picturesMap,
+    );
+
+    const kvArr = Array.isArray(sanitizedJsonContent.key_value_items)
+      ? (sanitizedJsonContent.key_value_items as Array<Record<string, unknown>>)
+      : [];
+    this.indexDomCollection(kvArr, 'key_value_items', 'key_value_region', byRef);
+
+    const formArr = Array.isArray(sanitizedJsonContent.form_items)
+      ? (sanitizedJsonContent.form_items as Array<Record<string, unknown>>)
+      : [];
+    this.indexDomCollection(formArr, 'form_items', 'form', byRef);
+
+    return {
+      byRef,
+      childOrCaptionToParentRefs,
+      pictures: Array.from(picturesMap.values()),
+    };
+  }
+
+  private indexDomCollection(
+    items: Array<Record<string, unknown>>,
+    collectionName: string,
+    defaultLabel: string,
+    byRef: Map<string, DomIndexedItem>,
+  ): void {
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
+      if (!item || typeof item !== 'object') continue;
+
+      const selfRef =
+        typeof item.self_ref === 'string' && item.self_ref.trim()
+          ? item.self_ref.trim()
+          : `#/${collectionName}/${idx}`;
+      const label =
+        typeof item.label === 'string' && item.label.trim()
+          ? item.label.trim()
+          : defaultLabel;
+      const rawText = typeof item.text === 'string' ? item.text.trim() : '';
+
+      byRef.set(selfRef, {
+        selfRef,
+        label,
+        provs: this.extractProvEntries(item.prov),
+        normalizedText: this.normalizeTextForMatch(rawText),
+      });
+    }
+  }
+
+  private indexDomTables(
+    tablesArr: Array<Record<string, unknown>>,
+    textsArr: Array<Record<string, unknown>>,
+    byRef: Map<string, DomIndexedItem>,
+    childOrCaptionToParentRefs: Map<string, string[]>,
+  ): void {
+    for (let idx = 0; idx < tablesArr.length; idx++) {
+      const tbl = tablesArr[idx];
+      if (!tbl || typeof tbl !== 'object') continue;
+
+      const selfRef =
+        typeof tbl.self_ref === 'string' && tbl.self_ref.trim()
+          ? tbl.self_ref.trim()
+          : `#/tables/${idx}`;
+      const label =
+        typeof tbl.label === 'string' && tbl.label.trim()
+          ? tbl.label.trim()
+          : 'table';
+
+      this.registerParentBackrefs(tbl, selfRef, childOrCaptionToParentRefs);
+
+      const caption = this.extractPictureCaption(tbl, textsArr) ?? '';
+      const cellTexts = this.extractTableCellTextSample(tbl);
+      const combinedText = `${caption} ${cellTexts}`.trim();
+
+      byRef.set(selfRef, {
+        selfRef,
+        label,
+        provs: this.extractProvEntries(tbl.prov),
+        normalizedText: this.normalizeTextForMatch(combinedText),
+      });
+    }
+  }
+
+  private indexDomPictures(
+    picturesArr: Array<Record<string, unknown>>,
+    textsArr: Array<Record<string, unknown>>,
+    byRef: Map<string, DomIndexedItem>,
+    childOrCaptionToParentRefs: Map<string, string[]>,
+    picturesMap: Map<string, PictureEnrichmentMeta>,
+  ): void {
+    for (let idx = 0; idx < picturesArr.length; idx++) {
+      const pic = picturesArr[idx];
+      if (!pic || typeof pic !== 'object') continue;
+
+      const selfRef =
+        typeof pic.self_ref === 'string' && pic.self_ref.trim()
+          ? pic.self_ref.trim()
+          : `#/pictures/${idx}`;
+      const { assetType, vlmDescription } = this.extractPictureAnnotations(pic);
+      const caption = this.extractPictureCaption(pic, textsArr);
+      const provs = this.extractProvEntries(pic.prov);
+
+      this.registerParentBackrefs(pic, selfRef, childOrCaptionToParentRefs);
+
+      const combinedText = [caption ?? '', vlmDescription ?? '']
+        .filter(Boolean)
+        .join(' ');
+
+      byRef.set(selfRef, {
+        selfRef,
+        label: assetType || 'picture',
+        provs,
+        normalizedText: this.normalizeTextForMatch(combinedText),
+      });
+
+      if (!picturesMap.has(selfRef)) {
+        picturesMap.set(selfRef, {
+          selfRef,
+          assetType: assetType || 'picture',
+          pageNo: provs[0]?.page_no ?? null,
+          bbox: provs[0]?.bbox ?? null,
+          caption,
+          vlmDescription,
+        });
+      }
+    }
+  }
+
+  private registerParentBackrefs(
+    node: Record<string, unknown>,
+    parentSelfRef: string,
+    childOrCaptionToParentRefs: Map<string, string[]>,
+  ): void {
+    const linkArrays = [node.captions, node.footnotes, node.children];
+    for (const arr of linkArrays) {
+      if (!Array.isArray(arr)) continue;
+      for (const refObj of arr) {
+        if (!refObj || typeof refObj !== 'object') continue;
+        const childRef = (refObj as Record<string, unknown>).$ref;
+        if (typeof childRef !== 'string' || !childRef.trim()) continue;
+        const normalizedChildRef = childRef.trim();
+        const existing =
+          childOrCaptionToParentRefs.get(normalizedChildRef) ?? [];
+        if (!existing.includes(parentSelfRef)) {
+          existing.push(parentSelfRef);
+          childOrCaptionToParentRefs.set(normalizedChildRef, existing);
+        }
+      }
+    }
+  }
+
+  private extractTableCellTextSample(tbl: Record<string, unknown>): string {
+    const dataObj =
+      tbl.data && typeof tbl.data === 'object'
+        ? (tbl.data as Record<string, unknown>)
+        : null;
+    if (!dataObj) return '';
+
+    const cells = Array.isArray(dataObj.table_cells)
+      ? (dataObj.table_cells as Array<Record<string, unknown>>)
+      : [];
+    const snippets: string[] = [];
+
+    for (const cell of cells.slice(0, 12)) {
+      if (cell && typeof cell.text === 'string' && cell.text.trim()) {
+        snippets.push(cell.text.trim());
+      }
+    }
+    return snippets.join(' ');
+  }
+
+  private extractProvEntries(provInput: unknown): DomProvEntry[] {
+    if (!Array.isArray(provInput)) return [];
+    const entries: DomProvEntry[] = [];
+
+    for (const p of provInput) {
+      if (!p || typeof p !== 'object') continue;
+      const provObj = p as Record<string, unknown>;
+      const pageNo =
+        typeof provObj.page_no === 'number' &&
+        Number.isInteger(provObj.page_no) &&
+        provObj.page_no > 0
+          ? provObj.page_no
+          : null;
+      const bbox =
+        provObj.bbox && typeof provObj.bbox === 'object'
+          ? (provObj.bbox as Record<string, unknown>)
+          : null;
+      entries.push({ page_no: pageNo, bbox });
+    }
+
+    return entries;
+  }
+
+  private enrichSingleChunkFromDom(
+    chunk: DoclingChunkResult,
+    domIndex: DoclingDomLookupIndex,
+  ): DoclingChunkResult {
+    const pageSet = new Set<number>(chunk.pageNumbers ?? []);
+    const bboxes: DoclingChunkBboxItem[] = [...(chunk.bboxes ?? [])];
+    const bboxKeys = new Set<string>(
+      bboxes.map((b) => this.buildBboxDedupKey(b)),
+    );
+
+    const existingRefs = Array.isArray(chunk.metadata?.self_refs)
+      ? (chunk.metadata.self_refs as unknown[]).filter(
+          (r): r is string => typeof r === 'string' && r.trim().length > 0,
+        )
+      : [];
+    const selfRefSet = new Set<string>(existingRefs);
+    const labels = new Set<string>();
+
+    // Mở rộng liên kết bắc cầu (nếu chunk chứa caption/child của ảnh hoặc bảng)
+    for (const ref of Array.from(selfRefSet)) {
+      const parentRefs = domIndex.childOrCaptionToParentRefs.get(ref);
+      if (!parentRefs) continue;
+      for (const parentRef of parentRefs) {
+        selfRefSet.add(parentRef);
+      }
+    }
+
+    // 1. Giải tham chiếu trực tiếp tất cả self_refs qua domIndex.byRef
+    for (const ref of selfRefSet) {
+      this.inferLabelFromPointer(ref, labels);
+      const domItem = domIndex.byRef.get(ref);
+      if (!domItem) continue;
+
+      labels.add(domItem.label.toLowerCase());
+      for (const prov of domItem.provs) {
+        if (prov.page_no !== null) {
+          pageSet.add(prov.page_no);
+        }
+        this.addUniqueBbox(
+          bboxes,
+          bboxKeys,
+          domItem.selfRef,
+          domItem.label,
+          prov.page_no,
+          prov.bbox,
+        );
+      }
+    }
+
+    // 2. Nếu bboxes hoặc self_refs vẫn rỗng (ví dụ chạy qua Fallback Markdown), ánh xạ ngược theo nội dung
+    if (
+      (bboxes.length === 0 || selfRefSet.size === 0) &&
+      domIndex.byRef.size > 0
+    ) {
+      this.reverseMatchChunkWithDomItems(
+        chunk,
+        domIndex,
+        selfRefSet,
+        pageSet,
+        bboxes,
+        bboxKeys,
+        labels,
+      );
+    }
+
+    const sortedPages = Array.from(pageSet).sort((a, b) => a - b);
+    const finalPages = sortedPages.length > 0 ? sortedPages : [1];
+    const finalSelfRefs = Array.from(selfRefSet);
+
+    return {
+      ...chunk,
+      pageNumbers: finalPages,
+      bboxes,
+      metadata: {
+        ...chunk.metadata,
+        self_refs: finalSelfRefs,
+      },
+    };
+  }
+
+  private reverseMatchChunkWithDomItems(
+    chunk: DoclingChunkResult,
+    domIndex: DoclingDomLookupIndex,
+    selfRefSet: Set<string>,
+    pageSet: Set<number>,
+    bboxes: DoclingChunkBboxItem[],
+    bboxKeys: Set<string>,
+    labels: Set<string>,
+  ): void {
+    const normalizedChunkText = this.normalizeTextForMatch(
+      `${chunk.content} ${chunk.rawContent ?? ''}`,
+    );
+    if (!normalizedChunkText) return;
+
+    for (const domItem of domIndex.byRef.values()) {
+      if (!domItem.normalizedText || domItem.normalizedText.length < 8) {
+        continue;
+      }
+
+      const probe =
+        domItem.normalizedText.length > 80
+          ? domItem.normalizedText.slice(0, 80)
+          : domItem.normalizedText;
+
+      const isMatch =
+        normalizedChunkText.includes(probe) ||
+        (normalizedChunkText.length >= 20 &&
+          domItem.normalizedText.includes(normalizedChunkText.slice(0, 60)));
+
+      if (!isMatch) continue;
+
+      selfRefSet.add(domItem.selfRef);
+      labels.add(domItem.label.toLowerCase());
+
+      // Nếu phần tử khớp là caption của ảnh/bảng, kéo theo cả ảnh/bảng cha
+      const parentRefs = domIndex.childOrCaptionToParentRefs.get(
+        domItem.selfRef,
+      );
+      if (parentRefs) {
+        for (const pRef of parentRefs) {
+          selfRefSet.add(pRef);
+          const parentItem = domIndex.byRef.get(pRef);
+          if (parentItem) {
+            labels.add(parentItem.label.toLowerCase());
+            for (const prov of parentItem.provs) {
+              if (prov.page_no !== null) pageSet.add(prov.page_no);
+              this.addUniqueBbox(
+                bboxes,
+                bboxKeys,
+                parentItem.selfRef,
+                parentItem.label,
+                prov.page_no,
+                prov.bbox,
+              );
+            }
+          }
+        }
+      }
+
+      for (const prov of domItem.provs) {
+        if (prov.page_no !== null) {
+          pageSet.add(prov.page_no);
+        }
+        this.addUniqueBbox(
+          bboxes,
+          bboxKeys,
+          domItem.selfRef,
+          domItem.label,
+          prov.page_no,
+          prov.bbox,
+        );
+      }
+    }
+  }
+
+  /**
+   * Đảm bảo 100% các hình ảnh (pictures) trong tài liệu đều được gắn vào ít nhất 1 chunk
+   * thông qua 3 tầng đối chiếu:
+   * - Tầng 1: Đã có sẵn self_ref trong chunk.metadata.self_refs
+   * - Tầng 2: Cùng page_no (hoặc bất kỳ trang nào) và chunk.content chứa caption hoặc vlm_description
+   * - Tầng 3: Cùng page_no (ưu tiên chunk có ![IMAGE] / hasImage, hoặc chunk đầu tiên trên trang đó)
+   */
+  private assignUnmatchedPicturesToChunks(
+    chunks: DoclingChunkResult[],
+    pictures: PictureEnrichmentMeta[],
+  ): void {
+    if (chunks.length === 0 || pictures.length === 0) return;
+
+    for (const pic of pictures) {
+      const alreadyMatchedChunks = chunks.filter((c) => {
+        const refs = Array.isArray(c.metadata?.self_refs)
+          ? (c.metadata.self_refs as unknown[])
+          : [];
+        return refs.includes(pic.selfRef);
+      });
+
+      if (alreadyMatchedChunks.length > 0) {
+        for (const matched of alreadyMatchedChunks) {
+          this.attachPictureToChunk(matched, pic);
+        }
+        continue;
+      }
+
+      const targetChunk = this.findBestChunkForPicture(chunks, pic);
+      if (targetChunk) {
+        this.attachPictureToChunk(targetChunk, pic);
+      }
+    }
+  }
+
+  private findBestChunkForPicture(
+    chunks: DoclingChunkResult[],
+    pic: PictureEnrichmentMeta,
+  ): DoclingChunkResult | null {
+    const captionProbe = this.buildMatchProbe(pic.caption);
+    const vlmProbe = this.buildMatchProbe(pic.vlmDescription);
+
+    const samePageChunks =
+      pic.pageNo !== null
+        ? chunks.filter((c) => c.pageNumbers.includes(pic.pageNo!))
+        : [];
+    const candidatePool = samePageChunks.length > 0 ? samePageChunks : chunks;
+
+    // Tầng 2: Khớp theo caption hoặc vlm_description trên candidatePool (ưu tiên cùng trang)
+    if (captionProbe || vlmProbe) {
+      for (const candidate of candidatePool) {
+        const normContent = this.normalizeTextForMatch(
+          `${candidate.content} ${candidate.rawContent ?? ''}`,
+        );
+        if (
+          (captionProbe && normContent.includes(captionProbe)) ||
+          (vlmProbe && normContent.includes(vlmProbe))
+        ) {
+          return candidate;
+        }
+      }
+
+      // Thử trên toàn bộ chunks nếu tìm trong cùng trang chưa khớp
+      if (candidatePool !== chunks) {
+        for (const candidate of chunks) {
+          const normContent = this.normalizeTextForMatch(
+            `${candidate.content} ${candidate.rawContent ?? ''}`,
+          );
+          if (
+            (captionProbe && normContent.includes(captionProbe)) ||
+            (vlmProbe && normContent.includes(vlmProbe))
+          ) {
+            return candidate;
+          }
+        }
+      }
+    }
+
+    // Tầng 3: Cùng page_no (ưu tiên chunk có placeholder ảnh hoặc hasImage)
+    if (samePageChunks.length > 0) {
+      const imageBearingChunk = samePageChunks.find(
+        (c) => c.hasImage || MARKDOWN_IMAGE_TAG_REGEX.test(c.content),
+      );
+      return imageBearingChunk ?? samePageChunks[0];
+    }
+
+    // Fallback cuối cùng: tìm chunk có số trang gần nhất hoặc chunk đầu tiên
+    if (pic.pageNo !== null) {
+      let closest = chunks[0];
+      let minDiff = Number.MAX_SAFE_INTEGER;
+      for (const c of chunks) {
+        for (const p of c.pageNumbers) {
+          const diff = Math.abs(p - pic.pageNo);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closest = c;
+          }
+        }
+      }
+      return closest;
+    }
+
+    return chunks[0];
+  }
+
+  private attachPictureToChunk(
+    chunk: DoclingChunkResult,
+    pic: PictureEnrichmentMeta,
+  ): void {
+    const refs = Array.isArray(chunk.metadata?.self_refs)
+      ? [...(chunk.metadata.self_refs as string[])]
+      : [];
+    if (!refs.includes(pic.selfRef)) {
+      refs.push(pic.selfRef);
+    }
+    chunk.metadata = {
+      ...chunk.metadata,
+      self_refs: refs,
+    };
+
+    if (pic.pageNo !== null && !chunk.pageNumbers.includes(pic.pageNo)) {
+      chunk.pageNumbers = [...chunk.pageNumbers, pic.pageNo].sort(
+        (a, b) => a - b,
+      );
+    }
+
+    const bboxes = chunk.bboxes ?? [];
+    const bboxKeys = new Set<string>(
+      bboxes.map((b) => this.buildBboxDedupKey(b)),
+    );
+    this.addUniqueBbox(
+      bboxes,
+      bboxKeys,
+      pic.selfRef,
+      pic.assetType || 'picture',
+      pic.pageNo,
+      pic.bbox,
+    );
+    chunk.bboxes = bboxes;
+    chunk.hasImage = true;
+  }
+
+  private finalizeChunkClassification(
+    chunk: DoclingChunkResult,
+  ): DoclingChunkResult {
+    const selfRefs = Array.isArray(chunk.metadata?.self_refs)
+      ? (chunk.metadata.self_refs as unknown[]).filter(
+          (r): r is string => typeof r === 'string',
+        )
+      : [];
+    const labels = new Set<string>();
+
+    for (const ref of selfRefs) {
+      this.inferLabelFromPointer(ref, labels);
+    }
+    for (const bboxItem of chunk.bboxes ?? []) {
+      if (bboxItem.label) {
+        labels.add(bboxItem.label.toLowerCase());
+      }
+    }
+
+    this.applyContentHeuristics(chunk.content, selfRefs, labels);
+
+    const hasTable =
+      chunk.hasTable === true ||
+      labels.has('table') ||
+      labels.has('document_index') ||
+      selfRefs.some((r) => r.startsWith('#/tables/'));
+
+    const hasImage =
+      chunk.hasImage === true ||
+      labels.has('picture') ||
+      labels.has('figure') ||
+      labels.has('chart') ||
+      selfRefs.some((r) => r.startsWith('#/pictures/'));
+
+    const chunkType = this.computeChunkTypeFromSignals(
+      labels,
+      hasTable,
+      hasImage,
+    );
+
+    return {
+      ...chunk,
+      pageNumbers: chunk.pageNumbers.length > 0 ? chunk.pageNumbers : [1],
+      bboxes: chunk.bboxes ?? [],
+      hasTable,
+      hasImage,
+      chunkType,
+      metadata: {
+        ...chunk.metadata,
+        self_refs: selfRefs,
+      },
+    };
+  }
+
+  private addUniqueBbox(
+    bboxes: DoclingChunkBboxItem[],
+    bboxKeys: Set<string>,
+    selfRef: string | null,
+    label: string | null,
+    pageNo: number | null,
+    bbox: Record<string, unknown> | null,
+  ): void {
+    const candidate: DoclingChunkBboxItem = {
+      self_ref: selfRef,
+      label,
+      page_no: pageNo,
+      bbox,
+    };
+    const key = this.buildBboxDedupKey(candidate);
+    if (!bboxKeys.has(key)) {
+      bboxKeys.add(key);
+      bboxes.push(candidate);
+    }
+  }
+
+  private buildBboxDedupKey(item: DoclingChunkBboxItem): string {
+    return `${item.self_ref ?? ''}|${item.page_no ?? ''}|${item.bbox ? JSON.stringify(item.bbox) : ''}`;
+  }
+
+  private normalizeTextForMatch(text: string): string {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private buildMatchProbe(text: string | null | undefined): string | null {
+    if (!text) return null;
+    const norm = this.normalizeTextForMatch(text);
+    if (norm.length < 6) return null;
+    return norm.length > 64 ? norm.slice(0, 64) : norm;
   }
 
   /**

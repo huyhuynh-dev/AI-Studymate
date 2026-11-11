@@ -5,6 +5,9 @@ import { DocumentChunk, Prisma } from '../../generated/prisma/client.js';
 export interface InsertedChunkRecord {
     id: string;
     chunkIndex: number;
+    pageNumbers: number[];
+    content: string;
+    hasImage: boolean;
     metadata?: Record<string, unknown>;
 }
 
@@ -207,6 +210,9 @@ export class DocumentChunksRepoService {
                     insertedRecords.push({
                         id: rows[0].id,
                         chunkIndex: chunk.chunkIndex,
+                        pageNumbers: chunk.pageNumbers,
+                        content: chunk.content,
+                        hasImage: chunk.hasImage ?? false,
                         metadata: chunk.metadata,
                     });
                 }
@@ -220,6 +226,36 @@ export class DocumentChunksRepoService {
         return await this.prisma.documentChunk.count({
             where: { document_id: documentId },
         });
+    }
+
+    async findChunkRecordsByDocumentId(
+        documentId: string
+    ): Promise<InsertedChunkRecord[]> {
+        const rows = await this.prisma.documentChunk.findMany({
+            where: { document_id: documentId },
+            orderBy: { chunk_index: 'asc' },
+            select: {
+                id: true,
+                chunk_index: true,
+                page_numbers: true,
+                content: true,
+                has_image: true,
+                bboxes: true,
+                chunk_metadata: true,
+            },
+        });
+
+        return rows.map((row) => ({
+            id: row.id,
+            chunkIndex: row.chunk_index,
+            pageNumbers: row.page_numbers,
+            content: row.content,
+            hasImage: row.has_image,
+            metadata:
+                row.chunk_metadata && typeof row.chunk_metadata === 'object'
+                    ? (row.chunk_metadata as Record<string, unknown>)
+                    : undefined,
+        }));
     }
 
     /**

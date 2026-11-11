@@ -82,4 +82,30 @@ export class DocumentAssetsRepoService {
       }
     });
   }
+
+  /**
+   * Liên kết chunk_id trực tiếp theo id của bản ghi document_assets (dùng cho kết nối đa tầng).
+   */
+  async linkAssetsToChunksById(
+    documentId: string,
+    assetIdToChunkId: ReadonlyMap<string, string>,
+  ): Promise<void> {
+    if (assetIdToChunkId.size === 0) {
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const [assetId, chunkId] of assetIdToChunkId.entries()) {
+        await tx.documentAsset.updateMany({
+          where: {
+            id: assetId,
+            document_id: documentId,
+          },
+          data: {
+            chunk_id: chunkId,
+          },
+        });
+      }
+    });
+  }
 }

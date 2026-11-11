@@ -12,7 +12,10 @@ export interface BuildDoclingConvertPayloadParams {
   ocrLang?: string[];
   vlmApi?: DoclingVlmApiConfig | null;
   doChartExtraction?: boolean;
+  pictureAreaThreshold?: number;
 }
+
+export const DEFAULT_PICTURE_DESCRIPTION_AREA_THRESHOLD = 0.01;
 
 export const DEFAULT_DOCLING_VLM_PROMPT =
   'You are an academic visual analyzer. Describe this image, chart, diagram, or figure in detail IN VIETNAMESE. Clearly explain all labels, data trends, axes, mathematical relationships, or workflows shown. If there is text or formulas inside the image, transcribe and contextualize them. Output strictly in Vietnamese without introductory filler phrases.';
@@ -85,7 +88,8 @@ export function buildDoclingConvertPayload(
     picture_classification_preset: 'document_figure_classifier_v2',
     do_chart_extraction: params.doChartExtraction ?? false,
     do_picture_description: hasVlmApi,
-    picture_description_area_threshold: 0.05,
+    picture_description_area_threshold:
+      params.pictureAreaThreshold ?? DEFAULT_PICTURE_DESCRIPTION_AREA_THRESHOLD,
   };
 
   if (hasVlmApi && params.vlmApi) {

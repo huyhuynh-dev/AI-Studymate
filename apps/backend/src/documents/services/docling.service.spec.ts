@@ -3,6 +3,10 @@ import {
   DoclingService,
   TRANSPARENT_1X1_PNG_DATA_URI,
 } from './docling.service.js';
+import {
+  buildDoclingConvertPayload,
+  DEFAULT_PICTURE_DESCRIPTION_AREA_THRESHOLD,
+} from '../payloads/index.js';
 import { ConfigService } from '@nestjs/config';
 
 describe('DoclingService', () => {
@@ -25,6 +29,27 @@ describe('DoclingService', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     vi.restoreAllMocks();
+  });
+
+  describe('buildDoclingConvertPayload', () => {
+    it('sets picture_description_area_threshold to 0.01 by default so figures >= 1% page area are described', () => {
+      const payload = buildDoclingConvertPayload({
+        fileName: 'Popular_Search_Algorithms.pdf',
+        base64String: 'dGVzdA==',
+        vlmApi: {
+          url: 'http://host.docker.internal:20128/v1/chat/completions',
+          apiKey: 'sk-test',
+          model: 'groq/qwen/qwen3.8-27b',
+        },
+      });
+
+      const options = payload.options as Record<string, unknown>;
+      expect(options.do_picture_description).toBe(true);
+      expect(options.picture_description_area_threshold).toBe(
+        DEFAULT_PICTURE_DESCRIPTION_AREA_THRESHOLD,
+      );
+      expect(options.picture_description_area_threshold).toBe(0.01);
+    });
   });
 
   describe('isHealthy', () => {
@@ -61,7 +86,7 @@ describe('DoclingService', () => {
       expect(result).toBe('');
     });
 
-    it('should submit async task, strip base64 images, extract pictures and TOC', async () => {
+    it('should submit async task, strip base64 images, extract pictures (both meta and annotations) and TOC', async () => {
       const buffer = Buffer.from('dummy-pdf-content');
       const pngBase64 = Buffer.from('fake-png-binary').toString('base64');
 
@@ -82,10 +107,13 @@ describe('DoclingService', () => {
             processing_time: 2.345,
             document: {
               filename: 'sample.pdf',
-              md_content: `# Heading 1\nSample content\n![Chart](data:image/png;base64,${pngBase64})`,
+              md_content: `# Heading 1\nSample content\n![Chart](data:image/png;base64,${pngBase64})\n![Diagram](data:image/png;base64,${pngBase64})`,
               json_content: {
                 pages: {
-                  '1': { page_no: 1, image: { uri: `data:image/png;base64,${pngBase64}` } },
+                  '1': {
+                    page_no: 1,
+                    image: { uri: `data:image/png;base64,${pngBase64}` },
+                  },
                   '2': { page_no: 2 },
                 },
                 texts: [
@@ -101,13 +129,38 @@ describe('DoclingService', () => {
                   {
                     self_ref: '#/pictures/0',
                     label: 'picture',
-                    prov: [{ page_no: 1, bbox: { l: 10, t: 20, r: 100, b: 200 } }],
+                    prov: [
+                      { page_no: 1, bbox: { l: 10, t: 20, r: 100, b: 200 } },
+                    ],
                     annotations: [
                       {
                         text: 'Biểu đồ doanh thu theo quý',
-                        predicted_classes: [{ class_name: 'bar_chart', confidence: 0.95 }],
+                        predicted_classes: [
+                          { class_name: 'bar_chart', confidence: 0.95 },
+                        ],
                       },
                     ],
+                    image: {
+                      mimetype: 'image/png',
+                      uri: `data:image/png;base64,${pngBase64}`,
+                    },
+                  },
+                  {
+                    self_ref: '#/pictures/1',
+                    label: 'picture',
+                    prov: [
+                      { page_no: 2, bbox: { l: 30, t: 40, r: 180, b: 220 } },
+                    ],
+                    meta: {
+                      description: {
+                        text: 'Sơ đồ minh họa thuật toán tìm kiếm chiều sâu DFS',
+                      },
+                      classification: {
+                        predictions: [
+                          { class_name: 'flow_chart', confidence: 0.92 },
+                        ],
+                      },
+                    },
                     image: {
                       mimetype: 'image/png',
                       uri: `data:image/png;base64,${pngBase64}`,
@@ -122,16 +175,16 @@ describe('DoclingService', () => {
       const conversion = await service.convertDocument(buffer, 'sample.pdf');
 
       expect(conversion.mdContent).toBe(
-        '# Heading 1\nSample content\n![Chart](#/pictures/0)',
+        '# Heading 1\nSample content\n![Chart](#/pictures/0)\n![Diagram](#/pictures/1)',
       );
       expect(conversion.pageCount).toBe(2);
       expect(conversion.docMetadata).toEqual({
         toc: [{ text: 'Heading 1', level: 1, page_no: 1 }],
         processing_time: 2.35,
         total_tables: 1,
-        total_pictures: 1,
+        total_pictures: 2,
       });
-      expect(conversion.extractedPictures).toHaveLength(1);
+      expect(conversion.extractedPictures).toHaveLength(2);
       expect(conversion.extractedPictures[0]).toMatchObject({
         index: 0,
         selfRef: '#/pictures/0',
@@ -140,12 +193,31 @@ describe('DoclingService', () => {
         vlmDescription: 'Biểu đồ doanh thu theo quý',
         mimeType: 'image/png',
       });
-      // Base64 URI must be replaced with valid 1x1 transparent PNG data URI in sanitizedJsonContent
+      expect(conversion.extractedPictures[1]).toMatchObject({
+        index: 1,
+        selfRef: '#/pictures/1',
+        assetType: 'flow_chart',
+        pageNo: 2,
+        vlmDescription: 'Sơ đồ minh họa thuật toán tìm kiếm chiều sâu DFS',
+        mimeType: 'image/png',
+      });
+
+      // Base64 URI must be replaced with valid 1x1 transparent PNG data URI in both pages and pictures
+      const sanitizedPages = conversion.sanitizedJsonContent?.pages as Record<
+        string,
+        Record<string, unknown>
+      >;
+      expect((sanitizedPages['1'].image as Record<string, unknown>).uri).toBe(
+        TRANSPARENT_1X1_PNG_DATA_URI,
+      );
+
       const sanitizedPictures = (conversion.sanitizedJsonContent?.pictures ??
         []) as Array<Record<string, unknown>>;
-      const sanitizedPic = sanitizedPictures[0];
       expect(
-        (sanitizedPic.image as Record<string, unknown>).uri,
+        (sanitizedPictures[0].image as Record<string, unknown>).uri,
+      ).toBe(TRANSPARENT_1X1_PNG_DATA_URI);
+      expect(
+        (sanitizedPictures[1].image as Record<string, unknown>).uri,
       ).toBe(TRANSPARENT_1X1_PNG_DATA_URI);
     });
 
@@ -173,26 +245,77 @@ describe('DoclingService', () => {
     });
   });
 
-  describe('chunkMarkdownHybrid & chunkFromDoclingJson', () => {
+  describe('chunkMarkdownHybrid & chunkFromDoclingJson & enrichChunksWithDoclingJson', () => {
     it('should return empty array for empty or whitespace markdown', async () => {
       const result = await service.chunkMarkdownHybrid('   \n\t  ');
       expect(result).toEqual([]);
     });
 
-    it('should submit async chunk task with multilingual-e5-base tokenizer and return enriched chunks', async () => {
-      const markdown =
-        '# Section 1\nContent paragraph 1\n\n# Section 2\nContent paragraph 2';
+    it('resolves top-level doc_items JSON Pointers from ChunkedDocumentResultItem in chunkFromDoclingJson', async () => {
+      const sanitizedJsonContent = {
+        texts: [
+          {
+            self_ref: '#/texts/0',
+            label: 'text',
+            text: 'Giới thiệu về thuật toán BFS.',
+            prov: [
+              { page_no: 1, bbox: { l: 50, t: 100, r: 400, b: 140 } },
+            ],
+          },
+          {
+            self_ref: '#/texts/1',
+            label: 'caption',
+            text: 'Hình 1: Cây tìm kiếm BFS',
+            prov: [
+              { page_no: 1, bbox: { l: 60, t: 310, r: 250, b: 330 } },
+            ],
+          },
+          {
+            self_ref: '#/texts/2',
+            label: 'code',
+            text: 'function bfs(root) { return []; }',
+            prov: [
+              { page_no: 2, bbox: { l: 50, t: 400, r: 450, b: 500 } },
+            ],
+          },
+        ],
+        tables: [
+          {
+            self_ref: '#/tables/0',
+            label: 'table',
+            prov: [
+              { page_no: 2, bbox: { l: 40, t: 100, r: 500, b: 280 } },
+            ],
+          },
+        ],
+        pictures: [
+          {
+            self_ref: '#/pictures/0',
+            label: 'picture',
+            captions: [{ $ref: '#/texts/1' }],
+            prov: [
+              { page_no: 1, bbox: { l: 60, t: 150, r: 350, b: 300 } },
+            ],
+            meta: {
+              description: { text: 'Mô tả sơ đồ cây BFS' },
+              classification: {
+                predictions: [{ class_name: 'diagram', confidence: 0.9 }],
+              },
+            },
+          },
+        ],
+      };
 
       global.fetch = vi
         .fn()
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ task_id: 'chunk-task-123' }),
+          json: async () => ({ task_id: 'chunk-json-task' }),
         } as Response)
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
-            task_id: 'chunk-task-123',
+            task_id: 'chunk-json-task',
             task_status: 'success',
           }),
         } as Response)
@@ -201,82 +324,130 @@ describe('DoclingService', () => {
           json: async () => ({
             chunks: [
               {
-                filename: 'test.md',
+                filename: 'algo.json',
                 chunk_index: 0,
-                text: 'Section 1\nContent paragraph 1',
-                raw_text: 'Content paragraph 1',
-                num_tokens: 12,
-                meta: {
-                  headings: ['Section 1'],
+                text: '1. BFS\nGiới thiệu về thuật toán BFS.\nHình 1: Cây tìm kiếm BFS',
+                raw_text: 'Giới thiệu về thuật toán BFS.\nHình 1: Cây tìm kiếm BFS',
+                num_tokens: 28,
+                headings: ['1. BFS'],
+                captions: ['Hình 1: Cây tìm kiếm BFS'],
+                doc_items: ['#/texts/0', '#/texts/1'],
+                page_numbers: [1],
+                metadata: {
                   has_image: false,
-                  doc_items: [
-                    {
-                      self_ref: '#/texts/1',
-                      label: 'text',
-                      prov: [
-                        {
-                          page_no: 1,
-                          bbox: { l: 10, t: 50, r: 200, b: 80 },
-                        },
-                      ],
-                    },
-                  ],
                 },
               },
               {
-                filename: 'test.md',
+                filename: 'algo.json',
                 chunk_index: 1,
-                page_numbers: [2, 3],
-                text: 'Section 2\n| A | B |',
-                raw_text: '| A | B |',
-                meta: {
-                  headings: ['Section 2'],
-                  has_image: true,
-                  doc_items: [
-                    {
-                      self_ref: '#/tables/0',
-                      label: 'table',
-                      prov: [{ page_no: 2 }],
-                    },
-                    {
-                      self_ref: '#/pictures/0',
-                      label: 'picture',
-                      prov: [{ page_no: 3 }],
-                    },
-                  ],
+                text: '2. So sánh\n| Thuật toán | Độ phức tạp |\n| --- | --- |\n| BFS | O(V+E) |\n```js\nfunction bfs(root) { return []; }\n```',
+                raw_text: '| Thuật toán | Độ phức tạp |\n| --- | --- |\n| BFS | O(V+E) |',
+                num_tokens: 45,
+                headings: ['2. So sánh'],
+                doc_items: ['#/tables/0', '#/texts/2'],
+                page_numbers: [2],
+                metadata: {
+                  has_image: false,
                 },
               },
             ],
           }),
         } as Response);
 
-      const chunks = await service.chunkMarkdownHybrid(markdown, 'test.md');
+      const chunks = await service.chunkFromDoclingJson(
+        sanitizedJsonContent,
+        'algo.pdf',
+      );
 
       expect(chunks).toHaveLength(2);
-      expect(chunks[0]).toMatchObject({
-        index: 0,
-        pageNumbers: [1],
-        content: 'Section 1\nContent paragraph 1',
-        rawContent: 'Content paragraph 1',
-        tokenCount: 12,
-        headings: ['Section 1'],
-        chunkType: 'text',
-        hasImage: false,
-        hasTable: false,
-      });
-      expect(chunks[1]).toMatchObject({
-        index: 1,
-        pageNumbers: [2, 3],
-        content: 'Section 2\n| A | B |',
-        rawContent: '| A | B |',
-        headings: ['Section 2'],
-        chunkType: 'mixed',
-        hasImage: true,
-        hasTable: true,
-        metadata: expect.objectContaining({
-          self_refs: ['#/tables/0', '#/pictures/0'],
-        }),
-      });
+      // Chunk 0 had '#/texts/1' which is caption of '#/pictures/0' -> bridged automatically!
+      expect(chunks[0].pageNumbers).toEqual([1]);
+      expect(chunks[0].hasImage).toBe(true);
+      expect(chunks[0].hasTable).toBe(false);
+      expect(chunks[0].chunkType).toBe('image_desc');
+      expect(chunks[0].metadata?.self_refs).toEqual(
+        expect.arrayContaining(['#/texts/0', '#/texts/1', '#/pictures/0']),
+      );
+      expect(chunks[0].bboxes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            self_ref: '#/texts/0',
+            page_no: 1,
+          }),
+          expect.objectContaining({
+            self_ref: '#/pictures/0',
+            page_no: 1,
+          }),
+        ]),
+      );
+
+      // Chunk 1 has table + code block -> mixed
+      expect(chunks[1].pageNumbers).toEqual([2]);
+      expect(chunks[1].hasTable).toBe(true);
+      expect(chunks[1].chunkType).toBe('mixed');
+      expect(chunks[1].bboxes).toHaveLength(2);
+    });
+
+    it('enriches Markdown fallback chunks via reverse matching and content heuristics', () => {
+      const sanitizedJsonContent = {
+        texts: [
+          {
+            self_ref: '#/texts/0',
+            label: 'text',
+            text: 'Thuật toán tìm kiếm A* sử dụng hàm heuristic để ước lượng chi phí.',
+            prov: [{ page_no: 3, bbox: { l: 10, t: 20, r: 300, b: 60 } }],
+          },
+        ],
+        tables: [],
+        pictures: [],
+      };
+
+      const extractedPictures = [
+        {
+          index: 1,
+          selfRef: '#/pictures/1',
+          assetType: 'diagram',
+          pageNo: 3,
+          bbox: { l: 50, t: 100, r: 400, b: 300 },
+          caption: 'Hình 2: Minh họa đường đi A*',
+          vlmDescription: 'Sơ đồ lưới các ô vuông mô tả đường đi ngắn nhất của thuật toán A*',
+          mimeType: 'image/png',
+          buffer: Buffer.from('test'),
+        },
+      ];
+
+      const fallbackChunks = [
+        {
+          index: 0,
+          pageNumbers: [1],
+          content:
+            'Thuật toán tìm kiếm A* sử dụng hàm heuristic để ước lượng chi phí.\nHình 2: Minh họa đường đi A*\n| Node | Cost |\n| --- | --- |\n| A | 5 |',
+          rawContent:
+            'Thuật toán tìm kiếm A* sử dụng hàm heuristic để ước lượng chi phí.',
+          bboxes: [],
+          metadata: { self_refs: [] },
+        },
+      ];
+
+      const enriched = service.enrichChunksWithDoclingJson(
+        fallbackChunks,
+        sanitizedJsonContent,
+        extractedPictures,
+      );
+
+      expect(enriched[0].pageNumbers).toContain(3);
+      expect(enriched[0].hasTable).toBe(true);
+      expect(enriched[0].hasImage).toBe(true);
+      expect(enriched[0].chunkType).toBe('mixed');
+      expect(enriched[0].metadata?.self_refs).toEqual(
+        expect.arrayContaining(['#/texts/0', '#/pictures/1']),
+      );
+      expect(enriched[0].bboxes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ self_ref: '#/texts/0', page_no: 3 }),
+          expect.objectContaining({ self_ref: '#/pictures/1', page_no: 3 }),
+        ]),
+      );
     });
   });
 });
