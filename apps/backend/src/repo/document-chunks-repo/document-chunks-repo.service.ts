@@ -2,6 +2,12 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { DocumentChunk, Prisma } from '../../generated/prisma/client.js';
 
+export interface InsertedChunkRecord {
+    id: string;
+    chunkIndex: number;
+    metadata?: Record<string, unknown>;
+}
+
 @Injectable()
 export class DocumentChunksRepoService {
     constructor(private readonly prisma: PrismaService) {}
@@ -140,6 +146,7 @@ export class DocumentChunksRepoService {
             content: string;
             embedding: number[];
             rawContent?: string;
+            tokenCount?: number;
             headings?: string[];
             bboxes?: unknown[];
             chunkType?: 'text' | 'table' | 'code' | 'formula' | 'image_desc' | 'mixed';
@@ -147,7 +154,7 @@ export class DocumentChunksRepoService {
             hasTable?: boolean;
             metadata?: Record<string, unknown>;
         }>
-    ): Promise<number> {
+    ): Promise<InsertedChunkRecord[]> {
         for (const chunk of chunks) {
             if (
                 chunk.embedding.length !== 768 ||
@@ -159,6 +166,8 @@ export class DocumentChunksRepoService {
             }
         }
 
+        const insertedRecords: InsertedChunkRecord[] = [];
+
         await this.prisma.$transaction(async (tx) => {
             await tx.documentChunk.deleteMany({
                 where: { document_id: documentId },
@@ -166,11 +175,11 @@ export class DocumentChunksRepoService {
 
             for (const chunk of chunks) {
                 const vector = `[${chunk.embedding.join(',')}]`;
-                await tx.$executeRaw(
+                const rows = await tx.$queryRaw<Array<{ id: string }>>(
                     Prisma.sql`
                         INSERT INTO "document_chunks" (
                             "id", "document_id", "chunk_index", "page_numbers", "content",
-                            "raw_content", "headings", "bboxes", "chunk_metadata",
+                            "raw_content", "token_count", "headings", "bboxes", "chunk_metadata",
                             "chunk_type", "has_image", "has_table", "embedding", "created_at"
                         )
                         VALUES (
@@ -180,6 +189,7 @@ export class DocumentChunksRepoService {
                             ${chunk.pageNumbers}::integer[],
                             ${chunk.content},
                             ${chunk.rawContent ?? null},
+                            ${chunk.tokenCount ?? null},
                             ${chunk.headings ?? []}::text[],
                             ${chunk.bboxes ? JSON.stringify(chunk.bboxes) : null}::jsonb,
                             ${chunk.metadata ? JSON.stringify(chunk.metadata) : null}::jsonb,
@@ -189,17 +199,72 @@ export class DocumentChunksRepoService {
                             ${vector}::vector,
                             NOW()
                         )
+                        RETURNING "id"
                     `
                 );
+
+                if (rows[0]?.id) {
+                    insertedRecords.push({
+                        id: rows[0].id,
+                        chunkIndex: chunk.chunkIndex,
+                        metadata: chunk.metadata,
+                    });
+                }
             }
         });
 
-        return chunks.length;
+        return insertedRecords;
     }
 
     async countByDocumentId(documentId: string): Promise<number> {
         return await this.prisma.documentChunk.count({
             where: { document_id: documentId },
+        });
+    }
+
+    /**
+     * Sao chép toàn bộ chunks (bao gồm cả vector embedding 768 chiều) từ tài liệu nguồn sang tài liệu đích
+     * khi phát hiện trùng lặp file_hash trong cùng cuộc trò chuyện.
+     */
+    async cloneChunksFromDocument(
+        sourceDocumentId: string,
+        targetDocumentId: string
+    ): Promise<number> {
+        return await this.prisma.$transaction(async (tx) => {
+            await tx.documentChunk.deleteMany({
+                where: { document_id: targetDocumentId },
+            });
+
+            const copiedCount = await tx.$executeRaw(
+                Prisma.sql`
+                    INSERT INTO "document_chunks" (
+                        "id", "document_id", "chunk_index", "page_numbers", "content",
+                        "raw_content", "token_count", "headings", "bboxes", "chunk_metadata",
+                        "chunk_type", "has_image", "has_table", "embedding", "created_at"
+                    )
+                    SELECT
+                        gen_random_uuid(),
+                        ${targetDocumentId}::uuid,
+                        "chunk_index",
+                        "page_numbers",
+                        "content",
+                        "raw_content",
+                        "token_count",
+                        "headings",
+                        "bboxes",
+                        "chunk_metadata",
+                        "chunk_type",
+                        "has_image",
+                        "has_table",
+                        "embedding",
+                        NOW()
+                    FROM "document_chunks"
+                    WHERE "document_id" = ${sourceDocumentId}::uuid
+                    ORDER BY "chunk_index" ASC
+                `
+            );
+
+            return Number(copiedCount);
         });
     }
 

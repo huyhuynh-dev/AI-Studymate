@@ -52,5 +52,7 @@ export const FEATURE_MAP: Record<FeatureKey, FeatureRuntimeConfig> = {
   },
   VISION_OCR: {
     profile: 'VISION',
+    temperature: 0.1,
+    maxRetries: 2,
   },
 };

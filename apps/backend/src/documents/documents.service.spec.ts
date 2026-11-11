@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DocumentsService } from './documents.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
+import { DocumentAssetsRepoService } from '../repo/document-assets-repo/document-assets-repo.service.js';
 import { ConversationsRepoService } from '../repo/conversations-repo/conversations-repo.service.js';
 import { DocumentsQueueService } from './services/documents-queue.service.js';
 
@@ -18,6 +19,10 @@ describe('DocumentsService', () => {
         },
         {
           provide: DocumentsRepoService,
+          useValue: {},
+        },
+        {
+          provide: DocumentAssetsRepoService,
           useValue: {},
         },
         {

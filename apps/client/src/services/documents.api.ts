@@ -26,12 +26,13 @@ export const documentsApi = {
   uploadToR2: async (
     uploadUrl: string,
     file: File,
-    onProgress?: (percent: number) => void
+    onProgress?: (percent: number) => void,
+    contentType?: string
   ): Promise<void> => {
     // Tải trực tiếp lên Cloudflare R2 qua Presigned PUT URL không qua Proxy
     await axios.put(uploadUrl, file, {
       headers: {
-        'Content-Type': file.type,
+        'Content-Type': contentType || file.type || 'application/octet-stream',
       },
       onUploadProgress: (progressEvent) => {
         if (progressEvent.total) {

@@ -34,6 +34,25 @@ export interface DocumentsTabProps {
   maxSizeMB?: number;
 }
 
+const ACCEPTED_FILE_EXTENSIONS =
+  ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.md,.txt,.png,.jpg,.jpeg,.webp";
+
+function getDocumentFormatBadge(doc: DocumentItem): string {
+  const mime = doc.mime_type.toLowerCase();
+  if (mime === "application/pdf") return "PDF";
+  if (mime.includes("word") || doc.file_name.toLowerCase().endsWith(".docx")) return "DOCX";
+  if (doc.file_name.toLowerCase().endsWith(".doc")) return "DOC";
+  if (mime.includes("spreadsheet") || mime.includes("excel") || doc.file_name.toLowerCase().endsWith(".xlsx")) return "XLSX";
+  if (doc.file_name.toLowerCase().endsWith(".xls")) return "XLS";
+  if (mime.includes("presentation") || mime.includes("powerpoint") || doc.file_name.toLowerCase().endsWith(".pptx")) return "PPTX";
+  if (doc.file_name.toLowerCase().endsWith(".ppt")) return "PPT";
+  if (mime.includes("csv") || doc.file_name.toLowerCase().endsWith(".csv")) return "CSV";
+  if (mime.includes("markdown") || doc.file_name.toLowerCase().endsWith(".md")) return "MD";
+  if (mime === "text/plain" || doc.file_name.toLowerCase().endsWith(".txt")) return "TXT";
+  const ext = doc.file_name.split(".").pop()?.toUpperCase();
+  return ext && ext.length <= 5 ? ext : "DOC";
+}
+
 function formatBytes(bytes: number, decimals = 1): string {
   if (!+bytes) return "0 B";
   const k = 1024;
@@ -84,15 +103,20 @@ export default function DocumentsTab({
 
   // Đồng bộ trạng thái xem tài liệu với FocusModeContext để loại bỏ padding thừa (Box-in-box)
   useEffect(() => {
-    const isViewing = Boolean(viewingDocId && viewingDoc);
-    setIsViewingDocument(isViewing);
+    const canViewInline = Boolean(
+      viewingDocId &&
+        viewingDoc &&
+        (viewingDoc.mime_type === "application/pdf" ||
+          viewingDoc.mime_type.startsWith("image/"))
+    );
+    setIsViewingDocument(canViewInline);
     return () => {
       setIsViewingDocument(false);
     };
   }, [viewingDocId, viewingDoc, setIsViewingDocument]);
 
   const pdfCount = useMemo(
-    () => documents.filter((doc) => doc.mime_type === "application/pdf").length,
+    () => documents.filter((doc) => !doc.mime_type.startsWith("image/")).length,
     [documents]
   );
 
@@ -103,7 +127,7 @@ export default function DocumentsTab({
 
   const filteredDocuments = useMemo(() => {
     if (filterType === "pdf") {
-      return documents.filter((doc) => doc.mime_type === "application/pdf");
+      return documents.filter((doc) => !doc.mime_type.startsWith("image/"));
     }
     if (filterType === "image") {
       return documents.filter((doc) => doc.mime_type.startsWith("image/"));
@@ -112,7 +136,14 @@ export default function DocumentsTab({
   }, [documents, filterType]);
 
   const handleCardClick = (doc: DocumentItem) => {
-    setViewingDocId(doc.id);
+    if (
+      doc.mime_type === "application/pdf" ||
+      doc.mime_type.startsWith("image/")
+    ) {
+      setViewingDocId(doc.id);
+    } else {
+      onDownload?.(doc.id, doc.file_name);
+    }
   };
 
   const handleCloseViewer = () => {
@@ -273,7 +304,7 @@ export default function DocumentsTab({
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".pdf,.png,.jpg,.jpeg,.webp"
+          accept={ACCEPTED_FILE_EXTENSIONS}
           className="hidden"
           onChange={handleFileChange}
         />
@@ -303,8 +334,8 @@ export default function DocumentsTab({
           Chưa có tài liệu
         </h2>
 
-        <p className="mt-2 max-w-[360px] text-center text-[14px] leading-relaxed text-neutral-500 dark:text-neutral-400">
-          Tải lên tệp PDF hoặc hình ảnh bài giảng để bắt đầu đọc, ghi chú và hỏi đáp cùng AI.
+        <p className="mt-2 max-w-[380px] text-center text-[14px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+          Tải lên tài liệu (PDF, Word, Excel, PowerPoint, CSV, Markdown, TXT) hoặc hình ảnh bài giảng để bắt đầu học tập cùng AI.
         </p>
 
         <button
@@ -317,7 +348,7 @@ export default function DocumentsTab({
         </button>
 
         <p className="mt-3.5 text-[12px] text-neutral-400 dark:text-neutral-500">
-          Kéo thả tệp vào đây · PDF, PNG, JPG (tối đa {maxSizeMB}MB)
+          Kéo thả tệp vào đây · PDF, DOCX, XLSX, PPTX, CSV, MD, TXT, PNG, JPG (tối đa {maxSizeMB}MB)
         </p>
       </div>
     );
@@ -335,7 +366,7 @@ export default function DocumentsTab({
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,.png,.jpg,.jpeg,.webp"
+        accept={ACCEPTED_FILE_EXTENSIONS}
         className="hidden"
         onChange={handleFileChange}
       />
@@ -387,11 +418,11 @@ export default function DocumentsTab({
               <span className="hidden sm:inline">Tất cả</span>
             </button>
 
-            {/* Nút: Chỉ PDF */}
+            {/* Nút: Chỉ Tài liệu văn bản */}
             <button
               type="button"
               onClick={() => setFilterType("pdf")}
-              title={`Tài liệu PDF (${pdfCount})`}
+              title={`Tài liệu văn bản (${pdfCount})`}
               className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all cursor-pointer ${
                 filterType === "pdf"
                   ? "bg-white dark:bg-neutral-800 text-rose-600 dark:text-rose-400 shadow-2xs"
@@ -399,7 +430,7 @@ export default function DocumentsTab({
               }`}
             >
               <FileText className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">PDF ({pdfCount})</span>
+              <span className="hidden sm:inline">Văn bản ({pdfCount})</span>
             </button>
 
             {/* Nút: Chỉ Hình ảnh */}
@@ -526,7 +557,10 @@ export default function DocumentsTab({
           </div>
         ) : (
           filteredDocuments.map((doc) => {
-            const isPdf = doc.mime_type === "application/pdf";
+            const isImage = doc.mime_type.startsWith("image/");
+            const canPreviewInline =
+              isImage || doc.mime_type === "application/pdf";
+            const formatBadge = getDocumentFormatBadge(doc);
             return (
               <div
                 key={doc.id}
@@ -537,13 +571,13 @@ export default function DocumentsTab({
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border transition-colors ${
-                      isPdf
+                      !isImage
                         ? "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:bg-rose-500/15"
                         : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500/15"
                     }`}
                   >
-                    {isPdf ? (
-                      <span className="text-xs font-black">PDF</span>
+                    {!isImage ? (
+                      <span className="text-[11px] font-black">{formatBadge}</span>
                     ) : (
                       <ImageIcon className="h-5 w-5" />
                     )}
@@ -557,6 +591,12 @@ export default function DocumentsTab({
                       <span>{formatBytes(doc.file_size)}</span>
                       <span>•</span>
                       <span>{formatDate(doc.uploaded_at || doc.created_at)}</span>
+                      {doc.page_count && doc.page_count > 1 && (
+                        <>
+                          <span>•</span>
+                          <span>{doc.page_count} trang</span>
+                        </>
+                      )}
                       {doc.raw_text && (
                         <>
                           <span>•</span>
@@ -574,18 +614,24 @@ export default function DocumentsTab({
                   {renderStatusBadge(doc)}
 
                   <div className="flex items-center gap-1.5">
-                    {/* Nút Xem chi tiết (Eye Icon) */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCardClick(doc);
-                      }}
-                      title={isPdf ? "Xem tài liệu PDF" : "Xem hình ảnh"}
-                      className="flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300 shadow-2xs transition-all hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 cursor-pointer"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
+                    {/* Nút Xem chi tiết (Eye Icon) cho PDF & Hình ảnh */}
+                    {canPreviewInline && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCardClick(doc);
+                        }}
+                        title={
+                          doc.mime_type === "application/pdf"
+                            ? "Xem tài liệu PDF"
+                            : "Xem hình ảnh"
+                        }
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300 shadow-2xs transition-all hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 cursor-pointer"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    )}
 
                     {/* Nút Tải về */}
                     <button

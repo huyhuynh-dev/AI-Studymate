@@ -5,6 +5,7 @@ import { SubjectsRepoService } from './subjects-repo/subjects-repo.service.js';
 import { ConversationsRepoService } from './conversations-repo/conversations-repo.service.js';
 import { DocumentsRepoService } from './documents-repo/documents-repo.service.js';
 import { DocumentChunksRepoService } from './document-chunks-repo/document-chunks-repo.service.js';
+import { DocumentAssetsRepoService } from './document-assets-repo/document-assets-repo.service.js';
 import { SummariesRepoService } from './summaries-repo/summaries-repo.service.js';
 import { ChatAgentRepoService } from './chat-agent-repo/chat-agent-repo.service.js';
 import { DeckFlashcardRepoService } from './deck-flashcard-repo/deck-flashcard-repo.service.js';
@@ -18,6 +19,7 @@ import { QuizRepoService } from './quiz-repo/quiz-repo.service.js';
     ConversationsRepoService,
     DocumentsRepoService,
     DocumentChunksRepoService,
+    DocumentAssetsRepoService,
     SummariesRepoService,
     ChatAgentRepoService,
     DeckFlashcardRepoService,
@@ -29,6 +31,7 @@ import { QuizRepoService } from './quiz-repo/quiz-repo.service.js';
     ConversationsRepoService,
     DocumentsRepoService,
     DocumentChunksRepoService,
+    DocumentAssetsRepoService,
     SummariesRepoService,
     ChatAgentRepoService,
     DeckFlashcardRepoService,

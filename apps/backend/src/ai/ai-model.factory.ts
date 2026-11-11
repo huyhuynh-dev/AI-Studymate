@@ -71,7 +71,7 @@ export class AiModelFactory {
             FAST: this.customProvider('groq/openai/gpt-oss-120b'),
             STANDARD: this.customProvider('cx/gpt-6-luna'),
             REASONING: this.customProvider('cx/gpt-6-luna-medium'),
-            VISION: google('gemini-3.5-flash-lite'),
+            VISION: google('gemini-3.5-flash'),
         };
 
         this.embeddingModel = ollama.embeddingModel(

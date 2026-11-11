@@ -54,7 +54,9 @@ export interface PromptPayloadMap {
   BLOCKNOTE_EDIT: {
     baseHtmlSystemPrompt: string;
   };
-  VISION_OCR: Record<string, never>;
+  VISION_OCR: {
+    fileName?: string;
+  };
 }
 
 export type FeatureKey = keyof PromptPayloadMap;
