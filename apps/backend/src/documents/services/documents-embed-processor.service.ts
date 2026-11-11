@@ -226,6 +226,13 @@ export class DocumentsEmbedProcessorService
         chunkIndex: chunk.index,
         pageNumbers: chunk.pageNumbers,
         content: chunk.content,
+        rawContent: chunk.rawContent,
+        headings: chunk.headings,
+        bboxes: chunk.bboxes,
+        chunkType: chunk.chunkType,
+        hasImage: chunk.hasImage,
+        hasTable: chunk.hasTable,
+        metadata: chunk.metadata,
         embedding: embeddings[idx].values,
       }));
 

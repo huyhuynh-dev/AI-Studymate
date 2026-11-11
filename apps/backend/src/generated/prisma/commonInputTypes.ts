@@ -498,6 +498,13 @@ export type BigIntFilter<$PrismaModel = never> = {
   not?: Prisma.NestedBigIntFilter<$PrismaModel> | bigint | number
 }
 
+export type EnumProcessingStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.ProcessingStatus | Prisma.EnumProcessingStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.ProcessingStatus[] | Prisma.ListEnumProcessingStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ProcessingStatus[] | Prisma.ListEnumProcessingStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumProcessingStatusFilter<$PrismaModel> | $Enums.ProcessingStatus
+}
+
 export type BigIntWithAggregatesFilter<$PrismaModel = never> = {
   equals?: bigint | number | Prisma.BigIntFieldRefInput<$PrismaModel>
   in?: bigint[] | number[] | Prisma.ListBigIntFieldRefInput<$PrismaModel>
@@ -512,6 +519,33 @@ export type BigIntWithAggregatesFilter<$PrismaModel = never> = {
   _sum?: Prisma.NestedBigIntFilter<$PrismaModel>
   _min?: Prisma.NestedBigIntFilter<$PrismaModel>
   _max?: Prisma.NestedBigIntFilter<$PrismaModel>
+}
+
+export type EnumProcessingStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ProcessingStatus | Prisma.EnumProcessingStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.ProcessingStatus[] | Prisma.ListEnumProcessingStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ProcessingStatus[] | Prisma.ListEnumProcessingStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumProcessingStatusWithAggregatesFilter<$PrismaModel> | $Enums.ProcessingStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumProcessingStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumProcessingStatusFilter<$PrismaModel>
+}
+
+export type EnumChunkTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.ChunkType | Prisma.EnumChunkTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.ChunkType[] | Prisma.ListEnumChunkTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ChunkType[] | Prisma.ListEnumChunkTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumChunkTypeFilter<$PrismaModel> | $Enums.ChunkType
+}
+
+export type EnumChunkTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ChunkType | Prisma.EnumChunkTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.ChunkType[] | Prisma.ListEnumChunkTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ChunkType[] | Prisma.ListEnumChunkTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumChunkTypeWithAggregatesFilter<$PrismaModel> | $Enums.ChunkType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumChunkTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumChunkTypeFilter<$PrismaModel>
 }
 
 export type NestedUuidFilter<$PrismaModel = never> = {
@@ -942,6 +976,13 @@ export type NestedBigIntFilter<$PrismaModel = never> = {
   not?: Prisma.NestedBigIntFilter<$PrismaModel> | bigint | number
 }
 
+export type NestedEnumProcessingStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.ProcessingStatus | Prisma.EnumProcessingStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.ProcessingStatus[] | Prisma.ListEnumProcessingStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ProcessingStatus[] | Prisma.ListEnumProcessingStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumProcessingStatusFilter<$PrismaModel> | $Enums.ProcessingStatus
+}
+
 export type NestedBigIntWithAggregatesFilter<$PrismaModel = never> = {
   equals?: bigint | number | Prisma.BigIntFieldRefInput<$PrismaModel>
   in?: bigint[] | number[] | Prisma.ListBigIntFieldRefInput<$PrismaModel>
@@ -956,6 +997,33 @@ export type NestedBigIntWithAggregatesFilter<$PrismaModel = never> = {
   _sum?: Prisma.NestedBigIntFilter<$PrismaModel>
   _min?: Prisma.NestedBigIntFilter<$PrismaModel>
   _max?: Prisma.NestedBigIntFilter<$PrismaModel>
+}
+
+export type NestedEnumProcessingStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ProcessingStatus | Prisma.EnumProcessingStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.ProcessingStatus[] | Prisma.ListEnumProcessingStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ProcessingStatus[] | Prisma.ListEnumProcessingStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumProcessingStatusWithAggregatesFilter<$PrismaModel> | $Enums.ProcessingStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumProcessingStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumProcessingStatusFilter<$PrismaModel>
+}
+
+export type NestedEnumChunkTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.ChunkType | Prisma.EnumChunkTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.ChunkType[] | Prisma.ListEnumChunkTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ChunkType[] | Prisma.ListEnumChunkTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumChunkTypeFilter<$PrismaModel> | $Enums.ChunkType
+}
+
+export type NestedEnumChunkTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ChunkType | Prisma.EnumChunkTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.ChunkType[] | Prisma.ListEnumChunkTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ChunkType[] | Prisma.ListEnumChunkTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumChunkTypeWithAggregatesFilter<$PrismaModel> | $Enums.ChunkType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumChunkTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumChunkTypeFilter<$PrismaModel>
 }
 
 

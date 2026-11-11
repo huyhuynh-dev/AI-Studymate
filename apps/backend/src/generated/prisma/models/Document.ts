@@ -28,10 +28,12 @@ export type AggregateDocument = {
 
 export type DocumentAvgAggregateOutputType = {
   file_size: number | null
+  page_count: number | null
 }
 
 export type DocumentSumAggregateOutputType = {
   file_size: bigint | null
+  page_count: number | null
 }
 
 export type DocumentMinAggregateOutputType = {
@@ -41,12 +43,15 @@ export type DocumentMinAggregateOutputType = {
   file_name: string | null
   mime_type: string | null
   file_size: bigint | null
+  file_hash: string | null
   storage_key: string | null
+  docling_json_key: string | null
   raw_text: string | null
+  page_count: number | null
   processing_error: string | null
   uploaded_at: Date | null
-  ocr_status: string | null
-  embed_status: string | null
+  ocr_status: $Enums.ProcessingStatus | null
+  embed_status: $Enums.ProcessingStatus | null
   created_at: Date | null
   updated_at: Date | null
 }
@@ -58,12 +63,15 @@ export type DocumentMaxAggregateOutputType = {
   file_name: string | null
   mime_type: string | null
   file_size: bigint | null
+  file_hash: string | null
   storage_key: string | null
+  docling_json_key: string | null
   raw_text: string | null
+  page_count: number | null
   processing_error: string | null
   uploaded_at: Date | null
-  ocr_status: string | null
-  embed_status: string | null
+  ocr_status: $Enums.ProcessingStatus | null
+  embed_status: $Enums.ProcessingStatus | null
   created_at: Date | null
   updated_at: Date | null
 }
@@ -75,8 +83,12 @@ export type DocumentCountAggregateOutputType = {
   file_name: number
   mime_type: number
   file_size: number
+  file_hash: number
   storage_key: number
+  docling_json_key: number
   raw_text: number
+  page_count: number
+  doc_metadata: number
   processing_error: number
   uploaded_at: number
   ocr_status: number
@@ -89,10 +101,12 @@ export type DocumentCountAggregateOutputType = {
 
 export type DocumentAvgAggregateInputType = {
   file_size?: true
+  page_count?: true
 }
 
 export type DocumentSumAggregateInputType = {
   file_size?: true
+  page_count?: true
 }
 
 export type DocumentMinAggregateInputType = {
@@ -102,8 +116,11 @@ export type DocumentMinAggregateInputType = {
   file_name?: true
   mime_type?: true
   file_size?: true
+  file_hash?: true
   storage_key?: true
+  docling_json_key?: true
   raw_text?: true
+  page_count?: true
   processing_error?: true
   uploaded_at?: true
   ocr_status?: true
@@ -119,8 +136,11 @@ export type DocumentMaxAggregateInputType = {
   file_name?: true
   mime_type?: true
   file_size?: true
+  file_hash?: true
   storage_key?: true
+  docling_json_key?: true
   raw_text?: true
+  page_count?: true
   processing_error?: true
   uploaded_at?: true
   ocr_status?: true
@@ -136,8 +156,12 @@ export type DocumentCountAggregateInputType = {
   file_name?: true
   mime_type?: true
   file_size?: true
+  file_hash?: true
   storage_key?: true
+  docling_json_key?: true
   raw_text?: true
+  page_count?: true
+  doc_metadata?: true
   processing_error?: true
   uploaded_at?: true
   ocr_status?: true
@@ -240,12 +264,16 @@ export type DocumentGroupByOutputType = {
   file_name: string
   mime_type: string
   file_size: bigint
+  file_hash: string | null
   storage_key: string
+  docling_json_key: string | null
   raw_text: string | null
+  page_count: number | null
+  doc_metadata: runtime.JsonValue | null
   processing_error: string | null
   uploaded_at: Date
-  ocr_status: string
-  embed_status: string
+  ocr_status: $Enums.ProcessingStatus
+  embed_status: $Enums.ProcessingStatus
   created_at: Date
   updated_at: Date
   _count: DocumentCountAggregateOutputType | null
@@ -280,17 +308,22 @@ export type DocumentWhereInput = {
   file_name?: Prisma.StringFilter<"Document"> | string
   mime_type?: Prisma.StringFilter<"Document"> | string
   file_size?: Prisma.BigIntFilter<"Document"> | bigint | number
+  file_hash?: Prisma.StringNullableFilter<"Document"> | string | null
   storage_key?: Prisma.StringFilter<"Document"> | string
+  docling_json_key?: Prisma.StringNullableFilter<"Document"> | string | null
   raw_text?: Prisma.StringNullableFilter<"Document"> | string | null
+  page_count?: Prisma.IntNullableFilter<"Document"> | number | null
+  doc_metadata?: Prisma.JsonNullableFilter<"Document">
   processing_error?: Prisma.StringNullableFilter<"Document"> | string | null
   uploaded_at?: Prisma.DateTimeFilter<"Document"> | Date | string
-  ocr_status?: Prisma.StringFilter<"Document"> | string
-  embed_status?: Prisma.StringFilter<"Document"> | string
+  ocr_status?: Prisma.EnumProcessingStatusFilter<"Document"> | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFilter<"Document"> | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFilter<"Document"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"Document"> | Date | string
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   chunks?: Prisma.DocumentChunkListRelationFilter
+  assets?: Prisma.DocumentAssetListRelationFilter
   summaries?: Prisma.SummaryListRelationFilter
 }
 
@@ -301,8 +334,12 @@ export type DocumentOrderByWithRelationInput = {
   file_name?: Prisma.SortOrder
   mime_type?: Prisma.SortOrder
   file_size?: Prisma.SortOrder
+  file_hash?: Prisma.SortOrderInput | Prisma.SortOrder
   storage_key?: Prisma.SortOrder
+  docling_json_key?: Prisma.SortOrderInput | Prisma.SortOrder
   raw_text?: Prisma.SortOrderInput | Prisma.SortOrder
+  page_count?: Prisma.SortOrderInput | Prisma.SortOrder
+  doc_metadata?: Prisma.SortOrderInput | Prisma.SortOrder
   processing_error?: Prisma.SortOrderInput | Prisma.SortOrder
   uploaded_at?: Prisma.SortOrder
   ocr_status?: Prisma.SortOrder
@@ -312,6 +349,7 @@ export type DocumentOrderByWithRelationInput = {
   conversation?: Prisma.ConversationOrderByWithRelationInput
   user?: Prisma.UserOrderByWithRelationInput
   chunks?: Prisma.DocumentChunkOrderByRelationAggregateInput
+  assets?: Prisma.DocumentAssetOrderByRelationAggregateInput
   summaries?: Prisma.SummaryOrderByRelationAggregateInput
 }
 
@@ -325,17 +363,22 @@ export type DocumentWhereUniqueInput = Prisma.AtLeast<{
   file_name?: Prisma.StringFilter<"Document"> | string
   mime_type?: Prisma.StringFilter<"Document"> | string
   file_size?: Prisma.BigIntFilter<"Document"> | bigint | number
+  file_hash?: Prisma.StringNullableFilter<"Document"> | string | null
   storage_key?: Prisma.StringFilter<"Document"> | string
+  docling_json_key?: Prisma.StringNullableFilter<"Document"> | string | null
   raw_text?: Prisma.StringNullableFilter<"Document"> | string | null
+  page_count?: Prisma.IntNullableFilter<"Document"> | number | null
+  doc_metadata?: Prisma.JsonNullableFilter<"Document">
   processing_error?: Prisma.StringNullableFilter<"Document"> | string | null
   uploaded_at?: Prisma.DateTimeFilter<"Document"> | Date | string
-  ocr_status?: Prisma.StringFilter<"Document"> | string
-  embed_status?: Prisma.StringFilter<"Document"> | string
+  ocr_status?: Prisma.EnumProcessingStatusFilter<"Document"> | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFilter<"Document"> | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFilter<"Document"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"Document"> | Date | string
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   chunks?: Prisma.DocumentChunkListRelationFilter
+  assets?: Prisma.DocumentAssetListRelationFilter
   summaries?: Prisma.SummaryListRelationFilter
 }, "id">
 
@@ -346,8 +389,12 @@ export type DocumentOrderByWithAggregationInput = {
   file_name?: Prisma.SortOrder
   mime_type?: Prisma.SortOrder
   file_size?: Prisma.SortOrder
+  file_hash?: Prisma.SortOrderInput | Prisma.SortOrder
   storage_key?: Prisma.SortOrder
+  docling_json_key?: Prisma.SortOrderInput | Prisma.SortOrder
   raw_text?: Prisma.SortOrderInput | Prisma.SortOrder
+  page_count?: Prisma.SortOrderInput | Prisma.SortOrder
+  doc_metadata?: Prisma.SortOrderInput | Prisma.SortOrder
   processing_error?: Prisma.SortOrderInput | Prisma.SortOrder
   uploaded_at?: Prisma.SortOrder
   ocr_status?: Prisma.SortOrder
@@ -371,12 +418,16 @@ export type DocumentScalarWhereWithAggregatesInput = {
   file_name?: Prisma.StringWithAggregatesFilter<"Document"> | string
   mime_type?: Prisma.StringWithAggregatesFilter<"Document"> | string
   file_size?: Prisma.BigIntWithAggregatesFilter<"Document"> | bigint | number
+  file_hash?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
   storage_key?: Prisma.StringWithAggregatesFilter<"Document"> | string
+  docling_json_key?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
   raw_text?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
+  page_count?: Prisma.IntNullableWithAggregatesFilter<"Document"> | number | null
+  doc_metadata?: Prisma.JsonNullableWithAggregatesFilter<"Document">
   processing_error?: Prisma.StringNullableWithAggregatesFilter<"Document"> | string | null
   uploaded_at?: Prisma.DateTimeWithAggregatesFilter<"Document"> | Date | string
-  ocr_status?: Prisma.StringWithAggregatesFilter<"Document"> | string
-  embed_status?: Prisma.StringWithAggregatesFilter<"Document"> | string
+  ocr_status?: Prisma.EnumProcessingStatusWithAggregatesFilter<"Document"> | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusWithAggregatesFilter<"Document"> | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeWithAggregatesFilter<"Document"> | Date | string
   updated_at?: Prisma.DateTimeWithAggregatesFilter<"Document"> | Date | string
 }
@@ -386,17 +437,22 @@ export type DocumentCreateInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
   conversation: Prisma.ConversationCreateNestedOneWithoutDocumentsInput
   user: Prisma.UserCreateNestedOneWithoutDocumentsInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  assets?: Prisma.DocumentAssetCreateNestedManyWithoutDocumentInput
   summaries?: Prisma.SummaryCreateNestedManyWithoutDocumentInput
 }
 
@@ -407,15 +463,20 @@ export type DocumentUncheckedCreateInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  assets?: Prisma.DocumentAssetUncheckedCreateNestedManyWithoutDocumentInput
   summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutDocumentInput
 }
 
@@ -424,17 +485,22 @@ export type DocumentUpdateInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutDocumentsNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  assets?: Prisma.DocumentAssetUpdateManyWithoutDocumentNestedInput
   summaries?: Prisma.SummaryUpdateManyWithoutDocumentNestedInput
 }
 
@@ -445,15 +511,20 @@ export type DocumentUncheckedUpdateInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  assets?: Prisma.DocumentAssetUncheckedUpdateManyWithoutDocumentNestedInput
   summaries?: Prisma.SummaryUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
@@ -464,12 +535,16 @@ export type DocumentCreateManyInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
 }
@@ -479,12 +554,16 @@ export type DocumentUpdateManyMutationInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -496,12 +575,16 @@ export type DocumentUncheckedUpdateManyInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -523,8 +606,12 @@ export type DocumentCountOrderByAggregateInput = {
   file_name?: Prisma.SortOrder
   mime_type?: Prisma.SortOrder
   file_size?: Prisma.SortOrder
+  file_hash?: Prisma.SortOrder
   storage_key?: Prisma.SortOrder
+  docling_json_key?: Prisma.SortOrder
   raw_text?: Prisma.SortOrder
+  page_count?: Prisma.SortOrder
+  doc_metadata?: Prisma.SortOrder
   processing_error?: Prisma.SortOrder
   uploaded_at?: Prisma.SortOrder
   ocr_status?: Prisma.SortOrder
@@ -535,6 +622,7 @@ export type DocumentCountOrderByAggregateInput = {
 
 export type DocumentAvgOrderByAggregateInput = {
   file_size?: Prisma.SortOrder
+  page_count?: Prisma.SortOrder
 }
 
 export type DocumentMaxOrderByAggregateInput = {
@@ -544,8 +632,11 @@ export type DocumentMaxOrderByAggregateInput = {
   file_name?: Prisma.SortOrder
   mime_type?: Prisma.SortOrder
   file_size?: Prisma.SortOrder
+  file_hash?: Prisma.SortOrder
   storage_key?: Prisma.SortOrder
+  docling_json_key?: Prisma.SortOrder
   raw_text?: Prisma.SortOrder
+  page_count?: Prisma.SortOrder
   processing_error?: Prisma.SortOrder
   uploaded_at?: Prisma.SortOrder
   ocr_status?: Prisma.SortOrder
@@ -561,8 +652,11 @@ export type DocumentMinOrderByAggregateInput = {
   file_name?: Prisma.SortOrder
   mime_type?: Prisma.SortOrder
   file_size?: Prisma.SortOrder
+  file_hash?: Prisma.SortOrder
   storage_key?: Prisma.SortOrder
+  docling_json_key?: Prisma.SortOrder
   raw_text?: Prisma.SortOrder
+  page_count?: Prisma.SortOrder
   processing_error?: Prisma.SortOrder
   uploaded_at?: Prisma.SortOrder
   ocr_status?: Prisma.SortOrder
@@ -573,6 +667,7 @@ export type DocumentMinOrderByAggregateInput = {
 
 export type DocumentSumOrderByAggregateInput = {
   file_size?: Prisma.SortOrder
+  page_count?: Prisma.SortOrder
 }
 
 export type DocumentScalarRelationFilter = {
@@ -677,6 +772,10 @@ export type BigIntFieldUpdateOperationsInput = {
   divide?: bigint | number
 }
 
+export type EnumProcessingStatusFieldUpdateOperationsInput = {
+  set?: $Enums.ProcessingStatus
+}
+
 export type DocumentCreateNestedOneWithoutChunksInput = {
   create?: Prisma.XOR<Prisma.DocumentCreateWithoutChunksInput, Prisma.DocumentUncheckedCreateWithoutChunksInput>
   connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutChunksInput
@@ -689,6 +788,20 @@ export type DocumentUpdateOneRequiredWithoutChunksNestedInput = {
   upsert?: Prisma.DocumentUpsertWithoutChunksInput
   connect?: Prisma.DocumentWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentUpdateToOneWithWhereWithoutChunksInput, Prisma.DocumentUpdateWithoutChunksInput>, Prisma.DocumentUncheckedUpdateWithoutChunksInput>
+}
+
+export type DocumentCreateNestedOneWithoutAssetsInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutAssetsInput, Prisma.DocumentUncheckedCreateWithoutAssetsInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutAssetsInput
+  connect?: Prisma.DocumentWhereUniqueInput
+}
+
+export type DocumentUpdateOneRequiredWithoutAssetsNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutAssetsInput, Prisma.DocumentUncheckedCreateWithoutAssetsInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutAssetsInput
+  upsert?: Prisma.DocumentUpsertWithoutAssetsInput
+  connect?: Prisma.DocumentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentUpdateToOneWithWhereWithoutAssetsInput, Prisma.DocumentUpdateWithoutAssetsInput>, Prisma.DocumentUncheckedUpdateWithoutAssetsInput>
 }
 
 export type DocumentCreateNestedOneWithoutSummariesInput = {
@@ -712,16 +825,21 @@ export type DocumentCreateWithoutUserInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
   conversation: Prisma.ConversationCreateNestedOneWithoutDocumentsInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  assets?: Prisma.DocumentAssetCreateNestedManyWithoutDocumentInput
   summaries?: Prisma.SummaryCreateNestedManyWithoutDocumentInput
 }
 
@@ -731,15 +849,20 @@ export type DocumentUncheckedCreateWithoutUserInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  assets?: Prisma.DocumentAssetUncheckedCreateNestedManyWithoutDocumentInput
   summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutDocumentInput
 }
 
@@ -779,12 +902,16 @@ export type DocumentScalarWhereInput = {
   file_name?: Prisma.StringFilter<"Document"> | string
   mime_type?: Prisma.StringFilter<"Document"> | string
   file_size?: Prisma.BigIntFilter<"Document"> | bigint | number
+  file_hash?: Prisma.StringNullableFilter<"Document"> | string | null
   storage_key?: Prisma.StringFilter<"Document"> | string
+  docling_json_key?: Prisma.StringNullableFilter<"Document"> | string | null
   raw_text?: Prisma.StringNullableFilter<"Document"> | string | null
+  page_count?: Prisma.IntNullableFilter<"Document"> | number | null
+  doc_metadata?: Prisma.JsonNullableFilter<"Document">
   processing_error?: Prisma.StringNullableFilter<"Document"> | string | null
   uploaded_at?: Prisma.DateTimeFilter<"Document"> | Date | string
-  ocr_status?: Prisma.StringFilter<"Document"> | string
-  embed_status?: Prisma.StringFilter<"Document"> | string
+  ocr_status?: Prisma.EnumProcessingStatusFilter<"Document"> | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFilter<"Document"> | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFilter<"Document"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"Document"> | Date | string
 }
@@ -794,16 +921,21 @@ export type DocumentCreateWithoutConversationInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
   user: Prisma.UserCreateNestedOneWithoutDocumentsInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  assets?: Prisma.DocumentAssetCreateNestedManyWithoutDocumentInput
   summaries?: Prisma.SummaryCreateNestedManyWithoutDocumentInput
 }
 
@@ -813,15 +945,20 @@ export type DocumentUncheckedCreateWithoutConversationInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  assets?: Prisma.DocumentAssetUncheckedCreateNestedManyWithoutDocumentInput
   summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutDocumentInput
 }
 
@@ -856,16 +993,21 @@ export type DocumentCreateWithoutChunksInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
   conversation: Prisma.ConversationCreateNestedOneWithoutDocumentsInput
   user: Prisma.UserCreateNestedOneWithoutDocumentsInput
+  assets?: Prisma.DocumentAssetCreateNestedManyWithoutDocumentInput
   summaries?: Prisma.SummaryCreateNestedManyWithoutDocumentInput
 }
 
@@ -876,14 +1018,19 @@ export type DocumentUncheckedCreateWithoutChunksInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
+  assets?: Prisma.DocumentAssetUncheckedCreateNestedManyWithoutDocumentInput
   summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutDocumentInput
 }
 
@@ -908,16 +1055,21 @@ export type DocumentUpdateWithoutChunksInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutDocumentsNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
+  assets?: Prisma.DocumentAssetUpdateManyWithoutDocumentNestedInput
   summaries?: Prisma.SummaryUpdateManyWithoutDocumentNestedInput
 }
 
@@ -928,14 +1080,127 @@ export type DocumentUncheckedUpdateWithoutChunksInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  assets?: Prisma.DocumentAssetUncheckedUpdateManyWithoutDocumentNestedInput
+  summaries?: Prisma.SummaryUncheckedUpdateManyWithoutDocumentNestedInput
+}
+
+export type DocumentCreateWithoutAssetsInput = {
+  id?: string
+  file_name: string
+  mime_type: string
+  file_size: bigint | number
+  file_hash?: string | null
+  storage_key: string
+  docling_json_key?: string | null
+  raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  processing_error?: string | null
+  uploaded_at?: Date | string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
+  created_at?: Date | string
+  updated_at?: Date | string
+  conversation: Prisma.ConversationCreateNestedOneWithoutDocumentsInput
+  user: Prisma.UserCreateNestedOneWithoutDocumentsInput
+  chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  summaries?: Prisma.SummaryCreateNestedManyWithoutDocumentInput
+}
+
+export type DocumentUncheckedCreateWithoutAssetsInput = {
+  id?: string
+  conversation_id: string
+  user_id: string
+  file_name: string
+  mime_type: string
+  file_size: bigint | number
+  file_hash?: string | null
+  storage_key: string
+  docling_json_key?: string | null
+  raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  processing_error?: string | null
+  uploaded_at?: Date | string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
+  created_at?: Date | string
+  updated_at?: Date | string
+  chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  summaries?: Prisma.SummaryUncheckedCreateNestedManyWithoutDocumentInput
+}
+
+export type DocumentCreateOrConnectWithoutAssetsInput = {
+  where: Prisma.DocumentWhereUniqueInput
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutAssetsInput, Prisma.DocumentUncheckedCreateWithoutAssetsInput>
+}
+
+export type DocumentUpsertWithoutAssetsInput = {
+  update: Prisma.XOR<Prisma.DocumentUpdateWithoutAssetsInput, Prisma.DocumentUncheckedUpdateWithoutAssetsInput>
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutAssetsInput, Prisma.DocumentUncheckedCreateWithoutAssetsInput>
+  where?: Prisma.DocumentWhereInput
+}
+
+export type DocumentUpdateToOneWithWhereWithoutAssetsInput = {
+  where?: Prisma.DocumentWhereInput
+  data: Prisma.XOR<Prisma.DocumentUpdateWithoutAssetsInput, Prisma.DocumentUncheckedUpdateWithoutAssetsInput>
+}
+
+export type DocumentUpdateWithoutAssetsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  file_name?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
+  file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  conversation?: Prisma.ConversationUpdateOneRequiredWithoutDocumentsNestedInput
+  user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
+  chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  summaries?: Prisma.SummaryUpdateManyWithoutDocumentNestedInput
+}
+
+export type DocumentUncheckedUpdateWithoutAssetsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  conversation_id?: Prisma.StringFieldUpdateOperationsInput | string
+  user_id?: Prisma.StringFieldUpdateOperationsInput | string
+  file_name?: Prisma.StringFieldUpdateOperationsInput | string
+  mime_type?: Prisma.StringFieldUpdateOperationsInput | string
+  file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
   summaries?: Prisma.SummaryUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
@@ -944,17 +1209,22 @@ export type DocumentCreateWithoutSummariesInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
   conversation: Prisma.ConversationCreateNestedOneWithoutDocumentsInput
   user: Prisma.UserCreateNestedOneWithoutDocumentsInput
   chunks?: Prisma.DocumentChunkCreateNestedManyWithoutDocumentInput
+  assets?: Prisma.DocumentAssetCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentUncheckedCreateWithoutSummariesInput = {
@@ -964,15 +1234,20 @@ export type DocumentUncheckedCreateWithoutSummariesInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
   chunks?: Prisma.DocumentChunkUncheckedCreateNestedManyWithoutDocumentInput
+  assets?: Prisma.DocumentAssetUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentCreateOrConnectWithoutSummariesInput = {
@@ -996,17 +1271,22 @@ export type DocumentUpdateWithoutSummariesInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutDocumentsNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  assets?: Prisma.DocumentAssetUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentUncheckedUpdateWithoutSummariesInput = {
@@ -1016,15 +1296,20 @@ export type DocumentUncheckedUpdateWithoutSummariesInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  assets?: Prisma.DocumentAssetUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentCreateManyUserInput = {
@@ -1033,12 +1318,16 @@ export type DocumentCreateManyUserInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
 }
@@ -1048,16 +1337,21 @@ export type DocumentUpdateWithoutUserInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutDocumentsNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  assets?: Prisma.DocumentAssetUpdateManyWithoutDocumentNestedInput
   summaries?: Prisma.SummaryUpdateManyWithoutDocumentNestedInput
 }
 
@@ -1067,15 +1361,20 @@ export type DocumentUncheckedUpdateWithoutUserInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  assets?: Prisma.DocumentAssetUncheckedUpdateManyWithoutDocumentNestedInput
   summaries?: Prisma.SummaryUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
@@ -1085,12 +1384,16 @@ export type DocumentUncheckedUpdateManyWithoutUserInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1101,12 +1404,16 @@ export type DocumentCreateManyConversationInput = {
   file_name: string
   mime_type: string
   file_size: bigint | number
+  file_hash?: string | null
   storage_key: string
+  docling_json_key?: string | null
   raw_text?: string | null
+  page_count?: number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: string | null
   uploaded_at?: Date | string
-  ocr_status?: string
-  embed_status?: string
+  ocr_status?: $Enums.ProcessingStatus
+  embed_status?: $Enums.ProcessingStatus
   created_at?: Date | string
   updated_at?: Date | string
 }
@@ -1116,16 +1423,21 @@ export type DocumentUpdateWithoutConversationInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
   chunks?: Prisma.DocumentChunkUpdateManyWithoutDocumentNestedInput
+  assets?: Prisma.DocumentAssetUpdateManyWithoutDocumentNestedInput
   summaries?: Prisma.SummaryUpdateManyWithoutDocumentNestedInput
 }
 
@@ -1135,15 +1447,20 @@ export type DocumentUncheckedUpdateWithoutConversationInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chunks?: Prisma.DocumentChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  assets?: Prisma.DocumentAssetUncheckedUpdateManyWithoutDocumentNestedInput
   summaries?: Prisma.SummaryUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
@@ -1153,12 +1470,16 @@ export type DocumentUncheckedUpdateManyWithoutConversationInput = {
   file_name?: Prisma.StringFieldUpdateOperationsInput | string
   mime_type?: Prisma.StringFieldUpdateOperationsInput | string
   file_size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  file_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storage_key?: Prisma.StringFieldUpdateOperationsInput | string
+  docling_json_key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   raw_text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  page_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  doc_metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   processing_error?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   uploaded_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  ocr_status?: Prisma.StringFieldUpdateOperationsInput | string
-  embed_status?: Prisma.StringFieldUpdateOperationsInput | string
+  ocr_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
+  embed_status?: Prisma.EnumProcessingStatusFieldUpdateOperationsInput | $Enums.ProcessingStatus
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1170,11 +1491,13 @@ export type DocumentUncheckedUpdateManyWithoutConversationInput = {
 
 export type DocumentCountOutputType = {
   chunks: number
+  assets: number
   summaries: number
 }
 
 export type DocumentCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   chunks?: boolean | DocumentCountOutputTypeCountChunksArgs
+  assets?: boolean | DocumentCountOutputTypeCountAssetsArgs
   summaries?: boolean | DocumentCountOutputTypeCountSummariesArgs
 }
 
@@ -1198,6 +1521,13 @@ export type DocumentCountOutputTypeCountChunksArgs<ExtArgs extends runtime.Types
 /**
  * DocumentCountOutputType without action
  */
+export type DocumentCountOutputTypeCountAssetsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DocumentAssetWhereInput
+}
+
+/**
+ * DocumentCountOutputType without action
+ */
 export type DocumentCountOutputTypeCountSummariesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.SummaryWhereInput
 }
@@ -1210,8 +1540,12 @@ export type DocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   file_name?: boolean
   mime_type?: boolean
   file_size?: boolean
+  file_hash?: boolean
   storage_key?: boolean
+  docling_json_key?: boolean
   raw_text?: boolean
+  page_count?: boolean
+  doc_metadata?: boolean
   processing_error?: boolean
   uploaded_at?: boolean
   ocr_status?: boolean
@@ -1221,6 +1555,7 @@ export type DocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   chunks?: boolean | Prisma.Document$chunksArgs<ExtArgs>
+  assets?: boolean | Prisma.Document$assetsArgs<ExtArgs>
   summaries?: boolean | Prisma.Document$summariesArgs<ExtArgs>
   _count?: boolean | Prisma.DocumentCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["document"]>
@@ -1232,8 +1567,12 @@ export type DocumentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   file_name?: boolean
   mime_type?: boolean
   file_size?: boolean
+  file_hash?: boolean
   storage_key?: boolean
+  docling_json_key?: boolean
   raw_text?: boolean
+  page_count?: boolean
+  doc_metadata?: boolean
   processing_error?: boolean
   uploaded_at?: boolean
   ocr_status?: boolean
@@ -1251,8 +1590,12 @@ export type DocumentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   file_name?: boolean
   mime_type?: boolean
   file_size?: boolean
+  file_hash?: boolean
   storage_key?: boolean
+  docling_json_key?: boolean
   raw_text?: boolean
+  page_count?: boolean
+  doc_metadata?: boolean
   processing_error?: boolean
   uploaded_at?: boolean
   ocr_status?: boolean
@@ -1270,8 +1613,12 @@ export type DocumentSelectScalar = {
   file_name?: boolean
   mime_type?: boolean
   file_size?: boolean
+  file_hash?: boolean
   storage_key?: boolean
+  docling_json_key?: boolean
   raw_text?: boolean
+  page_count?: boolean
+  doc_metadata?: boolean
   processing_error?: boolean
   uploaded_at?: boolean
   ocr_status?: boolean
@@ -1280,11 +1627,12 @@ export type DocumentSelectScalar = {
   updated_at?: boolean
 }
 
-export type DocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversation_id" | "user_id" | "file_name" | "mime_type" | "file_size" | "storage_key" | "raw_text" | "processing_error" | "uploaded_at" | "ocr_status" | "embed_status" | "created_at" | "updated_at", ExtArgs["result"]["document"]>
+export type DocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversation_id" | "user_id" | "file_name" | "mime_type" | "file_size" | "file_hash" | "storage_key" | "docling_json_key" | "raw_text" | "page_count" | "doc_metadata" | "processing_error" | "uploaded_at" | "ocr_status" | "embed_status" | "created_at" | "updated_at", ExtArgs["result"]["document"]>
 export type DocumentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   chunks?: boolean | Prisma.Document$chunksArgs<ExtArgs>
+  assets?: boolean | Prisma.Document$assetsArgs<ExtArgs>
   summaries?: boolean | Prisma.Document$summariesArgs<ExtArgs>
   _count?: boolean | Prisma.DocumentCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -1303,6 +1651,7 @@ export type $DocumentPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     conversation: Prisma.$ConversationPayload<ExtArgs>
     user: Prisma.$UserPayload<ExtArgs>
     chunks: Prisma.$DocumentChunkPayload<ExtArgs>[]
+    assets: Prisma.$DocumentAssetPayload<ExtArgs>[]
     summaries: Prisma.$SummaryPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -1312,12 +1661,16 @@ export type $DocumentPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     file_name: string
     mime_type: string
     file_size: bigint
+    file_hash: string | null
     storage_key: string
+    docling_json_key: string | null
     raw_text: string | null
+    page_count: number | null
+    doc_metadata: runtime.JsonValue | null
     processing_error: string | null
     uploaded_at: Date
-    ocr_status: string
-    embed_status: string
+    ocr_status: $Enums.ProcessingStatus
+    embed_status: $Enums.ProcessingStatus
     created_at: Date
     updated_at: Date
   }, ExtArgs["result"]["document"]>
@@ -1717,6 +2070,7 @@ export interface Prisma__DocumentClient<T, Null = never, ExtArgs extends runtime
   conversation<T extends Prisma.ConversationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ConversationDefaultArgs<ExtArgs>>): Prisma.Prisma__ConversationClient<runtime.Types.Result.GetResult<Prisma.$ConversationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   chunks<T extends Prisma.Document$chunksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$chunksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  assets<T extends Prisma.Document$assetsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$assetsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentAssetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   summaries<T extends Prisma.Document$summariesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$summariesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SummaryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1753,12 +2107,16 @@ export interface DocumentFieldRefs {
   readonly file_name: Prisma.FieldRef<"Document", 'String'>
   readonly mime_type: Prisma.FieldRef<"Document", 'String'>
   readonly file_size: Prisma.FieldRef<"Document", 'BigInt'>
+  readonly file_hash: Prisma.FieldRef<"Document", 'String'>
   readonly storage_key: Prisma.FieldRef<"Document", 'String'>
+  readonly docling_json_key: Prisma.FieldRef<"Document", 'String'>
   readonly raw_text: Prisma.FieldRef<"Document", 'String'>
+  readonly page_count: Prisma.FieldRef<"Document", 'Int'>
+  readonly doc_metadata: Prisma.FieldRef<"Document", 'Json'>
   readonly processing_error: Prisma.FieldRef<"Document", 'String'>
   readonly uploaded_at: Prisma.FieldRef<"Document", 'DateTime'>
-  readonly ocr_status: Prisma.FieldRef<"Document", 'String'>
-  readonly embed_status: Prisma.FieldRef<"Document", 'String'>
+  readonly ocr_status: Prisma.FieldRef<"Document", 'ProcessingStatus'>
+  readonly embed_status: Prisma.FieldRef<"Document", 'ProcessingStatus'>
   readonly created_at: Prisma.FieldRef<"Document", 'DateTime'>
   readonly updated_at: Prisma.FieldRef<"Document", 'DateTime'>
 }
@@ -2183,6 +2541,30 @@ export type Document$chunksArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   distinct?: Prisma.DocumentChunkScalarFieldEnum | Prisma.DocumentChunkScalarFieldEnum[]
+}
+
+/**
+ * Document.assets
+ */
+export type Document$assetsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DocumentAsset
+   */
+  select?: Prisma.DocumentAssetSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DocumentAsset
+   */
+  omit?: Prisma.DocumentAssetOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentAssetInclude<ExtArgs> | null
+  where?: Prisma.DocumentAssetWhereInput
+  orderBy?: Prisma.DocumentAssetOrderByWithRelationInput | Prisma.DocumentAssetOrderByWithRelationInput[]
+  cursor?: Prisma.DocumentAssetWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DocumentAssetScalarFieldEnum | Prisma.DocumentAssetScalarFieldEnum[]
 }
 
 /**

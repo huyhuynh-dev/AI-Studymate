@@ -5,6 +5,13 @@ export interface DoclingChunkResult {
     index: number;
     pageNumbers: number[];
     content: string;
+    rawContent?: string;
+    headings?: string[];
+    bboxes?: unknown[];
+    chunkType?: 'text' | 'table' | 'code' | 'formula' | 'image_desc' | 'mixed';
+    hasImage?: boolean;
+    hasTable?: boolean;
+    metadata?: Record<string, unknown>;
 }
 
 export class DoclingTaskError extends Error {
@@ -206,9 +213,32 @@ export class DoclingService {
 
         return rawChunks
             .filter((c: any) => typeof c.text === 'string' && c.text.trim().length > 0)
-            .map((c: any, defaultIdx: number) => ({
-                index: typeof c.chunk_index === 'number' ? c.chunk_index : defaultIdx,
-                pageNumbers: Array.isArray(c.page_numbers)
+            .map((c: any, defaultIdx: number) => {
+                const rawContent =
+                    typeof c.raw_text === 'string'
+                        ? c.raw_text.trim()
+                        : typeof c.raw_content === 'string'
+                            ? c.raw_content.trim()
+                            : undefined;
+                const headings = Array.isArray(c.meta?.headings)
+                    ? c.meta.headings.filter((heading: unknown): heading is string => typeof heading === 'string')
+                    : Array.isArray(c.headings)
+                        ? c.headings.filter((heading: unknown): heading is string => typeof heading === 'string')
+                        : undefined;
+                const bboxes = Array.isArray(c.meta?.doc_items)
+                    ? c.meta.doc_items
+                    : Array.isArray(c.bboxes)
+                        ? c.bboxes
+                        : undefined;
+                const chunkType = ['text', 'table', 'code', 'formula', 'image_desc', 'mixed'].includes(
+                    c.chunk_type ?? c.type,
+                )
+                    ? (c.chunk_type ?? c.type)
+                    : undefined;
+
+                return {
+                    index: typeof c.chunk_index === 'number' ? c.chunk_index : defaultIdx,
+                    pageNumbers: Array.isArray(c.page_numbers)
                     ? c.page_numbers.filter(
                         (page: unknown): page is number =>
                             typeof page === 'number' &&
@@ -216,8 +246,16 @@ export class DoclingService {
                             page > 0,
                     )
                     : [],
-                content: c.text.trim(),
-            }));
+                    content: c.text.trim(),
+                    ...(rawContent ? { rawContent } : {}),
+                    ...(headings ? { headings } : {}),
+                    ...(bboxes ? { bboxes } : {}),
+                    ...(chunkType ? { chunkType } : {}),
+                    ...(c.has_image === true ? { hasImage: true } : {}),
+                    ...(c.has_table === true ? { hasTable: true } : {}),
+                    ...(c.meta && typeof c.meta === 'object' ? { metadata: c.meta } : {}),
+                };
+            });
     }
 
     /**

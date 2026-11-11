@@ -63,6 +63,7 @@ export const ModelName = {
   QuizAttemptAnswer: 'QuizAttemptAnswer',
   Document: 'Document',
   DocumentChunk: 'DocumentChunk',
+  DocumentAsset: 'DocumentAsset',
   ChatSession: 'ChatSession',
   Message: 'Message',
   Summary: 'Summary'
@@ -252,8 +253,12 @@ export const DocumentScalarFieldEnum = {
   file_name: 'file_name',
   mime_type: 'mime_type',
   file_size: 'file_size',
+  file_hash: 'file_hash',
   storage_key: 'storage_key',
+  docling_json_key: 'docling_json_key',
   raw_text: 'raw_text',
+  page_count: 'page_count',
+  doc_metadata: 'doc_metadata',
   processing_error: 'processing_error',
   uploaded_at: 'uploaded_at',
   ocr_status: 'ocr_status',
@@ -269,12 +274,37 @@ export const DocumentChunkScalarFieldEnum = {
   id: 'id',
   document_id: 'document_id',
   chunk_index: 'chunk_index',
-  page_numbers: 'page_numbers',
   content: 'content',
+  raw_content: 'raw_content',
+  token_count: 'token_count',
+  chunk_type: 'chunk_type',
+  headings: 'headings',
+  has_image: 'has_image',
+  has_table: 'has_table',
+  page_numbers: 'page_numbers',
+  bboxes: 'bboxes',
+  chunk_metadata: 'chunk_metadata',
   created_at: 'created_at'
 } as const
 
 export type DocumentChunkScalarFieldEnum = (typeof DocumentChunkScalarFieldEnum)[keyof typeof DocumentChunkScalarFieldEnum]
+
+
+export const DocumentAssetScalarFieldEnum = {
+  id: 'id',
+  document_id: 'document_id',
+  chunk_id: 'chunk_id',
+  asset_type: 'asset_type',
+  self_ref: 'self_ref',
+  page_no: 'page_no',
+  bbox: 'bbox',
+  storage_key: 'storage_key',
+  caption: 'caption',
+  vlm_description: 'vlm_description',
+  created_at: 'created_at'
+} as const
+
+export type DocumentAssetScalarFieldEnum = (typeof DocumentAssetScalarFieldEnum)[keyof typeof DocumentAssetScalarFieldEnum]
 
 
 export const ChatSessionScalarFieldEnum = {
