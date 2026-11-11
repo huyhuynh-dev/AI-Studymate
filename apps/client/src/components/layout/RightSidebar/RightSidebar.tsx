@@ -17,12 +17,15 @@ import { ChatHeader } from "./components/ChatHeader";
 import { ConfirmDeleteDialog } from "./components/ConfirmDeleteDialog";
 import { EmptyState } from "./components/EmptyState";
 import { MessageList } from "./components/MessageList";
+import { Loader2 } from "lucide-react";
 import {
+  ATTACHMENT_PROCESSING_TIMEOUT_MS,
   DEFAULT_EFFORT,
   DEFAULT_MODEL_ID,
 } from "./constants";
 import { useAttachments } from "./hooks/useAttachments";
 import type {
+  AttachedFile,
   ChatMessage,
   ChatSessionItem,
   ChatState,
@@ -112,6 +115,15 @@ export default function RightSidebar({
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [, setIsLoadingMessages] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ChatSessionItem | null>(null);
+
+  /** Quản lý lượt gửi tin đang chờ tài liệu tải lên hoặc xử lý hoàn tất */
+  const [pendingSubmission, setPendingSubmission] = useState<{
+    text: string;
+    attachedFiles: AttachedFile[];
+    sessionId: string;
+    isNewChat: boolean;
+    timestamp: number;
+  } | null>(null);
 
   // ── Resizable & Fullscreen states ──
   const [sidebarWidth, setSidebarWidth] = useState<number>(384);
@@ -220,7 +232,8 @@ export default function RightSidebar({
     addWorkspaceDocs,
     removeFile,
     clearFiles,
-  } = useAttachments({ uploadFile });
+    restoreFiles,
+  } = useAttachments({ uploadFile, documents });
 
   // ── Vercel AI SDK useChat ──
   const transport = useMemo(() => {
@@ -317,7 +330,10 @@ export default function RightSidebar({
   }
 
   const isSending =
-    status === "submitted" || status === "streaming" || isCreatingSession;
+    status === "submitted" ||
+    status === "streaming" ||
+    isCreatingSession ||
+    Boolean(pendingSubmission);
 
   const sessions: ChatSessionItem[] = useMemo(
     () =>
@@ -381,6 +397,7 @@ export default function RightSidebar({
     activeChatIdRef.current = null;
     pendingAttachedDocIdsRef.current = [];
     lastUserQuestionRef.current = "";
+    setPendingSubmission(null);
     setSuggestions([]);
     setIsLoadingSuggestions(false);
     setMessages([]);
@@ -405,6 +422,7 @@ export default function RightSidebar({
     async (id: string) => {
       setActiveChatId(id);
       activeChatIdRef.current = id;
+      setPendingSubmission(null);
       if (typeof window !== "undefined" && conversationId) {
         window.sessionStorage.setItem(
           `studymate:active-session:${conversationId}`,
@@ -471,6 +489,188 @@ export default function RightSidebar({
     setPendingDelete(null);
   }, [pendingDelete, deleteSession, activeChatId, handleNewChat]);
 
+  /** Gửi tin nhắn thực tế kèm danh sách documentId đã sẵn sàng */
+  const executeDirectSend = useCallback(
+    async (
+      text: string,
+      sessionId: string,
+      filesToSend: AttachedFile[],
+      isNewChat: boolean
+    ) => {
+      // Trích xuất danh sách documentId từ các tài liệu đã hoàn tất xử lý (ready)
+      const readyDocIds = filesToSend
+        .filter((f) => f.documentId && f.status === "ready")
+        .map((f) => f.documentId as string);
+
+      pendingAttachedDocIdsRef.current = readyDocIds;
+      const attachedNames = filesToSend
+        .filter((f) => f.status !== "error")
+        .map((f) => f.name);
+
+      setInputValue("");
+      clearFiles();
+
+      console.log("[RightSidebar] Chuẩn bị gửi tin nhắn AI:", {
+        text,
+        sessionId,
+        conversationId,
+        readyDocIds,
+      });
+
+      onSendMessage?.(text, sessionId, {
+        model: modelConfig.modelId,
+        effort: modelConfig.effort,
+        thinking: modelConfig.thinking,
+        attachedFiles: filesToSend,
+      });
+
+      console.log("[RightSidebar] Kích hoạt aiSendMessage({ text })...");
+      const sendPromise = aiSendMessage({
+        text,
+        metadata: { attachedFiles: attachedNames },
+      } as any);
+
+      if (attachedNames.length > 0) {
+        setMessages((prev) => {
+          const lastUserIdx = prev.map((m) => m.role).lastIndexOf("user");
+          if (lastUserIdx === -1) return prev;
+          const updated = [...prev];
+          updated[lastUserIdx] = {
+            ...updated[lastUserIdx],
+            attachedFiles: attachedNames,
+            metadata: {
+              ...(updated[lastUserIdx] as any)?.metadata,
+              attachedFiles: attachedNames,
+            },
+          } as any;
+          return updated;
+        });
+      }
+
+      await sendPromise;
+      console.log("[RightSidebar] aiSendMessage đã gọi xong.");
+
+      // Nếu là phiên mới, sau 1.2s kích hoạt tải lại tiêu đề mới do Ollama cập nhật ngầm
+      if (isNewChat) {
+        setTimeout(() => {
+          refreshSessions();
+        }, 1200);
+      }
+    },
+    [
+      conversationId,
+      clearFiles,
+      onSendMessage,
+      modelConfig,
+      aiSendMessage,
+      setMessages,
+      refreshSessions,
+    ]
+  );
+
+  /** Hủy lượt gửi đang hoãn và hoàn trả câu hỏi vào ô soạn thảo */
+  const handleCancelPendingSubmission = useCallback(() => {
+    if (!pendingSubmission) return;
+    setInputValue(pendingSubmission.text);
+    restoreFiles(pendingSubmission.attachedFiles);
+    setPendingSubmission(null);
+  }, [pendingSubmission, restoreFiles]);
+
+  /** 1. Timeout watcher: Tự động hủy trạng thái chờ và hoàn trả ô soạn thảo nếu quá thời gian cho phép */
+  useEffect(() => {
+    if (!pendingSubmission) return;
+
+    const timer = setTimeout(() => {
+      console.warn(
+        `[RightSidebar] Quá thời gian chờ (${ATTACHMENT_PROCESSING_TIMEOUT_MS / 1000}s) xử lý tài liệu. Tự động hủy gửi hoãn và hoàn trả nội dung.`
+      );
+      setInputValue(pendingSubmission.text);
+      restoreFiles(pendingSubmission.attachedFiles);
+      setPendingSubmission(null);
+    }, ATTACHMENT_PROCESSING_TIMEOUT_MS);
+
+    return () => clearTimeout(timer);
+  }, [pendingSubmission, restoreFiles]);
+
+  /** 2. Readiness & failure watcher: Theo dõi cập nhật danh sách documents (SWR Polling) để kích hoạt gửi thật */
+  useEffect(() => {
+    if (!pendingSubmission) return;
+
+    const targetFiles = pendingSubmission.attachedFiles;
+    const docMap = new Map((documents || []).map((d) => [d.id, d]));
+
+    let anyFailed = false;
+    let failedDocName = "";
+    let failErrorMsg = "";
+    let allReady = true;
+
+    const updatedFiles: AttachedFile[] = targetFiles.map((file) => {
+      // Trường hợp 1: Tệp đã có documentId
+      if (file.documentId) {
+        const doc = docMap.get(file.documentId);
+        if (doc) {
+          if (doc.ocr_status === "failed" || doc.embed_status === "failed") {
+            anyFailed = true;
+            failedDocName = file.name;
+            failErrorMsg = doc.processing_error || "Xử lý trích xuất văn bản hoặc chỉ mục thất bại";
+            return { ...file, status: "error", errorMessage: failErrorMsg };
+          }
+          if (doc.ocr_status === "done" && doc.embed_status === "done") {
+            return { ...file, status: "ready" };
+          }
+          allReady = false;
+          return { ...file, status: "processing" };
+        }
+        allReady = false;
+        return file;
+      }
+
+      // Trường hợp 2: Tệp đang upload dở từ máy (chưa có documentId), tìm kiếm trong documents vừa được tạo cùng tên
+      const matchedByName = documents?.find(
+        (d) =>
+          d.file_name === file.name &&
+          Math.abs(new Date(d.created_at).getTime() - pendingSubmission.timestamp) < ATTACHMENT_PROCESSING_TIMEOUT_MS
+      );
+
+      if (matchedByName) {
+        if (matchedByName.ocr_status === "failed" || matchedByName.embed_status === "failed") {
+          anyFailed = true;
+          failedDocName = file.name;
+          failErrorMsg = matchedByName.processing_error || "Xử lý trích xuất văn bản hoặc chỉ mục thất bại";
+          return { ...file, documentId: matchedByName.id, status: "error", errorMessage: failErrorMsg };
+        }
+        if (matchedByName.ocr_status === "done" && matchedByName.embed_status === "done") {
+          return { ...file, documentId: matchedByName.id, status: "ready" };
+        }
+        allReady = false;
+        return { ...file, documentId: matchedByName.id, status: "processing" };
+      }
+
+      allReady = false;
+      return file;
+    });
+
+    if (anyFailed) {
+      console.warn(`[RightSidebar] Tệp "${failedDocName}" bị lỗi khi xử lý: ${failErrorMsg}. Hủy lượt gửi tự động.`);
+      setInputValue(pendingSubmission.text);
+      restoreFiles(updatedFiles);
+      setPendingSubmission(null);
+      return;
+    }
+
+    if (allReady) {
+      console.log("[RightSidebar] Tất cả tệp đính kèm đã sẵn sàng (ready). Bắt đầu gửi request AI thật sự...");
+      const currentSubmission = pendingSubmission;
+      setPendingSubmission(null);
+      void executeDirectSend(
+        currentSubmission.text,
+        currentSubmission.sessionId,
+        updatedFiles,
+        currentSubmission.isNewChat
+      );
+    }
+  }, [pendingSubmission, documents, restoreFiles, executeDirectSend]);
+
   const sendMessage = useCallback(
     async (rawText: string) => {
       const text = rawText.trim();
@@ -513,64 +713,27 @@ export default function RightSidebar({
           return;
         }
 
-        // Trích xuất danh sách documentId từ các tài liệu Workspace đính kèm trước khi clearFiles
-        const workspaceDocIds = attachedFiles
-          .filter((f) => f.source === "workspace" && f.documentId && f.status !== "error")
-          .map((f) => f.documentId as string);
-        pendingAttachedDocIdsRef.current = workspaceDocIds;
-        const attachedNames = attachedFiles
-          .filter((f) => f.status !== "error")
-          .map((f) => f.name);
+        // Kiểm tra xem có tệp đính kèm nào đang tải lên hoặc đang xử lý không
+        const pendingFiles = attachedFiles.filter(
+          (f) => f.status === "uploading" || f.status === "processing"
+        );
 
-        setInputValue("");
-        clearFiles();
-
-        console.log("[RightSidebar] Chuẩn bị gửi tin nhắn AI:", {
-          text,
-          sessionId,
-          conversationId,
-          workspaceDocIds,
-        });
-
-        onSendMessage?.(text, sessionId, {
-          model: modelConfig.modelId,
-          effort: modelConfig.effort,
-          thinking: modelConfig.thinking,
-          attachedFiles,
-        });
-
-        console.log("[RightSidebar] Kích hoạt aiSendMessage({ text })...");
-        const sendPromise = aiSendMessage({
-          text,
-          metadata: { attachedFiles: attachedNames },
-        } as any);
-
-        if (attachedNames.length > 0) {
-          setMessages((prev) => {
-            const lastUserIdx = prev.map((m) => m.role).lastIndexOf("user");
-            if (lastUserIdx === -1) return prev;
-            const updated = [...prev];
-            updated[lastUserIdx] = {
-              ...updated[lastUserIdx],
-              attachedFiles: attachedNames,
-              metadata: {
-                ...(updated[lastUserIdx] as any)?.metadata,
-                attachedFiles: attachedNames,
-              },
-            } as any;
-            return updated;
+        if (pendingFiles.length > 0) {
+          console.log("[RightSidebar] Có tệp đang tải/xử lý, đưa vào hàng đợi gửi hoãn:", pendingFiles);
+          setPendingSubmission({
+            text,
+            attachedFiles: [...attachedFiles],
+            sessionId,
+            isNewChat,
+            timestamp: Date.now(),
           });
+          setInputValue("");
+          clearFiles();
+          return;
         }
 
-        await sendPromise;
-        console.log("[RightSidebar] aiSendMessage đã gọi xong.");
-
-        // Nếu là phiên mới, sau 1.2s kích hoạt tải lại tiêu đề mới do Ollama cập nhật ngầm
-        if (isNewChat) {
-          setTimeout(() => {
-            refreshSessions();
-          }, 1200);
-        }
+        // Nếu tất cả tài liệu đã sẵn sàng (hoặc không đính kèm tệp) -> Gửi trực tiếp
+        await executeDirectSend(text, sessionId, attachedFiles, isNewChat);
       } catch (error) {
         console.error("Lỗi khi gửi tin nhắn:", error);
       } finally {
@@ -583,10 +746,7 @@ export default function RightSidebar({
       conversationId,
       createSession,
       clearFiles,
-      onSendMessage,
-      modelConfig,
-      aiSendMessage,
-      refreshSessions,
+      executeDirectSend,
     ]
   );
 
@@ -681,6 +841,30 @@ export default function RightSidebar({
             onAddToolOutput={addToolOutput as any}
             onOpenSummary={handleOpenSummary}
           />
+        )}
+
+        {/* Banner hiển thị khi có tệp đang tải lên hoặc xử lý ngầm và người dùng đã bấm gửi */}
+        {pendingSubmission && (
+          <div className="mx-4 mb-1.5 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/90 dark:bg-amber-950/30 px-3.5 py-2.5 shadow-xs animate-in fade-in slide-in-from-bottom-2 duration-200 select-none">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 truncate">
+                  Đang phân tích {pendingSubmission.attachedFiles.map((f) => f.name).join(", ")}...
+                </p>
+                <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
+                  Câu hỏi sẽ tự động được gửi khi tài liệu sẵn sàng tra cứu.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleCancelPendingSubmission}
+              className="shrink-0 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors cursor-pointer"
+            >
+              Hủy
+            </button>
+          </div>
         )}
 
         <ChatComposer

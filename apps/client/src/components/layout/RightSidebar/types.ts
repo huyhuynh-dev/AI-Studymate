@@ -12,15 +12,15 @@ export interface AttachedFile {
   name: string;
   size?: number;
   source: "local" | "workspace";
-  /** UUID thực của tài liệu trong CSDL (khi source = "workspace") */
+  /** UUID thực của tài liệu trong CSDL */
   documentId?: string;
   /** File gốc (chỉ có với source = "local") – dùng khi cần upload thật */
   file?: File;
-  /** Trạng thái tải lên tệp từ thiết bị */
-  status?: "uploading" | "ready" | "error";
+  /** Trạng thái chi tiết của tệp đính kèm */
+  status?: "uploading" | "processing" | "ready" | "error";
   /** Tiến trình tải lên (0 - 100%) */
   progress?: number;
-  /** Thông báo lỗi nếu quá trình tải tệp thất bại */
+  /** Thông báo lỗi nếu quá trình tải tệp hoặc xử lý thất bại */
   errorMessage?: string;
 }
 
