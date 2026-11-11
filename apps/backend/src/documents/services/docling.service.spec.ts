@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DoclingService } from './docling.service.js';
+import {
+  DoclingService,
+  TRANSPARENT_1X1_PNG_DATA_URI,
+} from './docling.service.js';
 import { ConfigService } from '@nestjs/config';
 
 describe('DoclingService', () => {
@@ -137,13 +140,13 @@ describe('DoclingService', () => {
         vlmDescription: 'Biểu đồ doanh thu theo quý',
         mimeType: 'image/png',
       });
-      // Base64 URI must be stripped from sanitizedJsonContent
+      // Base64 URI must be replaced with valid 1x1 transparent PNG data URI in sanitizedJsonContent
       const sanitizedPictures = (conversion.sanitizedJsonContent?.pictures ??
         []) as Array<Record<string, unknown>>;
       const sanitizedPic = sanitizedPictures[0];
       expect(
         (sanitizedPic.image as Record<string, unknown>).uri,
-      ).toBeUndefined();
+      ).toBe(TRANSPARENT_1X1_PNG_DATA_URI);
     });
 
     it('should throw an error if task status reports failure', async () => {

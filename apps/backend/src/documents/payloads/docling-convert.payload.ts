@@ -81,7 +81,6 @@ export function buildDoclingConvertPayload(
     table_structure_preset: 'tableformer_v1_accurate',
     do_code_enrichment: true,
     do_formula_enrichment: true,
-    code_formula_preset: 'codeformulav2',
     do_picture_classification: true,
     picture_classification_preset: 'document_figure_classifier_v2',
     do_chart_extraction: params.doChartExtraction ?? false,

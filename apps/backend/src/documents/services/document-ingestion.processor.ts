@@ -486,20 +486,30 @@ export class DocumentIngestionProcessor
       return;
     }
 
-    // Bước 2: Chuyển tiếp json_docling (hoặc mdContent nếu không có json) sang HybridChunker
+    // Bước 2: Chuyển tiếp json_docling sang HybridChunker (Cách 3A - Luồng chính bắt buộc)
     this.logger.log(
       `[Nhánh Tài liệu] Bước 2: Phân đoạn HybridChunker (Cách 3A - json_docling) cho [${doc.id}]...`,
     );
 
     let chunks: DoclingChunkResult[] = [];
     if (conversion.sanitizedJsonContent) {
-      chunks = await this.doclingService.chunkFromDoclingJson(
-        conversion.sanitizedJsonContent,
-        fileName,
-      );
+      try {
+        chunks = await this.doclingService.chunkFromDoclingJson(
+          conversion.sanitizedJsonContent,
+          fileName,
+        );
+      } catch (err: unknown) {
+        this.logger.warn(
+          `[Nhánh Tài liệu] Lỗi khi chunk qua json_docling cho [${doc.id}], kích hoạt fallback sang Markdown: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
 
+    // Dự phòng an toàn (Fallback): Chỉ khi json_docling thất bại hoặc trả về 0 chunks
     if (chunks.length === 0 && conversion.mdContent.length > 0) {
+      this.logger.log(
+        `[Nhánh Tài liệu] Chạy fallback chunking qua Markdown cho [${doc.id}]...`,
+      );
       chunks = await this.doclingService.chunkMarkdownHybrid(
         conversion.mdContent,
         fileName,

@@ -84,6 +84,9 @@ const DATA_URI_IMAGE_REGEX =
 const MARKDOWN_BASE64_IMAGE_REGEX =
   /!\[([^\]]*)\]\(data:image\/[a-zA-Z0-9.+-]+;base64,[^)]+\)/g;
 
+export const TRANSPARENT_1X1_PNG_DATA_URI =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
 @Injectable()
 export class DoclingService {
   private readonly logger = new Logger(DoclingService.name);
@@ -472,8 +475,8 @@ export class DoclingService {
       const uri = typeof imageObj?.uri === 'string' ? imageObj.uri.trim() : '';
 
       if (imageObj && 'uri' in imageObj) {
-        // Xóa chuỗi base64 nặng khỏi json_content nhưng giữ nguyên cấu trúc để gửi sang HybridChunker
-        delete imageObj.uri;
+        // Làm nhẹ chuỗi base64 bằng PNG 1x1 hợp lệ (68 bytes) để giữ nguyên tính toàn vẹn của Pydantic schema
+        imageObj.uri = TRANSPARENT_1X1_PNG_DATA_URI;
       }
 
       if (!uri) continue;
