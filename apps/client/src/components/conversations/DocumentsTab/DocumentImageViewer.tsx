@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
+  Download,
 } from "lucide-react";
 import { DocumentItem } from "@/types";
 import { documentsApi } from "@/services/documents.api";
@@ -35,6 +36,7 @@ export default function DocumentImageViewer({
   documents = [],
   initialDocumentId,
   onClose,
+  onDownload,
   className = "",
 }: DocumentImageViewerProps) {
   // Lọc chỉ lấy các tài liệu ảnh
@@ -56,14 +58,32 @@ export default function DocumentImageViewer({
   const zoomRef = useRef<ZoomRef>(null);
   const fetchingIdsRef = useRef<Set<string>>(new Set());
 
+  // Đồng bộ index khi initialDocumentId hoặc danh sách ảnh thay đổi
+  useEffect(() => {
+    if (initialDocumentId && imageDocs.length > 0) {
+      const idx = imageDocs.findIndex((doc) => doc.id === initialDocumentId);
+      if (idx >= 0 && idx !== currentIndex) {
+        setCurrentIndex(idx);
+      }
+    }
+  }, [initialDocumentId, imageDocs]);
+
   const currentDoc = imageDocs[currentIndex] || imageDocs[0];
 
-  // Fetch URL cho ảnh hiện tại qua thao tác trực tiếp (ví dụ: nhấn Thử lại)
-  const fetchImageUrl = useCallback(async (docId: string) => {
-    if (urlMap[docId] || fetchingIdsRef.current.has(docId)) return;
+  // Fetch URL cho ảnh qua thao tác trực tiếp hoặc thử lại
+  const fetchImageUrl = useCallback(async (docId: string, force = false) => {
+    if (!docId) return;
+    if (!force && (urlMap[docId] || fetchingIdsRef.current.has(docId))) return;
 
     fetchingIdsRef.current.add(docId);
     setLoadingMap((prev) => ({ ...prev, [docId]: true }));
+    if (force) {
+      setUrlMap((prev) => {
+        const next = { ...prev };
+        delete next[docId];
+        return next;
+      });
+    }
     setErrorMap((prev) => {
       const next = { ...prev };
       delete next[docId];
@@ -78,7 +98,7 @@ export default function DocumentImageViewer({
       const errObj = err as { response?: { data?: { message?: string } }; message?: string };
       setErrorMap((prev) => ({
         ...prev,
-        [docId]: errObj?.response?.data?.message || errObj?.message || "Lỗi tải ảnh",
+        [docId]: errObj?.response?.data?.message || errObj?.message || "Lỗi tải ảnh từ hệ thống",
       }));
     } finally {
       fetchingIdsRef.current.delete(docId);
@@ -86,13 +106,16 @@ export default function DocumentImageViewer({
     }
   }, [urlMap]);
 
+  // Tự động nạp URL cho ảnh đang xem
   useEffect(() => {
     if (!currentDoc) return;
     const docId = currentDoc.id;
     if (urlMap[docId] || fetchingIdsRef.current.has(docId)) return;
 
     fetchingIdsRef.current.add(docId);
+    setLoadingMap((prev) => ({ ...prev, [docId]: true }));
     let ignore = false;
+
     documentsApi
       .getViewUrl(docId)
       .then((res) => {
@@ -107,7 +130,7 @@ export default function DocumentImageViewer({
           const errObj = err as { response?: { data?: { message?: string } }; message?: string };
           setErrorMap((prev) => ({
             ...prev,
-            [docId]: errObj?.response?.data?.message || errObj?.message || "Lỗi tải ảnh",
+            [docId]: errObj?.response?.data?.message || errObj?.message || "Lỗi tải ảnh từ hệ thống",
           }));
           setLoadingMap((prev) => ({ ...prev, [docId]: false }));
         }
@@ -118,6 +141,7 @@ export default function DocumentImageViewer({
 
     return () => {
       ignore = true;
+      fetchingIdsRef.current.delete(docId);
     };
   }, [currentDoc, urlMap]);
 
@@ -195,9 +219,32 @@ export default function DocumentImageViewer({
     setZoomLevel(1);
   };
 
-  const isLoadingCurrent = currentDoc ? loadingMap[currentDoc.id] : false;
-  const currentError = currentDoc ? errorMap[currentDoc.id] : null;
+  if (imageDocs.length === 0) {
+    return (
+      <div className={`flex w-full flex-col p-2 sm:p-3 select-none ${className}`}>
+        <div className="flex w-full items-center justify-between mb-2 sm:mb-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 px-3 py-1.5 text-xs sm:text-sm font-medium text-neutral-700 dark:text-neutral-300 shadow-2xs backdrop-blur-md transition-all duration-200 hover:bg-neutral-100/80 dark:hover:bg-white/[0.08] hover:text-neutral-900 dark:hover:text-white active:scale-95 cursor-pointer whitespace-nowrap"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span>Quay lại</span>
+          </button>
+        </div>
+        <div className="relative flex h-[600px] sm:h-[660px] md:h-[700px] w-full flex-col items-center justify-center overflow-hidden rounded-[20px] sm:rounded-[24px] bg-neutral-950 text-neutral-400">
+          <AlertCircle className="h-8 w-8 text-neutral-500 mb-2" />
+          <p className="text-sm">Không tìm thấy tài liệu hình ảnh nào</p>
+        </div>
+      </div>
+    );
+  }
+
   const hasCurrentUrl = currentDoc ? !!urlMap[currentDoc.id] : false;
+  const currentError = currentDoc ? errorMap[currentDoc.id] : null;
+  const isLoadingCurrent = currentDoc
+    ? Boolean(loadingMap[currentDoc.id] || (!hasCurrentUrl && !currentError))
+    : false;
 
   return (
     <div className={`flex w-full flex-col p-2 sm:p-3 select-none ${className}`}>
@@ -238,7 +285,7 @@ export default function DocumentImageViewer({
             <p className="text-xs sm:text-sm font-medium text-rose-300">{currentError}</p>
             <button
               type="button"
-              onClick={() => fetchImageUrl(currentDoc.id)}
+              onClick={() => fetchImageUrl(currentDoc.id, true)}
               className="rounded-xl bg-neutral-800 px-4 py-2 text-xs font-semibold text-white hover:bg-neutral-700 transition-colors cursor-pointer"
             >
               Thử lại
@@ -296,6 +343,29 @@ export default function DocumentImageViewer({
                 preload: 1,
               }}
               render={{
+                iconLoading: () => (
+                  <div className="flex flex-col items-center justify-center gap-2 text-neutral-400">
+                    <Loader2 className="h-8 w-8 animate-spin text-[#818CF8]" />
+                    <span className="text-xs font-medium">Đang nạp ảnh...</span>
+                  </div>
+                ),
+                iconError: () => (
+                  <div className="flex flex-col items-center justify-center gap-3 p-6 text-center text-neutral-300">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-rose-950/60 text-rose-400 border border-rose-800/40">
+                      <AlertCircle className="h-6 w-6" />
+                    </div>
+                    <p className="text-xs sm:text-sm font-medium text-rose-300">
+                      Không thể hiển thị hình ảnh từ máy chủ lưu trữ
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => fetchImageUrl(currentDoc.id, true)}
+                      className="rounded-xl bg-neutral-800 px-4 py-2 text-xs font-semibold text-white hover:bg-neutral-700 transition-colors cursor-pointer"
+                    >
+                      Thử lại
+                    </button>
+                  </div>
+                ),
                 slide: ({ slide }) => {
                   if (!("src" in slide) || !slide.src || slide.src === PLACEHOLDER_IMAGE) {
                     return (
@@ -370,6 +440,21 @@ export default function DocumentImageViewer({
           >
             <Maximize2 className="h-3.5 w-3.5" />
           </button>
+
+          {/* Nút Tải về (nếu có onDownload) */}
+          {onDownload && (
+            <>
+              <div className="h-4 w-px bg-white/20 mx-0.5" />
+              <button
+                type="button"
+                onClick={() => onDownload(currentDoc.id, currentDoc.file_name)}
+                title="Tải tệp về thiết bị"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-300 transition-colors hover:bg-white/10 hover:text-white active:scale-95 cursor-pointer"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            </>
+          )}
 
           {/* Nút tiến ảnh nếu có nhiều ảnh */}
           {imageDocs.length > 1 && (
