@@ -5,7 +5,7 @@ import type {
   SearchDocumentChunksSourceSummary,
   SearchDocumentChunksToolOutput,
   ToolCallTracker,
-} from '../types.js';
+} from '../../types.js';
 
 export const searchDocumentChunksInputSchema = z.object({
   semanticQuery: z

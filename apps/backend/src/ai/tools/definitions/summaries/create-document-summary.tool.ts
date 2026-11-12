@@ -4,7 +4,7 @@ import type {
   CreateDocumentSummaryCallback,
   CreateDocumentSummaryToolOutput,
   ToolCallTracker,
-} from '../types.js';
+} from '../../types.js';
 
 export const createDocumentSummaryInputSchema = z.object({
   scope: z

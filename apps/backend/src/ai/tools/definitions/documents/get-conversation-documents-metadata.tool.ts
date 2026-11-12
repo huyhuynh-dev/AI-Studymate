@@ -4,7 +4,7 @@ import type {
   GetConversationDocumentsMetadataCallback,
   GetConversationDocumentsMetadataToolOutput,
   ToolCallTracker,
-} from '../types.js';
+} from '../../types.js';
 
 export const getConversationDocumentsMetadataInputSchema = z.object({});
 

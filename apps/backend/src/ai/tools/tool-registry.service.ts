@@ -8,23 +8,19 @@ import type {
 } from './types.js';
 import {
   createAskUserQuestionTool,
-} from './definitions/ask-user-question.tool.js';
+} from './definitions/common/index.js';
 import {
   createSearchDocumentChunksTool,
   searchDocumentChunksInputSchema,
-} from './definitions/search-document-chunks.tool.js';
-import {
   createGetDocumentsFullContentTool,
   getDocumentsFullContentInputSchema,
-} from './definitions/get-documents-full-content.tool.js';
-import {
   createGetConversationDocumentsMetadataTool,
   getConversationDocumentsMetadataInputSchema,
-} from './definitions/get-conversation-documents-metadata.tool.js';
+} from './definitions/documents/index.js';
 import {
   createCreateDocumentSummaryTool,
   createDocumentSummaryInputSchema,
-} from './definitions/create-document-summary.tool.js';
+} from './definitions/summaries/index.js';
 
 export class ChatSessionToolTracker implements ToolCallTracker {
   private readonly collectedChunkIds = new Set<string>();
