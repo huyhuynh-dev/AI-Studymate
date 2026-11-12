@@ -80,7 +80,7 @@ import { DocumentItem } from "@/types";
 import { documentsApi } from "@/services/documents.api";
 import { useFocusMode } from "@/components/layout";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
-import { toEmbedPdfRect, calcBoxPixels } from "@/lib/pdf-coordinates";
+import { calcBoxPixels } from "@/lib/pdf-coordinates";
 
 export interface DocumentPdfViewerProps {
   document: DocumentItem;
@@ -669,7 +669,6 @@ function PdfCitationManager({
   backendDocumentId: string;
 }) {
   const { provides: scroll } = useScroll(documentId);
-  const docState = useDocumentState(documentId);
   const {
     activeTarget,
     activeHighlight,
@@ -689,37 +688,26 @@ function PdfCitationManager({
 
     const pageNo = activeTarget.pageNo || 1;
     const pageIndex = Math.max(0, pageNo - 1);
-    const pageSize = docState?.document?.pages[pageIndex]?.size;
-    const pageHeight = pageSize?.height || 792;
-
     const bboxes = Array.isArray(activeTarget.bboxes) ? activeTarget.bboxes : [];
-    const firstBbox = bboxes.length > 0 ? bboxes[0] : null;
 
-    if (firstBbox) {
-      const rect = toEmbedPdfRect(firstBbox, pageHeight);
-      if (rect) {
-        scroll.scrollToPage({
-          pageNumber: pageNo,
-          pageCoordinates: { x: rect.x, y: rect.y },
-          behavior: "smooth",
-          alignY: 35, // Canh đoạn trích ở khoảng 1/3 từ trên xuống
-        });
-      } else {
+    // Bước 1 (Đưa trang vào Viewport):
+    // Gọi scrollToPage chuẩn của @embedpdf/plugin-scroll (không truyền pageCoordinates phức tạp)
+    const triggerScroll = () => {
+      try {
         scroll.scrollToPage({
           pageNumber: pageNo,
           behavior: "smooth",
-          alignY: 0,
         });
+      } catch (err) {
+        console.warn("[PdfCitationManager] scrollToPage warning:", err);
       }
-    } else {
-      scroll.scrollToPage({
-        pageNumber: pageNo,
-        behavior: "smooth",
-        alignY: 0,
-      });
-    }
+    };
 
-    // Thiết lập vùng tô sáng
+    triggerScroll();
+    // Dự phòng khi scroller vừa mount chưa kịp tính layout hoặc virtualItems
+    const retryTimer = setTimeout(triggerScroll, 100);
+
+    // Thiết lập vùng tô sáng để CitationHighlightLayer hiển thị và thực hiện Bước 2
     if (bboxes.length > 0) {
       setHighlight({
         documentId: backendDocumentId,
@@ -729,13 +717,16 @@ function PdfCitationManager({
       });
     }
 
-    // Consume activeTarget sau khi cuộn xong (tránh lặp lại khi chuyển Tab)
+    // Consume activeTarget sau khi đã xử lý để tránh lặp lại khi chuyển Tab
     consumeActiveTarget();
+
+    return () => {
+      clearTimeout(retryTimer);
+    };
   }, [
     activeTarget,
     backendDocumentId,
     scroll,
-    docState,
     setHighlight,
     consumeActiveTarget,
   ]);
@@ -764,6 +755,7 @@ function PdfCitationManager({
 
 /**
  * Lớp phủ tô sáng (Highlight Overlay) đè lên trang PDF đang hiển thị trích dẫn RAG
+ * Tự động cuộn thẳng tới DOM của khung Highlight đầu tiên bằng scrollIntoView (Bước 2)
  */
 function CitationHighlightLayer({
   documentId,
@@ -780,14 +772,40 @@ function CitationHighlightLayer({
 }) {
   const { activeHighlight } = useCitationNavigation();
   const docState = useDocumentState(documentId);
+  const firstBoxRef = useRef<HTMLDivElement | null>(null);
 
-  if (
-    !activeHighlight ||
-    activeHighlight.documentId !== backendDocumentId ||
-    activeHighlight.pageIndex !== pageIndex ||
-    !Array.isArray(activeHighlight.bboxes) ||
-    activeHighlight.bboxes.length === 0
-  ) {
+  const isCurrentPage = Boolean(
+    activeHighlight &&
+      activeHighlight.documentId === backendDocumentId &&
+      activeHighlight.pageIndex === pageIndex &&
+      Array.isArray(activeHighlight.bboxes) &&
+      activeHighlight.bboxes.length > 0
+  );
+
+  // Bước 2: Cuộn thẳng tới DOM của Khung Highlight đầu tiên bằng scrollIntoView
+  useEffect(() => {
+    if (!isCurrentPage) return;
+
+    const scrollToHighlight = () => {
+      const el =
+        firstBoxRef.current ||
+        document.querySelector<HTMLElement>('[data-active-citation-highlight="true"]');
+      if (el) {
+        el.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+      }
+    };
+
+    // Chờ 60-100ms để trang hoàn tất paint và layout trong viewport của EmbedPDF
+    const timer = setTimeout(scrollToHighlight, 80);
+
+    return () => clearTimeout(timer);
+  }, [isCurrentPage, activeHighlight]);
+
+  if (!isCurrentPage || !activeHighlight) {
     return null;
   }
 
@@ -807,9 +825,13 @@ function CitationHighlightLayer({
         );
         if (!box) return null;
 
+        const isFirst = idx === 0;
+
         return (
           <div
             key={idx}
+            ref={isFirst ? firstBoxRef : undefined}
+            data-active-citation-highlight={isFirst ? "true" : undefined}
             className="absolute rounded-md bg-amber-400/25 dark:bg-amber-400/30 ring-2 ring-amber-500/80 dark:ring-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all duration-300 animate-in fade-in zoom-in-95"
             style={{
               left: `${box.left}px`,
