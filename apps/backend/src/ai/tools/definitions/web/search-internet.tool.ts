@@ -20,12 +20,6 @@ export const searchInternetInputSchema = z.object({
     .describe(
       'Độ sâu tìm kiếm: "basic" cho câu hỏi nhanh hoặc khái niệm thông thường (1 credit); "advanced" cho bài toán học thuật chuyên sâu cần đối chiếu kỹ (2 credits).',
     ),
-  topic: z
-    .enum(['general', 'news', 'finance'])
-    .default('general')
-    .describe(
-      'Chủ đề tìm kiếm: "general" cho kiến thức chung/khoa học, "news" cho tin tức sự kiện mới cập nhật, "finance" cho tài chính/kinh tế.',
-    ),
   language: z
     .string()
     .optional()
@@ -67,7 +61,13 @@ export function createSearchInternetTool(
       'Tìm kiếm thông tin thực tế, bài báo khoa học, sự kiện mới hoặc kiến thức bên ngoài trên Internet thông qua Tavily Search API khi câu hỏi không có trong tài liệu của người dùng. Trả về các trích đoạn ngắn kèm URL nguồn và favicon.',
     inputSchema: searchInternetInputSchema,
     execute: async (input): Promise<SearchInternetToolOutput> => {
-      const response = await callback(input);
+      console.log(
+        `[Tool:searchInternet] 🔎 AI Agent kích hoạt Tool: query="${input.query}", depth="${input.searchDepth || 'basic'}", topic="general"`,
+      );
+      const response = await callback({
+        ...input,
+        topic: 'general',
+      });
 
       const mappedResults: SearchInternetResultItem[] = (
         response.results || []
@@ -95,6 +95,10 @@ export function createSearchInternetTool(
           previewSnippet: r.previewSnippet,
         };
       });
+
+      console.log(
+        `[Tool:searchInternet] 🎯 Hoàn tất thực thi Tool cho query="${input.query}": Cấp phát ${mappedResults.length} mã trích dẫn (${mappedResults.map((r) => `[${r.citationId}]: ${r.domain}`).join(', ')})`,
+      );
 
       return {
         query: response.query,

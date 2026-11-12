@@ -306,7 +306,9 @@ export class ChatAgentService {
 
     const webCallbacks = {
       onSearchInternet: async (input: any) => {
+        console.log(`[ChatAgentService] 🌐 LLM gọi callback onSearchInternet: query="${input.query}"`);
         if (!this.tavilyService) {
+          console.warn(`[ChatAgentService] ⚠️ TavilyService chưa được inject vào ChatAgentService!`);
           return {
             query: input.query,
             totalResults: 0,
@@ -314,10 +316,14 @@ export class ChatAgentService {
             message: 'Tìm kiếm Internet bị lỗi.',
           };
         }
-        return this.tavilyService.search(input);
+        const res = await this.tavilyService.search(input);
+        console.log(`[ChatAgentService] 🌐 onSearchInternet trả về cho LLM: ${res.totalResults} kết quả`);
+        return res;
       },
       onExtractWebPage: async (input: any) => {
+        console.log(`[ChatAgentService] 📄 LLM gọi callback onExtractWebPage: URLs=[${(input.urls || []).join(', ')}], query="${input.query}"`);
         if (!this.tavilyService) {
+          console.warn(`[ChatAgentService] ⚠️ TavilyService chưa được inject vào ChatAgentService!`);
           return {
             query: input.query,
             totalSuccess: 0,
@@ -330,7 +336,9 @@ export class ChatAgentService {
             message: 'Tìm kiếm Internet bị lỗi.',
           };
         }
-        return this.tavilyService.extract(input);
+        const res = await this.tavilyService.extract(input);
+        console.log(`[ChatAgentService] 📄 onExtractWebPage trả về cho LLM: ${res.totalSuccess} thành công, ${res.totalFailed} thất bại`);
+        return res;
       },
     };
 

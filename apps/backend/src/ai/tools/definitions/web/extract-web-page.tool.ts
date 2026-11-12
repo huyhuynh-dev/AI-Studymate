@@ -32,6 +32,9 @@ export function createExtractWebPageTool(
       'Đọc sâu và trích xuất nội dung chi tiết theo định dạng Markdown từ 1-3 liên kết web cụ thể bằng Tavily Extract API. Sử dụng khi người dùng gửi kèm đường link (URL) trong câu hỏi hoặc khi cần đọc sâu tài liệu kỹ thuật từ kết quả tìm kiếm searchInternet.',
     inputSchema: extractWebPageInputSchema,
     execute: async (input): Promise<ExtractWebPageToolOutput> => {
+      console.log(
+        `[Tool:extractWebPage] 📖 AI Agent kích hoạt Tool: URLs=[${input.urls.join(', ')}], query="${input.query}"`,
+      );
       const response = await callback(input);
 
       const mappedResults: ExtractWebPageResultItem[] = (
@@ -60,6 +63,10 @@ export function createExtractWebPageTool(
           previewSnippet: r.previewSnippet,
         };
       });
+
+      console.log(
+        `[Tool:extractWebPage] 🎯 Hoàn tất thực thi Tool cho query="${input.query}": Thành công ${mappedResults.length} URLs, Thất bại ${(response.failedResults || []).length} URLs`,
+      );
 
       return {
         query: response.query,
