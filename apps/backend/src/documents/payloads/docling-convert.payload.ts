@@ -93,6 +93,9 @@ export function buildDoclingConvertPayload(
   };
 
   if (hasVlmApi && params.vlmApi) {
+    const rawVlmTimeout = params.vlmApi.timeoutSec ?? 60;
+    const safeVlmTimeout = Math.min(Math.max(rawVlmTimeout, 15), 90);
+
     options.picture_description_api = {
       url: params.vlmApi.url.trim(),
       headers: {
@@ -105,7 +108,7 @@ export function buildDoclingConvertPayload(
         max_tokens: 1024,
         stream: false,
       },
-      timeout: params.vlmApi.timeoutSec ?? 60,
+      timeout: safeVlmTimeout,
       concurrency: 2,
       prompt: params.vlmApi.prompt ?? DEFAULT_DOCLING_VLM_PROMPT,
     };

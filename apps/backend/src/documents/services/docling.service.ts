@@ -131,6 +131,7 @@ export class DoclingService {
   private readonly maxTokens: number;
   private readonly vlmApiConfig: DoclingVlmApiConfig | null;
   private readonly doChartExtraction: boolean;
+  private conversionMutex: Promise<void> = Promise.resolve();
 
   constructor(private readonly configService: ConfigService) {
     const rawUrl =
@@ -141,9 +142,8 @@ export class DoclingService {
       this.configService.get<string>('DOCLING_SERVE_API_KEY')?.trim() ||
       undefined;
 
-    const timeoutSec =
-      Number(this.configService.get<string>('DOCLING_TIMEOUT_SECONDS')) || 180;
-    this.timeoutMs = timeoutSec * 1000;
+    const configuredTimeoutSec =
+      Number(this.configService.get<string>('DOCLING_TIMEOUT_SECONDS')) || 360;
 
     this.tokenizer =
       this.configService.get<string>('DOCLING_TOKENIZER')?.trim() ||
@@ -157,8 +157,9 @@ export class DoclingService {
     const vlmModel =
       this.configService.get<string>('DOCLING_VLM_MODEL')?.trim() ||
       'gpt-4.1-mini';
-    const vlmTimeoutSec =
+    const rawVlmTimeoutSec =
       Number(this.configService.get<string>('DOCLING_VLM_TIMEOUT_SEC')) || 60;
+    const safeVlmTimeoutSec = Math.min(Math.max(rawVlmTimeoutSec, 15), 90);
 
     this.vlmApiConfig =
       vlmUrl && vlmKey
@@ -166,16 +167,40 @@ export class DoclingService {
             url: vlmUrl,
             apiKey: vlmKey,
             model: vlmModel,
-            timeoutSec: vlmTimeoutSec,
+            timeoutSec: safeVlmTimeoutSec,
           }
         : null;
+
+    // Đảm bảo tổng thời gian chờ Convert luôn đủ lớn hơn thời gian OCR + CodeFormulaV2 + VLM API
+    const effectiveTimeoutSec = this.vlmApiConfig
+      ? Math.max(configuredTimeoutSec, safeVlmTimeoutSec * 2 + 180, 360)
+      : configuredTimeoutSec;
+    this.timeoutMs = effectiveTimeoutSec * 1000;
 
     this.doChartExtraction =
       this.configService.get<string>('DOCLING_DO_CHART_EXTRACTION') === 'true';
 
     this.logger.log(
-      `DoclingService khởi tạo thành công [URL: ${this.baseUrl}, Timeout: ${timeoutSec}s, Tokenizer: ${this.tokenizer}, VLM API: ${this.vlmApiConfig ? 'Enabled' : 'Disabled'}]`,
+      `DoclingService khởi tạo thành công [URL: ${this.baseUrl}, Timeout: ${effectiveTimeoutSec}s, Tokenizer: ${this.tokenizer}, VLM API: ${this.vlmApiConfig ? `Enabled (timeout=${safeVlmTimeoutSec}s)` : 'Disabled'}]`,
     );
+  }
+
+  /**
+   * Tuần tự hóa các tác vụ Convert nặng trên GPU của Docling Server để tránh tranh chấp VRAM/CUDA
+   * và đảm bảo bộ đếm timeout của từng tài liệu chỉ bắt đầu khi tới lượt chạy thực tế.
+   */
+  private async runWithConversionLock<T>(fn: () => Promise<T>): Promise<T> {
+    const previous = this.conversionMutex;
+    let release!: () => void;
+    this.conversionMutex = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous.catch(() => {});
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
   }
 
   private buildHeaders(includeJsonContentType = false): Record<string, string> {
@@ -237,15 +262,45 @@ export class DoclingService {
 
     const normalizedName = this.normalizeConvertFileName(fileName);
     const base64String = fileBuffer.toString('base64');
+
+    return this.runWithConversionLock(async () => {
+      try {
+        return await this.executeConvertRequest(
+          normalizedName,
+          base64String,
+          this.vlmApiConfig,
+        );
+      } catch (err: unknown) {
+        if (!this.vlmApiConfig) {
+          throw err;
+        }
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Convert [${normalizedName}] kèm VLM nội bộ của Docling gặp lỗi/timeout (${message}). Tự động chuyển sang Convert không chờ VLM từ xa (Backend VisionService sẽ bổ sung mô tả ảnh)...`,
+        );
+        return await this.executeConvertRequest(
+          normalizedName,
+          base64String,
+          null,
+        );
+      }
+    });
+  }
+
+  private async executeConvertRequest(
+    normalizedName: string,
+    base64String: string,
+    vlmApi: DoclingVlmApiConfig | null,
+  ): Promise<DoclingConversionResult> {
     const reqBody = buildDoclingConvertPayload({
       fileName: normalizedName,
       base64String,
-      vlmApi: this.vlmApiConfig,
+      vlmApi,
       doChartExtraction: this.doChartExtraction,
     });
 
     this.logger.debug(
-      `Gửi request convert async tới Docling Server cho [${normalizedName}]`,
+      `Gửi request convert async tới Docling Server cho [${normalizedName}] (VLM: ${vlmApi ? 'on' : 'off'})`,
     );
     const submitRes = await fetch(`${this.baseUrl}/v1/convert/source/async`, {
       method: 'POST',
@@ -1724,6 +1779,8 @@ export class DoclingService {
     actionName: string,
   ): Promise<void> {
     const startTime = Date.now();
+    let lastProgressLogTime = startTime;
+    const totalTimeoutSec = Math.round(this.timeoutMs / 1000);
 
     while (Date.now() - startTime < this.timeoutMs) {
       try {
@@ -1753,6 +1810,15 @@ export class DoclingService {
           );
         }
 
+        const now = Date.now();
+        if (now - lastProgressLogTime >= 15_000) {
+          const elapsedSec = Math.round((now - startTime) / 1000);
+          this.logger.debug(
+            `Đang chờ Docling xử lý ${actionName} [task=${taskId}, status=${status ?? 'unknown'}, elapsed=${elapsedSec}s/${totalTimeoutSec}s]...`,
+          );
+          lastProgressLogTime = now;
+        }
+
         await new Promise((resolve) =>
           setTimeout(resolve, this.pollIntervalMs),
         );
@@ -1771,7 +1837,7 @@ export class DoclingService {
     }
 
     throw new Error(
-      `Quá thời gian chờ (${this.timeoutMs / 1000}s) khi xử lý Docling task [${taskId}] cho ${actionName}`,
+      `Quá thời gian chờ (${totalTimeoutSec}s) khi xử lý Docling task [${taskId}] cho ${actionName}`,
     );
   }
 }

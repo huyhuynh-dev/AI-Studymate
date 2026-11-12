@@ -38,6 +38,7 @@ export class DocumentIngestionProcessor
 {
   private readonly logger = new Logger(DocumentIngestionProcessor.name);
   private worker: Worker<DocumentJobData>;
+  private readonly activeDocumentIds = new Set<string>();
 
   constructor(
     private readonly configService: ConfigService,
@@ -68,7 +69,10 @@ export class DocumentIngestionProcessor
           password: redisPassword,
           maxRetriesPerRequest: null,
         },
-        concurrency: 3,
+        concurrency: 2,
+        lockDuration: 600_000,
+        stalledInterval: 120_000,
+        maxStalledCount: 2,
       },
     );
 
@@ -129,6 +133,13 @@ export class DocumentIngestionProcessor
       );
     }
 
+    if (this.activeDocumentIds.has(documentId)) {
+      this.logger.warn(
+        `Tài liệu [${documentId}] đang được xử lý bởi một tiến trình khác, bỏ qua job trùng lặp [${job.id}]`,
+      );
+      return;
+    }
+
     const doc = await this.documentsRepo.findRawDocumentById(documentId);
     if (!doc) {
       this.logger.warn(
@@ -137,6 +148,14 @@ export class DocumentIngestionProcessor
       return;
     }
 
+    if (doc.ocr_status === 'done' && doc.embed_status === 'done') {
+      this.logger.debug(
+        `Tài liệu [${documentId}] đã hoàn tất xử lý từ trước, bỏ qua job [${job.id}]`,
+      );
+      return;
+    }
+
+    this.activeDocumentIds.add(documentId);
     const effectiveFileName = fileName || doc.file_name || 'document';
     this.logger.log(
       `Bắt đầu pipeline xử lý tài liệu [${documentId}] (MIME: ${mimeType}, File: ${effectiveFileName})`,
@@ -205,6 +224,8 @@ export class DocumentIngestionProcessor
       });
 
       throw error;
+    } finally {
+      this.activeDocumentIds.delete(documentId);
     }
   }
 
@@ -492,6 +513,7 @@ export class DocumentIngestionProcessor
       createdAssets = await this.uploadAndSaveExtractedPictures(
         doc,
         conversion.extractedPictures,
+        fileName,
       );
     }
 
@@ -578,6 +600,7 @@ export class DocumentIngestionProcessor
   private async uploadAndSaveExtractedPictures(
     doc: Document,
     pictures: ExtractedDoclingPicture[],
+    fileName?: string,
   ): Promise<DocumentAsset[]> {
     const assetInputs: CreateDocumentAssetInput[] = [];
 
@@ -590,6 +613,33 @@ export class DocumentIngestionProcessor
         pic.buffer,
         pic.mimeType,
       );
+
+      if (
+        !pic.vlmDescription?.trim() &&
+        typeof this.visionService?.analyzeAndChunkImage === 'function'
+      ) {
+        try {
+          const visionOutput = await this.visionService.analyzeAndChunkImage(
+            pic.buffer,
+            pic.mimeType,
+            `${fileName ?? doc.file_name}#picture-${pic.index}`,
+          );
+          const fallbackDesc =
+            visionOutput.visual_description?.trim() ||
+            visionOutput.extracted_markdown?.trim() ||
+            null;
+          if (fallbackDesc) {
+            pic.vlmDescription = fallbackDesc;
+          }
+          if (!pic.caption && visionOutput.title_or_topic?.trim()) {
+            pic.caption = visionOutput.title_or_topic.trim();
+          }
+        } catch (err: unknown) {
+          this.logger.warn(
+            `Không thể bổ sung mô tả VLM dự phòng cho ảnh [${pic.selfRef}] của [${doc.id}]: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
 
       assetInputs.push({
         assetType: pic.assetType,

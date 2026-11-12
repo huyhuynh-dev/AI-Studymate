@@ -48,6 +48,37 @@ export class DocumentsQueueService
     this.logger.log(
       `BullMQ Queue [${DOCUMENT_QUEUE_NAME}] đã khởi tạo thành công`,
     );
+
+    void this.deduplicatePendingJobs();
+  }
+
+  /**
+   * Dọn dẹp các job bị trùng lặp cùng documentId đang nằm chờ (waiting/delayed) trong Redis
+   * từ các phiên trước (đặc biệt các job cũ dùng jobId chứa timestamp).
+   */
+  private async deduplicatePendingJobs(): Promise<void> {
+    if (!this.queue) return;
+    try {
+      const pendingJobs = await this.queue.getJobs(['waiting', 'delayed']);
+      const seenDocIds = new Set<string>();
+
+      for (const job of pendingJobs) {
+        const docId = job?.data?.documentId;
+        if (!docId) continue;
+
+        if (seenDocIds.has(docId)) {
+          await job.remove().catch(() => {});
+          this.logger.warn(
+            `Đã xóa job trùng lặp [${job.id}] trong hàng đợi cho tài liệu [${docId}]`,
+          );
+        } else {
+          seenDocIds.add(docId);
+        }
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Không thể dọn dẹp job trùng lặp: ${message}`);
+    }
   }
 
   async addProcessingJob(data: DocumentJobData): Promise<void> {
@@ -58,12 +89,36 @@ export class DocumentsQueueService
       return;
     }
 
+    const jobId = `ingest-${data.documentId}`;
+
+    try {
+      const existingJob = await this.queue.getJob(jobId);
+      if (existingJob) {
+        const state = await existingJob.getState();
+        if (
+          state === 'active' ||
+          state === 'waiting' ||
+          state === 'delayed' ||
+          state === 'prioritized' ||
+          state === 'waiting-children'
+        ) {
+          this.logger.debug(
+            `Bỏ qua đẩy job trùng lặp: Tài liệu [${data.documentId}] đã có job [${jobId}] đang ở trạng thái [${state}]`,
+          );
+          return;
+        }
+        await existingJob.remove().catch(() => {});
+      }
+    } catch {
+      // Nếu không đọc/xóa được job cũ, tiếp tục thử add vào queue
+    }
+
     await this.queue.add('ingest-document', data, {
-      jobId: `ingest-${data.documentId}-${Date.now()}`,
-      attempts: 3,
+      jobId,
+      attempts: 2,
       backoff: {
         type: 'exponential',
-        delay: 3000,
+        delay: 15_000,
       },
       removeOnComplete: true,
       removeOnFail: false,
