@@ -4,6 +4,7 @@ import { toolDefinitionsToToolSet } from '@blocknote/xl-ai/server';
 import type {
   ChatAgentToolName,
   ChatSessionToolCallbacks,
+  CitationItem,
   ToolCallTracker,
 } from './types.js';
 import {
@@ -12,9 +13,10 @@ import {
 import {
   createSearchDocumentChunksTool,
   searchDocumentChunksInputSchema,
+  createGetDocumentSectionOrPagesTool,
+  getDocumentSectionOrPagesInputSchema,
   createGetDocumentsFullContentTool,
   getDocumentsFullContentInputSchema,
-  createGetConversationDocumentsMetadataTool,
   getConversationDocumentsMetadataInputSchema,
 } from './definitions/documents/index.js';
 import {
@@ -33,10 +35,54 @@ export class ChatSessionToolTracker implements ToolCallTracker {
     Record<string, unknown>
   >();
 
+  // Turn-scoped citation counter & registry
+  private citationCounter = 0;
+  private readonly citationsByChunkKey = new Map<string, CitationItem>();
+  private readonly citationsById = new Map<string, CitationItem>();
+
   recordChunkId(chunkId: string): void {
     if (chunkId) {
       this.collectedChunkIds.add(chunkId);
     }
+  }
+
+  /**
+   * Cấp phát citationId tuần tự (c1, c2, c3...) duy nhất cho toàn bộ turn stream.
+   * Nếu cùng 1 chunkId (hoặc cùng documentId + chunkIndex) đã được cấp citationId trước đó
+   * (ở bước tool trước trong cùng turn), trả về lại citationId cũ để tránh trùng lặp.
+   */
+  allocateCitation(chunk: Omit<CitationItem, 'citationId'>): string {
+    const chunkKey =
+      chunk.chunkId ||
+      `${chunk.documentId}:${(chunk as any).chunkIndex ?? ''}`;
+    const existing = this.citationsByChunkKey.get(chunkKey);
+    if (existing) {
+      return existing.citationId;
+    }
+
+    this.citationCounter += 1;
+    const citationId = `c${this.citationCounter}`;
+
+    const citationItem: CitationItem = {
+      ...chunk,
+      citationId,
+    };
+
+    this.citationsByChunkKey.set(chunkKey, citationItem);
+    this.citationsById.set(citationId, citationItem);
+    if (chunk.chunkId) {
+      this.recordChunkId(chunk.chunkId);
+    }
+
+    return citationId;
+  }
+
+  getAllCitations(): CitationItem[] {
+    return Array.from(this.citationsById.values());
+  }
+
+  getCitation(citationId: string): CitationItem | undefined {
+    return this.citationsById.get(citationId);
   }
 
   recordOutput(
@@ -79,6 +125,11 @@ export class ToolRegistryService {
         description: 'Tìm kiếm các đoạn trích trong tài liệu',
         inputSchema: searchDocumentChunksInputSchema,
       }),
+      getDocumentSectionOrPages: tool({
+        description:
+          'Đọc nội dung văn bản theo phân đoạn, mục hoặc trang của tài liệu',
+        inputSchema: getDocumentSectionOrPagesInputSchema,
+      }),
       getDocumentsFullContent: tool({
         description: 'Lấy toàn bộ nội dung văn bản của tài liệu',
         inputSchema: getDocumentsFullContentInputSchema,
@@ -117,20 +168,20 @@ export class ToolRegistryService {
       );
     }
 
-    if (callbacks?.onGetDocumentsFullContent) {
+    if (callbacks?.onGetDocumentSectionOrPages) {
+      tools.getDocumentSectionOrPages = createGetDocumentSectionOrPagesTool(
+        callbacks.onGetDocumentSectionOrPages,
+        tracker,
+      );
+    } else if (callbacks?.onGetDocumentsFullContent) {
       tools.getDocumentsFullContent = createGetDocumentsFullContentTool(
         callbacks.onGetDocumentsFullContent,
         tracker,
       );
     }
 
-    if (callbacks?.onGetDocumentsMetadata) {
-      tools.getConversationDocumentsMetadata =
-        createGetConversationDocumentsMetadataTool(
-          callbacks.onGetDocumentsMetadata,
-          tracker,
-        );
-    }
+    // getConversationDocumentsMetadata không được đăng ký vào toolset hoạt động
+    // vì danh mục tài liệu đã được nhúng sẵn ở System Prompt (Context Injection)
 
     if (callbacks?.onCreateDocumentSummary) {
       tools.createDocumentSummary = createCreateDocumentSummaryTool(

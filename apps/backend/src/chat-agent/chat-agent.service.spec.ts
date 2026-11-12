@@ -22,6 +22,7 @@ describe('ChatAgentService', () => {
   let retrievalMock: {
     getAvailableDocumentsCatalog: ReturnType<typeof vi.fn>;
     searchRelevantChunks: ReturnType<typeof vi.fn>;
+    getDocumentSectionOrPages: ReturnType<typeof vi.fn>;
     getDocumentsFullContent: ReturnType<typeof vi.fn>;
   };
   let summariesMock: {
@@ -63,6 +64,14 @@ describe('ChatAgentService', () => {
         },
       ]),
       searchRelevantChunks: vi.fn().mockResolvedValue([]),
+      getDocumentSectionOrPages: vi.fn().mockResolvedValue({
+        documentId: 'doc-attached-1',
+        fileName: 'Giao_trinh_CTDL.pdf',
+        pageCount: 1,
+        isFullDocument: true,
+        totalChunks: 0,
+        chunks: [],
+      }),
       getDocumentsFullContent: vi.fn().mockResolvedValue([]),
     };
 
@@ -146,6 +155,8 @@ describe('ChatAgentService', () => {
     await options.onSearchDocumentChunks({
       semanticQuery: 'Định nghĩa và cơ chế tự cân bằng của cây AVL',
       keywords: ['cây AVL', 'tự cân bằng'],
+      pageNumbers: [3],
+      includeNeighbors: true,
     });
     expect(retrievalMock.searchRelevantChunks).toHaveBeenCalledWith({
       userId: 'user-1',
@@ -153,20 +164,24 @@ describe('ChatAgentService', () => {
       semanticQuery: 'Định nghĩa và cơ chế tự cân bằng của cây AVL',
       keywords: ['cây AVL', 'tự cân bằng'],
       preferredDocumentIds: ['doc-attached-1'],
+      pageNumbers: [3],
+      pageRange: undefined,
+      includeNeighbors: true,
       topK: 15,
     });
 
-    // Kiểm tra callback Tool 2: getDocumentsFullContent
-    await options.onGetDocumentsFullContent({
-      documentIds: ['doc-attached-1'],
-      fetchAllDocuments: false,
+    // Kiểm tra callback Tool 2: getDocumentSectionOrPages
+    expect(options?.onGetDocumentSectionOrPages).toBeDefined();
+    await options.onGetDocumentSectionOrPages({
+      documentId: 'doc-attached-1',
+      pageNumbers: [1, 2],
     });
-    expect(retrievalMock.getDocumentsFullContent).toHaveBeenCalledWith({
+    expect(retrievalMock.getDocumentSectionOrPages).toHaveBeenCalledWith({
       userId: 'user-1',
       conversationId: 'conv-1',
-      documentIds: ['doc-attached-1'],
-      fetchAllDocuments: false,
-      preferredDocumentIds: ['doc-attached-1'],
+      documentId: 'doc-attached-1',
+      pageNumbers: [1, 2],
+      headingKeyword: undefined,
     });
 
     // Kiểm tra callback Tool 3: getConversationDocumentsMetadata
@@ -303,6 +318,17 @@ describe('ChatAgentService', () => {
       }),
       tracker: {
         getCollectedChunkIds: () => new Set(['chunk-uuid-1', 'chunk-uuid-2']),
+        getAllCitations: () => [
+          {
+            citationId: 'c1',
+            chunkId: 'chunk-uuid-1',
+            documentId: 'doc-attached-1',
+            fileName: 'Giao_trinh_CTDL.pdf',
+            pageNumbers: [1],
+            headings: [],
+            content: 'Nội dung trích dẫn',
+          },
+        ],
       },
     };
 
@@ -310,7 +336,7 @@ describe('ChatAgentService', () => {
       {
         id: 'msg-u1',
         role: 'user' as const,
-        parts: [{ type: 'text', text: 'Xin chào' }],
+        parts: [{ type: 'text' as const, text: 'Xin chào' }],
       },
     ];
 
@@ -332,8 +358,8 @@ describe('ChatAgentService', () => {
       id: 'msg-ai-1',
       role: 'assistant' as const,
       parts: [
-        { type: 'step-start' },
-        { type: 'text', text: 'Chào bạn, tôi là StudyMate AI!' },
+        { type: 'step-start' as const },
+        { type: 'text' as const, text: 'Chào bạn, tôi là StudyMate AI!' },
       ],
     };
 
@@ -347,7 +373,17 @@ describe('ChatAgentService', () => {
 
     expect(saveSpy).toHaveBeenCalledWith(
       'session-1',
-      assistantResponseMessage,
+      expect.objectContaining({
+        id: 'msg-ai-1',
+        metadata: {
+          citations: [
+            expect.objectContaining({
+              citationId: 'c1',
+              chunkId: 'chunk-uuid-1',
+            }),
+          ],
+        },
+      }),
       ['chunk-uuid-1', 'chunk-uuid-2'],
     );
   });

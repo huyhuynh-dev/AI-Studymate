@@ -23,6 +23,9 @@ import {
   type SearchDocumentChunksSourceSummary,
   type SearchDocumentChunksToolOutput,
   type SearchDocumentChunksCallback,
+  type GetDocumentSectionOrPagesToolInput,
+  type GetDocumentSectionOrPagesToolOutput,
+  type GetDocumentSectionOrPagesCallback,
   type GetDocumentsFullContentToolInput,
   type DocumentFullContentSummaryItem,
   type GetDocumentsFullContentToolOutput,
@@ -35,6 +38,7 @@ import {
   type CreateDocumentSummaryToolInput,
   type CreateDocumentSummaryToolOutput,
   type CreateDocumentSummaryCallback,
+  type CitationItem,
 } from './tools/index.js';
 
 export {
@@ -46,6 +50,9 @@ export {
   type SearchDocumentChunksSourceSummary,
   type SearchDocumentChunksToolOutput,
   type SearchDocumentChunksCallback,
+  type GetDocumentSectionOrPagesToolInput,
+  type GetDocumentSectionOrPagesToolOutput,
+  type GetDocumentSectionOrPagesCallback,
   type GetDocumentsFullContentToolInput,
   type DocumentFullContentSummaryItem,
   type GetDocumentsFullContentToolOutput,
@@ -58,6 +65,7 @@ export {
   type CreateDocumentSummaryToolInput,
   type CreateDocumentSummaryToolOutput,
   type CreateDocumentSummaryCallback,
+  type CitationItem,
 };
 
 @Injectable()
@@ -126,6 +134,7 @@ export class ChatAgentAiService {
       availableDocuments?: AvailableDocumentItem[];
       attachedDocumentIds?: string[];
       onSearchDocumentChunks?: SearchDocumentChunksCallback;
+      onGetDocumentSectionOrPages?: GetDocumentSectionOrPagesCallback;
       onGetDocumentsFullContent?: GetDocumentsFullContentCallback;
       onGetDocumentsMetadata?: GetConversationDocumentsMetadataCallback;
       onCreateDocumentSummary?: CreateDocumentSummaryCallback;

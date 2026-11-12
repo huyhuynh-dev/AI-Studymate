@@ -231,8 +231,20 @@ export class ChatAgentService {
           responseMessage.parts.length > 0
         ) {
           const sourceChunkIds = getSourceChunkIds();
+          const citations =
+            tracker && typeof tracker.getAllCitations === 'function'
+              ? tracker.getAllCitations()
+              : [];
+
+          if (citations.length > 0) {
+            (responseMessage as any).metadata = {
+              ...((responseMessage as any).metadata),
+              citations,
+            };
+          }
+
           console.log(
-            `[ChatAgentService] toUIMessageStream onFinish -> Lưu tin nhắn AI: id=${responseMessage.id}, partsCount=${responseMessage.parts.length}, sourceChunks=${sourceChunkIds.length}`,
+            `[ChatAgentService] toUIMessageStream onFinish -> Lưu tin nhắn AI: id=${responseMessage.id}, partsCount=${responseMessage.parts.length}, sourceChunks=${sourceChunkIds.length}, citations=${citations.length}`,
           );
           await this.saveUIMessage(
             chatSessionId,
@@ -295,14 +307,26 @@ export class ChatAgentService {
             availableDocuments,
             attachedDocumentIds: ragContext.attachedDocumentIds,
             chatConfig: config,
-            onSearchDocumentChunks: async ({ semanticQuery, keywords }) => {
+            onSearchDocumentChunks: async (input) => {
               return this.retrievalService.searchRelevantChunks({
                 userId: ragContext.userId,
                 conversationId: ragContext.conversationId,
-                semanticQuery,
-                keywords,
+                semanticQuery: input.semanticQuery,
+                keywords: input.keywords,
                 preferredDocumentIds: ragContext.attachedDocumentIds,
+                pageNumbers: input.pageNumbers,
+                pageRange: input.pageRange,
+                includeNeighbors: input.includeNeighbors,
                 topK: config.topK,
+              });
+            },
+            onGetDocumentSectionOrPages: async (input) => {
+              return this.retrievalService.getDocumentSectionOrPages({
+                userId: ragContext.userId,
+                conversationId: ragContext.conversationId,
+                documentId: input.documentId,
+                pageNumbers: input.pageNumbers,
+                headingKeyword: input.headingKeyword,
               });
             },
             onGetDocumentsFullContent: async ({
