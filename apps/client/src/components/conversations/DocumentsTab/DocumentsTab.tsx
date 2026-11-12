@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { DocumentItem, UploadProgressItem } from "@/types";
 import { useFocusMode } from "@/components/layout";
+import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import DocumentImageViewer from "./DocumentImageViewer";
 import DocumentPdfViewer from "./DocumentPdfViewer";
 
@@ -95,6 +96,14 @@ export default function DocumentsTab({
   const [viewingDocId, setViewingDocId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<"all" | "pdf" | "image">("all");
   const { setIsViewingDocument, setFocusMode } = useFocusMode();
+  const { activeTarget } = useCitationNavigation();
+
+  // Tự động mở tài liệu tương ứng khi người dùng click vào trích dẫn từ Chatbox
+  useEffect(() => {
+    if (activeTarget?.documentId) {
+      setViewingDocId(activeTarget.documentId);
+    }
+  }, [activeTarget]);
 
   const viewingDoc = useMemo(
     () => documents.find((d) => d.id === viewingDocId),
@@ -283,6 +292,10 @@ export default function DocumentsTab({
         />
       );
     }
+
+    // Ghi chú mở rộng: Hiện tại StudyMate hỗ trợ xem PDF và Ảnh trực tiếp.
+    // Đối với các định dạng khác như Markdown, Text thuần hoặc tài liệu Office,
+    // vị trí này được chừa sẵn để tích hợp các viewer tương ứng trong các Phase tiếp theo.
   }
 
   // 1. Trường hợp chưa có tài liệu nào và không có file đang upload: Empty State tối giản chuẩn Apple HIG

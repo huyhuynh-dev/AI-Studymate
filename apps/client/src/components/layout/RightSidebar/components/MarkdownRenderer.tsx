@@ -9,6 +9,8 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Check, Copy } from "lucide-react";
 import "katex/dist/katex.min.css";
+import { CitationBadge } from "./CitationBadge";
+import type { CitationItem } from "@/lib/citation-parser";
 
 interface CodeBlockProps {
   language?: string;
@@ -77,8 +79,10 @@ function CodeBlock({ language, value }: CodeBlockProps) {
 
 export const MarkdownRenderer = React.memo(function MarkdownRenderer({
   content,
+  citationMap,
 }: {
   content: string;
+  citationMap?: Map<string, CitationItem>;
 }) {
   return (
     <div className="prose prose-sm max-w-none text-inherit leading-relaxed">
@@ -141,16 +145,34 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
               {children}
             </blockquote>
           ),
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noreferrer"
-              className="text-[#4F46E5] dark:text-[#818CF8] underline font-semibold hover:text-[#3525CD]"
-            >
-              {children}
-            </a>
-          ),
+          a: ({ href, children }) => {
+            if (href?.startsWith("#citation-")) {
+              const citationId = href.replace("#citation-", "");
+              const item = citationMap?.get(citationId);
+              const displayVal =
+                Array.isArray(children) && children.length > 0
+                  ? children[0]
+                  : children;
+              return (
+                <CitationBadge
+                  displayNumber={String(displayVal ?? citationId)}
+                  citationId={citationId}
+                  item={item}
+                />
+              );
+            }
+
+            return (
+              <a
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#4F46E5] dark:text-[#818CF8] underline font-semibold hover:text-[#3525CD]"
+              >
+                {children}
+              </a>
+            );
+          },
           p: ({ children }) => (
             <p className="my-1.5 first:mt-0 last:mb-0 leading-relaxed whitespace-pre-wrap break-words">
               {children}

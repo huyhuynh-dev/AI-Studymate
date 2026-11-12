@@ -23,6 +23,12 @@ import { ASSISTANT_NAME } from "../constants";
 import type { ChatMessage } from "../types";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { MessageActions } from "./MessageActions";
+import { CollapsibleSourceBar } from "./CollapsibleSourceBar";
+import {
+  extractCitationsMap,
+  sanitizeStreamingCitations,
+  type CitationBadgeMeta,
+} from "@/lib/citation-parser";
 
 interface AiMessageProps {
   message: ChatMessage;
@@ -298,8 +304,85 @@ export const AiMessage = React.memo(function AiMessage({
     );
   }, [normalizedParts]);
 
+  // 1. Bản đồ dữ liệu trích dẫn chi tiết
+  const citationMap = useMemo(() => extractCitationsMap(message), [message]);
+
+  // 2. Xử lý đánh số tuần tự [1], [2]... cho tất cả text parts của message
+  const { formattedParts, formattedContentFallback, allCitedList } = useMemo(() => {
+    const allocatedNumbers = new Map<string, number>();
+    const metaMap = new Map<string, CitationBadgeMeta>();
+    const citedList: CitationBadgeMeta[] = [];
+    let nextDisplayIndex = 1;
+
+    const formatText = (raw: string) => {
+      const sanitized = sanitizeStreamingCitations(raw || "", false);
+      const normalized = sanitized.replace(/\]\s*\[(?=[cw]\d)/gi, "] [");
+      return normalized.replace(
+        /\[\s*([cw]\d+(?:\s*,\s*[cw]\d+)*)\s*\]/gi,
+        (_fullMatch, innerGroup: string) => {
+          const ids = innerGroup
+            .split(",")
+            .map((s) => s.trim().toLowerCase())
+            .filter((s) => /^[cw]\d+$/.test(s));
+
+          if (ids.length === 0) return _fullMatch;
+
+          const badges = ids.map((id) => {
+            let displayNum = allocatedNumbers.get(id);
+            if (!displayNum) {
+              displayNum = nextDisplayIndex++;
+              allocatedNumbers.set(id, displayNum);
+
+              const item = citationMap.get(id);
+              const sourceType = id.startsWith("w") ? "web" : "document";
+
+              const meta: CitationBadgeMeta = {
+                displayNumber: displayNum,
+                citationId: id,
+                sourceType: item?.sourceType || (sourceType as any),
+                item,
+              };
+
+              metaMap.set(id, meta);
+              citedList.push(meta);
+            }
+
+            return `[${displayNum}](#citation-${id})`;
+          });
+
+          return badges.join(" ");
+        }
+      );
+    };
+
+    if (!hasDisplayableParts) {
+      return {
+        formattedParts: null,
+        formattedContentFallback: formatText(message.content || ""),
+        allCitedList: citedList,
+      };
+    }
+
+    const partsWithFormattedText = normalizedParts.map((p: any) => {
+      if (p.type === "text" || typeof p.text === "string") {
+        return {
+          ...p,
+          _formattedText: formatText(p.text || ""),
+        };
+      }
+      return p;
+    });
+
+    return {
+      formattedParts: partsWithFormattedText,
+      formattedContentFallback: null,
+      allCitedList: citedList,
+    };
+  }, [message, normalizedParts, hasDisplayableParts, citationMap]);
+
   const hasCitation =
     message.hasCitation ||
+    allCitedList.length > 0 ||
     (normalizedParts &&
       normalizedParts.some(
         (p: any) =>
@@ -350,9 +433,15 @@ export const AiMessage = React.memo(function AiMessage({
       <div className="space-y-2.5 rounded-[20px] rounded-tl-[4px] border border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#161922] px-4 py-3 text-[13.5px] leading-relaxed text-[#0B1C30] dark:text-[#EFF0F6] shadow-xs">
         {/* Render theo Typed Parts (chuẩn Vercel AI SDK) */}
         {hasDisplayableParts ? (
-          normalizedParts.map((part: any, index: number) => {
+          (formattedParts || normalizedParts).map((part: any, index: number) => {
             if (part.type === "text" || typeof part.text === "string") {
-              return <MarkdownRenderer key={index} content={part.text || ""} />;
+              return (
+                <MarkdownRenderer
+                  key={index}
+                  content={part._formattedText || part.text || ""}
+                  citationMap={citationMap}
+                />
+              );
             }
 
             if (part.type === "reasoning") {
@@ -1233,7 +1322,10 @@ export const AiMessage = React.memo(function AiMessage({
             return null;
           })
         ) : (
-          <MarkdownRenderer content={message.content || ""} />
+          <MarkdownRenderer
+            content={formattedContentFallback || message.content || ""}
+            citationMap={citationMap}
+          />
         )}
 
         {/* Bullets bổ trợ nếu có */}
@@ -1249,6 +1341,11 @@ export const AiMessage = React.memo(function AiMessage({
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Thanh tổng hợp nguồn trích dẫn thu gọn (Collapsible Source Bar) */}
+        {allCitedList.length > 0 && (
+          <CollapsibleSourceBar citedList={allCitedList} />
         )}
 
         {/* Trích dẫn riêng nếu có */}

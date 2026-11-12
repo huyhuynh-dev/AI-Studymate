@@ -8,6 +8,7 @@ import SummaryTab from "@/components/conversations/SummaryTab/SummaryTab";
 import FlashcardsTab from "@/components/conversations/FlashcardTab";
 import QuizTab from "@/components/conversations/QuizTab";
 import { useFocusMode } from "@/components/layout";
+import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useConversations } from "@/hooks/useConversations";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -37,6 +38,14 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     isRightSidebarCollapsed,
     toggleRightSidebar,
   } = useFocusMode();
+  const { activeTarget } = useCitationNavigation();
+
+  // Tự động chuyển sang Tab "Tài liệu" khi người dùng bấm vào một Badge trích dẫn tài liệu từ Chatbox
+  useEffect(() => {
+    if (activeTarget?.documentId) {
+      setActiveTab("documents");
+    }
+  }, [activeTarget]);
 
   // Lắng nghe sự kiện mở trực tiếp bản tóm tắt từ Badge trong RightSidebar AI Chat
   useEffect(() => {
