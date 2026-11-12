@@ -25,6 +25,7 @@ export interface SearchDocumentChunksToolInput {
   pageNumbers?: number[];
   pageRange?: { start: number; end: number };
   includeNeighbors?: boolean;
+  topK?: number;
 }
 
 export interface SearchDocumentChunksSourceSummary {
@@ -49,6 +50,7 @@ export interface SearchDocumentChunksToolOutput {
     pageNumbers: number[];
     headings: string[];
     content: string;
+    previewSnippet?: string;
     rawContent?: string | null;
     bboxes?: unknown;
     assets?: unknown[];
@@ -85,6 +87,7 @@ export interface GetDocumentSectionOrPagesToolOutput {
     pageNumbers: number[];
     headings: string[];
     content: string;
+    previewSnippet?: string;
     rawContent?: string | null;
     bboxes?: unknown;
     assets?: unknown[];

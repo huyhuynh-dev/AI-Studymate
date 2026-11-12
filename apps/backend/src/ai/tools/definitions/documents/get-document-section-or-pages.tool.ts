@@ -82,9 +82,7 @@ export function createGetDocumentSectionOrPagesTool(
           pageNumbers: chunk.pageNumbers,
           headings: chunk.headings,
           content: chunk.content,
-          rawContent: chunk.rawContent,
-          bboxes: chunk.bboxes,
-          assets: chunk.assets,
+          previewSnippet: chunk.content ? chunk.content.slice(0, 200) : '',
         };
       });
 

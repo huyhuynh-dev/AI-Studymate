@@ -167,7 +167,7 @@ describe('ChatAgentService', () => {
       pageNumbers: [3],
       pageRange: undefined,
       includeNeighbors: true,
-      topK: 15,
+      topK: 8,
     });
 
     // Kiểm tra callback Tool 2: getDocumentSectionOrPages
@@ -273,7 +273,7 @@ describe('ChatAgentService', () => {
       modelName: 'cx/gpt-5.6-luna-low',
       temperature: 0.2,
       maxOutputTokens: 1024,
-      topK: 10,
+      topK: 5,
     });
   });
 
@@ -305,7 +305,7 @@ describe('ChatAgentService', () => {
       modelName: 'cx/gpt-5.6-terra-high',
       temperature: 0.2,
       maxOutputTokens: 4096,
-      topK: 20,
+      topK: 12,
     });
   });
 
@@ -352,6 +352,20 @@ describe('ChatAgentService', () => {
     expect(capturedOptions.originalMessages).toEqual(originalMessages);
     expect(typeof capturedOptions.generateMessageId).toBe('function');
     expect(typeof capturedOptions.onFinish).toBe('function');
+    expect(typeof capturedOptions.messageMetadata).toBe('function');
+
+    // Kiểm tra messageMetadata trả về citations khi part.type === 'finish'
+    const finishMetadata = capturedOptions.messageMetadata({
+      part: { type: 'finish' },
+    });
+    expect(finishMetadata).toEqual({
+      citations: [
+        expect.objectContaining({
+          citationId: 'c1',
+          chunkId: 'chunk-uuid-1',
+        }),
+      ],
+    });
 
     // Giả lập callback onFinish được Vercel AI SDK gọi khi hoàn tất stream
     const assistantResponseMessage = {

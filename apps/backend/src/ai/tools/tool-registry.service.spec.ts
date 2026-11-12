@@ -9,6 +9,7 @@ import {
 } from './types.js';
 import { createSearchDocumentChunksTool } from './definitions/documents/search-document-chunks.tool.js';
 import { createGetDocumentSectionOrPagesTool } from './definitions/documents/get-document-section-or-pages.tool.js';
+import { HttpLoggingFilter } from '../../common/filters/http-logging.filter.js';
 
 describe('ToolRegistryService & ChatSessionToolTracker', () => {
   describe('ChatSessionToolTracker - Turn-Scoped Citation Counter', () => {
@@ -105,7 +106,7 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
           pageNumbers: [5],
           headings: ['Đạo hàm'],
           content: 'Nội dung chính chunk 10',
-          rawContent: null,
+          rawContent: 'Đạo hàm của hàm số f(x) tại điểm x0...',
           chunkType: 'text',
           hasImage: false,
           hasTable: false,
@@ -166,6 +167,18 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       expect(output.chunks[0].citationId).toBe('c1');
       expect(output.chunks[1].citationId).toBe('c2');
 
+      // Tinh gọn payload: part.output không chứa rawContent, bboxes, assets
+      expect(output.chunks[0].previewSnippet).toBeDefined();
+      expect(output.chunks[0].rawContent).toBeUndefined();
+      expect(output.chunks[0].bboxes).toBeUndefined();
+      expect(output.chunks[0].assets).toBeUndefined();
+
+      // Nhưng tracker VẪN BẢO TOÀN 100% dữ liệu gốc cho Popover / PDF Jumper
+      const trackedCitation = tracker.getCitation('c1');
+      expect(trackedCitation?.rawContent).toBe('Đạo hàm của hàm số f(x) tại điểm x0...');
+      expect(trackedCitation?.bboxes).toBeNull();
+      expect(trackedCitation?.assets).toEqual([]);
+
       expect(toolInstance.toModelOutput).toBeDefined();
       const modelOutput = toolInstance.toModelOutput!({ output }) as {
         type: 'text';
@@ -205,7 +218,7 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
             pageNumbers: [1],
             headings: ['Phần 1'],
             content: 'Nội dung trang 1',
-            rawContent: null,
+            rawContent: 'Đoạn trích nội dung gốc đầy đủ của trang 1...',
             chunkType: 'text',
             bboxes: null,
             assets: [],
@@ -218,7 +231,7 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
             pageNumbers: [2],
             headings: ['Phần 2'],
             content: 'Nội dung trang 2',
-            rawContent: null,
+            rawContent: 'Đoạn trích nội dung gốc đầy đủ của trang 2...',
             chunkType: 'text',
             bboxes: null,
             assets: [],
@@ -243,10 +256,18 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       expect(output.chunks[0].citationId).toBe('c1');
       expect(output.chunks[1].citationId).toBe('c2');
 
-      // Ghi nhận vào tracker
+      // Tinh gọn payload: part.output không chứa rawContent, bboxes, assets
+      expect(output.chunks[0].previewSnippet).toBeDefined();
+      expect(output.chunks[0].rawContent).toBeUndefined();
+      expect(output.chunks[0].bboxes).toBeUndefined();
+      expect(output.chunks[0].assets).toBeUndefined();
+
+      // Ghi nhận vào tracker với đầy đủ 100% dữ liệu gốc
       expect(tracker.getAllCitations()).toHaveLength(2);
       expect(tracker.getCitation('c1')?.chunkId).toBe('chunk-sec-1');
+      expect(tracker.getCitation('c1')?.rawContent).toBe('Đoạn trích nội dung gốc đầy đủ của trang 1...');
       expect(tracker.getCitation('c2')?.chunkId).toBe('chunk-sec-2');
+      expect(tracker.getCitation('c2')?.rawContent).toBe('Đoạn trích nội dung gốc đầy đủ của trang 2...');
 
       // Kiểm tra toModelOutput
       expect(toolInstance.toModelOutput).toBeDefined();
@@ -273,6 +294,41 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       expect(tools.getDocumentSectionOrPages).toBeDefined();
       expect(tools.getConversationDocumentsMetadata).toBeUndefined();
       expect(tools.askUserQuestion).toBeDefined();
+    });
+  });
+
+  describe('HttpLoggingFilter status code preservation', () => {
+    it('bảo toàn mã HTTP status và message khi gặp non-HttpException có trường status/statusCode (như 413 PayloadTooLargeError)', () => {
+      const filter = new HttpLoggingFilter();
+      const mockJson = vi.fn();
+      const mockStatus = vi.fn().mockReturnValue({ json: mockJson });
+      const mockHost = {
+        switchToHttp: () => ({
+          getRequest: () => ({
+            method: 'POST',
+            url: '/api/chat-agent/stream',
+            ip: '127.0.0.1',
+            headers: {},
+          }),
+          getResponse: () => ({
+            status: mockStatus,
+          }),
+        }),
+      } as any;
+
+      const payloadTooLargeError = new Error('request entity too large') as any;
+      payloadTooLargeError.status = 413;
+      payloadTooLargeError.type = 'entity.too.large';
+
+      filter.catch(payloadTooLargeError, mockHost);
+
+      expect(mockStatus).toHaveBeenCalledWith(413);
+      expect(mockJson).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 413,
+          message: 'request entity too large',
+        }),
+      );
     });
   });
 });

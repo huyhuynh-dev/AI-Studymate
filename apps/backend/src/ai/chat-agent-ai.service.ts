@@ -167,7 +167,9 @@ export class ChatAgentAiService {
 
     const activeTools = Object.keys(tools).length > 0 ? tools : undefined;
 
-    const modelMessages = await convertToModelMessages(messages);
+    const modelMessages = await convertToModelMessages(messages, {
+      tools: activeTools,
+    });
     this.logger.log(
       `[ChatAgentAiService] convertToModelMessages: input count=${messages.length}, output count=${modelMessages.length}, activeTools=${activeTools ? Object.keys(activeTools).join(',') : 'none'}, model=${chatConfig.modelName}, temp=${chatConfig.temperature}, maxTokens=${chatConfig.maxOutputTokens}, topK=${chatConfig.topK}`,
     );

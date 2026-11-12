@@ -36,6 +36,15 @@ export const searchDocumentChunksInputSchema = z.object({
     .describe(
       'Đặt là true để lấy thêm đoạn trích liền kề (chunk_index - 1 và chunk_index + 1) nếu đoạn trích bị ngắt câu/đoạn hoặc cần thêm ngữ cảnh rộng hơn.',
     ),
+  topK: z
+    .number()
+    .int()
+    .min(1)
+    .max(12)
+    .optional()
+    .describe(
+      'Số lượng chunks cần lấy (mặc định 8, tối đa 12 khi cần tổng hợp rộng).',
+    ),
 });
 
 export function toSearchChunksLightweightOutput(
@@ -54,13 +63,13 @@ export function toSearchChunksLightweightOutput(
 export function createSearchDocumentChunksTool(
   callback: SearchDocumentChunksCallback,
   tracker?: ToolCallTracker,
-  maxChunks: number = 15,
+  maxChunks: number = 8,
 ) {
   return tool({
     description: `Tìm kiếm các đoạn trích (chunks) cụ thể trong tài liệu bằng Hybrid Search (pgvector + PGRoonga kết hợp thuật toán RRF). Sử dụng công cụ này cho các câu hỏi cụ thể về khái niệm, thuật ngữ, định nghĩa, công thức hoặc chi tiết trong tài liệu. Cho phép lọc theo trang (pageNumbers/pageRange) và mở rộng ngữ cảnh liền kề (includeNeighbors). Trả về tối đa ${maxChunks} chunks liên quan nhất kèm mã trích dẫn [cX].`,
     inputSchema: searchDocumentChunksInputSchema,
     execute: async (
-      { semanticQuery, keywords, pageNumbers, pageRange, includeNeighbors },
+      { semanticQuery, keywords, pageNumbers, pageRange, includeNeighbors, topK },
       { toolCallId },
     ): Promise<SearchDocumentChunksToolOutput> => {
       const safeKeywords = Array.isArray(keywords)
@@ -70,12 +79,14 @@ export function createSearchDocumentChunksTool(
             .slice(0, 5)
         : [];
 
+      const limit = Math.min(topK || maxChunks, 12);
       const retrievedChunks = await callback({
         semanticQuery: semanticQuery || '',
         keywords: safeKeywords,
         pageNumbers,
         pageRange,
         includeNeighbors,
+        topK: limit,
       });
 
       const sourceMap = new Map<
@@ -142,9 +153,7 @@ export function createSearchDocumentChunksTool(
           pageNumbers: c.pageNumbers,
           headings: c.headings,
           content: c.content,
-          rawContent: c.rawContent,
-          bboxes: c.bboxes,
-          assets: c.assets,
+          previewSnippet: c.content ? c.content.slice(0, 200) : '',
           neighbors: c.neighbors,
           rrfScore: Number(c.rrfScore.toFixed(5)),
         };

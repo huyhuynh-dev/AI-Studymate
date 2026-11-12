@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { EmbeddingService } from '../../ai/embedding.service.js';
 
-export const DEFAULT_TOP_K = 20;
+export const DEFAULT_TOP_K = 8;
 export const DEFAULT_CANDIDATE_LIMIT = 50;
 export const DEFAULT_RRF_K = 60;
 export const MAX_KEYWORDS = 5;

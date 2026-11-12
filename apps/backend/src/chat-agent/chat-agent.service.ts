@@ -37,18 +37,18 @@ export function resolveChatConfig(
   let suffix = '-medium';
   let temperature = 0.5;
   let maxOutputTokens = 2048;
-  let topK = 15;
+  let topK = 8;
 
   if (effort === 'low') {
     suffix = '-low';
     temperature = 0.2;
     maxOutputTokens = 1024;
-    topK = 10;
+    topK = 5;
   } else if (effort === 'high' || effort === 'extra' || effort === 'max') {
     suffix = '-high';
     temperature = 0.2;
     maxOutputTokens = 4096;
-    topK = 20;
+    topK = 12;
   }
 
   return {
@@ -211,6 +211,18 @@ export class ChatAgentService {
         prefix: 'msg-',
         size: 16,
       }),
+      messageMetadata: ({ part }: { part: any }) => {
+        if (part?.type === 'finish') {
+          const citations =
+            tracker && typeof tracker.getAllCitations === 'function'
+              ? tracker.getAllCitations()
+              : [];
+          if (citations.length > 0) {
+            return { citations };
+          }
+        }
+        return undefined;
+      },
       onFinish: async ({
         responseMessage,
         isAborted,
@@ -317,7 +329,7 @@ export class ChatAgentService {
                 pageNumbers: input.pageNumbers,
                 pageRange: input.pageRange,
                 includeNeighbors: input.includeNeighbors,
-                topK: config.topK,
+                topK: input.topK || config.topK,
               });
             },
             onGetDocumentSectionOrPages: async (input) => {
