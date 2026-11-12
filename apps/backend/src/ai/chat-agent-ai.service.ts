@@ -38,7 +38,15 @@ import {
   type CreateDocumentSummaryToolInput,
   type CreateDocumentSummaryToolOutput,
   type CreateDocumentSummaryCallback,
+  type SearchInternetToolInput,
+  type SearchInternetToolOutput,
+  type SearchInternetCallback,
+  type ExtractWebPageToolInput,
+  type ExtractWebPageToolOutput,
+  type ExtractWebPageCallback,
   type CitationItem,
+  type DocumentCitationItem,
+  type WebCitationItem,
 } from './tools/index.js';
 
 export {
@@ -65,7 +73,15 @@ export {
   type CreateDocumentSummaryToolInput,
   type CreateDocumentSummaryToolOutput,
   type CreateDocumentSummaryCallback,
+  type SearchInternetToolInput,
+  type SearchInternetToolOutput,
+  type SearchInternetCallback,
+  type ExtractWebPageToolInput,
+  type ExtractWebPageToolOutput,
+  type ExtractWebPageCallback,
   type CitationItem,
+  type DocumentCitationItem,
+  type WebCitationItem,
 };
 
 @Injectable()
@@ -138,6 +154,8 @@ export class ChatAgentAiService {
       onGetDocumentsFullContent?: GetDocumentsFullContentCallback;
       onGetDocumentsMetadata?: GetConversationDocumentsMetadataCallback;
       onCreateDocumentSummary?: CreateDocumentSummaryCallback;
+      onSearchInternet?: SearchInternetCallback;
+      onExtractWebPage?: ExtractWebPageCallback;
       chatConfig?: {
         modelName: string;
         temperature: number;

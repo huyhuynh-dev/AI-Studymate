@@ -257,6 +257,9 @@ importers:
       '@prisma/client':
         specifier: ^7.10.0
         version: 7.10.0(prisma@7.10.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3))(typescript@6.0.3)
+      '@tavily/core':
+        specifier: ^1.0.0
+        version: 1.0.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(zod@4.6.7)
       ai:
         specifier: 6.0.309
         version: 6.0.309(zod@4.6.7)
@@ -2792,6 +2795,14 @@ packages:
 
   '@tailwindcss/postcss@4.3.3':
     resolution: {integrity: sha512-JTSZZGQi1AyKirbLN3azmjVzef92tcX7h+iSqPdaeStyFpGpDlKvvpxeOE8njhbUanbRwr3z8DyzhICWnMtQeg==}
+
+  '@tavily/core@1.0.0':
+    resolution: {integrity: sha512-IingagTYpCAuRqG709F1lsgUzlnO3JB1wyznxZ9sXe6m2nabFxGgibfDi+vXY5oVKgb0NQRESDldYbMI4Ec8/w==}
+    peerDependencies:
+      zod: ^4.0.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
 
   '@tiptap/core@3.32.0':
     resolution: {integrity: sha512-Ghh2h02GKSqzytQGcLV4espYOG4EHxjj0MsrUB2Vnr47xmlZYRf6r7k2J09H+JpBdaGrWwrTkyBEi5i3c3yy2Q==}
@@ -10549,6 +10560,16 @@ snapshots:
       '@tailwindcss/oxide': 4.3.3
       postcss: 8.5.28
       tailwindcss: 4.3.3
+
+  '@tavily/core@1.0.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(zod@4.6.7)':
+    dependencies:
+      axios: 1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
+      https-proxy-agent: 7.0.6(supports-color@7.2.0)
+    optionalDependencies:
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - debug
+      - supports-color
 
   '@tiptap/core@3.32.0(@tiptap/pm@3.32.0)':
     dependencies:

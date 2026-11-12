@@ -5,6 +5,7 @@ import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.serv
 import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
 import { SummariesService } from '../summaries/summaries.service.js';
+import { TavilyService } from '../search/tavily.service.js';
 import {
   SummaryLength,
   SummaryMode,
@@ -67,6 +68,7 @@ export class ChatAgentService {
     private readonly retrievalService: RetrievalService,
     @Optional() private readonly summariesService?: SummariesService,
     @Optional() private readonly documentsRepo?: DocumentsRepoService,
+    @Optional() private readonly tavilyService?: TavilyService,
   ) {}
 
   async createChatSession(
@@ -302,6 +304,36 @@ export class ChatAgentService {
         )
       : undefined;
 
+    const webCallbacks = {
+      onSearchInternet: async (input: any) => {
+        if (!this.tavilyService) {
+          return {
+            query: input.query,
+            totalResults: 0,
+            results: [],
+            message: 'Tìm kiếm Internet bị lỗi.',
+          };
+        }
+        return this.tavilyService.search(input);
+      },
+      onExtractWebPage: async (input: any) => {
+        if (!this.tavilyService) {
+          return {
+            query: input.query,
+            totalSuccess: 0,
+            totalFailed: input.urls?.length || 0,
+            results: [],
+            failedResults: (input.urls || []).map((u: string) => ({
+              url: u,
+              error: 'Dịch vụ chưa được cấu hình',
+            })),
+            message: 'Tìm kiếm Internet bị lỗi.',
+          };
+        }
+        return this.tavilyService.extract(input);
+      },
+    };
+
     return this.chatAgentAiService.executeChatStream(
       messages,
       async ({
@@ -319,6 +351,7 @@ export class ChatAgentService {
             availableDocuments,
             attachedDocumentIds: ragContext.attachedDocumentIds,
             chatConfig: config,
+            ...webCallbacks,
             onSearchDocumentChunks: async (input) => {
               return this.retrievalService.searchRelevantChunks({
                 userId: ragContext.userId,
@@ -500,7 +533,7 @@ export class ChatAgentService {
               };
             },
           }
-        : { chatConfig: config },
+        : { chatConfig: config, ...webCallbacks },
     );
   }
 

@@ -6,9 +6,14 @@ import {
 import {
   type SearchDocumentChunksToolOutput,
   type GetDocumentSectionOrPagesToolOutput,
+  type SearchInternetToolOutput,
+  type ExtractWebPageToolOutput,
+  type WebCitationItem,
 } from './types.js';
 import { createSearchDocumentChunksTool } from './definitions/documents/search-document-chunks.tool.js';
 import { createGetDocumentSectionOrPagesTool } from './definitions/documents/get-document-section-or-pages.tool.js';
+import { createSearchInternetTool } from './definitions/web/search-internet.tool.js';
+import { createExtractWebPageTool } from './definitions/web/extract-web-page.tool.js';
 import { HttpLoggingFilter } from '../../common/filters/http-logging.filter.js';
 
 describe('ToolRegistryService & ChatSessionToolTracker', () => {
@@ -281,19 +286,168 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
     });
   });
 
-  describe('ToolRegistryService toolset creation', () => {
-    it('createChatSessionToolset không chứa getConversationDocumentsMetadata và chứa getDocumentSectionOrPages', () => {
+  describe('ChatSessionToolTracker - Web Citations & Deduplication', () => {
+    it('cấp phát mã w1, w2 độc lập với c1, c2 và khử trùng lặp theo URL', () => {
+      const tracker = new ChatSessionToolTracker();
+
+      // Cấp phát 1 mã trích dẫn tài liệu
+      const c1 = tracker.allocateCitation({
+        chunkId: 'chunk-1',
+        documentId: 'doc-1',
+        fileName: 'tailieu.pdf',
+        pageNumbers: [1],
+        headings: ['Phần 1'],
+        content: 'Nội dung PDF',
+      });
+      expect(c1).toBe('c1');
+
+      // Cấp phát trích dẫn Web lần đầu
+      const w1 = tracker.allocateWebCitation({
+        title: 'GraphRAG Overview',
+        url: 'https://arxiv.org/abs/2404.16130/',
+        domain: 'arxiv.org',
+        favicon: 'https://arxiv.org/favicon.ico',
+        publishedDate: '2026-04-24',
+        previewSnippet: 'Tóm tắt bài báo GraphRAG...',
+      });
+      expect(w1).toBe('w1');
+
+      // Cấp phát URL khác
+      const w2 = tracker.allocateWebCitation({
+        title: 'Wikipedia AI',
+        url: 'https://en.wikipedia.org/wiki/Artificial_intelligence',
+        domain: 'en.wikipedia.org',
+        previewSnippet: 'AI article snippet...',
+      });
+      expect(w2).toBe('w2');
+
+      // Tái sử dụng cùng URL w1 (với trailing slash khác nhau vẫn khử trùng lặp)
+      const w1Duplicate = tracker.allocateWebCitation({
+        title: 'GraphRAG: From Local to Global',
+        url: 'https://arxiv.org/abs/2404.16130',
+        domain: 'arxiv.org',
+        previewSnippet: 'Đoạn trích cập nhật từ extract...',
+      });
+      expect(w1Duplicate).toBe('w1');
+
+      // Kiểm tra danh sách getAllCitations
+      const allCitations = tracker.getAllCitations();
+      expect(allCitations).toHaveLength(3); // 1 doc (c1) + 2 web (w1, w2)
+      expect(allCitations[0].citationId).toBe('c1');
+      expect((allCitations[0] as any).sourceType).toBe('document');
+      expect(allCitations[1].citationId).toBe('w1');
+      expect((allCitations[1] as WebCitationItem).sourceType).toBe('web');
+      expect((allCitations[1] as WebCitationItem).title).toBe('GraphRAG: From Local to Global');
+
+      // Kiểm tra Ràng buộc 3: WebCitationItem không chứa trường content 4000 ký tự
+      expect((allCitations[1] as any).content).toBeUndefined();
+      expect((allCitations[1] as WebCitationItem).previewSnippet).toBeDefined();
+    });
+  });
+
+  describe('searchInternetTool', () => {
+    it('thực thi execute, cấp phát mã wX vào tracker và định dạng toModelOutput chuẩn', async () => {
+      const tracker = new ChatSessionToolTracker();
+      const mockCallback = vi.fn().mockResolvedValue({
+        query: 'Microsoft GraphRAG',
+        totalResults: 1,
+        results: [
+          {
+            title: 'Microsoft GraphRAG Documentation',
+            url: 'https://microsoft.github.io/graphrag',
+            domain: 'microsoft.github.io',
+            favicon: 'https://microsoft.github.io/favicon.ico',
+            publishedDate: '2026-01-15',
+            contentSnippet: 'GraphRAG is a modular graph-based RAG pipeline.',
+            previewSnippet: 'GraphRAG is a modular...',
+          },
+        ],
+      });
+
+      const toolInstance = createSearchInternetTool(mockCallback, tracker);
+      const output = (await toolInstance.execute!(
+        { query: 'Microsoft GraphRAG', searchDepth: 'basic' },
+        { toolCallId: 'tc-search-1', messages: [] },
+      )) as SearchInternetToolOutput;
+
+      expect(output.totalResults).toBe(1);
+      expect(output.results[0].citationId).toBe('w1');
+      expect(output.results[0].domain).toBe('microsoft.github.io');
+
+      expect(toolInstance.toModelOutput).toBeDefined();
+      const modelOut = toolInstance.toModelOutput!({ output }) as {
+        type: 'text';
+        value: string;
+      };
+      expect(modelOut.value).toContain('[Nguồn Web [w1] | Tiêu đề: "Microsoft GraphRAG Documentation"');
+      expect(modelOut.value).toContain('https://microsoft.github.io/graphrag');
+    });
+  });
+
+  describe('extractWebPageTool', () => {
+    it('thực thi execute, cấp phát mã wX vào tracker và định dạng toModelOutput Markdown', async () => {
+      const tracker = new ChatSessionToolTracker();
+      const mockCallback = vi.fn().mockResolvedValue({
+        query: 'Trích xuất thuật toán',
+        totalSuccess: 1,
+        totalFailed: 0,
+        results: [
+          {
+            title: 'GraphRAG Paper',
+            url: 'https://arxiv.org/abs/2404.16130',
+            domain: 'arxiv.org',
+            favicon: 'https://arxiv.org/favicon.ico',
+            extractedContent: 'Chi tiết thuật toán cộng đồng đồ thị...',
+            previewSnippet: 'Chi tiết thuật toán...',
+          },
+        ],
+        failedResults: [],
+      });
+
+      const toolInstance = createExtractWebPageTool(mockCallback, tracker);
+      const output = (await toolInstance.execute!(
+        { urls: ['https://arxiv.org/abs/2404.16130'], query: 'Trích xuất thuật toán' },
+        { toolCallId: 'tc-extract-1', messages: [] },
+      )) as ExtractWebPageToolOutput;
+
+      expect(output.totalSuccess).toBe(1);
+      expect(output.results[0].citationId).toBe('w1');
+
+      const modelOut = toolInstance.toModelOutput!({ output }) as {
+        type: 'text';
+        value: string;
+      };
+      expect(modelOut.value).toContain('[Nguồn Web [w1] | Tiêu đề: "GraphRAG Paper"');
+      expect(modelOut.value).toContain('Chi tiết thuật toán cộng đồng đồ thị...');
+    });
+  });
+
+  describe('ToolRegistryService toolset creation & validation', () => {
+    it('createChatSessionToolset đăng ký searchInternet và extractWebPage khi có callback', () => {
       const registry = new ToolRegistryService();
       const { tools, tracker } = registry.createChatSessionToolset({
         onSearchDocumentChunks: vi.fn(),
         onGetDocumentSectionOrPages: vi.fn(),
+        onSearchInternet: vi.fn(),
+        onExtractWebPage: vi.fn(),
       });
 
       expect(tracker).toBeDefined();
       expect(tools.searchDocumentChunks).toBeDefined();
       expect(tools.getDocumentSectionOrPages).toBeDefined();
+      expect(tools.searchInternet).toBeDefined();
+      expect(tools.extractWebPage).toBeDefined();
       expect(tools.getConversationDocumentsMetadata).toBeUndefined();
       expect(tools.askUserQuestion).toBeDefined();
+    });
+
+    it('getChatValidationTools chứa đầy đủ schema của searchInternet và extractWebPage', () => {
+      const registry = new ToolRegistryService();
+      const validationTools = registry.getChatValidationTools();
+
+      expect(validationTools.searchInternet).toBeDefined();
+      expect(validationTools.extractWebPage).toBeDefined();
+      expect(validationTools.searchDocumentChunks).toBeDefined();
     });
   });
 

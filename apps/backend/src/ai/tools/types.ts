@@ -5,7 +5,10 @@ import type {
 } from '../../documents/services/retrieval.service.js';
 
 // ── Cấu trúc Dữ liệu Trích dẫn Toàn hệ thống (Citation Contract) ──
-export interface CitationItem {
+export type CitationSourceType = 'document' | 'web';
+
+export interface DocumentCitationItem {
+  sourceType: 'document';
   citationId: string; // "c1", "c2", ...
   chunkId: string;
   documentId: string;
@@ -14,9 +17,23 @@ export interface CitationItem {
   headings: string[];
   rawContent?: string | null;
   content?: string;
+  previewSnippet?: string;
   bboxes?: unknown;
   assets?: unknown[];
 }
+
+export interface WebCitationItem {
+  sourceType: 'web';
+  citationId: string; // "w1", "w2", ...
+  title: string;
+  url: string;
+  domain: string;
+  favicon?: string;
+  publishedDate?: string;
+  previewSnippet?: string; // Tối đa 300-400 ký tự (Đảm bảo gọn nhẹ trong DB và SSE stream)
+}
+
+export type CitationItem = DocumentCitationItem | WebCitationItem;
 
 // ── Tool 1: searchDocumentChunks ──
 export interface SearchDocumentChunksToolInput {
@@ -184,6 +201,101 @@ export type CreateDocumentSummaryCallback = (
   input: CreateDocumentSummaryToolInput,
 ) => Promise<CreateDocumentSummaryToolOutput>;
 
+// ── Tool 5: searchInternet (Tavily Search API) ──
+export interface SearchInternetToolInput {
+  query: string;
+  searchDepth?: 'basic' | 'advanced';
+  topic?: 'general' | 'news' | 'finance';
+  language?: string;
+  timeRange?: 'day' | 'week' | 'month' | 'year';
+  includeDomains?: string[];
+  excludeDomains?: string[];
+  exactMatch?: boolean;
+}
+
+export interface SearchInternetResultItem {
+  citationId: string;
+  title: string;
+  url: string;
+  domain: string;
+  favicon?: string;
+  publishedDate?: string;
+  contentSnippet: string;
+  previewSnippet?: string;
+}
+
+export interface SearchInternetToolOutput {
+  query: string;
+  totalResults: number;
+  results: SearchInternetResultItem[];
+  message?: string;
+}
+
+export type SearchInternetCallback = (
+  input: SearchInternetToolInput,
+) => Promise<{
+  query: string;
+  totalResults: number;
+  results: Array<{
+    title: string;
+    url: string;
+    domain: string;
+    favicon?: string;
+    publishedDate?: string;
+    contentSnippet: string;
+    previewSnippet: string;
+  }>;
+  message?: string;
+}>;
+
+// ── Tool 6: extractWebPage (Tavily Extract API) ──
+export interface ExtractWebPageToolInput {
+  urls: string[];
+  query: string;
+}
+
+export interface ExtractWebPageResultItem {
+  citationId: string;
+  title: string;
+  url: string;
+  domain: string;
+  favicon?: string;
+  extractedContent: string;
+  previewSnippet?: string;
+}
+
+export interface ExtractWebPageFailedItem {
+  url: string;
+  error: string;
+}
+
+export interface ExtractWebPageToolOutput {
+  query: string;
+  totalSuccess: number;
+  totalFailed: number;
+  results: ExtractWebPageResultItem[];
+  failedResults: ExtractWebPageFailedItem[];
+  message?: string;
+}
+
+export type ExtractWebPageCallback = (
+  input: ExtractWebPageToolInput,
+) => Promise<{
+  query: string;
+  totalSuccess: number;
+  totalFailed: number;
+  results: Array<{
+    title: string;
+    url: string;
+    domain: string;
+    favicon?: string;
+    extractedContent: string;
+    previewSnippet: string;
+  }>;
+  failedResults: ExtractWebPageFailedItem[];
+  message?: string;
+}>;
+
 // ── Tên định danh các Tool của Chat Agent ──
 export type ChatAgentToolName =
   | 'searchDocumentChunks'
@@ -191,11 +303,20 @@ export type ChatAgentToolName =
   | 'getDocumentsFullContent'
   | 'getConversationDocumentsMetadata'
   | 'askUserQuestion'
-  | 'createDocumentSummary';
+  | 'createDocumentSummary'
+  | 'searchInternet'
+  | 'extractWebPage';
 
 export interface ToolCallTracker {
   recordChunkId(chunkId: string): void;
-  allocateCitation(chunk: Omit<CitationItem, 'citationId'>): string;
+  allocateCitation(
+    chunk: Omit<DocumentCitationItem, 'citationId' | 'sourceType'> & {
+      sourceType?: 'document';
+    },
+  ): string;
+  allocateWebCitation(
+    webSource: Omit<WebCitationItem, 'citationId' | 'sourceType'>,
+  ): string;
   getAllCitations(): CitationItem[];
   getCitation(citationId: string): CitationItem | undefined;
   recordOutput(
@@ -214,4 +335,6 @@ export interface ChatSessionToolCallbacks {
   onGetDocumentsFullContent?: GetDocumentsFullContentCallback;
   onGetDocumentsMetadata?: GetConversationDocumentsMetadataCallback;
   onCreateDocumentSummary?: CreateDocumentSummaryCallback;
+  onSearchInternet?: SearchInternetCallback;
+  onExtractWebPage?: ExtractWebPageCallback;
 }

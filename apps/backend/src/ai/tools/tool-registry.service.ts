@@ -5,7 +5,9 @@ import type {
   ChatAgentToolName,
   ChatSessionToolCallbacks,
   CitationItem,
+  DocumentCitationItem,
   ToolCallTracker,
+  WebCitationItem,
 } from './types.js';
 import {
   createAskUserQuestionTool,
@@ -23,6 +25,12 @@ import {
   createCreateDocumentSummaryTool,
   createDocumentSummaryInputSchema,
 } from './definitions/summaries/index.js';
+import {
+  createSearchInternetTool,
+  searchInternetInputSchema,
+  createExtractWebPageTool,
+  extractWebPageInputSchema,
+} from './definitions/web/index.js';
 
 export class ChatSessionToolTracker implements ToolCallTracker {
   private readonly collectedChunkIds = new Set<string>();
@@ -35,10 +43,14 @@ export class ChatSessionToolTracker implements ToolCallTracker {
     Record<string, unknown>
   >();
 
-  // Turn-scoped citation counter & registry
+  // Turn-scoped citation counter & registry cho Document (c1, c2...)
   private citationCounter = 0;
-  private readonly citationsByChunkKey = new Map<string, CitationItem>();
+  private readonly citationsByChunkKey = new Map<string, DocumentCitationItem>();
   private readonly citationsById = new Map<string, CitationItem>();
+
+  // Turn-scoped citation counter & registry cho Web (w1, w2...)
+  private webCitationCounter = 0;
+  private readonly webCitationsByUrl = new Map<string, WebCitationItem>();
 
   recordChunkId(chunkId: string): void {
     if (chunkId) {
@@ -47,11 +59,15 @@ export class ChatSessionToolTracker implements ToolCallTracker {
   }
 
   /**
-   * Cấp phát citationId tuần tự (c1, c2, c3...) duy nhất cho toàn bộ turn stream.
+   * Cấp phát citationId tuần tự (c1, c2, c3...) duy nhất cho toàn bộ turn stream đối với tài liệu.
    * Nếu cùng 1 chunkId (hoặc cùng documentId + chunkIndex) đã được cấp citationId trước đó
    * (ở bước tool trước trong cùng turn), trả về lại citationId cũ để tránh trùng lặp.
    */
-  allocateCitation(chunk: Omit<CitationItem, 'citationId'>): string {
+  allocateCitation(
+    chunk: Omit<DocumentCitationItem, 'citationId' | 'sourceType'> & {
+      sourceType?: 'document';
+    },
+  ): string {
     const chunkKey =
       chunk.chunkId ||
       `${chunk.documentId}:${(chunk as any).chunkIndex ?? ''}`;
@@ -63,8 +79,9 @@ export class ChatSessionToolTracker implements ToolCallTracker {
     this.citationCounter += 1;
     const citationId = `c${this.citationCounter}`;
 
-    const citationItem: CitationItem = {
+    const citationItem: DocumentCitationItem = {
       ...chunk,
+      sourceType: 'document',
       citationId,
     };
 
@@ -73,6 +90,54 @@ export class ChatSessionToolTracker implements ToolCallTracker {
     if (chunk.chunkId) {
       this.recordChunkId(chunk.chunkId);
     }
+
+    return citationId;
+  }
+
+  /**
+   * Cấp phát citationId tuần tự (w1, w2, w3...) duy nhất cho toàn bộ turn stream đối với nguồn Web.
+   * Khử trùng lặp theo URL: Nếu cùng một URL đã được trích dẫn ở bước trước (ví dụ ở searchInternet),
+   * sau đó được gọi ở extractWebPage, tái sử dụng citationId cũ (w1) và cập nhật thông tin bổ sung.
+   */
+  allocateWebCitation(
+    webSource: Omit<WebCitationItem, 'citationId' | 'sourceType'>,
+  ): string {
+    const rawUrl = (webSource.url || '').trim();
+    // Chuẩn hóa URL để so sánh khử trùng lặp (bỏ trailing slash, chuyển chữ thường)
+    const normalizedUrl = rawUrl.replace(/\/+$/, '').toLowerCase();
+    const existing = this.webCitationsByUrl.get(normalizedUrl);
+    if (existing) {
+      // Cập nhật tiêu đề chi tiết hơn nếu có (ví dụ từ bước extract)
+      if (webSource.title && webSource.title !== existing.domain) {
+        existing.title = webSource.title;
+      }
+      if (webSource.previewSnippet) {
+        existing.previewSnippet = webSource.previewSnippet.slice(0, 400);
+      }
+      if (webSource.favicon && !existing.favicon) {
+        existing.favicon = webSource.favicon;
+      }
+      return existing.citationId;
+    }
+
+    this.webCitationCounter += 1;
+    const citationId = `w${this.webCitationCounter}`;
+
+    const webCitationItem: WebCitationItem = {
+      sourceType: 'web',
+      citationId,
+      title: webSource.title || webSource.domain || rawUrl,
+      url: rawUrl,
+      domain: webSource.domain || '',
+      favicon: webSource.favicon,
+      publishedDate: webSource.publishedDate,
+      previewSnippet: webSource.previewSnippet
+        ? webSource.previewSnippet.slice(0, 400)
+        : undefined,
+    };
+
+    this.webCitationsByUrl.set(normalizedUrl, webCitationItem);
+    this.citationsById.set(citationId, webCitationItem);
 
     return citationId;
   }
@@ -142,6 +207,15 @@ export class ToolRegistryService {
         description: 'Khởi tạo bản tóm tắt tài liệu',
         inputSchema: createDocumentSummaryInputSchema,
       }),
+      searchInternet: tool({
+        description: 'Tìm kiếm thông tin trên Internet qua Tavily Search API',
+        inputSchema: searchInternetInputSchema,
+      }),
+      extractWebPage: tool({
+        description:
+          'Đọc sâu và bóc tách nội dung từ 1-3 URLs qua Tavily Extract API',
+        inputSchema: extractWebPageInputSchema,
+      }),
     };
   }
 
@@ -186,6 +260,20 @@ export class ToolRegistryService {
     if (callbacks?.onCreateDocumentSummary) {
       tools.createDocumentSummary = createCreateDocumentSummaryTool(
         callbacks.onCreateDocumentSummary,
+        tracker,
+      );
+    }
+
+    if (callbacks?.onSearchInternet) {
+      tools.searchInternet = createSearchInternetTool(
+        callbacks.onSearchInternet,
+        tracker,
+      );
+    }
+
+    if (callbacks?.onExtractWebPage) {
+      tools.extractWebPage = createExtractWebPageTool(
+        callbacks.onExtractWebPage,
         tracker,
       );
     }
