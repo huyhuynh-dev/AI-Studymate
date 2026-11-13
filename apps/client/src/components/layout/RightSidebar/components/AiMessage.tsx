@@ -141,6 +141,7 @@ function AskUserQuestionCard({
   }
 
   if (state === "output-available" || isSubmittedLocal) {
+    const isSkipped = Boolean(part.output?.skipped);
     const submittedAnswers: Array<{
       id?: string;
       question?: string;
@@ -151,7 +152,7 @@ function AskUserQuestionCard({
       <div className="my-2 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 p-3 text-xs text-[#0B1C30] dark:text-[#EFF0F6] shadow-2xs">
         <div className="flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-400">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <span>Đã xác nhận thông tin tóm tắt</span>
+          <span>{isSkipped ? "Đã bỏ qua câu hỏi gợi ý" : "Đã gửi phản hồi"}</span>
         </div>
         {submittedAnswers.length > 0 && (
           <ul className="mt-2 space-y-1 border-t border-emerald-100 dark:border-emerald-900/40 pt-2 text-[11px] text-[#464555] dark:text-neutral-300">
@@ -179,7 +180,7 @@ function AskUserQuestionCard({
         <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#4F46E5] dark:text-[#818CF8]" />
         <div className="space-y-0.5">
           <div className="font-bold text-[#0B1C30] dark:text-[#EFF0F6]">
-            Làm rõ yêu cầu tóm tắt
+            Làm rõ yêu cầu
           </div>
           {contextMessage && (
             <p className="text-[11px] leading-relaxed text-[#777587] dark:text-[#9DA3AF]">

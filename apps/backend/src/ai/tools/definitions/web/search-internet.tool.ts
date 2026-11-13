@@ -12,43 +12,43 @@ export const searchInternetInputSchema = z.object({
     .string()
     .min(1)
     .describe(
-      'Câu truy vấn tìm kiếm ngắn gọn, tối ưu từ khóa bằng ngôn ngữ phù hợp (tiếng Anh cho bài báo khoa học/công nghệ quốc tế, tiếng Việt cho tin tức/quy định/sự kiện tại Việt Nam).',
+      'Concise keyword-optimized search query in the appropriate language (English for international papers/tech, Vietnamese for local news/regulations).',
     ),
   searchDepth: z
     .enum(['basic', 'advanced'])
     .default('basic')
     .describe(
-      'Độ sâu tìm kiếm: "basic" cho câu hỏi nhanh hoặc khái niệm thông thường (1 credit); "advanced" cho bài toán học thuật chuyên sâu cần đối chiếu kỹ (2 credits).',
+      'Search depth: "basic" for quick lookups or general concepts (1 credit); "advanced" for in-depth academic research (2 credits).',
     ),
   language: z
     .string()
     .optional()
     .describe(
-      'Mã ngôn ngữ ISO 639-1 (ví dụ: "vi", "en") tương ứng với query để Tavily ưu tiên kết quả cùng ngôn ngữ.',
+      'ISO 639-1 language code (e.g., "vi", "en") matching the query to prioritize results in that language.',
     ),
   timeRange: z
     .enum(['day', 'week', 'month', 'year'])
     .optional()
     .describe(
-      'Bộ lọc thời gian nếu người dùng yêu cầu thông tin mới nhất gần đây.',
+      'Time filter when the user asks for recent or up-to-date information.',
     ),
   includeDomains: z
     .array(z.string())
     .max(10)
     .optional()
     .describe(
-      'Danh sách tên miền uy tín cần ưu tiên tìm kiếm (ví dụ: ["arxiv.org", "wikipedia.org", "moet.gov.vn"]).',
+      'Trusted domains to prioritize (e.g., ["arxiv.org", "wikipedia.org", "moet.gov.vn"]).',
     ),
   excludeDomains: z
     .array(z.string())
     .max(10)
     .optional()
-    .describe('Danh sách tên miền cần loại bỏ khỏi kết quả tìm kiếm.'),
+    .describe('Domains to exclude from search results.'),
   exactMatch: z
     .boolean()
     .default(false)
     .describe(
-      'Đặt true khi query chứa thuật ngữ chuyên ngành hoặc mã định danh cần khớp chính xác 100%.',
+      'Set to true when the query contains technical terms or identifiers requiring an exact match.',
     ),
 });
 
@@ -58,7 +58,7 @@ export function createSearchInternetTool(
 ) {
   return tool({
     description:
-      'Tìm kiếm thông tin thực tế, bài báo khoa học, tài liệu kỹ thuật hoặc kiến thức cập nhật trên Internet qua Tavily Search API khi thông tin không có trong tài liệu học tập của người dùng. Tuyệt đối không dùng để tìm dữ liệu cá nhân, điểm số, hay bài tập nội bộ chưa được tải lên. Trả về các trích đoạn kèm nguồn [wX].',
+      'Search the Internet via Tavily Search API for factual information, academic papers, technical docs, or recent developments not covered in the user’s workspace documents. NEVER use this for private user data, grades, or unpublished internal coursework. Returns snippets with web citation IDs [wX].',
     inputSchema: searchInternetInputSchema,
     execute: async (input): Promise<SearchInternetToolOutput> => {
       console.log(

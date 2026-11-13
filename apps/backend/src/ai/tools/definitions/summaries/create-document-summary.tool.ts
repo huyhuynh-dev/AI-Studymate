@@ -10,42 +10,42 @@ export const createDocumentSummaryInputSchema = z.object({
   scope: z
     .enum(['conversation', 'document', 'section'])
     .describe(
-      'Phạm vi tóm tắt: "conversation" (toàn bộ tài liệu trong cuộc trò chuyện), "document" (một hoặc một nhóm tài liệu cụ thể chỉ định qua documentIds), "section" (một khoảng trang cụ thể).',
+      'Summary scope: "conversation" (all documents in the conversation), "document" (one or more specific documents via documentIds), or "section" (a specific page range).',
     ),
   documentIds: z
     .array(z.string())
     .optional()
     .describe(
-      'Danh sách UUID của các tài liệu cần tóm tắt (bắt buộc khi scope là "document" hoặc "section"). Nếu truyền nhiều documentIds, nội dung các tài liệu này sẽ được tổng hợp chung vào 1 bản tóm tắt.',
+      'List of document UUIDs to summarize (required when scope is "document" or "section"). Multiple IDs are synthesized into one combined summary.',
     ),
   mode: z
     .enum(['key_takeaways', 'study_guide', 'qa_style'])
     .optional()
     .default('study_guide')
     .describe(
-      'Phong cách bản tóm tắt: "key_takeaways" (Dàn ý cốt lõi), "study_guide" (Hồ sơ ôn thi chi tiết), "qa_style" (Hỏi & Đáp).',
+      'Summary format: "key_takeaways" (concise core outline), "study_guide" (detailed exam-prep guide), or "qa_style" (Q&A format).',
     ),
   length: z
     .enum(['short', 'standard', 'detailed'])
     .optional()
     .default('standard')
     .describe(
-      'Độ dài mong muốn: "short" (Ngắn gọn ~1 trang), "standard" (Tiêu chuẩn 2-3 trang), "detailed" (Chi tiết).',
+      'Target length: "short" (~1 page), "standard" (2–3 pages), or "detailed" (comprehensive).',
     ),
   customInstruction: z
     .string()
     .optional()
     .describe(
-      'Yêu cầu hoặc chỉ dẫn bổ sung từ người dùng (ví dụ: tập trung vào phần nào, trình bày ra sao...).',
+      'Optional additional instructions from the user (e.g., focus areas, formatting preferences).',
     ),
   fromPage: z
     .number()
     .optional()
-    .describe('Trang bắt đầu (chỉ dùng khi scope="section").'),
+    .describe('Start page number (only when scope="section").'),
   toPage: z
     .number()
     .optional()
-    .describe('Trang kết thúc (chỉ dùng khi scope="section").'),
+    .describe('End page number (only when scope="section").'),
 });
 
 export function toSummaryLightweightOutput(
@@ -69,7 +69,7 @@ export function createCreateDocumentSummaryTool(
 ) {
   return tool({
     description:
-      'Khởi tạo bản tóm tắt tài liệu học tập bằng AI và lưu trực tiếp vào Tab Tóm tắt (Summaries). Chỉ dùng khi người dùng muốn TẠO VÀ LƯU bản tóm tắt chính thức (không dùng cho hỏi đáp thông thường). Nếu có nhiều tài liệu và chưa rõ người dùng muốn tóm tắt file nào hoặc phong cách nào, hãy dùng askUserQuestion để xác nhận trước (trừ khi chỉ có 1 tài liệu duy nhất hoặc 1 tài liệu đang đính kèm rõ ràng).',
+      'Generate an AI study summary and save it directly to the Summaries tab. Use ONLY when the student explicitly wants to create and save a formal summary (not for regular chat Q&A). If multiple documents exist and the target document or style is ambiguous, clarify first using askUserQuestion (unless only one document exists or is clearly attached).',
     inputSchema: createDocumentSummaryInputSchema,
     execute: async (
       input,

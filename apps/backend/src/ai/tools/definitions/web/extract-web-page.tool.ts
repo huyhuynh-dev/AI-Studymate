@@ -13,13 +13,13 @@ export const extractWebPageInputSchema = z.object({
     .min(1)
     .max(3)
     .describe(
-      'Danh sách tối đa 1 đến 3 đường link website cần bóc tách nội dung chi tiết.',
+      'List of 1 to 3 website URLs to extract detailed content from.',
     ),
   query: z
     .string()
     .min(1)
     .describe(
-      'Mục tiêu hoặc câu hỏi cụ thể cần trích xuất thông tin trong trang web (bắt buộc để Tavily lọc và xếp hạng đúng đoạn văn bản cần tìm).',
+      'Specific goal or question for extracting content from the webpage (used by Tavily to filter and rerank relevant passages).',
     ),
 });
 
@@ -29,7 +29,7 @@ export function createExtractWebPageTool(
 ) {
   return tool({
     description:
-      'Đọc sâu và trích xuất nội dung Markdown sạch từ 1–3 URL cụ thể bằng Tavily Extract API. Dùng khi người dùng gửi kèm link (URL) trong tin nhắn hoặc khi cần đọc chi tiết nội dung từ một URL tìm được qua searchInternet. Luôn truyền `query` rõ ràng để lọc đúng đoạn cần thiết; nếu URL bị chặn hoặc lỗi, có thể dựa vào snippet hoặc nhờ người dùng dán nội dung.',
+      'Deeply extract clean Markdown content from 1–3 specific URLs via Tavily Extract API. Use when the student shares direct URLs or when deeper reading of a searchInternet result is needed. Always pass a clear `query`; if a URL is blocked or fails, fall back to search snippets or ask the student to paste the excerpt.',
     inputSchema: extractWebPageInputSchema,
     execute: async (input): Promise<ExtractWebPageToolOutput> => {
       console.log(

@@ -4,6 +4,8 @@ import { AiService } from './ai.service.js';
 import { AiModelFactory } from './ai-model.factory.js';
 import { PromptRegistryService } from './prompts/prompt-registry.service.js';
 import { ToolRegistryService } from './tools/tool-registry.service.js';
+import { convertToModelMessages } from 'ai';
+import { ChatAgentAiService } from './chat-agent-ai.service.js';
 import { resolveFeatureSchema } from './schemas/index.js';
 
 describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () => {
@@ -53,7 +55,7 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
       const rendered = promptRegistry.render('AUTO_HEADER', {
         firstMessageSnippet: 'Giải thích định luật II Newton',
       });
-      expect(rendered.system).toContain('CỤM DANH TỪ');
+      expect(rendered.system).toContain('NOUN PHRASE');
       expect(rendered.prompt).toBe('Giải thích định luật II Newton');
     });
 
@@ -174,7 +176,7 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
       expect(mockFactory.getModel).toHaveBeenCalledWith('FAST');
       expect(prepared.model).toEqual({ id: 'model-FAST' });
       expect(prepared.temperature).toBe(0.1);
-      expect(prepared.system).toContain('CỤM DANH TỪ');
+      expect(prepared.system).toContain('NOUN PHRASE');
       expect(prepared.prompt).toBe('Tính toán ma trận');
     });
 
@@ -271,6 +273,54 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
       expect(parts).toHaveLength(1);
       expect(parts[0].type).toBe('tool-searchDocumentChunks');
       expect(parts[0].output).toEqual(lightweight);
+    });
+  });
+
+  describe('ChatAgentAiService.sanitizePendingToolCalls', () => {
+    it('reconciles unanswered askUserQuestion tool calls when followed by a newer user message', async () => {
+      const chatAgentAi = new ChatAgentAiService(service, toolRegistry);
+      const { tools } = toolRegistry.createChatSessionToolset();
+
+      const uiMessages: any[] = [
+        {
+          id: 'u1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'Hãy tóm tắt tài liệu' }],
+        },
+        {
+          id: 'a1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'tool-askUserQuestion',
+              toolCallId: 'call_pending_1',
+              state: 'input-available',
+              input: {
+                questions: [
+                  {
+                    id: 'target',
+                    question: 'Chọn tài liệu?',
+                    options: ['Doc A', 'Doc B'],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        {
+          id: 'u2',
+          role: 'user',
+          parts: [{ type: 'text', text: 'Bỏ qua widget, giải thích giúp mình' }],
+        },
+      ];
+
+      const sanitized = chatAgentAi.sanitizePendingToolCalls(uiMessages);
+      const pendingPart = (sanitized[1].parts as any[])[0];
+      expect(pendingPart.state).toBe('output-available');
+      expect(pendingPart.output?.skipped).toBe(true);
+
+      const modelMessages = await convertToModelMessages(sanitized, { tools });
+      expect(modelMessages.some((m) => m.role === 'tool')).toBe(true);
     });
   });
 });

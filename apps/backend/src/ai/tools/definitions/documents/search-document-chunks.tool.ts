@@ -11,30 +11,30 @@ export const searchDocumentChunksInputSchema = z.object({
   semanticQuery: z
     .string()
     .describe(
-      'Câu văn, đoạn mô tả hoặc câu hỏi giàu ngữ cảnh ngữ nghĩa được tổng hợp từ câu hỏi của người dùng, dùng để tạo vector embedding và tìm kiếm tương đồng ngữ nghĩa (Vector Search).',
+      'A semantically rich sentence or question synthesized from the user’s query for vector similarity search.',
     ),
   keywords: z
     .array(z.string())
     .max(5)
     .describe(
-      'Mảng danh sách các từ khóa, thuật ngữ chuyên môn hoặc cụm từ quan trọng (tối đa 5 từ khóa) dùng để tìm kiếm toàn văn PGRoonga trên cột content của bảng document_chunks.',
+      'Up to 5 important keywords, technical terms, or exact phrases for full-text PGRoonga search.',
     ),
   pageNumbers: z
     .array(z.number().int())
     .optional()
-    .describe('Lọc tìm kiếm trong danh sách số trang cụ thể (ví dụ [3, 4]).'),
+    .describe('Filter search to specific page numbers (e.g., [3, 4]).'),
   pageRange: z
     .object({
-      start: z.number().int().describe('Trang bắt đầu'),
-      end: z.number().int().describe('Trang kết thúc'),
+      start: z.number().int().describe('Start page number'),
+      end: z.number().int().describe('End page number'),
     })
     .optional()
-    .describe('Lọc tìm kiếm trong khoảng trang (ví dụ { start: 1, end: 10 }).'),
+    .describe('Filter search to a page range (e.g., { start: 1, end: 10 }).'),
   includeNeighbors: z
     .boolean()
     .optional()
     .describe(
-      'Đặt là true để lấy thêm đoạn trích liền kề (chunk_index - 1 và chunk_index + 1) nếu đoạn trích bị ngắt câu/đoạn hoặc cần thêm ngữ cảnh rộng hơn.',
+      'Set to true to also fetch adjacent chunks (chunk_index - 1 and + 1) when a passage appears cut off or needs broader context.',
     ),
   topK: z
     .number()
@@ -43,7 +43,7 @@ export const searchDocumentChunksInputSchema = z.object({
     .max(12)
     .optional()
     .describe(
-      'Số lượng chunks cần lấy (mặc định 8, tối đa 12 khi cần tổng hợp rộng).',
+      'Number of chunks to retrieve (default 8, max 12 for broad synthesis).',
     ),
 });
 
@@ -66,7 +66,7 @@ export function createSearchDocumentChunksTool(
   maxChunks: number = 8,
 ) {
   return tool({
-    description: `Tìm kiếm các đoạn trích (chunks) liên quan trong tài liệu bằng Hybrid Search (pgvector + PGRoonga RRF). Dùng cho câu hỏi cụ thể về khái niệm, định nghĩa, công thức, code hoặc chi tiết trong tài liệu học tập. Không gọi cho chào hỏi thông thường hoặc câu hỏi nối tiếp đã đủ thông tin từ ngữ cảnh trước. Hỗ trợ lọc trang (pageNumbers/pageRange) và mở rộng ngữ cảnh liền kề (includeNeighbors). Trả về tối đa ${maxChunks} chunks kèm mã trích dẫn [cX].`,
+    description: `Search relevant passages (chunks) in workspace study documents using Hybrid Search (pgvector + PGRoonga RRF). Use for specific questions about concepts, definitions, formulas, code, or details in the student's materials. Do NOT call for casual greetings or follow-up questions already answered by prior conversation context. Supports page filtering (pageNumbers/pageRange) and adjacent context expansion (includeNeighbors). Returns up to ${maxChunks} chunks with citation IDs [cX].`,
     inputSchema: searchDocumentChunksInputSchema,
     execute: async (
       { semanticQuery, keywords, pageNumbers, pageRange, includeNeighbors, topK },

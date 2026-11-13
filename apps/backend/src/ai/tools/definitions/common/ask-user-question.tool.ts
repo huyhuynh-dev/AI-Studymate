@@ -6,7 +6,7 @@ export const askUserQuestionInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      'Lời dẫn ngắn gọn, thân thiện giải thích vì sao bạn cần hỏi thêm thông tin từ người dùng.',
+      'A brief, friendly lead-in explaining why you need more information from the user (written in the user’s language, default Vietnamese).',
     ),
   questions: z
     .array(
@@ -14,40 +14,43 @@ export const askUserQuestionInputSchema = z.object({
         id: z
           .string()
           .describe(
-            'Mã định danh ngắn gọn của câu hỏi (ví dụ: "target_docs", "merge_strategy", "summary_style").',
+            'Short identifier for the question (e.g., "target_docs", "merge_strategy", "summary_style").',
           ),
         question: z
           .string()
-          .describe('Nội dung câu hỏi rõ ràng bằng tiếng Việt dành cho người dùng.'),
+          .describe(
+            'Clear question text for the user (written in the user’s language, default Vietnamese).',
+          ),
         options: z
           .array(z.string())
           .optional()
           .describe(
-            'Danh sách các phương án gợi ý sẵn để người dùng bấm chọn nhanh trên giao diện.',
+            'Suggested quick-select options displayed on the UI (written in the user’s language, default Vietnamese).',
           ),
         allowMultiple: z
           .boolean()
           .optional()
           .describe(
-            'Đặt là true nếu cho phép người dùng chọn nhiều phương án cùng lúc (mặc định: false).',
+            'Set to true to allow selecting multiple options at once (default: false).',
           ),
         allowCustomInput: z
           .boolean()
           .optional()
+          .default(true)
           .describe(
-            'Đặt là true để cho phép người dùng nhập câu trả lời tự do ngoài các phương án gợi ý (mặc định: true).',
+            'Whether to show a free-text input box below the options. Set to false for strictly closed/fixed choices where no other valid option exists (e.g., choosing among the exact documents in the session, or Yes/No). Keep true (default) for open-ended or customizable preferences (e.g., summary style/focus, explanation depth, study goal).',
           ),
       }),
     )
     .min(1)
     .max(5)
-    .describe('Danh sách từ 1 đến tối đa 5 câu hỏi cần người dùng phản hồi.'),
+    .describe('List of 1 to 5 targeted questions for the user to answer.'),
 });
 
 export function createAskUserQuestionTool() {
   return tool({
     description:
-      'Hiển thị widget hỏi đáp tương tác (1–3 câu hỏi gợi ý chọn nhanh) khi cần làm rõ yêu cầu phức tạp, nhiều lựa chọn hoặc thiếu tham số quy trình (ví dụ: chọn tài liệu nào trong nhiều file, chọn phạm vi/phong cách tóm tắt, chọn hướng giải thích cơ bản hay chuyên sâu). Nếu chỉ cần hỏi 1 câu ngắn đơn giản (như hỏi số trang hay xin đoạn code), hãy hỏi tự nhiên bằng văn bản thay vì gọi tool này.',
+      'Render an interactive question widget (1–3 quick-select questions) when clarifying complex, multi-choice, or parameter-missing requests (e.g., choosing which documents to process, summary scope/style, or depth of explanation). For a single, short, simple clarification (like asking for a page number or missing code snippet), ask naturally in plain text instead of calling this tool. Always write user-facing questions and options in the user’s language (default Vietnamese).',
     inputSchema: askUserQuestionInputSchema,
   });
 }

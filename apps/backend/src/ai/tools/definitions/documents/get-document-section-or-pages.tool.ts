@@ -10,19 +10,19 @@ export const getDocumentSectionOrPagesInputSchema = z.object({
   documentId: z
     .string()
     .describe(
-      'UUID của tài liệu cần đọc (lấy từ Danh mục tài liệu trong System Prompt).',
+      'UUID of the target document (from the <workspace_documents> catalog in the System Prompt).',
     ),
   pageNumbers: z
     .array(z.number().int())
     .optional()
     .describe(
-      'Mảng danh sách các số trang cụ thể cần đọc (ví dụ [1, 2, 3] hoặc [4]).',
+      'Specific page numbers to read (e.g., [1, 2, 3] or [4]).',
     ),
   headingKeyword: z
     .string()
     .optional()
     .describe(
-      'Từ khóa tiêu đề hoặc tên chương/mục cần đọc (ví dụ "Chương 2", "Đạo hàm").',
+      'Chapter, section, or heading keyword to read (e.g., "Chương 2", "Derivatives").',
     ),
 });
 
@@ -47,7 +47,7 @@ export function createGetDocumentSectionOrPagesTool(
 ) {
   return tool({
     description:
-      'Đọc nội dung văn bản theo phân đoạn, mục lục hoặc trang cụ thể của tài liệu. Dùng khi người dùng yêu cầu đọc/giải thích theo trang hoặc chương (ví dụ: "trang 1–3", "Chương 2"), khi cần xem toàn bộ tài liệu ngắn (<= 15 trang), hoặc làm phương án thay thế khi searchDocumentChunks không ra kết quả nhưng mục lục (TOC) có tiêu đề phù hợp.',
+      'Read document text by specific pages, section, or chapter. Use when the student asks to read/explain/summarize by page range or heading (e.g., "pages 1-3", "Chapter 2"), when reviewing an entire short document (<= 15 pages), or as a fallback when searchDocumentChunks returns no matches but the Table of Contents shows a relevant section. Specify pageNumbers or headingKeyword for long documents.',
     inputSchema: getDocumentSectionOrPagesInputSchema,
     execute: async (
       { documentId, pageNumbers, headingKeyword },

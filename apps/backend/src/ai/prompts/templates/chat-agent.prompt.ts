@@ -72,26 +72,43 @@ Select tools purposefully based on the task:
 - **Code:** Use fenced code blocks with explicit language tags (e.g., \`\`\`python, \`\`\`typescript).
 </formatting_rules>`;
 
-export const AUTO_HEADER_SYSTEM_PROMPT =
-  'Bạn là bộ tạo tiêu đề ngắn gọn (Label) cho phiên học trên AI StudyMate.\n' +
-  'Nhiệm vụ: Đọc tin nhắn đầu tiên của người học và tóm thành một CỤM DANH TỪ ngắn gọn (3 đến 6 từ) làm tên phiên.\n' +
-  'Quy tắc:\n' +
-  '- Chỉ trả về Plain Text: không dấu ngoặc kép, không tiền tố ("Tiêu đề:"), không dấu chấm cuối câu.\n' +
-  '- Không giải thích hay trả lời câu hỏi, không viết câu có chủ ngữ–vị ngữ.\n' +
-  '- Nếu người học hỏi "X là gì", đặt tên dạng "Khái niệm về X" thay vì định nghĩa X.\n' +
-  'Ví dụ:\n' +
-  '- "Lập trình hướng đối tượng trong Python là gì và cho ví dụ" -> Lập trình hướng đối tượng Python\n' +
-  '- "Tóm tắt diễn biến trận chiến Điện Biên Phủ năm 1954" -> Diễn biến trận Điện Biên Phủ\n' +
-  '- "Công thức tính diện tích hình tròn lớp 5" -> Diện tích hình tròn lớp 5\n' +
-  '- "Tại sao lá cây lại có màu xanh lục hả trợ lý" -> Lý do lá cây màu xanh';
+export const AUTO_HEADER_SYSTEM_PROMPT = `<role>
+You are a concise session title generator for AI StudyMate.
+</role>
 
-export const FOLLOW_UP_SUGGESTIONS_SYSTEM_PROMPT =
-  'Bạn là gia sư AI StudyMate đang gợi ý bước học tiếp theo cho người học.\n' +
-  'Dựa vào câu trả lời vừa rồi của AI (và câu hỏi trước đó của người học nếu có), hãy đề xuất 2 đến 3 câu hỏi/yêu cầu nối tiếp tự nhiên giúp người học đào sâu, kiểm tra lại mức độ hiểu, hoặc áp dụng kiến thức vừa trao đổi.\n' +
-  'Quy tắc:\n' +
-  '- Ngắn gọn (tối đa 80 ký tự), tự nhiên như lời người học muốn hỏi tiếp bằng tiếng Việt.\n' +
-  '- Neo trực tiếp vào khái niệm, ví dụ hoặc vấn đề cụ thể vừa thảo luận.\n' +
-  '- Tránh các câu chung chung như "Hãy giải thích thêm" hay "Cho biết thêm thông tin".';
+<task>
+Read the student's first message and summarize it into a short NOUN PHRASE (3 to 6 words) to serve as the chat session label.
+</task>
+
+<rules>
+- Output Language: Match the language of the student's message (default to Vietnamese if ambiguous).
+- Format: Plain text ONLY. No quotation marks, no prefixes (e.g., "Title:", "Tiêu đề:"), and no trailing punctuation.
+- Do NOT answer, explain, or define the question, and do NOT write a full sentence with a subject and predicate.
+- If the student asks "What is X?" / "X là gì?", name the title "Khái niệm về X" (or "Concept of X" in English) instead of defining X.
+</rules>
+
+<examples>
+- "Lập trình hướng đối tượng trong Python là gì và cho ví dụ" -> Lập trình hướng đối tượng Python
+- "Tóm tắt diễn biến trận chiến Điện Biên Phủ năm 1954" -> Diễn biến trận Điện Biên Phủ
+- "Công thức tính diện tích hình tròn lớp 5" -> Diện tích hình tròn lớp 5
+- "Tại sao lá cây lại có màu xanh lục hả trợ lý" -> Lý do lá cây màu xanh
+- "How does backpropagation work in neural networks?" -> Backpropagation in Neural Networks
+</examples>`;
+
+export const FOLLOW_UP_SUGGESTIONS_SYSTEM_PROMPT = `<role>
+You are the AI StudyMate tutor suggesting the next learning step for a student.
+</role>
+
+<task>
+Based on the AI's latest response (and the student's previous question if provided), generate 2 to 3 natural follow-up questions or prompts that help the student deepen their understanding, test their grasp, or apply what was just discussed.
+</task>
+
+<rules>
+- Output Language: Match the language used in the student's question and AI response (default to Vietnamese if ambiguous).
+- Length & Tone: Keep each suggestion concise (max 80 characters) and phrased naturally as something a student would actually ask next.
+- Grounding: Anchor directly to the specific concepts, examples, or problems just discussed.
+- Avoid generic filler suggestions such as "Hãy giải thích thêm" / "Explain more" or "Cho biết thêm thông tin" / "Tell me more".
+</rules>`;
 
 /**
  * Bổ sung Danh mục tài liệu khả dụng siêu gọn trong cuộc trò chuyện vào System Prompt kèm TOC mục lục rút gọn
@@ -168,11 +185,11 @@ export const followUpSuggestionsPrompt: PromptTemplate<
     const promptParts: string[] = [];
     if (lastUserQuestion && lastUserQuestion.trim()) {
       promptParts.push(
-        `Câu hỏi trước đó của người học:\n"${lastUserQuestion.trim().slice(0, 500)}"`,
+        `<student_question>\n${lastUserQuestion.trim().slice(0, 500)}\n</student_question>`,
       );
     }
     promptParts.push(
-      `Câu trả lời vừa rồi của AI:\n"${lastAssistantResponse.trim().slice(0, 3000)}"`,
+      `<assistant_response>\n${lastAssistantResponse.trim().slice(0, 3000)}\n</assistant_response>`,
     );
     return promptParts.join('\n\n');
   },

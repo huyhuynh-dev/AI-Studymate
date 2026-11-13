@@ -134,14 +134,14 @@ export const CitationBadge = React.memo(function CitationBadge({
 
       {/* Popover xem trước nổi chuẩn Apple HIG Glassmorphism */}
       {isOpen && (
-        <div
+        <span
           role="tooltip"
           onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 sm:w-80 rounded-2xl border border-black/[0.08] dark:border-white/[0.12] bg-white/95 dark:bg-[#161922]/95 backdrop-blur-xl p-3 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150 text-left pointer-events-auto"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 block w-72 sm:w-80 rounded-2xl border border-black/[0.08] dark:border-white/[0.12] bg-white/95 dark:bg-[#161922]/95 backdrop-blur-xl p-3 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150 text-left pointer-events-auto"
         >
           {/* Header Popover */}
-          <div className="flex items-start justify-between gap-2 border-b border-black/[0.05] dark:border-white/[0.08] pb-2">
-            <div className="flex items-center gap-1.5 min-w-0">
+          <span className="flex items-start justify-between gap-2 border-b border-black/[0.05] dark:border-white/[0.08] pb-2">
+            <span className="flex items-center gap-1.5 min-w-0">
               <span
                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${
                   isWeb
@@ -151,13 +151,13 @@ export const CitationBadge = React.memo(function CitationBadge({
               >
                 {displayNumber}
               </span>
-              <div className="min-w-0">
-                <div className="truncate text-xs font-bold text-neutral-900 dark:text-white">
+              <span className="min-w-0">
+                <span className="block truncate text-xs font-bold text-neutral-900 dark:text-white">
                   {isWeb
                     ? webItem?.title || webItem?.domain || "Nguồn Internet"
                     : docItem?.fileName || "Tài liệu học tập"}
-                </div>
-                <div className="flex items-center gap-1.5 text-[10.5px] text-neutral-500 dark:text-neutral-400">
+                </span>
+                <span className="flex items-center gap-1.5 text-[10.5px] text-neutral-500 dark:text-neutral-400">
                   {isWeb ? (
                     <>
                       {webItem?.favicon && (
@@ -195,9 +195,9 @@ export const CitationBadge = React.memo(function CitationBadge({
                       )}
                     </>
                   )}
-                </div>
-              </div>
-            </div>
+                </span>
+              </span>
+            </span>
 
             <button
               type="button"
@@ -207,18 +207,18 @@ export const CitationBadge = React.memo(function CitationBadge({
             >
               <ArrowUpRight className="h-3.5 w-3.5" />
             </button>
-          </div>
+          </span>
 
           {/* Body Snippet */}
           {snippet && (
-            <p className="mt-2 line-clamp-3 text-[11.5px] leading-relaxed text-neutral-600 dark:text-neutral-300 italic">
+            <span className="mt-2 block line-clamp-3 text-[11.5px] leading-relaxed text-neutral-600 dark:text-neutral-300 italic">
               &ldquo;{snippet}&hellip;&rdquo;
-            </p>
+            </span>
           )}
 
           {/* Badges bổ trợ Assets / Bảng biểu */}
           {!isWeb && (hasImages || hasTables) && (
-            <div className="mt-2 flex flex-wrap items-center gap-1">
+            <span className="mt-2 flex flex-wrap items-center gap-1">
               {hasImages && (
                 <span className="inline-flex items-center gap-1 rounded-md border border-amber-200/60 dark:border-amber-800/40 bg-amber-50/80 dark:bg-amber-950/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
                   <ImageIcon className="h-3 w-3" />
@@ -231,11 +231,11 @@ export const CitationBadge = React.memo(function CitationBadge({
                   <span>Có bảng số liệu</span>
                 </span>
               )}
-            </div>
+            </span>
           )}
 
           {/* Action Button ở chân Popover */}
-          <div className="mt-2.5 pt-2 border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-end">
+          <span className="mt-2.5 pt-2 border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-end">
             <button
               type="button"
               onClick={handleClick}
@@ -248,8 +248,8 @@ export const CitationBadge = React.memo(function CitationBadge({
               <span>{isWeb ? "Mở bài viết gốc" : `Nhảy tới Trang ${pageNo}`}</span>
               <ArrowUpRight className="h-3 w-3" />
             </button>
-          </div>
-        </div>
+          </span>
+        </span>
       )}
     </span>
   );
