@@ -66,8 +66,8 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
         length: 'short',
         scope: 'document',
       });
-      expect(rendered.system).toContain('DÀN Ý CỐT LÕI');
-      expect(rendered.system).toContain('ĐỘ DÀI: NGẮN GỌN');
+      expect(rendered.system).toContain('mode="key_takeaways"');
+      expect(rendered.system).toContain('<length target="short">');
       expect(rendered.prompt).toContain('Nội dung bài học');
     });
 
@@ -78,7 +78,7 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
         types: ['single_choice'],
         difficulty: 'applied',
       });
-      expect(rendered.system).toContain('Soạn tối đa 5 câu hỏi');
+      expect(rendered.system).toContain('Generate up to 5 questions');
       expect(rendered.system).toContain('single_choice:');
       expect(rendered.prompt).toContain('Lịch sử thế giới');
     });
@@ -91,7 +91,7 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
         criteria: ['Đúng công thức', 'Nêu rõ đơn vị'],
         plainAnswer: 'I = U / R',
       });
-      expect(rendered.system).toContain('chuyên chấm điểm câu hỏi tự luận');
+      expect(rendered.system).toContain('academic grading assistant');
       expect(rendered.prompt).toContain('Trình bày định luật Ohm');
       expect(rendered.prompt).toContain('Đúng công thức');
     });
@@ -191,7 +191,7 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
       expect(preparedObj.model).toEqual({ id: 'model-STANDARD' });
       expect(preparedObj.schema).toBeDefined();
       expect(preparedObj.schemaName).toBe('EssayGrading');
-      expect(preparedObj.system).toContain('chuyên chấm điểm câu hỏi tự luận');
+      expect(preparedObj.system).toContain('academic grading assistant');
     });
 
     it('supports custom model override', () => {

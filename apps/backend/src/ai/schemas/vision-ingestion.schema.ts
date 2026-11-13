@@ -62,7 +62,7 @@ export const visionIngestionSchema = z.object({
   visual_description: z
     .string()
     .describe(
-      'Detailed description IN VIETNAMESE of visual elements, charts, diagrams, mindmaps, spatial relationships, or illustrations. Empty string if purely plain text.',
+      'Concise description IN VIETNAMESE ONLY for non-text visual figures/illustrations or spatial diagram/chart relationships inside the page. NEVER describe the document photo itself (background, paper, slide theme) or repeat extracted text/tables/code. Empty string "" if none.',
     ),
   contains_table: z.boolean(),
   contains_formula_or_code: z.boolean(),
