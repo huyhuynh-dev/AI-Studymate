@@ -66,7 +66,7 @@ export function createSearchDocumentChunksTool(
   maxChunks: number = 8,
 ) {
   return tool({
-    description: `Tìm kiếm các đoạn trích (chunks) cụ thể trong tài liệu bằng Hybrid Search (pgvector + PGRoonga kết hợp thuật toán RRF). Sử dụng công cụ này cho các câu hỏi cụ thể về khái niệm, thuật ngữ, định nghĩa, công thức hoặc chi tiết trong tài liệu. Cho phép lọc theo trang (pageNumbers/pageRange) và mở rộng ngữ cảnh liền kề (includeNeighbors). Trả về tối đa ${maxChunks} chunks liên quan nhất kèm mã trích dẫn [cX].`,
+    description: `Tìm kiếm các đoạn trích (chunks) liên quan trong tài liệu bằng Hybrid Search (pgvector + PGRoonga RRF). Dùng cho câu hỏi cụ thể về khái niệm, định nghĩa, công thức, code hoặc chi tiết trong tài liệu học tập. Không gọi cho chào hỏi thông thường hoặc câu hỏi nối tiếp đã đủ thông tin từ ngữ cảnh trước. Hỗ trợ lọc trang (pageNumbers/pageRange) và mở rộng ngữ cảnh liền kề (includeNeighbors). Trả về tối đa ${maxChunks} chunks kèm mã trích dẫn [cX].`,
     inputSchema: searchDocumentChunksInputSchema,
     execute: async (
       { semanticQuery, keywords, pageNumbers, pageRange, includeNeighbors, topK },

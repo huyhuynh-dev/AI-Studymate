@@ -47,7 +47,7 @@ export const askUserQuestionInputSchema = z.object({
 export function createAskUserQuestionTool() {
   return tool({
     description:
-      'Đặt từ 1 đến tối đa 5 câu hỏi cho người dùng để làm rõ yêu cầu (ví dụ: chọn tài liệu cần tóm tắt, chọn gộp chung hay tách riêng các tài liệu khác chủ đề, chọn phong cách/độ dài hoặc định hướng tóm tắt) và chờ người dùng trả lời trên giao diện trước khi xử lý tiếp.',
+      'Hiển thị widget hỏi đáp tương tác (1–3 câu hỏi gợi ý chọn nhanh) khi cần làm rõ yêu cầu phức tạp, nhiều lựa chọn hoặc thiếu tham số quy trình (ví dụ: chọn tài liệu nào trong nhiều file, chọn phạm vi/phong cách tóm tắt, chọn hướng giải thích cơ bản hay chuyên sâu). Nếu chỉ cần hỏi 1 câu ngắn đơn giản (như hỏi số trang hay xin đoạn code), hãy hỏi tự nhiên bằng văn bản thay vì gọi tool này.',
     inputSchema: askUserQuestionInputSchema,
   });
 }

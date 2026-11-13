@@ -58,7 +58,7 @@ export function createSearchInternetTool(
 ) {
   return tool({
     description:
-      'Tìm kiếm thông tin thực tế, bài báo khoa học, sự kiện mới hoặc kiến thức bên ngoài trên Internet thông qua Tavily Search API khi câu hỏi không có trong tài liệu của người dùng. Trả về các trích đoạn ngắn kèm URL nguồn và favicon.',
+      'Tìm kiếm thông tin thực tế, bài báo khoa học, tài liệu kỹ thuật hoặc kiến thức cập nhật trên Internet qua Tavily Search API khi thông tin không có trong tài liệu học tập của người dùng. Tuyệt đối không dùng để tìm dữ liệu cá nhân, điểm số, hay bài tập nội bộ chưa được tải lên. Trả về các trích đoạn kèm nguồn [wX].',
     inputSchema: searchInternetInputSchema,
     execute: async (input): Promise<SearchInternetToolOutput> => {
       console.log(

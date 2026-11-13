@@ -29,7 +29,7 @@ export function createExtractWebPageTool(
 ) {
   return tool({
     description:
-      'Đọc sâu và trích xuất nội dung chi tiết theo định dạng Markdown từ 1-3 liên kết web cụ thể bằng Tavily Extract API. Sử dụng khi người dùng gửi kèm đường link (URL) trong câu hỏi hoặc khi cần đọc sâu tài liệu kỹ thuật từ kết quả tìm kiếm searchInternet.',
+      'Đọc sâu và trích xuất nội dung Markdown sạch từ 1–3 URL cụ thể bằng Tavily Extract API. Dùng khi người dùng gửi kèm link (URL) trong tin nhắn hoặc khi cần đọc chi tiết nội dung từ một URL tìm được qua searchInternet. Luôn truyền `query` rõ ràng để lọc đúng đoạn cần thiết; nếu URL bị chặn hoặc lỗi, có thể dựa vào snippet hoặc nhờ người dùng dán nội dung.',
     inputSchema: extractWebPageInputSchema,
     execute: async (input): Promise<ExtractWebPageToolOutput> => {
       console.log(

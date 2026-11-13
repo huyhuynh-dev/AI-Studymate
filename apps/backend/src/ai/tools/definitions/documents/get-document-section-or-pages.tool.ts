@@ -47,7 +47,7 @@ export function createGetDocumentSectionOrPagesTool(
 ) {
   return tool({
     description:
-      'Đọc nội dung văn bản theo phân đoạn, mục hoặc trang cụ thể của tài liệu khi người dùng yêu cầu tóm tắt/đọc theo trang (ví dụ: "Đọc từ trang 1 đến 3", "Giải thích Chương 2"). Đối với tài liệu ngắn (<= 15 trang), công cụ này sẽ trả về toàn bộ nội dung. Đối với tài liệu dài, cần chỉ định pageNumbers hoặc headingKeyword để tránh làm tràn ngữ cảnh.',
+      'Đọc nội dung văn bản theo phân đoạn, mục lục hoặc trang cụ thể của tài liệu. Dùng khi người dùng yêu cầu đọc/giải thích theo trang hoặc chương (ví dụ: "trang 1–3", "Chương 2"), khi cần xem toàn bộ tài liệu ngắn (<= 15 trang), hoặc làm phương án thay thế khi searchDocumentChunks không ra kết quả nhưng mục lục (TOC) có tiêu đề phù hợp.',
     inputSchema: getDocumentSectionOrPagesInputSchema,
     execute: async (
       { documentId, pageNumbers, headingKeyword },

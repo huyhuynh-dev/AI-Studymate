@@ -69,7 +69,7 @@ export function createCreateDocumentSummaryTool(
 ) {
   return tool({
     description:
-      'Khởi tạo bản tóm tắt tài liệu học tập bằng AI và lưu trực tiếp vào Tab Tóm tắt của cuộc trò chuyện. Sử dụng công cụ này khi người dùng yêu cầu tóm tắt một tài liệu, một nhóm tài liệu hoặc toàn bộ tài liệu.',
+      'Khởi tạo bản tóm tắt tài liệu học tập bằng AI và lưu trực tiếp vào Tab Tóm tắt (Summaries). Chỉ dùng khi người dùng muốn TẠO VÀ LƯU bản tóm tắt chính thức (không dùng cho hỏi đáp thông thường). Nếu có nhiều tài liệu và chưa rõ người dùng muốn tóm tắt file nào hoặc phong cách nào, hãy dùng askUserQuestion để xác nhận trước (trừ khi chỉ có 1 tài liệu duy nhất hoặc 1 tài liệu đang đính kèm rõ ràng).',
     inputSchema: createDocumentSummaryInputSchema,
     execute: async (
       input,
