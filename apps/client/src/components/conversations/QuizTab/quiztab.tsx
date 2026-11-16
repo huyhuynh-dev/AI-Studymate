@@ -30,6 +30,10 @@ import { ResultView } from "./result/ResultView";
 
 export interface QuizTabProps {
   conversationId: string;
+  /** ID đề kiểm tra cần mở trực tiếp (ví dụ khi nhấn Badge từ RightSidebar AI Chat) */
+  initialQuizId?: string;
+  /** Nonce kích hoạt mở lại đề khi nhấn nhiều lần */
+  openNonce?: number;
   /** Các bộ Flashcard của không gian học tập (dùng cho "Tạo từ Flashcard" và "Chuyển câu sai thành Flashcard") */
   decks?: DeckOption[];
   /** Tài liệu của không gian học tập, dùng cho bộ chọn nguồn khi tạo đề bằng AI. Bỏ trống = dữ liệu giả để test. */
@@ -53,17 +57,60 @@ type View =
   | { name: "grading"; quizId: string; attemptId: string }
   | { name: "result"; quizId: string; attemptId: string };
 
-export function QuizTab({ conversationId, decks = [], documents = MOCK_DOCUMENTS, api, className, hasDocuments = true, onUploadDocument, onFlashcardsCreated }: QuizTabProps) {
+export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], documents = MOCK_DOCUMENTS, api, className, hasDocuments = true, onUploadDocument, onFlashcardsCreated }: QuizTabProps) {
   const resolvedApi = useMemo(() => api ?? createMockQuizApi(conversationId), [api, conversationId]);
   const store = useQuizStore(resolvedApi, conversationId);
 
   const [view, setView] = useState<View>({ name: "list" });
+  const [pendingQuizId, setPendingQuizId] = useState<string | null>(null);
+  const [handledRequestKey, setHandledRequestKey] = useState<string | null>(null);
   const [createSource, setCreateSource] = useState<QuizSource | null>(null);
   const [setup, setSetup] = useState<{ quizId: string; retryIds?: string[] } | null>(null);
   const [deleting, setDeleting] = useState<Quiz | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const { setFocusMode } = useFocusMode();
+
+  const currentRequestKey = initialQuizId ? `${initialQuizId}:${openNonce ?? ""}` : null;
+  if (currentRequestKey && currentRequestKey !== handledRequestKey && initialQuizId) {
+    setHandledRequestKey(currentRequestKey);
+    setPendingQuizId(initialQuizId);
+    setView({ name: "detail", quizId: initialQuizId });
+  }
+
+  const reloadQuizzes = store.reload;
+
+  // Đồng bộ dữ liệu khi điều hướng từ Badge đề kiểm tra AI ở khung Chatbox bên phải
+  useEffect(() => {
+    const storedId =
+      typeof window !== "undefined"
+        ? window.sessionStorage.getItem("studymate:open-quiz-id")
+        : null;
+    const targetId = initialQuizId || storedId;
+    if (!targetId) return;
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem("studymate:open-quiz-id");
+    }
+
+    let cancelled = false;
+    void Promise.resolve()
+      .then(() => {
+        if (cancelled) return undefined;
+        setPendingQuizId(targetId);
+        setView({ name: "detail", quizId: targetId });
+        return reloadQuizzes();
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPendingQuizId((prev) => (prev === targetId ? null : prev));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialQuizId, openNonce, reloadQuizzes]);
 
   // Focus Mode: chỉ bật khi đang làm bài / chờ AI chấm. Layout cha tự ẩn Header, Tab, Sidebar.
   const isFocus = view.name === "taking" || view.name === "grading";
@@ -141,7 +188,31 @@ export function QuizTab({ conversationId, decks = [], documents = MOCK_DOCUMENTS
       />
     );
   } else if (!quiz) {
-    content = null;
+    if (view.name === "detail" && (store.loading || pendingQuizId === view.quizId)) {
+      content = (
+        <div className="space-y-4 animate-pulse" aria-busy="true" aria-label="Đang tải bài kiểm tra">
+          <div className="h-8 w-40 rounded-xl bg-[var(--qz-fill)]" />
+          <div className="h-44 rounded-[24px] bg-[var(--qz-fill)]" />
+          <div className="h-64 rounded-[24px] bg-[var(--qz-fill)]" />
+        </div>
+      );
+    } else {
+      content = (
+        <QuizListView
+          quizzes={store.quizzes} attempts={store.attempts} loading={store.loading} error={store.error} onRetry={store.reload}
+          onCreate={openCreate}
+          hasDocuments={hasDocuments} hasDecks={decks.length > 0} onUploadDocument={onUploadDocument}
+          onOpen={(q) => go({ name: "detail", quizId: q.id })}
+          onStart={(q) => {
+            const running = (store.attempts[q.id] ?? []).find((a) => a.status === "in_progress");
+            if (running) go({ name: "taking", quizId: q.id, attemptId: running.id });
+            else setSetup({ quizId: q.id });
+          }}
+          onEdit={(q) => go({ name: "builder", quizId: q.id })}
+          onDelete={setDeleting}
+        />
+      );
+    }
   } else if (view.name === "detail") {
     content = (
       <QuizOverviewView

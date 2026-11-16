@@ -7,6 +7,8 @@ import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
 import { SummariesService } from '../summaries/summaries.service.js';
 import { FlashcardAiManageService } from '../deck-flashcard/flashcard-ai-manage.service.js';
+import { QuizService } from '../quiz/quiz.service.js';
+import { QuestionTypeEnum } from '../generated/prisma/client.js';
 import { TavilyService } from '../search/tavily.service.js';
 
 describe('ChatAgentService', () => {
@@ -32,6 +34,10 @@ describe('ChatAgentService', () => {
   };
   let flashcardAiManageMock: {
     generateWithAi: ReturnType<typeof vi.fn>;
+  };
+  let quizServiceMock: {
+    generateWithAI: ReturnType<typeof vi.fn>;
+    generateFromDeck: ReturnType<typeof vi.fn>;
   };
   let documentsRepoMock: {
     getAllDocumentsByConversationId: ReturnType<typeof vi.fn>;
@@ -140,6 +146,35 @@ describe('ChatAgentService', () => {
       }),
     };
 
+    quizServiceMock = {
+      generateWithAI: vi.fn().mockResolvedValue({
+        id: 'quiz-uuid-1',
+        conversationId: 'conv-1',
+        title: 'Đề kiểm tra Cây AVL',
+        description: 'Đề kiểm tra kiến thức cây AVL',
+        timeLimitSec: null,
+        sourceDeckId: null,
+        sourceDeckName: null,
+        source: 'ai',
+        questions: [{ id: 'q-1' }, { id: 'q-2' }],
+        createdAt: '2026-11-16T10:30:00.000Z',
+        updatedAt: '2026-11-16T10:30:00.000Z',
+      }),
+      generateFromDeck: vi.fn().mockResolvedValue({
+        id: 'quiz-uuid-deck-1',
+        conversationId: 'conv-1',
+        title: 'Bài kiểm tra: Ôn tập Cây AVL',
+        description: 'Tạo tự động từ bộ thẻ Flashcard',
+        timeLimitSec: null,
+        sourceDeckId: '11111111-2222-3333-4444-555555555555',
+        sourceDeckName: 'Ôn tập Cây AVL',
+        source: 'flashcard',
+        questions: [{ id: 'qd-1' }, { id: 'qd-2' }, { id: 'qd-3' }],
+        createdAt: '2026-11-16T10:31:00.000Z',
+        updatedAt: '2026-11-16T10:31:00.000Z',
+      }),
+    };
+
     documentsRepoMock = {
       getAllDocumentsByConversationId: vi.fn().mockResolvedValue([
         {
@@ -162,6 +197,7 @@ describe('ChatAgentService', () => {
         { provide: RetrievalService, useValue: retrievalMock },
         { provide: SummariesService, useValue: summariesMock },
         { provide: FlashcardAiManageService, useValue: flashcardAiManageMock },
+        { provide: QuizService, useValue: quizServiceMock },
         { provide: DocumentsRepoService, useValue: documentsRepoMock },
         { provide: TavilyService, useValue: tavilyMock },
       ],
@@ -316,6 +352,70 @@ describe('ChatAgentService', () => {
     expect(flashcardResult.requestedCount).toBe(10);
     expect(flashcardResult.targetKind).toBe('new');
     expect(flashcardResult.documentNames).toEqual(['Giao_trinh_CTDL.pdf']);
+
+    // Kiểm tra callback Tool 7: createQuiz (từ tài liệu AI)
+    expect(options?.onCreateQuiz).toBeDefined();
+    const quizResult = await options.onCreateQuiz({
+      documentIds: ['doc-attached-1'],
+      questionCount: 10,
+      types: ['single_choice', 'essay'],
+      difficulty: 'applied',
+    });
+    expect(quizServiceMock.generateWithAI).toHaveBeenCalledWith(
+      'user-1',
+      'conv-1',
+      {
+        documentIds: ['doc-attached-1'],
+        questionCount: 10,
+        types: [QuestionTypeEnum.single_choice, QuestionTypeEnum.essay],
+        difficulty: 'applied',
+      },
+    );
+    expect(quizResult.quizId).toBe('quiz-uuid-1');
+    expect(quizResult.title).toBe('Đề kiểm tra Cây AVL');
+    expect(quizResult.source).toBe('ai');
+    expect(quizResult.questionCount).toBe(2);
+    expect(quizResult.requestedCount).toBe(10);
+    expect(quizResult.documentNames).toEqual(['Giao_trinh_CTDL.pdf']);
+  });
+
+  it('onCreateQuiz nên chuyển sang generateFromDeck khi nhận deckId là UUID hợp lệ', async () => {
+    await service.handleChatStream(
+      'user-1',
+      'session-1',
+      [
+        {
+          id: 'u1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'Tạo đề kiểm tra từ bộ thẻ này' }],
+        },
+      ],
+      undefined,
+      [],
+    );
+
+    const options = aiMock.executeChatStream.mock.calls[0]?.[3];
+    const existingDeckUuid = '11111111-2222-3333-4444-555555555555';
+    const result = await options.onCreateQuiz({
+      deckId: existingDeckUuid,
+      questionCount: 12,
+      types: ['single_choice', 'true_false', 'essay'],
+      difficulty: 'basic',
+    });
+
+    expect(quizServiceMock.generateFromDeck).toHaveBeenCalledWith(
+      'user-1',
+      'conv-1',
+      {
+        deckId: existingDeckUuid,
+        questionCount: 12,
+        types: [QuestionTypeEnum.single_choice, QuestionTypeEnum.true_false],
+      },
+    );
+    expect(result.quizId).toBe('quiz-uuid-deck-1');
+    expect(result.source).toBe('flashcard');
+    expect(result.questionCount).toBe(3);
+    expect(result.documentNames).toEqual(['Ôn tập Cây AVL']);
   });
 
   it('onCreateFlashcards nên fallback về tất cả tài liệu và hỗ trợ thêm vào deckId hợp lệ', async () => {

@@ -9,6 +9,7 @@ import {
   Brain,
   CheckCircle2,
   ChevronDown,
+  FileQuestion,
   FileSearch,
   FileText,
   FolderSearch,
@@ -40,6 +41,7 @@ interface AiMessageProps {
   }) => void;
   onOpenSummary?: (summaryId: string) => void;
   onOpenFlashcardDeck?: (deckId: string) => void;
+  onOpenQuiz?: (quizId: string) => void;
 }
 
 interface AskUserQuestionItem {
@@ -266,6 +268,7 @@ export const AiMessage = React.memo(function AiMessage({
   onAddToolOutput,
   onOpenSummary,
   onOpenFlashcardDeck,
+  onOpenQuiz,
 }: AiMessageProps) {
   const parts = message.parts;
 
@@ -1409,6 +1412,144 @@ export const AiMessage = React.memo(function AiMessage({
                         </div>
                         <div className="mt-1 truncate text-xs font-bold text-[#0B1C30] dark:text-white group-hover:text-[#4F46E5]">
                           {deckName}
+                        </div>
+                        {types.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {types.map((t) => (
+                              <span
+                                key={t}
+                                className="rounded bg-white/80 dark:bg-white/[0.06] border border-[#E5EEFF] dark:border-white/[0.08] px-1.5 py-0.5 text-[10px] font-medium text-[#464555] dark:text-neutral-300"
+                              >
+                                {typeLabelMap[t] || t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.1] px-2.5 py-1 text-xs font-semibold text-[#4F46E5] dark:text-[#818CF8] transition-colors group-hover:bg-[#4F46E5] group-hover:text-white shadow-2xs">
+                      <span>Mở</span>
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                    </span>
+                  </button>
+                );
+              }
+            }
+
+            // 7. Tool 7: Tạo bài kiểm tra Quiz AI & Badge mở trực tiếp Tab Trắc nghiệm
+            if (
+              part.type === "tool-createQuiz" ||
+              (part.type === "dynamic-tool" && part.toolName === "createQuiz")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isError = state === "output-error";
+              const isDone = state === "output-available";
+
+              const quizId: string = part.output?.quizId || "";
+              const quizTitle: string =
+                part.output?.title || "Đề kiểm tra mới";
+              const questionCount: number = part.output?.questionCount ?? 0;
+              const difficulty: string = part.output?.difficulty || "applied";
+              const source: string = part.output?.source || "ai";
+              const types: string[] = Array.isArray(part.output?.types)
+                ? part.output.types
+                : [];
+              const typeLabelMap: Record<string, string> = {
+                single_choice: "Trắc nghiệm",
+                multiple_choice: "Nhiều đáp án",
+                true_false: "Đúng / Sai",
+                short_answer: "Điền từ",
+                essay: "Tự luận",
+              };
+              const difficultyLabelMap: Record<string, string> = {
+                basic: "Cơ bản",
+                applied: "Vận dụng",
+                advanced: "Nâng cao",
+              };
+
+              if (isRunning) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2.5 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF] dark:bg-[#4F46E5]/10 p-3.5 text-xs text-[#4F46E5] dark:text-[#818CF8] shadow-2xs"
+                  >
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#4F46E5]" />
+                    <div className="space-y-0.5">
+                      <div className="font-bold text-[#3525CD] dark:text-white">
+                        Đang khởi tạo đề kiểm tra bằng AI…
+                      </div>
+                      <div className="text-[11px] text-[#777587] dark:text-neutral-400">
+                        AI đang biên soạn câu hỏi, phương án nhiễu và đáp án giải thích
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (isError) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/20 p-3 text-xs text-[#BA1A1A] dark:text-rose-400"
+                  >
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                      Không thể tạo đề kiểm tra. Vui lòng thử lại.
+                    </span>
+                  </div>
+                );
+              }
+
+              if (isDone && quizId) {
+                const handleQuizBadgeClick = () => {
+                  if (onOpenQuiz) {
+                    onOpenQuiz(quizId);
+                  } else if (typeof window !== "undefined") {
+                    window.sessionStorage.setItem(
+                      "studymate:open-quiz-id",
+                      quizId
+                    );
+                    window.dispatchEvent(
+                      new CustomEvent("studymate:open-quiz", {
+                        detail: { quizId },
+                      })
+                    );
+                  }
+                };
+
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={handleQuizBadgeClick}
+                    title={`Nhấn để mở "${quizTitle}" trong Tab Trắc nghiệm`}
+                    className="group my-2 flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/40 bg-gradient-to-r from-[#EEF2FF] via-white to-[#EEF2FF] dark:from-[#4F46E5]/20 dark:via-[#161922] dark:to-[#4F46E5]/10 p-3.5 text-left shadow-xs transition-all hover:border-[#4F46E5] hover:shadow-md active:scale-[0.99]"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#4F46E5] text-white shadow-xs transition-transform group-hover:scale-105">
+                        <FileQuestion className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-md bg-[#EEF2FF] dark:bg-[#4F46E5]/30 px-1.5 py-0.5 text-[10px] font-bold text-[#4F46E5] dark:text-[#818CF8]">
+                            {source === "flashcard"
+                              ? "Đề từ Flashcard"
+                              : "Đề kiểm tra AI"}
+                          </span>
+                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            • {questionCount} câu hỏi
+                          </span>
+                          {source !== "flashcard" && (
+                            <span className="text-[10px] font-medium text-[#777587] dark:text-neutral-400">
+                              • {difficultyLabelMap[difficulty] || difficulty}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 truncate text-xs font-bold text-[#0B1C30] dark:text-white group-hover:text-[#4F46E5]">
+                          {quizTitle}
                         </div>
                         {types.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1">

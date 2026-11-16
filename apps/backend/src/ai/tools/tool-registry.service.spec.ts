@@ -9,6 +9,7 @@ import {
   type SearchInternetToolOutput,
   type ExtractWebPageToolOutput,
   type CreateFlashcardsToolOutput,
+  type CreateQuizToolOutput,
   type WebCitationItem,
 } from './types.js';
 import { createSearchDocumentChunksTool } from './definitions/documents/search-document-chunks.tool.js';
@@ -16,6 +17,7 @@ import { createGetDocumentSectionOrPagesTool } from './definitions/documents/get
 import { createSearchInternetTool } from './definitions/web/search-internet.tool.js';
 import { createExtractWebPageTool } from './definitions/web/extract-web-page.tool.js';
 import { createCreateFlashcardsTool } from './definitions/flashcards/create-flashcards.tool.js';
+import { createCreateQuizTool } from './definitions/quiz/create-quiz.tool.js';
 import { HttpLoggingFilter } from '../../common/filters/http-logging.filter.js';
 
 describe('ToolRegistryService & ChatSessionToolTracker', () => {
@@ -490,8 +492,74 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
     });
   });
 
+  describe('createQuizTool', () => {
+    it('thực thi execute, lưu lightweightOutput vào tracker và định dạng toModelOutput chuẩn', async () => {
+      const tracker = new ChatSessionToolTracker();
+      const mockCallback = vi.fn().mockResolvedValue({
+        quizId: 'quiz-uuid-456',
+        title: 'Đề kiểm tra Cây AVL',
+        description: 'Kiểm tra kiến thức phép xoay cây AVL',
+        source: 'ai',
+        questionCount: 10,
+        requestedCount: 10,
+        types: ['single_choice', 'essay'],
+        difficulty: 'applied',
+        documentNames: ['Giao_trinh_CTDL.pdf'],
+        createdAt: '2026-11-16T10:30:00.000Z',
+      });
+
+      const toolInstance = createCreateQuizTool(mockCallback, tracker);
+      expect(toolInstance.execute).toBeDefined();
+
+      const output = (await toolInstance.execute!(
+        {
+          documentIds: ['doc-1'],
+          questionCount: 10,
+          types: ['single_choice', 'essay'],
+          difficulty: 'applied',
+        },
+        { toolCallId: 'tc-qz-1', messages: [] },
+      )) as CreateQuizToolOutput;
+
+      expect(output.quizId).toBe('quiz-uuid-456');
+      expect(output.questionCount).toBe(10);
+
+      const lightweight = tracker.getLightweightOutput('tc-qz-1');
+      expect(lightweight).toEqual({
+        quizId: 'quiz-uuid-456',
+        title: 'Đề kiểm tra Cây AVL',
+        description: 'Kiểm tra kiến thức phép xoay cây AVL',
+        source: 'ai',
+        questionCount: 10,
+        requestedCount: 10,
+        types: ['single_choice', 'essay'],
+        difficulty: 'applied',
+        documentNames: ['Giao_trinh_CTDL.pdf'],
+        createdAt: '2026-11-16T10:30:00.000Z',
+      });
+
+      const modelOut = toolInstance.toModelOutput!({
+        toolCallId: 'tc-qz-1',
+        input: {
+          documentIds: ['doc-1'],
+          questionCount: 10,
+          types: ['single_choice', 'essay'],
+          difficulty: 'applied',
+        },
+        output,
+      }) as {
+        type: 'text';
+        value: string;
+      };
+      expect(modelOut.type).toBe('text');
+      expect(modelOut.value).toContain('quiz-uuid-456');
+      expect(modelOut.value).toContain('Đề kiểm tra Cây AVL');
+      expect(modelOut.value).toContain('10/10 câu');
+    });
+  });
+
   describe('ToolRegistryService toolset creation & validation', () => {
-    it('createChatSessionToolset đăng ký searchInternet, extractWebPage và createFlashcards khi có callback', () => {
+    it('createChatSessionToolset đăng ký searchInternet, extractWebPage, createFlashcards và createQuiz khi có callback', () => {
       const registry = new ToolRegistryService();
       const { tools, tracker } = registry.createChatSessionToolset({
         onSearchDocumentChunks: vi.fn(),
@@ -499,6 +567,7 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
         onSearchInternet: vi.fn(),
         onExtractWebPage: vi.fn(),
         onCreateFlashcards: vi.fn(),
+        onCreateQuiz: vi.fn(),
       });
 
       expect(tracker).toBeDefined();
@@ -507,11 +576,12 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       expect(tools.searchInternet).toBeDefined();
       expect(tools.extractWebPage).toBeDefined();
       expect(tools.createFlashcards).toBeDefined();
+      expect(tools.createQuiz).toBeDefined();
       expect(tools.getConversationDocumentsMetadata).toBeUndefined();
       expect(tools.askUserQuestion).toBeDefined();
     });
 
-    it('getChatValidationTools chứa đầy đủ schema của searchInternet, extractWebPage và createFlashcards', () => {
+    it('getChatValidationTools chứa đầy đủ schema của searchInternet, extractWebPage, createFlashcards và createQuiz', () => {
       const registry = new ToolRegistryService();
       const validationTools = registry.getChatValidationTools();
 
@@ -519,6 +589,77 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       expect(validationTools.extractWebPage).toBeDefined();
       expect(validationTools.searchDocumentChunks).toBeDefined();
       expect(validationTools.createFlashcards).toBeDefined();
+      expect(validationTools.createQuiz).toBeDefined();
+    });
+
+    it('extractAssistantUIParts trích xuất đúng part tool-createQuiz kèm lightweightOutput', () => {
+      const registry = new ToolRegistryService();
+      const tracker = new ChatSessionToolTracker();
+      tracker.recordOutput(
+        'tc-qz-extract',
+        'createQuiz',
+        { quizId: 'quiz-999' },
+        {
+          quizId: 'quiz-999',
+          title: 'Đề ôn tập Đệ quy',
+          source: 'ai',
+          questionCount: 10,
+          requestedCount: 10,
+          types: ['single_choice'],
+          difficulty: 'basic',
+        },
+      );
+
+      const parts = registry.extractAssistantUIParts(
+        [
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'tool-call',
+                toolName: 'createQuiz',
+                toolCallId: 'tc-qz-extract',
+                input: {
+                  questionCount: 10,
+                  types: ['single_choice'],
+                  difficulty: 'basic',
+                },
+              },
+              {
+                type: 'text',
+                text: 'Mình đã tạo xong đề kiểm tra Đệ quy cho bạn.',
+              },
+            ],
+          },
+        ],
+        tracker,
+      );
+
+      expect(parts).toEqual([
+        {
+          type: 'tool-createQuiz',
+          toolCallId: 'tc-qz-extract',
+          state: 'output-available',
+          input: {
+            questionCount: 10,
+            types: ['single_choice'],
+            difficulty: 'basic',
+          },
+          output: {
+            quizId: 'quiz-999',
+            title: 'Đề ôn tập Đệ quy',
+            source: 'ai',
+            questionCount: 10,
+            requestedCount: 10,
+            types: ['single_choice'],
+            difficulty: 'basic',
+          },
+        },
+        {
+          type: 'text',
+          text: 'Mình đã tạo xong đề kiểm tra Đệ quy cho bạn.',
+        },
+      ]);
     });
 
     it('extractAssistantUIParts trích xuất đúng part tool-createFlashcards kèm lightweightOutput', () => {

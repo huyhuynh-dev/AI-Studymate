@@ -323,6 +323,41 @@ export type CreateFlashcardsCallback = (
   input: CreateFlashcardsToolInput,
 ) => Promise<CreateFlashcardsToolOutput>;
 
+// ── Tool 8: createQuiz (Server-Side Tool) ──
+export type QuizToolQuestionType =
+  | 'single_choice'
+  | 'multiple_choice'
+  | 'true_false'
+  | 'short_answer'
+  | 'essay';
+
+export type QuizToolDifficulty = 'basic' | 'applied' | 'advanced';
+
+export interface CreateQuizToolInput {
+  documentIds?: string[];
+  questionCount?: number;
+  types?: QuizToolQuestionType[];
+  difficulty?: QuizToolDifficulty;
+  deckId?: string;
+}
+
+export interface CreateQuizToolOutput {
+  quizId: string;
+  title: string;
+  description?: string | null;
+  source: 'ai' | 'flashcard' | 'manual';
+  questionCount: number;
+  requestedCount: number;
+  types: QuizToolQuestionType[];
+  difficulty: QuizToolDifficulty;
+  documentNames: string[];
+  createdAt: string;
+}
+
+export type CreateQuizCallback = (
+  input: CreateQuizToolInput,
+) => Promise<CreateQuizToolOutput>;
+
 // ── Tên định danh các Tool của Chat Agent ──
 export type ChatAgentToolName =
   | 'searchDocumentChunks'
@@ -332,6 +367,7 @@ export type ChatAgentToolName =
   | 'askUserQuestion'
   | 'createDocumentSummary'
   | 'createFlashcards'
+  | 'createQuiz'
   | 'searchInternet'
   | 'extractWebPage';
 
@@ -364,6 +400,7 @@ export interface ChatSessionToolCallbacks {
   onGetDocumentsMetadata?: GetConversationDocumentsMetadataCallback;
   onCreateDocumentSummary?: CreateDocumentSummaryCallback;
   onCreateFlashcards?: CreateFlashcardsCallback;
+  onCreateQuiz?: CreateQuizCallback;
   onSearchInternet?: SearchInternetCallback;
   onExtractWebPage?: ExtractWebPageCallback;
 }

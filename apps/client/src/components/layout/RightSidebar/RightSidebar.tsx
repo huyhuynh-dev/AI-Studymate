@@ -410,6 +410,24 @@ export default function RightSidebar({
     [isFullscreen]
   );
 
+  const handleOpenQuiz = useCallback(
+    (quizId: string) => {
+      if (!quizId) return;
+      if (isFullscreen) {
+        setIsFullscreen(false);
+      }
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("studymate:open-quiz-id", quizId);
+        window.dispatchEvent(
+          new CustomEvent("studymate:open-quiz", {
+            detail: { quizId },
+          })
+        );
+      }
+    },
+    [isFullscreen]
+  );
+
   const handleNewChat = useCallback(() => {
     setActiveChatId(null);
     activeChatIdRef.current = null;
@@ -859,6 +877,7 @@ export default function RightSidebar({
             onAddToolOutput={addToolOutput as any}
             onOpenSummary={handleOpenSummary}
             onOpenFlashcardDeck={handleOpenFlashcardDeck}
+            onOpenQuiz={handleOpenQuiz}
           />
         )}
 

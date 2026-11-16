@@ -19,6 +19,7 @@ interface MessageListProps {
   }) => void;
   onOpenSummary?: (summaryId: string) => void;
   onOpenFlashcardDeck?: (deckId: string) => void;
+  onOpenQuiz?: (quizId: string) => void;
 }
 
 export function MessageList({
@@ -30,6 +31,7 @@ export function MessageList({
   onAddToolOutput,
   onOpenSummary,
   onOpenFlashcardDeck,
+  onOpenQuiz,
 }: MessageListProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -65,6 +67,7 @@ export function MessageList({
                 onAddToolOutput={onAddToolOutput}
                 onOpenSummary={onOpenSummary}
                 onOpenFlashcardDeck={onOpenFlashcardDeck}
+                onOpenQuiz={onOpenQuiz}
               />
             )}
 

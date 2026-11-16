@@ -6,6 +6,8 @@ import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
 import { SummariesService } from '../summaries/summaries.service.js';
 import { FlashcardAiManageService } from '../deck-flashcard/flashcard-ai-manage.service.js';
+import { QuizService } from '../quiz/quiz.service.js';
+import { QuestionTypeEnum } from '../generated/prisma/client.js';
 import { TavilyService } from '../search/tavily.service.js';
 import {
   SummaryLength,
@@ -71,6 +73,7 @@ export class ChatAgentService {
     @Optional() private readonly documentsRepo?: DocumentsRepoService,
     @Optional() private readonly tavilyService?: TavilyService,
     @Optional() private readonly flashcardAiManageService?: FlashcardAiManageService,
+    @Optional() private readonly quizService?: QuizService,
   ) {}
 
   async createChatSession(
@@ -623,6 +626,151 @@ export class ChatAgentService {
                 types,
                 documentNames,
                 createdAt: new Date().toISOString(),
+              };
+            },
+            onCreateQuiz: async (input) => {
+              if (!this.quizService) {
+                throw new Error('QuizService chưa được khởi tạo');
+              }
+
+              const uuidRegex =
+                /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+              const rawCount =
+                typeof input.questionCount === 'number' &&
+                Number.isFinite(input.questionCount)
+                  ? Math.round(input.questionCount)
+                  : 10;
+              const questionCount = Math.min(30, Math.max(1, rawCount));
+
+              const allowedDifficulties = new Set<
+                'basic' | 'applied' | 'advanced'
+              >(['basic', 'applied', 'advanced']);
+              const difficulty: 'basic' | 'applied' | 'advanced' =
+                input.difficulty && allowedDifficulties.has(input.difficulty)
+                  ? input.difficulty
+                  : 'applied';
+
+              const allowedTypes = new Set<QuestionTypeEnum>([
+                QuestionTypeEnum.single_choice,
+                QuestionTypeEnum.multiple_choice,
+                QuestionTypeEnum.true_false,
+                QuestionTypeEnum.short_answer,
+                QuestionTypeEnum.essay,
+              ]);
+              const filteredTypes = Array.isArray(input.types)
+                ? [
+                    ...new Set(
+                      input.types.filter((t): t is QuestionTypeEnum =>
+                        allowedTypes.has(t as QuestionTypeEnum),
+                      ),
+                    ),
+                  ]
+                : [];
+              const types: QuestionTypeEnum[] =
+                filteredTypes.length > 0
+                  ? filteredTypes
+                  : [QuestionTypeEnum.single_choice, QuestionTypeEnum.essay];
+
+              const targetDeckId =
+                typeof input.deckId === 'string' &&
+                uuidRegex.test(input.deckId.trim())
+                  ? input.deckId.trim()
+                  : undefined;
+
+              if (targetDeckId) {
+                const deckAllowedTypes = types.filter(
+                  (t) =>
+                    t === QuestionTypeEnum.single_choice ||
+                    t === QuestionTypeEnum.true_false ||
+                    t === QuestionTypeEnum.short_answer,
+                );
+                const resolvedDeckTypes =
+                  deckAllowedTypes.length > 0
+                    ? deckAllowedTypes
+                    : [
+                        QuestionTypeEnum.single_choice,
+                        QuestionTypeEnum.true_false,
+                        QuestionTypeEnum.short_answer,
+                      ];
+
+                const createdFromDeck =
+                  await this.quizService.generateFromDeck(
+                    ragContext.userId,
+                    ragContext.conversationId,
+                    {
+                      deckId: targetDeckId,
+                      questionCount,
+                      types: resolvedDeckTypes,
+                    },
+                  );
+
+                return {
+                  quizId: createdFromDeck.id,
+                  title: createdFromDeck.title,
+                  description: createdFromDeck.description,
+                  source: createdFromDeck.source,
+                  questionCount: Array.isArray(createdFromDeck.questions)
+                    ? createdFromDeck.questions.length
+                    : questionCount,
+                  requestedCount: questionCount,
+                  types: resolvedDeckTypes,
+                  difficulty,
+                  documentNames: createdFromDeck.sourceDeckName
+                    ? [createdFromDeck.sourceDeckName]
+                    : ['Bộ thẻ Flashcard'],
+                  createdAt:
+                    createdFromDeck.createdAt || new Date().toISOString(),
+                };
+              }
+
+              const catalogMap = new Map(
+                (availableDocuments ?? []).map((d) => [
+                  d.documentId,
+                  d.fileName,
+                ]),
+              );
+              const requestedIds = Array.isArray(input.documentIds)
+                ? input.documentIds.filter((id) => catalogMap.has(id))
+                : [];
+              const resolvedDocumentIds: string[] | undefined =
+                requestedIds.length > 0
+                  ? [...new Set(requestedIds)]
+                  : ragContext.attachedDocumentIds &&
+                      ragContext.attachedDocumentIds.length > 0
+                    ? [...new Set(ragContext.attachedDocumentIds)]
+                    : undefined;
+
+              const created = await this.quizService.generateWithAI(
+                ragContext.userId,
+                ragContext.conversationId,
+                {
+                  documentIds: resolvedDocumentIds,
+                  questionCount,
+                  types,
+                  difficulty,
+                },
+              );
+
+              const documentNames = resolvedDocumentIds
+                ? resolvedDocumentIds
+                    .map((id) => catalogMap.get(id))
+                    .filter((name): name is string => Boolean(name))
+                : (availableDocuments ?? []).map((d) => d.fileName);
+
+              return {
+                quizId: created.id,
+                title: created.title,
+                description: created.description,
+                source: created.source,
+                questionCount: Array.isArray(created.questions)
+                  ? created.questions.length
+                  : questionCount,
+                requestedCount: questionCount,
+                types,
+                difficulty,
+                documentNames,
+                createdAt: created.createdAt || new Date().toISOString(),
               };
             },
           }

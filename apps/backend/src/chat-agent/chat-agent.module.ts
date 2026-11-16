@@ -7,6 +7,7 @@ import { DocumentsModule } from '../documents/documents.module.js';
 import { SummariesModule } from '../summaries/summaries.module.js';
 import { SearchModule } from '../search/search.module.js';
 import { DeckFlashcardModule } from '../deck-flashcard/deck-flashcard.module.js';
+import { QuizModule } from '../quiz/quiz.module.js';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { DeckFlashcardModule } from '../deck-flashcard/deck-flashcard.module.js'
     SummariesModule,
     SearchModule,
     DeckFlashcardModule,
+    QuizModule,
   ],
   providers: [ChatAgentService],
   controllers: [ChatAgentController],
