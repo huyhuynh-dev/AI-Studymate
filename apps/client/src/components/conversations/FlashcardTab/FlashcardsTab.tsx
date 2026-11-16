@@ -18,6 +18,10 @@ import { ConfirmDialog, cx } from "./ui";
 
 export interface FlashcardsTabProps {
   conversationId?: string;
+  /** ID bộ thẻ cần mở trực tiếp (ví dụ khi nhấn Badge từ RightSidebar AI Chat) */
+  initialDeckId?: string;
+  /** Nonce kích hoạt mở lại bộ thẻ khi nhấn nhiều lần */
+  openNonce?: number;
   documents?: AiDocument[];
   onUploadDocument?: () => void;
   /** Phiên học đã có tài liệu nguồn chưa (quyết định nút AI ở Empty State) */
@@ -32,6 +36,8 @@ type View =
 
 export default function FlashcardsTab({
   conversationId,
+  initialDeckId,
+  openNonce,
   documents,
   onUploadDocument,
   hasDocuments = true,
@@ -39,6 +45,17 @@ export default function FlashcardsTab({
 }: FlashcardsTabProps) {
   const { decks, isLoading: isDecksLoading, createDeck, updateDeck, deleteDeck, refreshDecks } = useDecks(conversationId);
   const [view, setView] = useState<View>({ name: "decks" });
+  const [pendingDeckId, setPendingDeckId] = useState<string | null>(null);
+  const [handledRequestKey, setHandledRequestKey] = useState<string | null>(null);
+
+  const currentRequestKey = initialDeckId
+    ? `${initialDeckId}:${openNonce ?? ""}`
+    : null;
+  if (currentRequestKey && currentRequestKey !== handledRequestKey && initialDeckId) {
+    setHandledRequestKey(currentRequestKey);
+    setPendingDeckId(initialDeckId);
+    setView({ name: "detail", deckId: initialDeckId });
+  }
   const [deckForm, setDeckForm] = useState<{ open: boolean; deck: Deck | null }>({ open: false, deck: null });
   const [deckToDelete, setDeckToDelete] = useState<Deck | null>(null);
   const [cardEditor, setCardEditor] = useState<{ open: boolean; card: Flashcard | null; deckId: string }>({ open: false, card: null, deckId: "" });
@@ -103,6 +120,44 @@ export default function FlashcardsTab({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [view.name, activeDeck, setFocusMode, refreshDecks]);
+
+  // Tự động làm mới danh sách và mở trực tiếp chi tiết bộ thẻ khi điều hướng từ Badge trong AI Chat
+  useEffect(() => {
+    const storedId =
+      typeof window !== "undefined"
+        ? window.sessionStorage.getItem("studymate:open-deck-id")
+        : null;
+    const targetId = initialDeckId || storedId;
+    if (!targetId) return;
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem("studymate:open-deck-id");
+    }
+
+    let cancelled = false;
+    void Promise.resolve()
+      .then(() => {
+        if (cancelled) return undefined;
+        setPendingDeckId(targetId);
+        setView({ name: "detail", deckId: targetId });
+        return refreshDecks();
+      })
+      .then((updatedDecks) => {
+        if (cancelled) return;
+        if (Array.isArray(updatedDecks) && !updatedDecks.some((d) => d.id === targetId)) {
+          setView({ name: "decks" });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPendingDeckId((prev) => (prev === targetId ? null : prev));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDeckId, openNonce, refreshDecks]);
 
   /* ---------- handlers ---------- */
   const openAi = (target: AiTarget) => (hasDocuments ? setAi(target) : onUploadDocument?.());
@@ -189,8 +244,8 @@ export default function FlashcardsTab({
         key={`${view.deckId}-${view.mode}-${view.nonce}`}
         initialIds={ids}
         cards={deckCards}
-        onPersist={async (c, rating) => {
-          await reviewCard(c.id, rating);
+        onPersist={async (c, rating, timeTakenMs) => {
+          await reviewCard(c.id, rating, timeTakenMs);
           refreshDecks();
         }}
         onEditCard={(card) => setCardEditor({ open: true, card, deckId: card.deckId })}
@@ -228,7 +283,10 @@ export default function FlashcardsTab({
         onDeleteCard={setCardToDelete}
       />
     );
-  } else if (isDecksLoading) {
+  } else if (
+    isDecksLoading ||
+    (view.name === "detail" && !activeDeck && pendingDeckId === view.deckId)
+  ) {
     content = (
       <div className="flex flex-col gap-6 animate-pulse">
         <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-4">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Lightbulb, Sparkles, Check, TriangleAlert } from "lucide-react";
+import { SourceReferenceButton } from "@/components/ui/SourceReferenceButton";
 import type { AttemptAnswer, EvaluationStatus, QuizQuestion } from "../types";
 import { Badge, Button, Segmented } from "../ui/primitives";
 import { RichTextView } from "../ui/RichTextView";
@@ -123,6 +124,8 @@ export function ReviewCard({ index, q, a, onOverride }: {
           <RichTextView html={q.explanation} className="text-[var(--on-surface-variant)]" />
         </div>
       )}
+
+      <SourceReferenceButton sourceRefs={q.sourceRefs} variant="card" className="mt-4" />
     </article>
   );
 }

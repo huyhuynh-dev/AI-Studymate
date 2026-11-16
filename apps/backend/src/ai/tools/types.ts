@@ -296,6 +296,68 @@ export type ExtractWebPageCallback = (
   message?: string;
 }>;
 
+// ── Tool 7: createFlashcards (Server-Side Tool) ──
+export interface CreateFlashcardsToolInput {
+  documentIds?: string[];
+  count?: number;
+  types?: Array<'basic' | 'cloze' | 'type_in'>;
+  deckName?: string;
+  instructions?: string;
+  deckId?: string;
+}
+
+export interface CreateFlashcardsToolOutput {
+  deckId: string;
+  deckName: string;
+  deckDescription?: string | null;
+  targetKind: 'new' | 'deck';
+  savedCount: number;
+  requestedCount: number;
+  droppedCount: number;
+  types: Array<'basic' | 'cloze' | 'type_in'>;
+  documentNames: string[];
+  createdAt: string;
+}
+
+export type CreateFlashcardsCallback = (
+  input: CreateFlashcardsToolInput,
+) => Promise<CreateFlashcardsToolOutput>;
+
+// ── Tool 8: createQuiz (Server-Side Tool) ──
+export type QuizToolQuestionType =
+  | 'single_choice'
+  | 'multiple_choice'
+  | 'true_false'
+  | 'short_answer'
+  | 'essay';
+
+export type QuizToolDifficulty = 'basic' | 'applied' | 'advanced';
+
+export interface CreateQuizToolInput {
+  documentIds?: string[];
+  questionCount?: number;
+  types?: QuizToolQuestionType[];
+  difficulty?: QuizToolDifficulty;
+  deckId?: string;
+}
+
+export interface CreateQuizToolOutput {
+  quizId: string;
+  title: string;
+  description?: string | null;
+  source: 'ai' | 'flashcard' | 'manual';
+  questionCount: number;
+  requestedCount: number;
+  types: QuizToolQuestionType[];
+  difficulty: QuizToolDifficulty;
+  documentNames: string[];
+  createdAt: string;
+}
+
+export type CreateQuizCallback = (
+  input: CreateQuizToolInput,
+) => Promise<CreateQuizToolOutput>;
+
 // ── Tên định danh các Tool của Chat Agent ──
 export type ChatAgentToolName =
   | 'searchDocumentChunks'
@@ -304,6 +366,8 @@ export type ChatAgentToolName =
   | 'getConversationDocumentsMetadata'
   | 'askUserQuestion'
   | 'createDocumentSummary'
+  | 'createFlashcards'
+  | 'createQuiz'
   | 'searchInternet'
   | 'extractWebPage';
 
@@ -335,6 +399,8 @@ export interface ChatSessionToolCallbacks {
   onGetDocumentsFullContent?: GetDocumentsFullContentCallback;
   onGetDocumentsMetadata?: GetConversationDocumentsMetadataCallback;
   onCreateDocumentSummary?: CreateDocumentSummaryCallback;
+  onCreateFlashcards?: CreateFlashcardsCallback;
+  onCreateQuiz?: CreateQuizCallback;
   onSearchInternet?: SearchInternetCallback;
   onExtractWebPage?: ExtractWebPageCallback;
 }

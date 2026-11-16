@@ -1,4 +1,5 @@
 import { Image as ImageIcon, Pencil, Trash2, Volume2 } from "lucide-react";
+import { SourceReferenceButton } from "@/components/ui/SourceReferenceButton";
 import { CARD_TYPE_LABEL, CARD_TYPE_TONE, STATUS_META } from "../constants";
 import { richToPlain } from "../richtext";
 import type { Flashcard } from "../types";
@@ -33,7 +34,10 @@ export function CardRow({ card, onEdit, onDelete }: { card: Flashcard; onEdit: (
       </div>
 
       <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
-        <Pill tone={status.tone}>{status.label}</Pill>
+        <div className="flex items-center gap-1.5">
+          <SourceReferenceButton sourceRefs={card.sourceRefs} variant="compact" />
+          <Pill tone={status.tone}>{status.label}</Pill>
+        </div>
         <span className="tabular-nums text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
           {dueLabel(card)}
         </span>

@@ -154,8 +154,9 @@ model Flashcard {
   card_type  CardTypeEnum @default(basic)
   front_text String       @db.Text
   back_text  String       @db.Text
-  image_url  String?      @db.Text
-  audio_url  String?      @db.Text
+  image_url   String?      @db.Text
+  audio_url   String?      @db.Text
+  source_refs Json?        @db.JsonB
 
   //Thông số SRS (SM-2 Algorithm)
   state            CardStateEnum @default(new)
@@ -230,6 +231,7 @@ model QuizQuestion {
   sample_answer    String?          @db.Text
   grading_criteria Json             @default("[]") @db.JsonB
   explanation      String?          @db.Text
+  source_refs      Json?            @db.JsonB
   created_at       DateTime         @default(now()) @db.Timestamptz(6)
   updated_at       DateTime         @default(now()) @db.Timestamptz(6)
 

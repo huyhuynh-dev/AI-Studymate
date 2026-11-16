@@ -128,6 +128,7 @@ export class DeckFlashcardRepoService {
             back_text: string;
             image_url?: string | null;
             audio_url?: string | null;
+            source_refs?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
             state?: any;
         }>,
         userId?: string
@@ -143,6 +144,7 @@ export class DeckFlashcardRepoService {
             back_text: c.back_text,
             image_url: c.image_url ?? null,
             audio_url: c.audio_url ?? null,
+            source_refs: c.source_refs ?? Prisma.DbNull,
             state: c.state ?? 'new',
         }));
         const res = await this.prisma.flashcard.createMany({ data: records });
@@ -215,6 +217,7 @@ export class DeckFlashcardRepoService {
             card_type: CardTypeEnum;
             front_text: string;
             back_text: string;
+            source_refs?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
         }>;
     }): Promise<{ deckId: string; cards: Prisma.FlashcardModel[] }> {
         const deck = await this.prisma.flashcardDeck.create({
@@ -224,7 +227,12 @@ export class DeckFlashcardRepoService {
                 name: params.name,
                 description: params.description,
                 flashcards: {
-                    create: params.rows,
+                    create: params.rows.map((r) => ({
+                        card_type: r.card_type,
+                        front_text: r.front_text,
+                        back_text: r.back_text,
+                        source_refs: r.source_refs ?? Prisma.DbNull,
+                    })),
                 },
             },
             include: {
@@ -247,6 +255,7 @@ export class DeckFlashcardRepoService {
             card_type: CardTypeEnum;
             front_text: string;
             back_text: string;
+            source_refs?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
         }>
     ): Promise<Prisma.FlashcardModel[]> {
         return await this.prisma.$transaction(async (tx) => {
@@ -256,6 +265,7 @@ export class DeckFlashcardRepoService {
                     card_type: r.card_type,
                     front_text: r.front_text,
                     back_text: r.back_text,
+                    source_refs: r.source_refs ?? Prisma.DbNull,
                 })),
             });
 

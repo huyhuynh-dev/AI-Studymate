@@ -12,7 +12,7 @@ import { applyRating } from "../utils/srs";
 export function useStudySession(
   initialIds: string[],
   cards: Flashcard[],
-  persist: (card: Flashcard, rating: Rating) => void
+  persist: (card: Flashcard, rating: Rating, timeTakenMs?: number) => void
 ) {
   const [queue, setQueue] = useState(initialIds);
   const [total] = useState(initialIds.length);
@@ -22,9 +22,12 @@ export function useStudySession(
   const [revealed, setRevealed] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const startedAt = useRef<number | null>(null);
+  const cardShownAt = useRef<number | null>(null);
 
   useEffect(() => {
-    startedAt.current ??= Date.now();
+    const now = Date.now();
+    startedAt.current ??= now;
+    cardShownAt.current ??= now;
   }, []);
 
   const current = queue.length ? cards.find((c) => c.id === queue[0]) ?? null : null;
@@ -40,7 +43,10 @@ export function useStudySession(
 
   const rate = (rating: Rating) => {
     if (!current) return;
-    persist(applyRating(current, rating), rating);
+    const now = Date.now();
+    const timeTakenMs = cardShownAt.current === null ? undefined : Math.max(0, Math.round(now - cardShownAt.current));
+    cardShownAt.current = now;
+    persist(applyRating(current, rating), rating, timeTakenMs);
     setAnswers((n) => n + 1);
     if (rating === "good" || rating === "easy") setGoodAnswers((n) => n + 1);
     setRevealed(false);

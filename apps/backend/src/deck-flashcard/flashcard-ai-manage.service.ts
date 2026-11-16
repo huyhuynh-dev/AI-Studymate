@@ -15,11 +15,14 @@ import {
     type GenerateFlashcardsRequest,
 } from '../ai/schemas/flashcard-ai.schema.js';
 import { DeckFlashcardRepoService } from '../repo/deck-flashcard-repo/deck-flashcard-repo.service.js';
+import { DocumentChunksRepoService } from '../repo/document-chunks-repo/document-chunks-repo.service.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import { sanitizeFlashcardHtml } from './flashcard/flashcard.service.js';
 
 export interface GenerateFlashcardsWithAiResponse {
     deckId: string;
+    deckName: string;
+    deckDescription: string | null;
     cards: Prisma.FlashcardModel[];
     stats: {
         requested: number;
@@ -36,6 +39,7 @@ export class FlashcardAiManageService {
     constructor(
         private readonly deckRepo: DeckFlashcardRepoService,
         private readonly documentsRepo: DocumentsRepoService,
+        private readonly documentChunksRepo: DocumentChunksRepoService,
         private readonly flashcardAiService: FlashcardAiService
     ) {}
 
@@ -108,7 +112,7 @@ export class FlashcardAiManageService {
             existingDeck,
         });
 
-        // 5. Sanitize HTML một lần nữa (defense-in-depth) và chuẩn bị dòng lưu DB
+        // 5. Sanitize HTML một lần nữa (defense-in-depth) và chuẩn bị dòng lưu DB kèm source_refs
         const dbRows = aiResult.rows.map((row) => ({
             card_type: row.card_type as CardTypeEnum,
             front_text: sanitizeFlashcardHtml(
@@ -116,6 +120,10 @@ export class FlashcardAiManageService {
                 row.card_type === 'cloze'
             ),
             back_text: sanitizeFlashcardHtml(row.back_text, false),
+            source_refs:
+                row.source_refs && row.source_refs.length > 0
+                    ? (row.source_refs as unknown as Prisma.InputJsonValue)
+                    : Prisma.DbNull,
         }));
 
         // 6. Lưu nguyên tử vào CSDL
@@ -127,6 +135,13 @@ export class FlashcardAiManageService {
             dbRows
         );
 
+        const resolvedDeckName = existingDeck
+            ? existingDeck.name
+            : (aiResult.deckMeta?.name ?? 'Bộ thẻ AI');
+        const resolvedDeckDescription = existingDeck
+            ? null
+            : (aiResult.deckMeta?.description ?? null);
+
         const totalMs = Date.now() - startTime;
         this.logger.log(
             `[generateWithAi] Hoàn tất trong ${totalMs}ms | user=${userId} target=${req.target.kind} deckId=${saved.deckId} docs=${aiResult.docCount} requested=${req.count} saved=${saved.cards.length} dropped=${aiResult.dropped.length}`
@@ -134,6 +149,8 @@ export class FlashcardAiManageService {
 
         return {
             deckId: saved.deckId,
+            deckName: resolvedDeckName,
+            deckDescription: resolvedDeckDescription,
             cards: saved.cards,
             stats: {
                 requested: req.count,
@@ -177,24 +194,44 @@ export class FlashcardAiManageService {
                 .filter(Boolean);
         }
 
-        const usableDocs: BudgetDoc[] = selectedDocs
-            .filter(
-                (d) =>
-                    d.ocr_status === 'done' &&
-                    typeof d.raw_text === 'string' &&
-                    d.raw_text.trim().length > 0
-            )
-            .map((d) => ({
-                id: d.id,
-                name: d.file_name || d.id,
-                text: d.raw_text!.trim(),
-            }));
+        const readyDocs = selectedDocs.filter(
+            (d) =>
+                d.ocr_status === 'done' &&
+                typeof d.raw_text === 'string' &&
+                d.raw_text.trim().length > 0
+        );
 
-        if (usableDocs.length === 0) {
+        if (readyDocs.length === 0) {
             throw new UnprocessableEntityException(
                 'Các tài liệu đã chọn chưa xử lý xong hoặc không có nội dung văn bản để tạo thẻ.'
             );
         }
+
+        const chunkRows = await this.documentChunksRepo.findChunksByDocumentIds(
+            readyDocs.map((d) => d.id),
+            userId
+        );
+        const chunksByDocId = new Map<string, typeof chunkRows>();
+        for (const chunk of chunkRows) {
+            const list = chunksByDocId.get(chunk.document_id) ?? [];
+            list.push(chunk);
+            chunksByDocId.set(chunk.document_id, list);
+        }
+
+        const usableDocs: BudgetDoc[] = readyDocs.map((d) => ({
+            id: d.id,
+            name: d.file_name || d.id,
+            text: d.raw_text!.trim(),
+            chunks: (chunksByDocId.get(d.id) ?? []).map((c) => ({
+                id: c.id,
+                chunkIndex: c.chunk_index,
+                content: c.content,
+                rawContent: c.raw_content,
+                pageNumbers: c.page_numbers,
+                headings: c.headings,
+                bboxes: c.bboxes,
+            })),
+        }));
 
         return usableDocs;
     }
@@ -213,6 +250,7 @@ export class FlashcardAiManageService {
             card_type: CardTypeEnum;
             front_text: string;
             back_text: string;
+            source_refs?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
         }>
     ): Promise<{ deckId: string; cards: Prisma.FlashcardModel[] }> {
         if (rows.length === 0) {

@@ -149,6 +149,7 @@ export const FlashcardScalarFieldEnum = {
   back_text: 'back_text',
   image_url: 'image_url',
   audio_url: 'audio_url',
+  source_refs: 'source_refs',
   state: 'state',
   step_index: 'step_index',
   interval: 'interval',
@@ -204,6 +205,7 @@ export const QuizQuestionScalarFieldEnum = {
   sample_answer: 'sample_answer',
   grading_criteria: 'grading_criteria',
   explanation: 'explanation',
+  source_refs: 'source_refs',
   created_at: 'created_at',
   updated_at: 'updated_at'
 } as const

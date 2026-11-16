@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { CardTypeEnum } from '../../generated/prisma/client.js';
 
 export class CreateFlashcardDto {
@@ -54,4 +54,9 @@ export type ReviewRating = 'again' | 'hard' | 'good' | 'easy' | 1 | 2 | 3 | 4;
 export class ReviewFlashcardDto {
     @IsNotEmpty()
     rating: ReviewRating;
+
+    @IsOptional()
+    @IsInt()
+    @Min(0)
+    timeTakenMs?: number;
 }

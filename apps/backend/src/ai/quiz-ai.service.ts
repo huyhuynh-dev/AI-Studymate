@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import type { SourceReferenceItem } from '../common/types/source-ref.types.js';
 import { EvaluationStatusEnum } from '../generated/prisma/client.js';
 import { AiService } from './ai.service.js';
 import {
@@ -44,6 +45,7 @@ export interface GenerateQuizFromContextInput {
   types: AIQuestionType[];
   difficulty: QuizDifficulty;
   quizId?: string;
+  sourceChunkMap?: Map<number, SourceReferenceItem>;
 }
 
 export interface GenerateQuizFromContextResult {
@@ -127,6 +129,7 @@ export class QuizAiService {
 
     const rows = toQuizQuestionInserts(valid.slice(0, args.count), {
       quizId: args.quizId,
+      sourceChunkMap: args.sourceChunkMap,
     });
 
     this.logger.log(

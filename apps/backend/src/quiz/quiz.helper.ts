@@ -1,3 +1,4 @@
+import { parseSourceRefs } from '../common/types/source-ref.types.js';
 import { Prisma } from '../generated/prisma/client.js';
 import {
     AttemptAnswerResponse,
@@ -169,6 +170,7 @@ export function mapQuizToResponse(quiz: any): QuizResponse {
                 sampleAnswer: q.sample_answer ?? null,
                 gradingCriteria: parseGradingCriteria(q.grading_criteria),
                 explanation: q.explanation ?? null,
+                sourceRefs: parseSourceRefs(q.source_refs),
             })
         ),
         createdAt:

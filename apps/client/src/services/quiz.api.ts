@@ -1,18 +1,84 @@
 import { axiosClient } from '@/lib/axios.client';
+import { parseClientSourceRefs } from '@/types';
 import type {
   AIGenerateOptions,
   AttemptAnswer,
   AttemptConfig,
+  AttemptStatus,
   DeckGenerateOptions,
   EvaluationStatus,
   FlashcardTarget,
+  QuestionType,
   Quiz,
   QuizAttempt,
   QuizDraft,
+  QuizSource,
 } from '@/components/conversations/QuizTab/types';
 import type { QuizApi } from '@/components/conversations/QuizTab/data/quizApi';
 
-function mapQuiz(raw: any): Quiz {
+interface RawQuizOption {
+  id: string;
+  text: string;
+  isCorrect?: boolean;
+}
+
+interface RawQuizQuestion {
+  id: string;
+  quizId: string;
+  type: QuestionType;
+  orderIndex: number;
+  text: string;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
+  points?: number;
+  options?: RawQuizOption[] | null;
+  sampleAnswer?: string | null;
+  gradingCriteria?: string[];
+  explanation?: string | null;
+  sourceRefs?: unknown;
+  source_refs?: unknown;
+}
+
+interface RawQuiz {
+  id: string;
+  conversationId: string;
+  title: string;
+  description?: string | null;
+  timeLimitSec?: number | null;
+  sourceDeckId?: string | null;
+  sourceDeckName?: string | null;
+  source?: QuizSource;
+  questions?: RawQuizQuestion[];
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+interface RawAttemptAnswer {
+  questionId?: string;
+  selectedOptionIds?: string[];
+  textAnswer?: string;
+  isFlagged?: boolean;
+  evaluationStatus?: EvaluationStatus;
+  pointsEarned?: number;
+  matchedPoints?: string[];
+  missingPoints?: string[];
+  aiFeedback?: string | null;
+}
+
+interface RawQuizAttempt {
+  id: string;
+  quizId: string;
+  status: AttemptStatus;
+  score?: number;
+  maxScore?: number;
+  timeSpentSec?: number;
+  startedAt: string | Date;
+  completedAt?: string | Date | null;
+  answers?: RawAttemptAnswer[] | Record<string, RawAttemptAnswer>;
+  config?: AttemptConfig;
+}
+
+function mapQuiz(raw: RawQuiz): Quiz {
   return {
     id: raw.id,
     conversationId: raw.conversationId,
@@ -23,7 +89,7 @@ function mapQuiz(raw: any): Quiz {
     sourceDeckName: raw.sourceDeckName ?? null,
     source: raw.source ?? (raw.sourceDeckId ? 'flashcard' : 'manual'),
     questions: Array.isArray(raw.questions)
-      ? raw.questions.map((q: any) => ({
+      ? raw.questions.map((q) => ({
           id: q.id,
           quizId: q.quizId,
           type: q.type,
@@ -33,7 +99,7 @@ function mapQuiz(raw: any): Quiz {
           audioUrl: q.audioUrl ?? null,
           points: q.points ?? 1,
           options: Array.isArray(q.options)
-            ? q.options.map((o: any) => ({
+            ? q.options.map((o) => ({
                 id: o.id,
                 text: o.text,
                 isCorrect: Boolean(o.isCorrect),
@@ -42,6 +108,7 @@ function mapQuiz(raw: any): Quiz {
           sampleAnswer: q.sampleAnswer ?? null,
           gradingCriteria: Array.isArray(q.gradingCriteria) ? q.gradingCriteria : [],
           explanation: q.explanation ?? null,
+          sourceRefs: parseClientSourceRefs(q.sourceRefs ?? q.source_refs),
         }))
       : [],
     createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date(raw.createdAt).toISOString(),
@@ -49,12 +116,13 @@ function mapQuiz(raw: any): Quiz {
   };
 }
 
-function mapAttempt(raw: any): QuizAttempt {
+function mapAttempt(raw: RawQuizAttempt): QuizAttempt {
   const answers: Record<string, AttemptAnswer> = {};
 
   if (raw.answers && typeof raw.answers === 'object') {
     if (Array.isArray(raw.answers)) {
       for (const a of raw.answers) {
+        if (!a.questionId) continue;
         answers[a.questionId] = {
           questionId: a.questionId,
           selectedOptionIds: Array.isArray(a.selectedOptionIds) ? a.selectedOptionIds : [],
@@ -68,7 +136,7 @@ function mapAttempt(raw: any): QuizAttempt {
         };
       }
     } else {
-      for (const [key, val] of Object.entries<any>(raw.answers)) {
+      for (const [key, val] of Object.entries(raw.answers)) {
         answers[key] = {
           questionId: val.questionId ?? key,
           selectedOptionIds: Array.isArray(val.selectedOptionIds) ? val.selectedOptionIds : [],

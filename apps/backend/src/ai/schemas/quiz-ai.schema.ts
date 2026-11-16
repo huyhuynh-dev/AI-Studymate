@@ -8,6 +8,8 @@
  *  3) toQuizQuestionInserts: chuyển sang dòng DB (gán id đáp án, xáo vị trí, đổi văn bản → HTML cho TipTap).
  */
 import { z } from 'zod';
+import type { SourceReferenceItem } from '../../common/types/source-ref.types.js';
+import { resolveSourceRefs } from '../utils/chunk-context.helper.js';
 
 export const AI_QUESTION_TYPES = [
     'single_choice',
@@ -35,6 +37,13 @@ const explanation = z
         'Giải thích 1–3 câu vì sao đáp án đúng (và vì sao phương án gây nhiễu sai nếu cần). Hiển thị cho người học sau khi nộp bài.'
     );
 
+const sourceChunkIndex = z
+    .number()
+    .int()
+    .describe(
+        'Số nguyên N chính xác từ tiêu đề [CHUNK #N ...] của đoạn văn trong <document> làm căn cứ trực tiếp cho câu hỏi này.'
+    );
+
 /** Trắc nghiệm 1 đáp án. Đáp án đúng và phương án sai tách riêng → không thể có 0 hoặc 2 đáp án đúng; server tự xáo vị trí. */
 const SingleChoiceQuestion = z
     .strictObject({
@@ -47,6 +56,7 @@ const SingleChoiceQuestion = z
                 "Đúng 3 phương án SAI nhưng hợp lý (dựa trên lỗi hiểu nhầm phổ biến), độ dài tương đương đáp án đúng. Cấm 'Tất cả đều đúng/sai'."
             ),
         explanation,
+        sourceChunkIndex,
     })
     .describe('Trắc nghiệm chọn 1 đáp án đúng');
 
@@ -66,6 +76,7 @@ const MultipleChoiceQuestion = z
                 "2–3 phương án SAI nhưng hợp lý. Cấm 'Tất cả đều đúng/sai'."
             ),
         explanation,
+        sourceChunkIndex,
     })
     .describe(
         "Trắc nghiệm chọn nhiều đáp án đúng. Câu hỏi nên gợi ý 'Chọn tất cả…'"
@@ -84,6 +95,7 @@ const TrueFalseQuestion = z
             .boolean()
             .describe('true nếu mệnh đề đúng, false nếu sai.'),
         explanation,
+        sourceChunkIndex,
     })
     .describe('Câu Đúng / Sai');
 
@@ -99,6 +111,7 @@ const ShortAnswerQuestion = z
                     "Gồm viết tắt/viết đầy đủ, có/không dấu gạch nối nếu phù hợp. Không chứa ký tự '|'."
             ),
         explanation,
+        sourceChunkIndex,
     })
     .describe('Điền từ ngắn, chỉ có MỘT đáp án duy nhất, không mơ hồ');
 
@@ -119,6 +132,7 @@ const EssayQuestion = z
                     "(vd 'Nêu đúng khái niệm X', 'Giải thích được vì sao Y'). Không trùng ý nhau."
             ),
         explanation,
+        sourceChunkIndex,
     })
     .describe('Câu tự luận ngắn, có rubric chấm điểm');
 
@@ -137,6 +151,7 @@ export type GeneratedQuestion =
           correctAnswer: string;
           distractors: string[];
           explanation: string;
+          sourceChunkIndex: number;
       }
     | {
           type: 'multiple_choice';
@@ -144,18 +159,21 @@ export type GeneratedQuestion =
           correctAnswers: string[];
           distractors: string[];
           explanation: string;
+          sourceChunkIndex: number;
       }
     | {
           type: 'true_false';
           text: string;
           correctAnswer: boolean;
           explanation: string;
+          sourceChunkIndex: number;
       }
     | {
           type: 'short_answer';
           text: string;
           acceptedAnswers: string[];
           explanation: string;
+          sourceChunkIndex: number;
       }
     | {
           type: 'essay';
@@ -163,6 +181,7 @@ export type GeneratedQuestion =
           sampleAnswer: string;
           gradingCriteria: string[];
           explanation: string;
+          sourceChunkIndex: number;
       };
 
 /** Một câu hỏi thuộc bất kỳ loại nào (dùng cho kiểu TypeScript). */
@@ -332,6 +351,7 @@ export interface QuizQuestionInsert {
     sample_answer?: string; // short_answer: "a|b"; essay: HTML
     grading_criteria: string[];
     explanation: string; // HTML
+    source_refs?: SourceReferenceItem[];
 }
 
 const esc = (s: string) =>
@@ -390,12 +410,19 @@ export function toQuizQuestionInserts(
         startIndex?: number;
         points?: Partial<Record<AIQuestionType, number>>;
         random?: () => number;
+        sourceChunkMap?: Map<number, SourceReferenceItem>;
     } = {}
 ): QuizQuestionInsert[] {
-    const { quizId, startIndex = 0, random = Math.random } = opts;
+    const {
+        quizId,
+        startIndex = 0,
+        random = Math.random,
+        sourceChunkMap,
+    } = opts;
     const pts = { ...DEFAULT_POINTS, ...opts.points };
 
     return questions.map((q, i): QuizQuestionInsert => {
+        const sourceRefs = resolveSourceRefs(q.sourceChunkIndex, sourceChunkMap);
         const base = {
             quiz_id: quizId,
             question_type: q.type,
@@ -404,6 +431,7 @@ export function toQuizQuestionInserts(
             points: pts[q.type],
             explanation: textToHtml(q.explanation),
             grading_criteria: [] as string[],
+            ...(sourceRefs.length > 0 ? { source_refs: sourceRefs } : {}),
         };
 
         switch (q.type) {

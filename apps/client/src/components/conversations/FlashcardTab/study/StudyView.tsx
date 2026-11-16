@@ -15,7 +15,7 @@ import { StudyHeader } from "./StudyHeader";
 interface Props {
   initialIds: string[];
   cards: Flashcard[];
-  onPersist: (card: Flashcard, rating: Rating) => void;
+  onPersist: (card: Flashcard, rating: Rating, timeTakenMs?: number) => void;
   onEditCard: (card: Flashcard) => void;
   onExit: () => void;
   onStudyExtra: () => void;
@@ -40,7 +40,7 @@ export function StudyView({ initialIds, cards, onPersist, onEditCard, onExit, on
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON" || tag === "A") return;
       const a = actions.current;
       const isConfirm = e.code === "Space" || e.key === "Enter";
       if (!a.revealed) {

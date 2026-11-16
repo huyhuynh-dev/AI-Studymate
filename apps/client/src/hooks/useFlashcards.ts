@@ -5,6 +5,14 @@ import useSWR from 'swr';
 import { flashcardApi } from '@/services/flashcard.api';
 import type { CardDraft, Flashcard, Rating } from '@/components/conversations/FlashcardTab/types';
 
+function extractFlashcardErrorMessage(err: unknown, fallback: string): string {
+  const axiosMsg =
+    typeof err === 'object' && err !== null && 'response' in err
+      ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+      : undefined;
+  return axiosMsg || (err instanceof Error ? err.message : undefined) || fallback;
+}
+
 export function useFlashcards(deckId?: string | null) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -28,9 +36,8 @@ export function useFlashcards(deckId?: string | null) {
         const createdList = await flashcardApi.create({ ...draft, deckId });
         await mutate([...createdList, ...cards], false);
         return createdList;
-      } catch (err: any) {
-        const msg = err.response?.data?.message || err.message || 'Không thể tạo thẻ ghi nhớ';
-        setErrorMessage(msg);
+      } catch (err: unknown) {
+        setErrorMessage(extractFlashcardErrorMessage(err, 'Không thể tạo thẻ ghi nhớ'));
         throw err;
       }
     },
@@ -49,9 +56,8 @@ export function useFlashcards(deckId?: string | null) {
         }
         await mutate([...allCreated, ...cards], false);
         return allCreated;
-      } catch (err: any) {
-        const msg = err.response?.data?.message || err.message || 'Không thể tạo danh sách thẻ';
-        setErrorMessage(msg);
+      } catch (err: unknown) {
+        setErrorMessage(extractFlashcardErrorMessage(err, 'Không thể tạo danh sách thẻ'));
         throw err;
       }
     },
@@ -68,9 +74,8 @@ export function useFlashcards(deckId?: string | null) {
           false
         );
         return updated;
-      } catch (err: any) {
-        const msg = err.response?.data?.message || err.message || 'Không thể cập nhật thẻ';
-        setErrorMessage(msg);
+      } catch (err: unknown) {
+        setErrorMessage(extractFlashcardErrorMessage(err, 'Không thể cập nhật thẻ'));
         throw err;
       }
     },
@@ -87,9 +92,8 @@ export function useFlashcards(deckId?: string | null) {
           false
         );
         return true;
-      } catch (err: any) {
-        const msg = err.response?.data?.message || err.message || 'Không thể xóa thẻ';
-        setErrorMessage(msg);
+      } catch (err: unknown) {
+        setErrorMessage(extractFlashcardErrorMessage(err, 'Không thể xóa thẻ'));
         throw err;
       }
     },
@@ -97,18 +101,17 @@ export function useFlashcards(deckId?: string | null) {
   );
 
   const reviewCard = useCallback(
-    async (id: string, rating: Rating): Promise<Flashcard | undefined> => {
+    async (id: string, rating: Rating, timeTakenMs?: number): Promise<Flashcard | undefined> => {
       setErrorMessage(null);
       try {
-        const updated = await flashcardApi.review(id, rating);
+        const updated = await flashcardApi.review(id, rating, timeTakenMs);
         await mutate(
           cards.map((c) => (c.id === id ? { ...c, ...updated } : c)),
           false
         );
         return updated;
-      } catch (err: any) {
-        const msg = err.response?.data?.message || err.message || 'Không thể lưu kết quả ôn tập';
-        setErrorMessage(msg);
+      } catch (err: unknown) {
+        setErrorMessage(extractFlashcardErrorMessage(err, 'Không thể lưu kết quả ôn tập'));
         throw err;
       }
     },

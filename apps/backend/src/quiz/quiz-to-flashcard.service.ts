@@ -7,8 +7,10 @@ import {
 import {
     CardStateEnum,
     CardTypeEnum,
+    Prisma,
     QuestionTypeEnum,
 } from '../generated/prisma/client.js';
+import { parseSourceRefs } from '../common/types/source-ref.types.js';
 import { DeckFlashcardRepoService } from '../repo/deck-flashcard-repo/deck-flashcard-repo.service.js';
 import { QuizRepoService } from '../repo/quiz-repo/quiz-repo.service.js';
 import { ConvertToFlashcardsDto } from './dto/quiz.dto.js';
@@ -24,6 +26,7 @@ export interface ConvertedFlashcardItem {
     back_text: string;
     image_url: string | null;
     audio_url: string | null;
+    source_refs?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
     state: CardStateEnum;
 }
 
@@ -128,7 +131,7 @@ export class QuizToFlashcardService {
     }
 
     /**
-     * Quy tắc Rule-based ánh xạ 5 dạng câu hỏi Quiz sang Flashcard
+     * Quy tắc Rule-based ánh xạ 5 dạng câu hỏi Quiz sang Flashcard (bảo toàn source_refs)
      */
     mapQuestionToFlashcard(question: {
         question_type: QuestionTypeEnum;
@@ -139,9 +142,15 @@ export class QuizToFlashcardService {
         explanation: string | null;
         image_url: string | null;
         audio_url: string | null;
+        source_refs?: unknown;
     }): ConvertedFlashcardItem {
         const imageUrl = question.image_url ?? null;
         const audioUrl = question.audio_url ?? null;
+        const parsedRefs = parseSourceRefs(question.source_refs);
+        const sourceRefs: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput =
+            parsedRefs.length > 0
+                ? (parsedRefs as unknown as Prisma.InputJsonValue)
+                : Prisma.DbNull;
         const explanationHtml =
             question.explanation && stripHtml(question.explanation)
                 ? `<p><strong>Giải thích:</strong> ${question.explanation}</p>`
@@ -160,6 +169,7 @@ export class QuizToFlashcardService {
                     back_text: backText,
                     image_url: imageUrl,
                     audio_url: audioUrl,
+                    source_refs: sourceRefs,
                     state: CardStateEnum.new,
                 };
             }
@@ -180,6 +190,7 @@ export class QuizToFlashcardService {
                     back_text: backText,
                     image_url: imageUrl,
                     audio_url: audioUrl,
+                    source_refs: sourceRefs,
                     state: CardStateEnum.new,
                 };
             }
@@ -199,6 +210,7 @@ export class QuizToFlashcardService {
                     back_text: backText,
                     image_url: imageUrl,
                     audio_url: audioUrl,
+                    source_refs: sourceRefs,
                     state: CardStateEnum.new,
                 };
             }
@@ -226,6 +238,7 @@ export class QuizToFlashcardService {
                         back_text: backText,
                         image_url: imageUrl,
                         audio_url: audioUrl,
+                        source_refs: sourceRefs,
                         state: CardStateEnum.new,
                     };
                 }
@@ -238,6 +251,7 @@ export class QuizToFlashcardService {
                     back_text: backText,
                     image_url: imageUrl,
                     audio_url: audioUrl,
+                    source_refs: sourceRefs,
                     state: CardStateEnum.new,
                 };
             }
@@ -275,6 +289,7 @@ export class QuizToFlashcardService {
                     back_text: backContent,
                     image_url: imageUrl,
                     audio_url: audioUrl,
+                    source_refs: sourceRefs,
                     state: CardStateEnum.new,
                 };
             }
@@ -286,6 +301,7 @@ export class QuizToFlashcardService {
                     back_text: explanationHtml || '<p>Đáp án</p>',
                     image_url: imageUrl,
                     audio_url: audioUrl,
+                    source_refs: sourceRefs,
                     state: CardStateEnum.new,
                 };
         }

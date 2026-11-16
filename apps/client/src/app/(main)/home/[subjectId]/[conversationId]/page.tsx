@@ -31,6 +31,14 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     summaryId: string;
     nonce: number;
   } | null>(null);
+  const [flashcardOpenRequest, setFlashcardOpenRequest] = useState<{
+    deckId: string;
+    nonce: number;
+  } | null>(null);
+  const [quizOpenRequest, setQuizOpenRequest] = useState<{
+    quizId: string;
+    nonce: number;
+  } | null>(null);
   const {
     isFocusMode,
     isViewingDocument,
@@ -70,6 +78,56 @@ export default function ConversationPage({ params }: ConversationPageProps) {
       );
     };
   }, []);
+
+  // Lắng nghe sự kiện mở trực tiếp bộ thẻ Flashcard từ Badge trong RightSidebar AI Chat
+  useEffect(() => {
+    const handleOpenFlashcardDeckEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ deckId?: string }>;
+      const targetId =
+        customEvent.detail?.deckId ||
+        (typeof window !== "undefined"
+          ? window.sessionStorage.getItem("studymate:open-deck-id") || ""
+          : "");
+      if (targetId) {
+        setFocusMode(false);
+        setActiveTab("flashcard");
+        setFlashcardOpenRequest({ deckId: targetId, nonce: Date.now() });
+      }
+    };
+
+    window.addEventListener(
+      "studymate:open-flashcard-deck",
+      handleOpenFlashcardDeckEvent
+    );
+    return () => {
+      window.removeEventListener(
+        "studymate:open-flashcard-deck",
+        handleOpenFlashcardDeckEvent
+      );
+    };
+  }, [setFocusMode]);
+
+  // Lắng nghe sự kiện mở trực tiếp đề kiểm tra Quiz từ Badge trong RightSidebar AI Chat
+  useEffect(() => {
+    const handleOpenQuizEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ quizId?: string }>;
+      const targetId =
+        customEvent.detail?.quizId ||
+        (typeof window !== "undefined"
+          ? window.sessionStorage.getItem("studymate:open-quiz-id") || ""
+          : "");
+      if (targetId) {
+        setFocusMode(false);
+        setActiveTab("quiz");
+        setQuizOpenRequest({ quizId: targetId, nonce: Date.now() });
+      }
+    };
+
+    window.addEventListener("studymate:open-quiz", handleOpenQuizEvent);
+    return () => {
+      window.removeEventListener("studymate:open-quiz", handleOpenQuizEvent);
+    };
+  }, [setFocusMode]);
 
   // Lấy dữ liệu môn học và danh sách cuộc hội thoại thực tế
   const { subjects } = useSubjects();
@@ -204,6 +262,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           {activeTab === "flashcard" && (
             <FlashcardsTab
               conversationId={conversationId}
+              initialDeckId={flashcardOpenRequest?.deckId}
+              openNonce={flashcardOpenRequest?.nonce}
               documents={documents.map((document) => ({
                 id: document.id,
                 name: document.file_name,
@@ -218,6 +278,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           {activeTab === "quiz" && (
             <QuizTab
               conversationId={conversationId}
+              initialQuizId={quizOpenRequest?.quizId}
+              openNonce={quizOpenRequest?.nonce}
               decks={deckOptions}
               documents={documents.map((document) => ({
                 id: document.id,

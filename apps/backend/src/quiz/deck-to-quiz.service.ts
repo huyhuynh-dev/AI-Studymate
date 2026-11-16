@@ -9,6 +9,7 @@ import {
     Prisma,
     QuestionTypeEnum,
 } from '../generated/prisma/client.js';
+import { parseSourceRefs } from '../common/types/source-ref.types.js';
 import { DeckFlashcardRepoService } from '../repo/deck-flashcard-repo/deck-flashcard-repo.service.js';
 import {
     QuestionCreatePayload,
@@ -29,6 +30,7 @@ export interface CardSourceItem {
     back_text: string;
     image_url: string | null;
     audio_url: string | null;
+    source_refs?: unknown;
 }
 
 const CLOZE_TAG_RE = /<span\b[^>]*\bdata-cloze="true"[^>]*>([\s\S]+?)<\/span>/i;
@@ -158,6 +160,7 @@ export class DeckToQuizService {
             back_text: c.back_text,
             image_url: c.image_url,
             audio_url: c.audio_url,
+            source_refs: c.source_refs,
         }));
 
         // 4. Áp dụng thuật toán Rule-based chuyển đổi
@@ -221,15 +224,9 @@ export class DeckToQuizService {
         allowedTypes: QuestionTypeEnum[],
         random = Math.random
     ): QuestionCreatePayload[] {
-        // Nhóm thẻ theo loại
+        // Nhóm thẻ basic phục vụ kiểm tra đủ phương án nhiễu cho single_choice
         const basicCards = cards.filter(
             (c) => c.card_type === CardTypeEnum.basic
-        );
-        const clozeCards = cards.filter(
-            (c) => c.card_type === CardTypeEnum.cloze
-        );
-        const typeInCards = cards.filter(
-            (c) => c.card_type === CardTypeEnum.type_in
         );
 
         const allowSingle = allowedTypes.includes(
@@ -398,6 +395,15 @@ export class DeckToQuizService {
         return questions;
     }
 
+    private toQuestionSourceRefs(
+        raw: unknown
+    ): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput {
+        const parsed = parseSourceRefs(raw);
+        return parsed.length > 0
+            ? (parsed as unknown as Prisma.InputJsonValue)
+            : Prisma.DbNull;
+    }
+
     /**
      * Chuyển đổi thẻ type_in -> câu hỏi short_answer
      */
@@ -418,6 +424,7 @@ export class DeckToQuizService {
             sample_answer: rawAnswer,
             grading_criteria: [] as unknown as Prisma.InputJsonValue,
             explanation: card.back_text ? sanitizeQuizHtml(card.back_text) : null,
+            source_refs: this.toQuestionSourceRefs(card.source_refs),
         };
     }
 
@@ -441,6 +448,7 @@ export class DeckToQuizService {
             sample_answer: answerText || stripHtml(card.back_text).trim(),
             grading_criteria: [] as unknown as Prisma.InputJsonValue,
             explanation: card.back_text ? sanitizeQuizHtml(card.back_text) : null,
+            source_refs: this.toQuestionSourceRefs(card.source_refs),
         };
     }
 
@@ -495,6 +503,7 @@ export class DeckToQuizService {
             sample_answer: null,
             grading_criteria: [] as unknown as Prisma.InputJsonValue,
             explanation: sanitizeQuizHtml(card.back_text),
+            source_refs: this.toQuestionSourceRefs(card.source_refs),
         };
     }
 
@@ -512,6 +521,7 @@ export class DeckToQuizService {
         const backClean = stripHtml(card.back_text).trim();
 
         const otherCards = cardPool.filter((c) => c.id !== card.id);
+        const sourceRefs = this.toQuestionSourceRefs(card.source_refs);
 
         if (isTrueBranch || otherCards.length === 0) {
             // Nhánh Đúng: ghép front + back của chính thẻ này
@@ -530,6 +540,7 @@ export class DeckToQuizService {
                 sample_answer: null,
                 grading_criteria: [] as unknown as Prisma.InputJsonValue,
                 explanation: sanitizeQuizHtml(card.back_text),
+                source_refs: sourceRefs,
             };
         }
 
@@ -552,6 +563,7 @@ export class DeckToQuizService {
             sample_answer: null,
             grading_criteria: [] as unknown as Prisma.InputJsonValue,
             explanation: `<p>Sai. Định nghĩa chính xác là: ${backClean}</p>`,
+            source_refs: sourceRefs,
         };
     }
 }

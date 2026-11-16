@@ -19,6 +19,7 @@ export interface QuestionCreatePayload {
     sample_answer?: string | null;
     grading_criteria: Prisma.InputJsonValue;
     explanation?: string | null;
+    source_refs?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
 }
 
 export interface GradedAnswerPayload {
@@ -189,6 +190,7 @@ export class QuizRepoService {
                         sample_answer: q.sample_answer ?? null,
                         grading_criteria: q.grading_criteria ?? [],
                         explanation: q.explanation ?? null,
+                        source_refs: q.source_refs ?? Prisma.DbNull,
                     })),
                 });
             }
@@ -287,6 +289,7 @@ export class QuizRepoService {
                             sample_answer: q.sample_answer ?? null,
                             grading_criteria: q.grading_criteria ?? [],
                             explanation: q.explanation ?? null,
+                            source_refs: q.source_refs ?? Prisma.DbNull,
                         },
                     });
                 }

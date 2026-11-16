@@ -96,14 +96,18 @@ export default function DocumentsTab({
   const [viewingDocId, setViewingDocId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<"all" | "pdf" | "image">("all");
   const { setIsViewingDocument, setFocusMode } = useFocusMode();
-  const { activeTarget } = useCitationNavigation();
+  const { activeTarget, consumeActiveTarget } = useCitationNavigation();
 
-  // Tự động mở tài liệu tương ứng khi người dùng click vào trích dẫn từ Chatbox
+  // Tự động mở tài liệu tương ứng khi người dùng click vào trích dẫn từ Chatbox / Flashcard / Quiz
   useEffect(() => {
-    if (activeTarget?.documentId) {
-      setViewingDocId(activeTarget.documentId);
+    if (!activeTarget?.documentId) return;
+    setViewingDocId(activeTarget.documentId);
+
+    const matchedDoc = documents.find((d) => d.id === activeTarget.documentId);
+    if (matchedDoc && matchedDoc.mime_type !== "application/pdf") {
+      consumeActiveTarget();
     }
-  }, [activeTarget]);
+  }, [activeTarget, documents, consumeActiveTarget]);
 
   const viewingDoc = useMemo(
     () => documents.find((d) => d.id === viewingDocId),

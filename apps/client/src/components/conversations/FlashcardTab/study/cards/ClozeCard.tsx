@@ -1,3 +1,4 @@
+import { SourceReferenceButton } from "@/components/ui/SourceReferenceButton";
 import { CARD_TYPE_LABEL } from "../../constants";
 import { RichText } from "../../richtext";
 import { ClozeText } from "../../shared/ClozeText";
@@ -21,6 +22,9 @@ export function ClozeCard({ card, revealed, onReveal }: { card: Flashcard; revea
         <div className="mt-6 border-t border-black/[0.06] dark:border-white/[0.08] pt-5">
           <RichText html={card.back} align="center" className="text-sm sm:text-[15px] leading-6 text-neutral-600 dark:text-neutral-300" />
         </div>
+      </Collapse>
+      <Collapse open={revealed && Boolean(card.sourceRefs?.length)} className="w-full">
+        <SourceReferenceButton sourceRefs={card.sourceRefs} variant="inline" align="center" className="mt-5" />
       </Collapse>
       <Collapse open={!revealed}>
         <p className="mt-8 text-xs font-medium text-neutral-400 dark:text-neutral-500">

@@ -8,6 +8,11 @@
  *    khử trùng lặp, chia ngân sách ngữ cảnh (water-filling) và chuyển sang HTML an toàn cho TipTap.
  */
 import { z } from 'zod';
+import type { SourceReferenceItem } from '../../common/types/source-ref.types.js';
+import {
+    type ChunkableDocumentChunk,
+    resolveSourceRefs,
+} from '../utils/chunk-context.helper.js';
 
 /**
  * Các giá trị khớp với enum CardTypeEnum trong Prisma ('basic' | 'cloze' | 'type_in').
@@ -87,6 +92,12 @@ export const LlmCardSchema = z.object({
             'basic: concise answer/definition (light markup allowed). ' +
                 'cloze: optional short explanation, or an empty string if nothing to add. ' +
                 'type_in: ONLY the exact answer, plain text, at most 5 words, no markup.'
+        ),
+    source_chunk_index: z
+        .number()
+        .int()
+        .describe(
+            'Exact integer ID N from the [CHUNK #N ...] header of the passage in <documents> that directly supports this flashcard.'
         ),
 });
 
@@ -249,6 +260,7 @@ export interface BudgetDoc {
     id: string;
     name: string;
     text: string;
+    chunks?: ChunkableDocumentChunk[];
 }
 
 /**
@@ -390,6 +402,7 @@ export interface FlashcardInsertRow {
     card_type: AICardType;
     front_text: string;
     back_text: string;
+    source_refs?: SourceReferenceItem[];
 }
 
 /**
@@ -414,7 +427,14 @@ export function isolateClozeIndex(raw: string, targetIndex: number): string {
  * - Mặt trước thẻ cloze giữ `<span data-cloze="true">...</span>`.
  * - Mặt sau thẻ type_in được bọc `<p>...</p>` (đã escape HTML) để đồng nhất với sanitizeFlashcardHtml & QuizToFlashcardService.
  */
-export function toFlashcardRows(c: LlmCard): FlashcardInsertRow[] {
+export function toFlashcardRows(
+    c: LlmCard,
+    sourceChunkMap?: Map<number, SourceReferenceItem>
+): FlashcardInsertRow[] {
+    const sourceRefs = resolveSourceRefs(c.source_chunk_index, sourceChunkMap);
+    const sourceRefField =
+        sourceRefs.length > 0 ? { source_refs: sourceRefs } : {};
+
     if (c.card_type === 'cloze') {
         const distinctIndices = [
             ...new Set(
@@ -431,6 +451,7 @@ export function toFlashcardRows(c: LlmCard): FlashcardInsertRow[] {
                     card_type: c.card_type,
                     front_text: frontHtml,
                     back_text: backHtml,
+                    ...sourceRefField,
                 },
             ];
         }
@@ -442,6 +463,7 @@ export function toFlashcardRows(c: LlmCard): FlashcardInsertRow[] {
                 card_type: c.card_type,
                 front_text: frontHtml,
                 back_text: backHtml,
+                ...sourceRefField,
             };
         });
     }
@@ -460,6 +482,7 @@ export function toFlashcardRows(c: LlmCard): FlashcardInsertRow[] {
             card_type: c.card_type,
             front_text: frontHtml,
             back_text: backHtml,
+            ...sourceRefField,
         },
     ];
 }

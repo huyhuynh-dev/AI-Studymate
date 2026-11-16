@@ -38,6 +38,14 @@ import {
   type CreateDocumentSummaryToolInput,
   type CreateDocumentSummaryToolOutput,
   type CreateDocumentSummaryCallback,
+  type CreateFlashcardsToolInput,
+  type CreateFlashcardsToolOutput,
+  type CreateFlashcardsCallback,
+  type QuizToolQuestionType,
+  type QuizToolDifficulty,
+  type CreateQuizToolInput,
+  type CreateQuizToolOutput,
+  type CreateQuizCallback,
   type SearchInternetToolInput,
   type SearchInternetToolOutput,
   type SearchInternetCallback,
@@ -73,6 +81,14 @@ export {
   type CreateDocumentSummaryToolInput,
   type CreateDocumentSummaryToolOutput,
   type CreateDocumentSummaryCallback,
+  type CreateFlashcardsToolInput,
+  type CreateFlashcardsToolOutput,
+  type CreateFlashcardsCallback,
+  type QuizToolQuestionType,
+  type QuizToolDifficulty,
+  type CreateQuizToolInput,
+  type CreateQuizToolOutput,
+  type CreateQuizCallback,
   type SearchInternetToolInput,
   type SearchInternetToolOutput,
   type SearchInternetCallback,
@@ -199,6 +215,8 @@ export class ChatAgentAiService {
       onGetDocumentsFullContent?: GetDocumentsFullContentCallback;
       onGetDocumentsMetadata?: GetConversationDocumentsMetadataCallback;
       onCreateDocumentSummary?: CreateDocumentSummaryCallback;
+      onCreateFlashcards?: CreateFlashcardsCallback;
+      onCreateQuiz?: CreateQuizCallback;
       onSearchInternet?: SearchInternetCallback;
       onExtractWebPage?: ExtractWebPageCallback;
       chatConfig?: {
