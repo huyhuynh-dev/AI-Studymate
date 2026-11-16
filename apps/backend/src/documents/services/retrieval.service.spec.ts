@@ -7,7 +7,8 @@ describe('RetrievalService', () => {
   let service: RetrievalService;
   let prismaMock: {
     $queryRaw: ReturnType<typeof vi.fn>;
-    document: { findMany: ReturnType<typeof vi.fn> };
+    document: { findMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn> };
+    documentChunk: { findMany: ReturnType<typeof vi.fn> };
   };
   let embeddingMock: { embedSingle: ReturnType<typeof vi.fn> };
 
@@ -23,6 +24,10 @@ describe('RetrievalService', () => {
     prismaMock = {
       $queryRaw: vi.fn().mockResolvedValue([]),
       document: {
+        findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+      documentChunk: {
         findMany: vi.fn().mockResolvedValue([]),
       },
     };
@@ -72,13 +77,21 @@ describe('RetrievalService', () => {
   });
 
   describe('getAvailableDocumentsCatalog', () => {
-    it('nên trả về danh mục các tài liệu đã hoàn tất OCR trong conversation', async () => {
+    it('nên trả về danh mục các tài liệu đã hoàn tất OCR kèm page_count và toc', async () => {
       const now = new Date();
       prismaMock.document.findMany.mockResolvedValueOnce([
         {
           id: validDocId,
           file_name: 'Chuong_1.pdf',
           uploaded_at: now,
+          page_count: 25,
+          doc_metadata: {
+            toc: [
+              { text: 'Chương 1: Giới thiệu', level: 1, page_no: 1 },
+              { text: '1.1 Khái niệm cơ bản', level: 2, page_no: 3 },
+              { text: '1.1.1 Chi tiết sâu', level: 3, page_no: 4 }, // level 3 sẽ bị lọc bỏ
+            ],
+          },
         },
       ]);
 
@@ -97,6 +110,8 @@ describe('RetrievalService', () => {
           id: true,
           file_name: true,
           uploaded_at: true,
+          page_count: true,
+          doc_metadata: true,
         },
         orderBy: {
           uploaded_at: 'asc',
@@ -107,6 +122,11 @@ describe('RetrievalService', () => {
           documentId: validDocId,
           fileName: 'Chuong_1.pdf',
           uploadedAt: now,
+          pageCount: 25,
+          toc: [
+            { text: 'Chương 1: Giới thiệu', level: 1, pageNo: 1 },
+            { text: '1.1 Khái niệm cơ bản', level: 2, pageNo: 3 },
+          ],
         },
       ]);
     });
@@ -218,6 +238,13 @@ describe('RetrievalService', () => {
           chunkIndex: 2,
           pageNumbers: [12, 13],
           content: 'Cây AVL là cây nhị phân tìm kiếm tự cân bằng.',
+          rawContent: '# Cây AVL...',
+          headings: ['Cây AVL'],
+          chunkType: 'text',
+          hasImage: false,
+          hasTable: false,
+          bboxes: null,
+          assetsJson: [],
           rrfScore: 0.03278,
           vectorRank: 1,
           keywordRank: 1,
@@ -243,10 +270,73 @@ describe('RetrievalService', () => {
         chunkIndex: 2,
         pageNumbers: [12, 13],
         content: 'Cây AVL là cây nhị phân tìm kiếm tự cân bằng.',
+        rawContent: '# Cây AVL...',
+        headings: ['Cây AVL'],
+        chunkType: 'text',
+        hasImage: false,
+        hasTable: false,
+        bboxes: null,
+        assets: [],
         rrfScore: 0.03278,
         vectorRank: 1,
         keywordRank: 1,
       });
+    });
+
+    it('nên tự động nạp chunk_index ± 1 khi includeNeighbors = true', async () => {
+      prismaMock.$queryRaw.mockResolvedValueOnce([
+        {
+          id: 'chunk-2',
+          documentId: validDocId,
+          fileName: 'Giao_trinh_CTDL.pdf',
+          chunkIndex: 2,
+          pageNumbers: [12],
+          content: 'Nội dung chunk 2',
+          rawContent: null,
+          headings: [],
+          chunkType: 'text',
+          hasImage: false,
+          hasTable: false,
+          bboxes: null,
+          assetsJson: [],
+          rrfScore: 0.03,
+          vectorRank: 1,
+          keywordRank: 1,
+        },
+      ]);
+
+      prismaMock.documentChunk.findMany.mockResolvedValueOnce([
+        {
+          id: 'chunk-1',
+          document_id: validDocId,
+          chunk_index: 1,
+          content: 'Nội dung chunk 1 (tiền đề)',
+          page_numbers: [11],
+        },
+        {
+          id: 'chunk-3',
+          document_id: validDocId,
+          chunk_index: 3,
+          content: 'Nội dung chunk 3 (kết luận)',
+          page_numbers: [13],
+        },
+      ]);
+
+      const results = await service.searchRelevantChunks({
+        userId: validUserId,
+        conversationId: validConversationId,
+        semanticQuery: 'Tìm kiếm kèm hàng xóm',
+        keywords: ['hàng xóm'],
+        includeNeighbors: true,
+      });
+
+      expect(results[0].neighbors).toBeDefined();
+      expect(results[0].neighbors?.prev?.content).toBe(
+        'Nội dung chunk 1 (tiền đề)',
+      );
+      expect(results[0].neighbors?.next?.content).toBe(
+        'Nội dung chunk 3 (kết luận)',
+      );
     });
 
     it('nên ưu tiên tìm trong preferredDocumentIds trước, và nếu có kết quả thì trả về ngay', async () => {
@@ -309,6 +399,80 @@ describe('RetrievalService', () => {
       expect(results).toHaveLength(1);
       expect(results[0].fileName).toBe('Tai_lieu_chung.pdf');
       expect(results[0].keywordRank).toBeNull();
+    });
+  });
+
+  describe('getDocumentSectionOrPages', () => {
+    it('nên trả về toàn bộ chunks khi tài liệu ngắn (<= 15 trang)', async () => {
+      prismaMock.document.findFirst.mockResolvedValueOnce({
+        id: validDocId,
+        file_name: 'Tai_lieu_ngan.pdf',
+        page_count: 5,
+      });
+
+      prismaMock.documentChunk.findMany.mockResolvedValueOnce([
+        {
+          id: 'chunk-1',
+          chunk_index: 0,
+          page_numbers: [1, 2],
+          headings: ['Mở đầu'],
+          content: 'Nội dung trang 1 và 2',
+          raw_content: '# Mở đầu\nNội dung trang 1 và 2',
+          chunk_type: 'text',
+          bboxes: null,
+          assets: [],
+        },
+      ]);
+
+      const output = await service.getDocumentSectionOrPages({
+        userId: validUserId,
+        conversationId: validConversationId,
+        documentId: validDocId,
+      });
+
+      expect(output.isFullDocument).toBe(true);
+      expect(output.totalChunks).toBe(1);
+      expect(output.chunks[0].headings).toEqual(['Mở đầu']);
+    });
+
+    it('nên lọc theo pageNumbers khi được chỉ định', async () => {
+      prismaMock.document.findFirst.mockResolvedValueOnce({
+        id: validDocId,
+        file_name: 'Tai_lieu_dai.pdf',
+        page_count: 50,
+      });
+
+      prismaMock.documentChunk.findMany.mockResolvedValueOnce([
+        {
+          id: 'chunk-3',
+          chunk_index: 2,
+          page_numbers: [3],
+          headings: ['Trang 3'],
+          content: 'Nội dung trang 3',
+          raw_content: 'Nội dung trang 3',
+          chunk_type: 'text',
+          bboxes: null,
+          assets: [],
+        },
+      ]);
+
+      const output = await service.getDocumentSectionOrPages({
+        userId: validUserId,
+        conversationId: validConversationId,
+        documentId: validDocId,
+        pageNumbers: [3],
+      });
+
+      expect(prismaMock.documentChunk.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            document_id: validDocId,
+            page_numbers: { hasSome: [3] },
+          }),
+        }),
+      );
+      expect(output.chunks).toHaveLength(1);
+      expect(output.chunks[0].pageNumbers).toEqual([3]);
     });
   });
 });

@@ -5,13 +5,58 @@ import useSWR from 'swr';
 import { documentsApi } from '@/services/documents.api';
 import { DocumentItem, UploadProgressItem } from '@/types';
 
-const ALLOWED_MIME_TYPES = [
+export const ALLOWED_MIME_TYPES = [
   'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/csv',
+  'application/csv',
+  'text/markdown',
+  'text/x-markdown',
+  'text/plain',
   'image/jpeg',
+  'image/jpg',
   'image/png',
   'image/webp',
-];
+] as const;
+
+const EXTENSION_TO_MIME_MAP: Record<string, string> = {
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  csv: 'text/csv',
+  md: 'text/markdown',
+  markdown: 'text/markdown',
+  txt: 'text/plain',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
+
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+
+export function resolveFileMimeType(file: File): string {
+  const rawType = file.type?.trim().toLowerCase() || '';
+  if (
+    rawType &&
+    rawType !== 'application/octet-stream' &&
+    (ALLOWED_MIME_TYPES as readonly string[]).includes(rawType)
+  ) {
+    return rawType;
+  }
+
+  const ext = file.name.split('.').pop()?.trim().toLowerCase() || '';
+  return EXTENSION_TO_MIME_MAP[ext] || rawType;
+}
 
 export function useDocuments(conversationId?: string | null) {
   const [uploadQueue, setUploadQueue] = useState<Record<string, UploadProgressItem>>({});
@@ -51,9 +96,10 @@ export function useDocuments(conversationId?: string | null) {
       throw new Error(`Tệp "${file.name}" vượt quá dung lượng tối đa 50MB.`);
     }
 
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    const resolvedMimeType = resolveFileMimeType(file);
+    if (!(ALLOWED_MIME_TYPES as readonly string[]).includes(resolvedMimeType)) {
       throw new Error(
-        `Định dạng tệp "${file.name}" không được hỗ trợ. Vui lòng tải lên PDF, PNG, JPG, hoặc WEBP.`
+        `Định dạng tệp "${file.name}" không được hỗ trợ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint, CSV, Markdown, TXT, PNG, JPG, WEBP.`
       );
     }
 
@@ -75,23 +121,28 @@ export function useDocuments(conversationId?: string | null) {
         conversationId,
         fileName: file.name,
         fileSize: file.size,
-        mimeType: file.type,
+        mimeType: resolvedMimeType,
       });
 
       // Bước 2: Tải trực tiếp lên Cloudflare R2
-      await documentsApi.uploadToR2(initRes.uploadUrl, file, (percent) => {
-        onProgress?.(percent);
-        setUploadQueue((prev) => {
-          if (!prev[tempId]) return prev;
-          return {
-            ...prev,
-            [tempId]: {
-              ...prev[tempId],
-              progress: percent,
-            },
-          };
-        });
-      });
+      await documentsApi.uploadToR2(
+        initRes.uploadUrl,
+        file,
+        (percent) => {
+          onProgress?.(percent);
+          setUploadQueue((prev) => {
+            if (!prev[tempId]) return prev;
+            return {
+              ...prev,
+              [tempId]: {
+                ...prev[tempId],
+                progress: percent,
+              },
+            };
+          });
+        },
+        resolvedMimeType
+      );
 
       // Đánh dấu chuyển sang bước kiểm chứng
       setUploadQueue((prev) => {
@@ -111,7 +162,7 @@ export function useDocuments(conversationId?: string | null) {
         conversationId,
         fileName: file.name,
         fileSize: file.size,
-        mimeType: file.type,
+        mimeType: resolvedMimeType,
         storageKey: initRes.storageKey,
       });
 
@@ -141,9 +192,12 @@ export function useDocuments(conversationId?: string | null) {
       }, 1000);
 
       return newDoc;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
       const errText =
-        err?.response?.data?.message || err?.message || 'Lỗi không xác định khi tải tệp lên';
+        axiosErr?.response?.data?.message ||
+        axiosErr?.message ||
+        'Lỗi không xác định khi tải tệp lên';
       setUploadQueue((prev) => {
         if (!prev[tempId]) return prev;
         return {
@@ -164,8 +218,9 @@ export function useDocuments(conversationId?: string | null) {
     for (const file of files) {
       try {
         await uploadFile(file);
-      } catch (err: any) {
-        setErrorMessage(err.message);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Lỗi tải tệp lên';
+        setErrorMessage(message);
       }
     }
   };
@@ -181,10 +236,11 @@ export function useDocuments(conversationId?: string | null) {
     try {
       await documentsApi.delete(documentId);
       mutate();
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Revert lại nếu có lỗi
       mutate(previous, { revalidate: true });
-      const errText = err?.response?.data?.message || 'Lỗi khi xóa tài liệu';
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const errText = axiosErr?.response?.data?.message || 'Lỗi khi xóa tài liệu';
       setErrorMessage(errText);
       throw err;
     }
@@ -201,8 +257,9 @@ export function useDocuments(conversationId?: string | null) {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err: any) {
-      const errText = err?.response?.data?.message || 'Lỗi khi lấy liên kết tải tệp';
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const errText = axiosErr?.response?.data?.message || 'Lỗi khi lấy liên kết tải tệp';
       setErrorMessage(errText);
     }
   };

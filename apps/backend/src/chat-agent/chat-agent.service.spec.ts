@@ -6,6 +6,7 @@ import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.serv
 import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
 import { SummariesService } from '../summaries/summaries.service.js';
+import { TavilyService } from '../search/tavily.service.js';
 
 describe('ChatAgentService', () => {
   let service: ChatAgentService;
@@ -22,6 +23,7 @@ describe('ChatAgentService', () => {
   let retrievalMock: {
     getAvailableDocumentsCatalog: ReturnType<typeof vi.fn>;
     searchRelevantChunks: ReturnType<typeof vi.fn>;
+    getDocumentSectionOrPages: ReturnType<typeof vi.fn>;
     getDocumentsFullContent: ReturnType<typeof vi.fn>;
   };
   let summariesMock: {
@@ -30,8 +32,42 @@ describe('ChatAgentService', () => {
   let documentsRepoMock: {
     getAllDocumentsByConversationId: ReturnType<typeof vi.fn>;
   };
+  let tavilyMock: {
+    search: ReturnType<typeof vi.fn>;
+    extract: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
+    tavilyMock = {
+      search: vi.fn().mockResolvedValue({
+        query: 'test query',
+        totalResults: 1,
+        results: [
+          {
+            title: 'Test Web Result',
+            url: 'https://example.com/test',
+            domain: 'example.com',
+            contentSnippet: 'Test content snippet',
+            previewSnippet: 'Test preview snippet',
+          },
+        ],
+      }),
+      extract: vi.fn().mockResolvedValue({
+        query: 'test extract query',
+        totalSuccess: 1,
+        totalFailed: 0,
+        results: [
+          {
+            title: 'Extracted Article',
+            url: 'https://example.com/article',
+            domain: 'example.com',
+            extractedContent: 'Full article text markdown...',
+            previewSnippet: 'Article preview snippet',
+          },
+        ],
+        failedResults: [],
+      }),
+    };
     repoMock = {
       getChatSessionById: vi.fn().mockResolvedValue({
         id: 'session-1',
@@ -63,6 +99,14 @@ describe('ChatAgentService', () => {
         },
       ]),
       searchRelevantChunks: vi.fn().mockResolvedValue([]),
+      getDocumentSectionOrPages: vi.fn().mockResolvedValue({
+        documentId: 'doc-attached-1',
+        fileName: 'Giao_trinh_CTDL.pdf',
+        pageCount: 1,
+        isFullDocument: true,
+        totalChunks: 0,
+        chunks: [],
+      }),
       getDocumentsFullContent: vi.fn().mockResolvedValue([]),
     };
 
@@ -99,6 +143,7 @@ describe('ChatAgentService', () => {
         { provide: RetrievalService, useValue: retrievalMock },
         { provide: SummariesService, useValue: summariesMock },
         { provide: DocumentsRepoService, useValue: documentsRepoMock },
+        { provide: TavilyService, useValue: tavilyMock },
       ],
     }).compile();
 
@@ -146,6 +191,8 @@ describe('ChatAgentService', () => {
     await options.onSearchDocumentChunks({
       semanticQuery: 'Định nghĩa và cơ chế tự cân bằng của cây AVL',
       keywords: ['cây AVL', 'tự cân bằng'],
+      pageNumbers: [3],
+      includeNeighbors: true,
     });
     expect(retrievalMock.searchRelevantChunks).toHaveBeenCalledWith({
       userId: 'user-1',
@@ -153,20 +200,39 @@ describe('ChatAgentService', () => {
       semanticQuery: 'Định nghĩa và cơ chế tự cân bằng của cây AVL',
       keywords: ['cây AVL', 'tự cân bằng'],
       preferredDocumentIds: ['doc-attached-1'],
-      topK: 15,
+      pageNumbers: [3],
+      pageRange: undefined,
+      includeNeighbors: true,
+      topK: 8,
     });
 
-    // Kiểm tra callback Tool 2: getDocumentsFullContent
-    await options.onGetDocumentsFullContent({
-      documentIds: ['doc-attached-1'],
-      fetchAllDocuments: false,
+    // Kiểm tra callback Tool 2: getDocumentSectionOrPages
+    expect(options?.onGetDocumentSectionOrPages).toBeDefined();
+    await options.onGetDocumentSectionOrPages({
+      documentId: 'doc-attached-1',
+      pageNumbers: [1, 2],
     });
-    expect(retrievalMock.getDocumentsFullContent).toHaveBeenCalledWith({
+    expect(retrievalMock.getDocumentSectionOrPages).toHaveBeenCalledWith({
       userId: 'user-1',
       conversationId: 'conv-1',
-      documentIds: ['doc-attached-1'],
-      fetchAllDocuments: false,
-      preferredDocumentIds: ['doc-attached-1'],
+      documentId: 'doc-attached-1',
+      pageNumbers: [1, 2],
+      headingKeyword: undefined,
+    });
+
+    // Kiểm tra callback Tool: onSearchInternet & onExtractWebPage
+    expect(options?.onSearchInternet).toBeDefined();
+    await options.onSearchInternet({ query: 'GraphRAG architecture' });
+    expect(tavilyMock.search).toHaveBeenCalledWith({ query: 'GraphRAG architecture' });
+
+    expect(options?.onExtractWebPage).toBeDefined();
+    await options.onExtractWebPage({
+      urls: ['https://arxiv.org/abs/2404.16130'],
+      query: 'community detection',
+    });
+    expect(tavilyMock.extract).toHaveBeenCalledWith({
+      urls: ['https://arxiv.org/abs/2404.16130'],
+      query: 'community detection',
     });
 
     // Kiểm tra callback Tool 3: getConversationDocumentsMetadata
@@ -258,7 +324,7 @@ describe('ChatAgentService', () => {
       modelName: 'cx/gpt-5.6-luna-low',
       temperature: 0.2,
       maxOutputTokens: 1024,
-      topK: 10,
+      topK: 5,
     });
   });
 
@@ -290,7 +356,7 @@ describe('ChatAgentService', () => {
       modelName: 'cx/gpt-5.6-terra-high',
       temperature: 0.2,
       maxOutputTokens: 4096,
-      topK: 20,
+      topK: 12,
     });
   });
 
@@ -303,6 +369,26 @@ describe('ChatAgentService', () => {
       }),
       tracker: {
         getCollectedChunkIds: () => new Set(['chunk-uuid-1', 'chunk-uuid-2']),
+        getAllCitations: () => [
+          {
+            sourceType: 'document',
+            citationId: 'c1',
+            chunkId: 'chunk-uuid-1',
+            documentId: 'doc-attached-1',
+            fileName: 'Giao_trinh_CTDL.pdf',
+            pageNumbers: [1],
+            headings: [],
+            content: 'Nội dung trích dẫn',
+          },
+          {
+            sourceType: 'web',
+            citationId: 'w1',
+            title: 'GraphRAG',
+            url: 'https://arxiv.org/abs/2404.16130',
+            domain: 'arxiv.org',
+            previewSnippet: 'GraphRAG summary',
+          },
+        ],
       },
     };
 
@@ -310,7 +396,7 @@ describe('ChatAgentService', () => {
       {
         id: 'msg-u1',
         role: 'user' as const,
-        parts: [{ type: 'text', text: 'Xin chào' }],
+        parts: [{ type: 'text' as const, text: 'Xin chào' }],
       },
     ];
 
@@ -326,14 +412,33 @@ describe('ChatAgentService', () => {
     expect(capturedOptions.originalMessages).toEqual(originalMessages);
     expect(typeof capturedOptions.generateMessageId).toBe('function');
     expect(typeof capturedOptions.onFinish).toBe('function');
+    expect(typeof capturedOptions.messageMetadata).toBe('function');
+
+    // Kiểm tra messageMetadata trả về citations khi part.type === 'finish'
+    const finishMetadata = capturedOptions.messageMetadata({
+      part: { type: 'finish' },
+    });
+    expect(finishMetadata).toEqual({
+      citations: [
+        expect.objectContaining({
+          citationId: 'c1',
+          chunkId: 'chunk-uuid-1',
+        }),
+        expect.objectContaining({
+          citationId: 'w1',
+          title: 'GraphRAG',
+          url: 'https://arxiv.org/abs/2404.16130',
+        }),
+      ],
+    });
 
     // Giả lập callback onFinish được Vercel AI SDK gọi khi hoàn tất stream
     const assistantResponseMessage = {
       id: 'msg-ai-1',
       role: 'assistant' as const,
       parts: [
-        { type: 'step-start' },
-        { type: 'text', text: 'Chào bạn, tôi là StudyMate AI!' },
+        { type: 'step-start' as const },
+        { type: 'text' as const, text: 'Chào bạn, tôi là StudyMate AI!' },
       ],
     };
 
@@ -347,7 +452,22 @@ describe('ChatAgentService', () => {
 
     expect(saveSpy).toHaveBeenCalledWith(
       'session-1',
-      assistantResponseMessage,
+      expect.objectContaining({
+        id: 'msg-ai-1',
+        metadata: {
+          citations: [
+            expect.objectContaining({
+              citationId: 'c1',
+              chunkId: 'chunk-uuid-1',
+            }),
+            expect.objectContaining({
+              citationId: 'w1',
+              title: 'GraphRAG',
+              url: 'https://arxiv.org/abs/2404.16130',
+            }),
+          ],
+        },
+      }),
       ['chunk-uuid-1', 'chunk-uuid-2'],
     );
   });

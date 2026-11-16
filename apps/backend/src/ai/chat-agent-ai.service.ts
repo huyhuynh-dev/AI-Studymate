@@ -23,6 +23,9 @@ import {
   type SearchDocumentChunksSourceSummary,
   type SearchDocumentChunksToolOutput,
   type SearchDocumentChunksCallback,
+  type GetDocumentSectionOrPagesToolInput,
+  type GetDocumentSectionOrPagesToolOutput,
+  type GetDocumentSectionOrPagesCallback,
   type GetDocumentsFullContentToolInput,
   type DocumentFullContentSummaryItem,
   type GetDocumentsFullContentToolOutput,
@@ -35,6 +38,15 @@ import {
   type CreateDocumentSummaryToolInput,
   type CreateDocumentSummaryToolOutput,
   type CreateDocumentSummaryCallback,
+  type SearchInternetToolInput,
+  type SearchInternetToolOutput,
+  type SearchInternetCallback,
+  type ExtractWebPageToolInput,
+  type ExtractWebPageToolOutput,
+  type ExtractWebPageCallback,
+  type CitationItem,
+  type DocumentCitationItem,
+  type WebCitationItem,
 } from './tools/index.js';
 
 export {
@@ -46,6 +58,9 @@ export {
   type SearchDocumentChunksSourceSummary,
   type SearchDocumentChunksToolOutput,
   type SearchDocumentChunksCallback,
+  type GetDocumentSectionOrPagesToolInput,
+  type GetDocumentSectionOrPagesToolOutput,
+  type GetDocumentSectionOrPagesCallback,
   type GetDocumentsFullContentToolInput,
   type DocumentFullContentSummaryItem,
   type GetDocumentsFullContentToolOutput,
@@ -58,6 +73,15 @@ export {
   type CreateDocumentSummaryToolInput,
   type CreateDocumentSummaryToolOutput,
   type CreateDocumentSummaryCallback,
+  type SearchInternetToolInput,
+  type SearchInternetToolOutput,
+  type SearchInternetCallback,
+  type ExtractWebPageToolInput,
+  type ExtractWebPageToolOutput,
+  type ExtractWebPageCallback,
+  type CitationItem,
+  type DocumentCitationItem,
+  type WebCitationItem,
 };
 
 @Injectable()
@@ -111,6 +135,51 @@ export class ChatAgentAiService {
     );
   }
 
+  /**
+   * Hòa giải các client-side tool call còn dang dở (ví dụ `tool-askUserQuestion` ở trạng thái
+   * `input-available` / `input-streaming`) khi phía sau đã có tin nhắn mới từ người dùng.
+   * Ngăn lỗi `AI_MissingToolResultsError` từ `convertToLanguageModelPrompt` của Vercel AI SDK v6.
+   */
+  sanitizePendingToolCalls(messages: UIMessage[]): UIMessage[] {
+    if (!Array.isArray(messages) || messages.length <= 1) {
+      return messages;
+    }
+
+    return messages.map((msg, idx) => {
+      const hasSubsequentMessage = idx < messages.length - 1;
+      if (
+        !hasSubsequentMessage ||
+        msg.role !== 'assistant' ||
+        !Array.isArray(msg.parts)
+      ) {
+        return msg;
+      }
+
+      let hasPendingTool = false;
+      const sanitizedParts = msg.parts.map((part: any) => {
+        if (
+          part &&
+          typeof part.type === 'string' &&
+          part.type.startsWith('tool-') &&
+          (part.state === 'input-available' || part.state === 'input-streaming')
+        ) {
+          hasPendingTool = true;
+          return {
+            ...part,
+            state: 'output-available',
+            output: {
+              skipped: true,
+              note: 'User bypassed the interactive question widget and sent a new message directly.',
+            },
+          };
+        }
+        return part;
+      });
+
+      return hasPendingTool ? { ...msg, parts: sanitizedParts } : msg;
+    });
+  }
+
   async executeChatStream(
     messages: UIMessage[],
     onFinish: (result: {
@@ -126,9 +195,12 @@ export class ChatAgentAiService {
       availableDocuments?: AvailableDocumentItem[];
       attachedDocumentIds?: string[];
       onSearchDocumentChunks?: SearchDocumentChunksCallback;
+      onGetDocumentSectionOrPages?: GetDocumentSectionOrPagesCallback;
       onGetDocumentsFullContent?: GetDocumentsFullContentCallback;
       onGetDocumentsMetadata?: GetConversationDocumentsMetadataCallback;
       onCreateDocumentSummary?: CreateDocumentSummaryCallback;
+      onSearchInternet?: SearchInternetCallback;
+      onExtractWebPage?: ExtractWebPageCallback;
       chatConfig?: {
         modelName: string;
         temperature: number;
@@ -158,7 +230,10 @@ export class ChatAgentAiService {
 
     const activeTools = Object.keys(tools).length > 0 ? tools : undefined;
 
-    const modelMessages = await convertToModelMessages(messages);
+    const sanitizedMessages = this.sanitizePendingToolCalls(messages);
+    const modelMessages = await convertToModelMessages(sanitizedMessages, {
+      tools: activeTools,
+    });
     this.logger.log(
       `[ChatAgentAiService] convertToModelMessages: input count=${messages.length}, output count=${modelMessages.length}, activeTools=${activeTools ? Object.keys(activeTools).join(',') : 'none'}, model=${chatConfig.modelName}, temp=${chatConfig.temperature}, maxTokens=${chatConfig.maxOutputTokens}, topK=${chatConfig.topK}`,
     );

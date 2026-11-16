@@ -17,7 +17,8 @@ export class CompleteUploadDto {
 
     @IsString({ message: 'mimeType phải là chuỗi ký tự' })
     @IsIn(ALLOWED_MIME_TYPES, {
-        message: 'Định dạng tệp không được hỗ trợ. Chỉ chấp nhận PDF, JPEG, PNG, WEBP',
+        message:
+            'Định dạng tệp không được hỗ trợ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint, CSV, Markdown, TXT, JPEG, PNG, WEBP',
     })
     mimeType: string;
 

@@ -7,6 +7,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { StorageService } from '../storage/storage.service.js';
 import { DocumentsRepoService, DocumentResponse } from '../repo/documents-repo/documents-repo.service.js';
+import { DocumentAssetsRepoService } from '../repo/document-assets-repo/document-assets-repo.service.js';
 import { ConversationsRepoService } from '../repo/conversations-repo/conversations-repo.service.js';
 import { DocumentsQueueService } from './services/documents-queue.service.js';
 import { InitUploadDto, MAX_FILE_SIZE_BYTES } from './dto/init-upload.dto.js';
@@ -19,6 +20,7 @@ export class DocumentsService {
     constructor(
         private readonly storageService: StorageService,
         private readonly documentsRepo: DocumentsRepoService,
+        private readonly documentAssetsRepo: DocumentAssetsRepoService,
         private readonly conversationsRepo: ConversationsRepoService,
         private readonly documentsQueueService: DocumentsQueueService,
     ) { }
@@ -176,13 +178,26 @@ export class DocumentsService {
         documentId: string
     ): Promise<{ success: boolean; message: string }> {
         const doc = await this.getDocumentById(userId, documentId);
+        const assets = await this.documentAssetsRepo.findAssetsByDocumentId(documentId);
 
-        // Xóa file trên R2
-        await this.storageService.deleteObject(doc.storage_key).catch((e) =>
-            this.logger.warn(`Không thể xóa object trên R2 [${doc.storage_key}]: ${e.message}`)
-        );
+        const keysToDelete = new Set<string>([doc.storage_key]);
+        if (doc.docling_json_key) {
+            keysToDelete.add(doc.docling_json_key);
+        }
+        for (const asset of assets) {
+            if (asset.storage_key) {
+                keysToDelete.add(asset.storage_key);
+            }
+        }
 
-        // Xóa bản ghi trong DB (Prisma cascade xóa chunks liên quan)
+        // Xóa file gốc, file .docling.json và các ảnh crop trên R2
+        for (const key of keysToDelete) {
+            await this.storageService.deleteObject(key).catch((e) =>
+                this.logger.warn(`Không thể xóa object trên R2 [${key}]: ${e.message}`)
+            );
+        }
+
+        // Xóa bản ghi trong DB (Prisma cascade xóa chunks & assets liên quan)
         await this.documentsRepo.deleteDocument(documentId, userId);
 
         return {

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { LeftSidebar, RightSidebar, FocusModeProvider, useFocusMode } from "@/components/layout";
+import { CitationNavigationProvider } from "@/contexts/CitationNavigationContext";
 import { usePathname } from "next/navigation";
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
@@ -108,7 +109,9 @@ export default function MainLayout({
 }) {
     return (
         <FocusModeProvider>
-            <MainLayoutContent>{children}</MainLayoutContent>
+            <CitationNavigationProvider>
+                <MainLayoutContent>{children}</MainLayoutContent>
+            </CitationNavigationProvider>
         </FocusModeProvider>
     );
 }

@@ -15,12 +15,20 @@ export class HttpLoggingFilter implements ExceptionFilter {
         const context = host.switchToHttp();
         const request = context.getRequest<Request>();
         const response = context.getResponse<Response>();
+        const fallbackStatus =
+            (exception as any)?.status || (exception as any)?.statusCode || 500;
         const status = exception instanceof HttpException
             ? exception.getStatus()
-            : 500;
+            : typeof fallbackStatus === 'number' && fallbackStatus >= 400 && fallbackStatus < 600
+                ? fallbackStatus
+                : 500;
+
+        const rawMessage = (exception as any)?.message;
         const exceptionResponse = exception instanceof HttpException
             ? exception.getResponse()
-            : 'Internal server error';
+            : (typeof rawMessage === 'string' && rawMessage.length > 0)
+                ? rawMessage
+                : 'Internal server error';
 
         this.logger.error(
             JSON.stringify({

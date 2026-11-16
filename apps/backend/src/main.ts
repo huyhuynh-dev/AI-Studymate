@@ -1,12 +1,17 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule, ObserveInstrument } from './app.module.js';
 import { ValidationPipe } from '@nestjs/common';
+import { json, urlencoded } from 'express';
 import { HttpLoggingFilter } from './common/filters/http-logging.filter.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     instrument: ObserveInstrument,
   });
+
+  // Mở rộng giới hạn body parser lên 10mb để hỗ trợ các phiên chat dài và dữ liệu RAG
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ extended: true, limit: '10mb' }));
 
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',

@@ -83,6 +83,7 @@ export class AiService {
       modelName?: string;
       temperature?: number;
       maxRetries?: number;
+      messages?: NonNullable<Parameters<typeof generateText>[0]['messages']>;
     },
   ): Promise<{
     object: [TOutput] extends [never] ? FeatureOutputMap[K] : TOutput;
@@ -105,7 +106,9 @@ export class AiService {
         ...(targetSchemaName ? { name: targetSchemaName } : {}),
         ...(targetSchemaDesc ? { description: targetSchemaDesc } : {}),
       }),
-      prompt: preparedObj.prompt,
+      ...(options?.messages
+        ? { messages: options.messages }
+        : { prompt: preparedObj.prompt }),
       system: preparedObj.system,
       temperature: options?.temperature ?? preparedObj.temperature,
       maxRetries: options?.maxRetries ?? preparedObj.maxRetries,

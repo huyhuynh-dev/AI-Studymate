@@ -66,6 +66,54 @@ export class DocumentsRepoService {
         });
     }
 
+    async findIncompleteDocuments(): Promise<
+        Array<{
+            id: string;
+            mime_type: string;
+            storage_key: string;
+            file_name: string;
+        }>
+    > {
+        return await this.prisma.document.findMany({
+            where: {
+                OR: [
+                    { ocr_status: { in: ['pending', 'processing'] } },
+                    {
+                        ocr_status: 'done',
+                        embed_status: { in: ['pending', 'processing'] },
+                    },
+                ],
+            },
+            select: {
+                id: true,
+                mime_type: true,
+                storage_key: true,
+                file_name: true,
+            },
+        });
+    }
+
+    async findCompletedDocumentByHash(
+        conversationId: string,
+        userId: string,
+        fileHash: string,
+        excludeDocumentId: string
+    ): Promise<Document | null> {
+        return await this.prisma.document.findFirst({
+            where: {
+                conversation_id: conversationId,
+                user_id: userId,
+                file_hash: fileHash,
+                id: { not: excludeDocumentId },
+                ocr_status: 'done',
+                embed_status: 'done',
+            },
+            orderBy: {
+                created_at: 'desc',
+            },
+        });
+    }
+
     async updateDocument(
         documentId: string,
         userId: string,

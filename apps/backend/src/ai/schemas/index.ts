@@ -16,11 +16,16 @@ import {
   followUpSuggestionsSchema,
   type FollowUpSuggestionsOutput,
 } from './chat-agent.schema.js';
+import {
+  visionIngestionSchema,
+  type VisionIngestionOutput,
+} from './vision-ingestion.schema.js';
 
 export * from './blocknote.schema.js';
 export * from './quiz-ai.schema.js';
 export * from './flashcard-ai.schema.js';
 export * from './chat-agent.schema.js';
+export * from './vision-ingestion.schema.js';
 
 export interface FeatureOutputMap {
   SUMMARIZE_GENERATE: SummaryOutput;
@@ -29,6 +34,7 @@ export interface FeatureOutputMap {
   ESSAY_GRADE: EssayGradingOutput;
   FLASHCARD_GENERATE: LlmFlashcardOutput;
   FOLLOW_UP_SUGGESTIONS: FollowUpSuggestionsOutput;
+  VISION_OCR: VisionIngestionOutput;
 }
 
 export type StructuredFeatureKey = keyof FeatureOutputMap;
@@ -80,6 +86,12 @@ export const FEATURE_SCHEMAS: {
     schema: followUpSuggestionsSchema,
     schemaName: 'FollowUpSuggestions',
     schemaDescription: 'Danh sách câu hỏi gợi ý tiếp nối cuộc trò chuyện',
+  },
+  VISION_OCR: {
+    schema: visionIngestionSchema,
+    schemaName: 'VisionDocumentIngestion',
+    schemaDescription:
+      'Kết quả trích xuất OCR, mô tả hình ảnh và phân đoạn ngữ nghĩa (chunking) từ hình ảnh học tập',
   },
 };
 

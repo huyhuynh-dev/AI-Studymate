@@ -259,8 +259,8 @@ describe('QuizAiService & QuizAiSchema', () => {
                 count: 10,
                 difficulty: 'advanced',
             });
-            expect(prompt).toContain('Soạn tối đa 10 câu hỏi');
-            expect(prompt).toContain('Nâng cao');
+            expect(prompt).toContain('Generate up to 10 questions');
+            expect(prompt).toContain('Advanced');
             expect(prompt).toContain('single_choice:');
             expect(prompt).toContain('essay:');
         });

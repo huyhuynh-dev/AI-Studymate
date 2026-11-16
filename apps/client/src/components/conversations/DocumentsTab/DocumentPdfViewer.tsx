@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { createPluginRegistration } from "@embedpdf/core";
-import { EmbedPDF } from "@embedpdf/core/react";
+import { EmbedPDF, useDocumentState } from "@embedpdf/core/react";
 import { usePdfiumEngine } from "@embedpdf/engines/react";
 import {
   DocumentContent,
@@ -16,6 +16,7 @@ import {
 import {
   Scroller,
   ScrollPluginPackage,
+  useScroll,
 } from "@embedpdf/plugin-scroll/react";
 import {
   RenderLayer,
@@ -78,6 +79,8 @@ import {
 import { DocumentItem } from "@/types";
 import { documentsApi } from "@/services/documents.api";
 import { useFocusMode } from "@/components/layout";
+import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
+import { calcBoxPixels } from "@/lib/pdf-coordinates";
 
 export interface DocumentPdfViewerProps {
   document: DocumentItem;
@@ -654,6 +657,195 @@ function AnnotationQuickMenu({
   );
 }
 
+/**
+ * Quản lý sự kiện Nhảy trang (Jump-to-Page) và Lắng nghe Click-outside để tắt Highlight
+ * của hệ thống RAG Phase 2.
+ */
+function PdfCitationManager({
+  documentId,
+  backendDocumentId,
+}: {
+  documentId: string;
+  backendDocumentId: string;
+}) {
+  const { provides: scroll } = useScroll(documentId);
+  const {
+    activeTarget,
+    activeHighlight,
+    consumeActiveTarget,
+    setHighlight,
+    clearHighlight,
+  } = useCitationNavigation();
+
+  // 1. Nhảy trang và thiết lập vùng tô sáng (Highlight Overlay) khi có activeTarget
+  useEffect(() => {
+    if (!activeTarget || !scroll) return;
+
+    // Bỏ qua nếu lệnh trỏ tới tài liệu khác
+    if (activeTarget.documentId && activeTarget.documentId !== backendDocumentId) {
+      return;
+    }
+
+    const pageNo = activeTarget.pageNo || 1;
+    const pageIndex = Math.max(0, pageNo - 1);
+    const bboxes = Array.isArray(activeTarget.bboxes) ? activeTarget.bboxes : [];
+
+    // Bước 1 (Đưa trang vào Viewport):
+    // Gọi scrollToPage chuẩn của @embedpdf/plugin-scroll (không truyền pageCoordinates phức tạp)
+    const triggerScroll = () => {
+      try {
+        scroll.scrollToPage({
+          pageNumber: pageNo,
+          behavior: "smooth",
+        });
+      } catch (err) {
+        console.warn("[PdfCitationManager] scrollToPage warning:", err);
+      }
+    };
+
+    triggerScroll();
+    // Dự phòng khi scroller vừa mount chưa kịp tính layout hoặc virtualItems
+    const retryTimer = setTimeout(triggerScroll, 100);
+
+    // Thiết lập vùng tô sáng để CitationHighlightLayer hiển thị và thực hiện Bước 2
+    if (bboxes.length > 0) {
+      setHighlight({
+        documentId: backendDocumentId,
+        pageIndex,
+        bboxes,
+        createdAt: Date.now(),
+      });
+    }
+
+    // Consume activeTarget sau khi đã xử lý để tránh lặp lại khi chuyển Tab
+    consumeActiveTarget();
+
+    return () => {
+      clearTimeout(retryTimer);
+    };
+  }, [
+    activeTarget,
+    backendDocumentId,
+    scroll,
+    setHighlight,
+    consumeActiveTarget,
+  ]);
+
+  // 2. Lắng nghe sự kiện click ra ngoài để ẩn khung highlight
+  useEffect(() => {
+    if (!activeHighlight) return;
+
+    const handlePointerDown = () => {
+      // Bảo vệ: Bỏ qua nếu cú click xảy ra trong vòng 250ms đầu tiên (tránh bắt nhầm cú click mở trích dẫn)
+      const elapsed = Date.now() - activeHighlight.createdAt;
+      if (elapsed < 250) {
+        return;
+      }
+      clearHighlight();
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown, { capture: true });
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown, { capture: true });
+    };
+  }, [activeHighlight, clearHighlight]);
+
+  return null;
+}
+
+/**
+ * Lớp phủ tô sáng (Highlight Overlay) đè lên trang PDF đang hiển thị trích dẫn RAG
+ * Tự động cuộn thẳng tới DOM của khung Highlight đầu tiên bằng scrollIntoView (Bước 2)
+ */
+function CitationHighlightLayer({
+  documentId,
+  backendDocumentId,
+  pageIndex,
+  renderedWidth,
+  renderedHeight,
+}: {
+  documentId: string;
+  backendDocumentId: string;
+  pageIndex: number;
+  renderedWidth: number;
+  renderedHeight: number;
+}) {
+  const { activeHighlight } = useCitationNavigation();
+  const docState = useDocumentState(documentId);
+  const firstBoxRef = useRef<HTMLDivElement | null>(null);
+
+  const isCurrentPage = Boolean(
+    activeHighlight &&
+      activeHighlight.documentId === backendDocumentId &&
+      activeHighlight.pageIndex === pageIndex &&
+      Array.isArray(activeHighlight.bboxes) &&
+      activeHighlight.bboxes.length > 0
+  );
+
+  // Bước 2: Cuộn thẳng tới DOM của Khung Highlight đầu tiên bằng scrollIntoView
+  useEffect(() => {
+    if (!isCurrentPage) return;
+
+    const scrollToHighlight = () => {
+      const el =
+        firstBoxRef.current ||
+        document.querySelector<HTMLElement>('[data-active-citation-highlight="true"]');
+      if (el) {
+        el.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+      }
+    };
+
+    // Chờ 60-100ms để trang hoàn tất paint và layout trong viewport của EmbedPDF
+    const timer = setTimeout(scrollToHighlight, 80);
+
+    return () => clearTimeout(timer);
+  }, [isCurrentPage, activeHighlight]);
+
+  if (!isCurrentPage || !activeHighlight) {
+    return null;
+  }
+
+  const pageSize = docState?.document?.pages[pageIndex]?.size;
+  const pagePointWidth = pageSize?.width || 612;
+  const pagePointHeight = pageSize?.height || 792;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
+      {activeHighlight.bboxes.map((rawBox, idx) => {
+        const box = calcBoxPixels(
+          rawBox,
+          pagePointWidth,
+          pagePointHeight,
+          renderedWidth,
+          renderedHeight
+        );
+        if (!box) return null;
+
+        const isFirst = idx === 0;
+
+        return (
+          <div
+            key={idx}
+            ref={isFirst ? firstBoxRef : undefined}
+            data-active-citation-highlight={isFirst ? "true" : undefined}
+            className="absolute rounded-md bg-amber-400/25 dark:bg-amber-400/30 ring-2 ring-amber-500/80 dark:ring-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all duration-300 animate-in fade-in zoom-in-95"
+            style={{
+              left: `${box.left}px`,
+              top: `${box.top}px`,
+              width: `${box.width}px`,
+              height: `${box.height}px`,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export default function DocumentPdfViewer({
   document,
   onClose,
@@ -863,6 +1055,12 @@ export default function DocumentPdfViewer({
 
                     {isLoaded && (
                       <>
+                        {/* Quản lý sự kiện Nhảy trang RAG & Highlight */}
+                        <PdfCitationManager
+                          documentId={activeDocumentId}
+                          backendDocumentId={document.id}
+                        />
+
                         {/* Thanh công cụ hợp nhất duy nhất ở trên cùng */}
                         <PdfToolbar
                           documentId={activeDocumentId}
@@ -926,6 +1124,15 @@ export default function DocumentPdfViewer({
                                             documentId={activeDocumentId}
                                           />
                                         )}
+                                      />
+
+                                      {/* Lớp 4: Lớp phủ Highlight trích dẫn RAG Phase 2 */}
+                                      <CitationHighlightLayer
+                                        documentId={activeDocumentId}
+                                        backendDocumentId={document.id}
+                                        pageIndex={pageIndex}
+                                        renderedWidth={width}
+                                        renderedHeight={height}
                                       />
                                     </div>
                                   </PagePointerProvider>

@@ -2,8 +2,7 @@ import { Module } from '@nestjs/common';
 import { DocumentsService } from './documents.service.js';
 import { DocumentsController } from './documents.controller.js';
 import { DocumentsQueueService } from './services/documents-queue.service.js';
-import { DocumentsProcessorService } from './services/documents-processor.service.js';
-import { DocumentsEmbedProcessorService } from './services/documents-embed-processor.service.js';
+import { DocumentIngestionProcessor } from './services/document-ingestion.processor.js';
 import { DoclingService } from './services/docling.service.js';
 import { RetrievalService } from './services/retrieval.service.js';
 import { StorageModule } from '../storage/storage.module.js';
@@ -16,8 +15,7 @@ import { PrismaModule } from '../prisma/prisma.module.js';
   providers: [
     DocumentsService,
     DocumentsQueueService,
-    DocumentsProcessorService,
-    DocumentsEmbedProcessorService,
+    DocumentIngestionProcessor,
     DoclingService,
     RetrievalService,
   ],

@@ -10,7 +10,7 @@ export interface FeatureRuntimeConfig {
 
 export const FEATURE_MAP: Record<FeatureKey, FeatureRuntimeConfig> = {
   SUMMARIZE_GENERATE: {
-    profile: 'STANDARD',
+    profile: 'REASONING',
     temperature: 0.2,
     providerOptions: {
       google: { responseMimeType: 'application/json' },
@@ -21,16 +21,16 @@ export const FEATURE_MAP: Record<FeatureKey, FeatureRuntimeConfig> = {
     temperature: 0.2,
   },
   QUIZ_GENERATE: {
-    profile: 'STANDARD',
+    profile: 'REASONING',
     temperature: 0.4,
     maxRetries: 2,
   },
   ESSAY_GRADE: {
-    profile: 'STANDARD',
+    profile: 'REASONING',
     temperature: 0.2,
   },
   FLASHCARD_GENERATE: {
-    profile: 'STANDARD',
+    profile: 'REASONING',
     maxRetries: 2,
   },
   BLOCKNOTE_EDIT: {
@@ -48,9 +48,11 @@ export const FEATURE_MAP: Record<FeatureKey, FeatureRuntimeConfig> = {
     },
   },
   FOLLOW_UP_SUGGESTIONS: {
-    profile: 'REASONING',
+    profile: 'FAST',
   },
   VISION_OCR: {
     profile: 'VISION',
+    temperature: 0.1,
+    maxRetries: 2,
   },
 };

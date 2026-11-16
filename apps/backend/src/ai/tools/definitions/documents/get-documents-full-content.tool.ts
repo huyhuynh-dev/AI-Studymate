@@ -5,7 +5,7 @@ import type {
   GetDocumentsFullContentCallback,
   GetDocumentsFullContentToolOutput,
   ToolCallTracker,
-} from '../types.js';
+} from '../../types.js';
 
 export const getDocumentsFullContentInputSchema = z.object({
   documentIds: z

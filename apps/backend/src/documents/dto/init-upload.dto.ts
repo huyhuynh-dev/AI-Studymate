@@ -1,8 +1,28 @@
 import { IsIn, IsNotEmpty, IsNumber, IsString, IsUUID, Max, Min } from 'class-validator';
 
 export const ALLOWED_MIME_TYPES = [
+    // PDF
     'application/pdf',
+    // Word (.doc, .docx)
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    // Excel (.xls, .xlsx)
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    // PowerPoint (.ppt, .pptx)
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    // CSV (.csv)
+    'text/csv',
+    'application/csv',
+    // Markdown (.md)
+    'text/markdown',
+    'text/x-markdown',
+    // Text (.txt)
+    'text/plain',
+    // Hình ảnh (.jpg, .jpeg, .png, .webp)
     'image/jpeg',
+    'image/jpg',
     'image/png',
     'image/webp',
 ] as const;
@@ -27,7 +47,8 @@ export class InitUploadDto {
 
     @IsString({ message: 'mimeType phải là chuỗi ký tự' })
     @IsIn(ALLOWED_MIME_TYPES, {
-        message: 'Định dạng tệp không được hỗ trợ. Chỉ chấp nhận PDF, JPEG, PNG, WEBP',
+        message:
+            'Định dạng tệp không được hỗ trợ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint, CSV, Markdown, TXT, JPEG, PNG, WEBP',
     })
     mimeType: string;
 }

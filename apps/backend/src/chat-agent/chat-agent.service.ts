@@ -5,6 +5,7 @@ import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.serv
 import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
 import { SummariesService } from '../summaries/summaries.service.js';
+import { TavilyService } from '../search/tavily.service.js';
 import {
   SummaryLength,
   SummaryMode,
@@ -37,18 +38,18 @@ export function resolveChatConfig(
   let suffix = '-medium';
   let temperature = 0.5;
   let maxOutputTokens = 2048;
-  let topK = 15;
+  let topK = 8;
 
   if (effort === 'low') {
     suffix = '-low';
     temperature = 0.2;
     maxOutputTokens = 1024;
-    topK = 10;
+    topK = 5;
   } else if (effort === 'high' || effort === 'extra' || effort === 'max') {
     suffix = '-high';
     temperature = 0.2;
     maxOutputTokens = 4096;
-    topK = 20;
+    topK = 12;
   }
 
   return {
@@ -67,6 +68,7 @@ export class ChatAgentService {
     private readonly retrievalService: RetrievalService,
     @Optional() private readonly summariesService?: SummariesService,
     @Optional() private readonly documentsRepo?: DocumentsRepoService,
+    @Optional() private readonly tavilyService?: TavilyService,
   ) {}
 
   async createChatSession(
@@ -211,6 +213,18 @@ export class ChatAgentService {
         prefix: 'msg-',
         size: 16,
       }),
+      messageMetadata: ({ part }: { part: any }) => {
+        if (part?.type === 'finish') {
+          const citations =
+            tracker && typeof tracker.getAllCitations === 'function'
+              ? tracker.getAllCitations()
+              : [];
+          if (citations.length > 0) {
+            return { citations };
+          }
+        }
+        return undefined;
+      },
       onFinish: async ({
         responseMessage,
         isAborted,
@@ -231,8 +245,20 @@ export class ChatAgentService {
           responseMessage.parts.length > 0
         ) {
           const sourceChunkIds = getSourceChunkIds();
+          const citations =
+            tracker && typeof tracker.getAllCitations === 'function'
+              ? tracker.getAllCitations()
+              : [];
+
+          if (citations.length > 0) {
+            (responseMessage as any).metadata = {
+              ...((responseMessage as any).metadata),
+              citations,
+            };
+          }
+
           console.log(
-            `[ChatAgentService] toUIMessageStream onFinish -> Lưu tin nhắn AI: id=${responseMessage.id}, partsCount=${responseMessage.parts.length}, sourceChunks=${sourceChunkIds.length}`,
+            `[ChatAgentService] toUIMessageStream onFinish -> Lưu tin nhắn AI: id=${responseMessage.id}, partsCount=${responseMessage.parts.length}, sourceChunks=${sourceChunkIds.length}, citations=${citations.length}`,
           );
           await this.saveUIMessage(
             chatSessionId,
@@ -278,6 +304,44 @@ export class ChatAgentService {
         )
       : undefined;
 
+    const webCallbacks = {
+      onSearchInternet: async (input: any) => {
+        console.log(`[ChatAgentService] 🌐 LLM gọi callback onSearchInternet: query="${input.query}"`);
+        if (!this.tavilyService) {
+          console.warn(`[ChatAgentService] ⚠️ TavilyService chưa được inject vào ChatAgentService!`);
+          return {
+            query: input.query,
+            totalResults: 0,
+            results: [],
+            message: 'Tìm kiếm Internet bị lỗi.',
+          };
+        }
+        const res = await this.tavilyService.search(input);
+        console.log(`[ChatAgentService] 🌐 onSearchInternet trả về cho LLM: ${res.totalResults} kết quả`);
+        return res;
+      },
+      onExtractWebPage: async (input: any) => {
+        console.log(`[ChatAgentService] 📄 LLM gọi callback onExtractWebPage: URLs=[${(input.urls || []).join(', ')}], query="${input.query}"`);
+        if (!this.tavilyService) {
+          console.warn(`[ChatAgentService] ⚠️ TavilyService chưa được inject vào ChatAgentService!`);
+          return {
+            query: input.query,
+            totalSuccess: 0,
+            totalFailed: input.urls?.length || 0,
+            results: [],
+            failedResults: (input.urls || []).map((u: string) => ({
+              url: u,
+              error: 'Dịch vụ chưa được cấu hình',
+            })),
+            message: 'Tìm kiếm Internet bị lỗi.',
+          };
+        }
+        const res = await this.tavilyService.extract(input);
+        console.log(`[ChatAgentService] 📄 onExtractWebPage trả về cho LLM: ${res.totalSuccess} thành công, ${res.totalFailed} thất bại`);
+        return res;
+      },
+    };
+
     return this.chatAgentAiService.executeChatStream(
       messages,
       async ({
@@ -295,14 +359,27 @@ export class ChatAgentService {
             availableDocuments,
             attachedDocumentIds: ragContext.attachedDocumentIds,
             chatConfig: config,
-            onSearchDocumentChunks: async ({ semanticQuery, keywords }) => {
+            ...webCallbacks,
+            onSearchDocumentChunks: async (input) => {
               return this.retrievalService.searchRelevantChunks({
                 userId: ragContext.userId,
                 conversationId: ragContext.conversationId,
-                semanticQuery,
-                keywords,
+                semanticQuery: input.semanticQuery,
+                keywords: input.keywords,
                 preferredDocumentIds: ragContext.attachedDocumentIds,
-                topK: config.topK,
+                pageNumbers: input.pageNumbers,
+                pageRange: input.pageRange,
+                includeNeighbors: input.includeNeighbors,
+                topK: input.topK || config.topK,
+              });
+            },
+            onGetDocumentSectionOrPages: async (input) => {
+              return this.retrievalService.getDocumentSectionOrPages({
+                userId: ragContext.userId,
+                conversationId: ragContext.conversationId,
+                documentId: input.documentId,
+                pageNumbers: input.pageNumbers,
+                headingKeyword: input.headingKeyword,
               });
             },
             onGetDocumentsFullContent: async ({
@@ -464,7 +541,7 @@ export class ChatAgentService {
               };
             },
           }
-        : { chatConfig: config },
+        : { chatConfig: config, ...webCallbacks },
     );
   }
 

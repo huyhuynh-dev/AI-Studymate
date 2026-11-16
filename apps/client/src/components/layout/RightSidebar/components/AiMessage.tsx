@@ -9,8 +9,10 @@ import {
   Brain,
   CheckCircle2,
   ChevronDown,
+  FileSearch,
   FileText,
   FolderSearch,
+  Globe,
   HelpCircle,
   Loader2,
   Search,
@@ -21,6 +23,12 @@ import { ASSISTANT_NAME } from "../constants";
 import type { ChatMessage } from "../types";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { MessageActions } from "./MessageActions";
+import { CollapsibleSourceBar } from "./CollapsibleSourceBar";
+import {
+  extractCitationsMap,
+  sanitizeStreamingCitations,
+  type CitationBadgeMeta,
+} from "@/lib/citation-parser";
 
 interface AiMessageProps {
   message: ChatMessage;
@@ -133,6 +141,7 @@ function AskUserQuestionCard({
   }
 
   if (state === "output-available" || isSubmittedLocal) {
+    const isSkipped = Boolean(part.output?.skipped);
     const submittedAnswers: Array<{
       id?: string;
       question?: string;
@@ -143,7 +152,7 @@ function AskUserQuestionCard({
       <div className="my-2 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 p-3 text-xs text-[#0B1C30] dark:text-[#EFF0F6] shadow-2xs">
         <div className="flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-400">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <span>Đã xác nhận thông tin tóm tắt</span>
+          <span>{isSkipped ? "Đã bỏ qua câu hỏi gợi ý" : "Đã gửi phản hồi"}</span>
         </div>
         {submittedAnswers.length > 0 && (
           <ul className="mt-2 space-y-1 border-t border-emerald-100 dark:border-emerald-900/40 pt-2 text-[11px] text-[#464555] dark:text-neutral-300">
@@ -171,7 +180,7 @@ function AskUserQuestionCard({
         <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#4F46E5] dark:text-[#818CF8]" />
         <div className="space-y-0.5">
           <div className="font-bold text-[#0B1C30] dark:text-[#EFF0F6]">
-            Làm rõ yêu cầu tóm tắt
+            Làm rõ yêu cầu
           </div>
           {contextMessage && (
             <p className="text-[11px] leading-relaxed text-[#777587] dark:text-[#9DA3AF]">
@@ -296,8 +305,85 @@ export const AiMessage = React.memo(function AiMessage({
     );
   }, [normalizedParts]);
 
+  // 1. Bản đồ dữ liệu trích dẫn chi tiết
+  const citationMap = useMemo(() => extractCitationsMap(message), [message]);
+
+  // 2. Xử lý đánh số tuần tự [1], [2]... cho tất cả text parts của message
+  const { formattedParts, formattedContentFallback, allCitedList } = useMemo(() => {
+    const allocatedNumbers = new Map<string, number>();
+    const metaMap = new Map<string, CitationBadgeMeta>();
+    const citedList: CitationBadgeMeta[] = [];
+    let nextDisplayIndex = 1;
+
+    const formatText = (raw: string) => {
+      const sanitized = sanitizeStreamingCitations(raw || "", false);
+      const normalized = sanitized.replace(/\]\s*\[(?=[cw]\d)/gi, "] [");
+      return normalized.replace(
+        /\[\s*([cw]\d+(?:\s*,\s*[cw]\d+)*)\s*\]/gi,
+        (_fullMatch, innerGroup: string) => {
+          const ids = innerGroup
+            .split(",")
+            .map((s) => s.trim().toLowerCase())
+            .filter((s) => /^[cw]\d+$/.test(s));
+
+          if (ids.length === 0) return _fullMatch;
+
+          const badges = ids.map((id) => {
+            let displayNum = allocatedNumbers.get(id);
+            if (!displayNum) {
+              displayNum = nextDisplayIndex++;
+              allocatedNumbers.set(id, displayNum);
+
+              const item = citationMap.get(id);
+              const sourceType = id.startsWith("w") ? "web" : "document";
+
+              const meta: CitationBadgeMeta = {
+                displayNumber: displayNum,
+                citationId: id,
+                sourceType: item?.sourceType || (sourceType as any),
+                item,
+              };
+
+              metaMap.set(id, meta);
+              citedList.push(meta);
+            }
+
+            return `[${displayNum}](#citation-${id})`;
+          });
+
+          return badges.join(" ");
+        }
+      );
+    };
+
+    if (!hasDisplayableParts) {
+      return {
+        formattedParts: null,
+        formattedContentFallback: formatText(message.content || ""),
+        allCitedList: citedList,
+      };
+    }
+
+    const partsWithFormattedText = normalizedParts.map((p: any) => {
+      if (p.type === "text" || typeof p.text === "string") {
+        return {
+          ...p,
+          _formattedText: formatText(p.text || ""),
+        };
+      }
+      return p;
+    });
+
+    return {
+      formattedParts: partsWithFormattedText,
+      formattedContentFallback: null,
+      allCitedList: citedList,
+    };
+  }, [message, normalizedParts, hasDisplayableParts, citationMap]);
+
   const hasCitation =
     message.hasCitation ||
+    allCitedList.length > 0 ||
     (normalizedParts &&
       normalizedParts.some(
         (p: any) =>
@@ -306,10 +392,21 @@ export const AiMessage = React.memo(function AiMessage({
             p.type === "tool-searchDocuments") &&
             p.state === "output-available" &&
             (p.output?.totalChunks ?? 0) > 0) ||
+          (p.type === "tool-getDocumentSectionOrPages" &&
+            p.state === "output-available" &&
+            (p.output?.totalChunks ?? 0) > 0) ||
           (p.type === "tool-getDocumentsFullContent" &&
             p.state === "output-available" &&
-            (p.output?.totalDocuments ?? 0) > 0)
-      ));
+            (p.output?.totalDocuments ?? 0) > 0) ||
+          (p.type === "tool-searchInternet" &&
+            p.state === "output-available" &&
+            (p.output?.totalResults ?? 0) > 0) ||
+          (p.type === "tool-extractWebPage" &&
+            p.state === "output-available" &&
+            (p.output?.totalSuccess ?? 0) > 0)
+      )) ||
+    (Array.isArray(message.metadata?.citations) &&
+      message.metadata.citations.length > 0);
 
   return (
     <div className="space-y-2 select-text">
@@ -337,9 +434,15 @@ export const AiMessage = React.memo(function AiMessage({
       <div className="space-y-2.5 rounded-[20px] rounded-tl-[4px] border border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#161922] px-4 py-3 text-[13.5px] leading-relaxed text-[#0B1C30] dark:text-[#EFF0F6] shadow-xs">
         {/* Render theo Typed Parts (chuẩn Vercel AI SDK) */}
         {hasDisplayableParts ? (
-          normalizedParts.map((part: any, index: number) => {
+          (formattedParts || normalizedParts).map((part: any, index: number) => {
             if (part.type === "text" || typeof part.text === "string") {
-              return <MarkdownRenderer key={index} content={part.text || ""} />;
+              return (
+                <MarkdownRenderer
+                  key={index}
+                  content={part._formattedText || part.text || ""}
+                  citationMap={citationMap}
+                />
+              );
             }
 
             if (part.type === "reasoning") {
@@ -477,6 +580,387 @@ export const AiMessage = React.memo(function AiMessage({
                                 {src.pageNumbers && src.pageNumbers.length > 0
                                   ? `Trang ${src.pageNumbers.join(", ")}`
                                   : `${src.chunkCount} đoạn`}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              );
+            }
+
+            // 1b. Tool: Đọc phân đoạn hoặc trang cụ thể (getDocumentSectionOrPages)
+            if (
+              part.type === "tool-getDocumentSectionOrPages" ||
+              (part.type === "dynamic-tool" &&
+                part.toolName === "getDocumentSectionOrPages")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isError = state === "output-error";
+              const isDone = state === "output-available";
+
+              const fileName: string = part.output?.fileName || "";
+              const totalChunks: number = part.output?.totalChunks ?? 0;
+              const pageNumbers: number[] = Array.isArray(part.input?.pageNumbers)
+                ? part.input.pageNumbers
+                : [];
+              const headingKeyword: string = part.input?.headingKeyword || "";
+
+              return (
+                <details
+                  key={index}
+                  className="group my-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.03] p-2.5 text-xs text-[#464555] dark:text-[#EFF0F6] shadow-2xs"
+                >
+                  <summary className="flex cursor-pointer items-center gap-2 font-semibold select-none">
+                    {isRunning && (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#4F46E5]" />
+                        <span className="text-[#4F46E5] dark:text-[#818CF8]">
+                          Đang đọc phân đoạn tài liệu…
+                        </span>
+                      </>
+                    )}
+                    {isDone && (
+                      <>
+                        <BookOpen className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[#0B1C30] dark:text-white">
+                          {totalChunks > 0
+                            ? `Đã đọc ${totalChunks} phân đoạn từ "${fileName || "tài liệu"}"`
+                            : `Đã kiểm tra tài liệu "${fileName || ""}"`}
+                        </span>
+                      </>
+                    )}
+                    {isError && (
+                      <>
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                        <span className="text-rose-600 dark:text-rose-400">
+                          Lỗi khi đọc phân đoạn tài liệu
+                        </span>
+                      </>
+                    )}
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-[#777587] transition-transform group-open:rotate-180" />
+                  </summary>
+
+                  <div className="mt-2.5 space-y-1.5 border-t border-[#E5EEFF] dark:border-white/[0.08] pt-2 text-[11px]">
+                    {fileName && (
+                      <div>
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Tệp:{" "}
+                        </span>
+                        <span className="font-medium text-[#0B1C30] dark:text-neutral-200">
+                          {fileName}
+                        </span>
+                      </div>
+                    )}
+                    {pageNumbers.length > 0 && (
+                      <div>
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Trang yêu cầu:{" "}
+                        </span>
+                        <span className="text-[#0B1C30] dark:text-neutral-200">
+                          Trang {pageNumbers.join(", ")}
+                        </span>
+                      </div>
+                    )}
+                    {headingKeyword && (
+                      <div>
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Tiêu đề/Mục:{" "}
+                        </span>
+                        <span className="italic text-[#0B1C30] dark:text-neutral-200">
+                          “{headingKeyword}”
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              );
+            }
+
+            // 1c. Tool: Tìm kiếm thông tin trên Internet (searchInternet)
+            if (
+              part.type === "tool-searchInternet" ||
+              (part.type === "dynamic-tool" && part.toolName === "searchInternet")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isError = state === "output-error";
+              const isDone = state === "output-available";
+
+              const query: string =
+                part.input?.query || part.output?.query || "";
+              const topic: string = part.input?.topic || "general";
+              const searchDepth: string = part.input?.searchDepth || "basic";
+              const totalResults: number = part.output?.totalResults ?? 0;
+              const results: Array<{
+                citationId: string;
+                title: string;
+                url: string;
+                domain: string;
+                favicon?: string;
+                publishedDate?: string;
+                contentSnippet: string;
+                previewSnippet?: string;
+              }> = Array.isArray(part.output?.results) ? part.output.results : [];
+
+              return (
+                <details
+                  key={index}
+                  className="group my-2 rounded-xl border border-blue-100 dark:border-blue-900/30 bg-blue-50/40 dark:bg-blue-950/10 p-2.5 text-xs text-[#464555] dark:text-[#EFF0F6] shadow-2xs"
+                >
+                  <summary className="flex cursor-pointer items-center gap-2 font-semibold select-none">
+                    {isRunning && (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
+                        <span className="text-blue-600 dark:text-blue-400">
+                          Đang tìm kiếm thông tin trên Internet…
+                        </span>
+                      </>
+                    )}
+                    {isDone && (
+                      <>
+                        <Globe className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+                        <span className="text-[#0B1C30] dark:text-white">
+                          {totalResults > 0
+                            ? `Đã tra cứu ${totalResults} nguồn từ Internet`
+                            : "Đã tìm kiếm Internet (không có kết quả)"}
+                        </span>
+                      </>
+                    )}
+                    {isError && (
+                      <>
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                        <span className="text-rose-600 dark:text-rose-400">
+                          Lỗi khi tìm kiếm trên Internet
+                        </span>
+                      </>
+                    )}
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-[#777587] transition-transform group-open:rotate-180" />
+                  </summary>
+
+                  <div className="mt-2.5 space-y-2 border-t border-blue-100 dark:border-blue-900/30 pt-2 text-[11px]">
+                    {query && (
+                      <div>
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Từ khóa tìm kiếm:{" "}
+                        </span>
+                        <span className="italic text-[#0B1C30] dark:text-neutral-200">
+                          “{query}”
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                      {topic !== "general" && (
+                        <span className="rounded-md bg-blue-100/70 dark:bg-blue-900/40 px-1.5 py-0.5 font-medium text-blue-700 dark:text-blue-300">
+                          Chủ đề: {topic === "news" ? "Tin tức" : topic === "finance" ? "Tài chính" : topic}
+                        </span>
+                      )}
+                      {searchDepth === "advanced" && (
+                        <span className="rounded-md bg-indigo-100/70 dark:bg-indigo-900/40 px-1.5 py-0.5 font-medium text-indigo-700 dark:text-indigo-300">
+                          Tìm kiếm chuyên sâu (advanced)
+                        </span>
+                      )}
+                    </div>
+
+                    {isDone && results.length > 0 && (
+                      <div className="space-y-1.5 pt-0.5">
+                        <div className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Nguồn web đã tham khảo ({results.length} liên kết):
+                        </div>
+                        <ul className="space-y-1.5">
+                          {results.map((res, rIdx) => (
+                            <li
+                              key={`${res.url}-${rIdx}`}
+                              className="rounded-lg bg-white dark:bg-[#12151C] border border-blue-100 dark:border-white/[0.08] p-2 text-[#464555] dark:text-neutral-300 shadow-2xs hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <a
+                                  href={res.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex min-w-0 items-center gap-1.5 font-semibold text-[#0B1C30] dark:text-white hover:text-blue-600 dark:hover:text-blue-400 group/link"
+                                >
+                                  {res.favicon ? (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                    <img
+                                      src={res.favicon}
+                                      alt=""
+                                      className="h-3.5 w-3.5 shrink-0 rounded-xs"
+                                      onError={(e) => {
+                                        (e.target as HTMLElement).style.display = "none";
+                                      }}
+                                    />
+                                  ) : (
+                                    <Globe className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                                  )}
+                                  <span className="truncate">{res.title}</span>
+                                  <ArrowUpRight className="h-3 w-3 shrink-0 text-[#777587] group-hover/link:text-blue-600" />
+                                </a>
+                                <span className="shrink-0 text-[10px] text-[#777587] font-medium">
+                                  {res.domain}
+                                </span>
+                              </div>
+                              {(res.previewSnippet || res.contentSnippet) && (
+                                <p className="mt-1 line-clamp-2 text-[11px] text-[#555] dark:text-neutral-400 leading-normal">
+                                  {res.previewSnippet || res.contentSnippet}
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              );
+            }
+
+            // 1d. Tool: Bóc tách nội dung chi tiết từ Web (extractWebPage)
+            if (
+              part.type === "tool-extractWebPage" ||
+              (part.type === "dynamic-tool" && part.toolName === "extractWebPage")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isError = state === "output-error";
+              const isDone = state === "output-available";
+
+              const query: string =
+                part.input?.query || part.output?.query || "";
+              const totalSuccess: number = part.output?.totalSuccess ?? 0;
+              const results: Array<{
+                citationId: string;
+                title: string;
+                url: string;
+                domain: string;
+                favicon?: string;
+                extractedContent: string;
+                previewSnippet?: string;
+              }> = Array.isArray(part.output?.results) ? part.output.results : [];
+              const failedResults: Array<{ url: string; error: string }> =
+                Array.isArray(part.output?.failedResults)
+                  ? part.output.failedResults
+                  : [];
+
+              return (
+                <details
+                  key={index}
+                  className="group my-2 rounded-xl border border-sky-100 dark:border-sky-900/30 bg-sky-50/40 dark:bg-sky-950/10 p-2.5 text-xs text-[#464555] dark:text-[#EFF0F6] shadow-2xs"
+                >
+                  <summary className="flex cursor-pointer items-center gap-2 font-semibold select-none">
+                    {isRunning && (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-600 dark:text-sky-400" />
+                        <span className="text-sky-600 dark:text-sky-400">
+                          Đang đọc sâu nội dung trang web…
+                        </span>
+                      </>
+                    )}
+                    {isDone && (
+                      <>
+                        <FileSearch className="h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400" />
+                        <span className="text-[#0B1C30] dark:text-white">
+                          {totalSuccess > 0
+                            ? `Đã bóc tách nội dung ${totalSuccess} trang web`
+                            : "Không thể bóc tách nội dung trang web"}
+                        </span>
+                      </>
+                    )}
+                    {isError && (
+                      <>
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                        <span className="text-rose-600 dark:text-rose-400">
+                          Lỗi khi bóc tách nội dung trang web
+                        </span>
+                      </>
+                    )}
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-[#777587] transition-transform group-open:rotate-180" />
+                  </summary>
+
+                  <div className="mt-2.5 space-y-2 border-t border-sky-100 dark:border-sky-900/30 pt-2 text-[11px]">
+                    {query && (
+                      <div>
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Mục tiêu trích xuất:{" "}
+                        </span>
+                        <span className="italic text-[#0B1C30] dark:text-neutral-200">
+                          “{query}”
+                        </span>
+                      </div>
+                    )}
+
+                    {isDone && results.length > 0 && (
+                      <div className="space-y-1.5 pt-0.5">
+                        <div className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Trang web đã đọc chi tiết ({results.length}):
+                        </div>
+                        <ul className="space-y-1.5">
+                          {results.map((res, rIdx) => (
+                            <li
+                              key={`${res.url}-${rIdx}`}
+                              className="rounded-lg bg-white dark:bg-[#12151C] border border-sky-100 dark:border-white/[0.08] p-2 text-[#464555] dark:text-neutral-300 shadow-2xs hover:border-sky-300 dark:hover:border-sky-700 transition-colors"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <a
+                                  href={res.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex min-w-0 items-center gap-1.5 font-semibold text-[#0B1C30] dark:text-white hover:text-sky-600 dark:hover:text-sky-400 group/link"
+                                >
+                                  {res.favicon ? (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                    <img
+                                      src={res.favicon}
+                                      alt=""
+                                      className="h-3.5 w-3.5 shrink-0 rounded-xs"
+                                      onError={(e) => {
+                                        (e.target as HTMLElement).style.display = "none";
+                                      }}
+                                    />
+                                  ) : (
+                                    <Globe className="h-3.5 w-3.5 shrink-0 text-sky-500" />
+                                  )}
+                                  <span className="truncate">{res.title}</span>
+                                  <ArrowUpRight className="h-3 w-3 shrink-0 text-[#777587] group-hover/link:text-sky-600" />
+                                </a>
+                                <span className="shrink-0 text-[10px] text-[#777587] font-medium">
+                                  {res.domain}
+                                </span>
+                              </div>
+                              {res.previewSnippet && (
+                                <p className="mt-1 line-clamp-2 text-[11px] text-[#555] dark:text-neutral-400 leading-normal">
+                                  {res.previewSnippet}
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {isDone && failedResults.length > 0 && (
+                      <div className="space-y-1 pt-1">
+                        <div className="font-semibold text-rose-600 dark:text-rose-400">
+                          Trang web không thể truy cập ({failedResults.length}):
+                        </div>
+                        <ul className="space-y-1">
+                          {failedResults.map((f, fIdx) => (
+                            <li
+                              key={`${f.url}-${fIdx}`}
+                              className="flex items-center justify-between gap-2 rounded-lg bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 px-2 py-1 text-[11px] text-rose-700 dark:text-rose-300"
+                            >
+                              <span className="truncate font-mono text-[10px]">
+                                {f.url}
+                              </span>
+                              <span className="shrink-0 font-medium">
+                                {f.error}
                               </span>
                             </li>
                           ))}
@@ -839,7 +1323,10 @@ export const AiMessage = React.memo(function AiMessage({
             return null;
           })
         ) : (
-          <MarkdownRenderer content={message.content || ""} />
+          <MarkdownRenderer
+            content={formattedContentFallback || message.content || ""}
+            citationMap={citationMap}
+          />
         )}
 
         {/* Bullets bổ trợ nếu có */}
@@ -855,6 +1342,11 @@ export const AiMessage = React.memo(function AiMessage({
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Thanh tổng hợp nguồn trích dẫn thu gọn (Collapsible Source Bar) */}
+        {allCitedList.length > 0 && (
+          <CollapsibleSourceBar citedList={allCitedList} />
         )}
 
         {/* Trích dẫn riêng nếu có */}

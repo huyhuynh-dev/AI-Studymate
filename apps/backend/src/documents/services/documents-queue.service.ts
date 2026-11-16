@@ -1,106 +1,138 @@
-import { Injectable, Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnApplicationShutdown,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 
 export interface DocumentJobData {
-    documentId: string;
-    mimeType: string;
-    storageKey: string;
-    fileName?: string;
-}
-
-export interface DocumentEmbeddingJobData {
-    documentId: string;
+  documentId: string;
+  mimeType: string;
+  storageKey: string;
+  fileName?: string;
 }
 
 export const DOCUMENT_QUEUE_NAME = 'document-processing';
-export const DOCUMENT_EMBEDDING_QUEUE_NAME = 'document-embedding';
 
 @Injectable()
-export class DocumentsQueueService implements OnModuleInit, OnApplicationShutdown {
-    private readonly logger = new Logger(DocumentsQueueService.name);
-    private queue: Queue<DocumentJobData>;
-    private embeddingQueue: Queue<DocumentEmbeddingJobData>;
+export class DocumentsQueueService
+  implements OnModuleInit, OnApplicationShutdown
+{
+  private readonly logger = new Logger(DocumentsQueueService.name);
+  private queue: Queue<DocumentJobData>;
 
-    constructor(private readonly configService: ConfigService) { }
+  constructor(private readonly configService: ConfigService) {}
 
-    onModuleInit() {
-        const redisUrl = this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-        const redisPassword = this.configService.get<string>('REDIS_PASSWORD') || undefined;
+  onModuleInit() {
+    const redisUrl =
+      this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
+    const redisPassword =
+      this.configService.get<string>('REDIS_PASSWORD') || undefined;
 
-        const connection = {
-            url: redisUrl,
-            password: redisPassword,
-            maxRetriesPerRequest: null,
-        };
+    this.queue = new Queue<DocumentJobData>(DOCUMENT_QUEUE_NAME, {
+      connection: {
+        url: redisUrl,
+        password: redisPassword,
+        maxRetriesPerRequest: null,
+      },
+    });
 
-        this.queue = new Queue<DocumentJobData>(DOCUMENT_QUEUE_NAME, {
-            connection,
-        });
+    this.queue.on('error', (err) => {
+      this.logger.warn(
+        `BullMQ Queue [${DOCUMENT_QUEUE_NAME}] error: ${err.message}`,
+      );
+    });
 
-        this.queue.on('error', (err) => {
-            this.logger.warn(`BullMQ Queue [${DOCUMENT_QUEUE_NAME}] error: ${err.message}`);
-        });
+    this.logger.log(
+      `BullMQ Queue [${DOCUMENT_QUEUE_NAME}] đã khởi tạo thành công`,
+    );
 
-        this.embeddingQueue = new Queue<DocumentEmbeddingJobData>(DOCUMENT_EMBEDDING_QUEUE_NAME, {
-            connection,
-        });
+    void this.deduplicatePendingJobs();
+  }
 
-        this.embeddingQueue.on('error', (err) => {
-            this.logger.warn(`BullMQ Queue [${DOCUMENT_EMBEDDING_QUEUE_NAME}] error: ${err.message}`);
-        });
+  /**
+   * Dọn dẹp các job bị trùng lặp cùng documentId đang nằm chờ (waiting/delayed) trong Redis
+   * từ các phiên trước (đặc biệt các job cũ dùng jobId chứa timestamp).
+   */
+  private async deduplicatePendingJobs(): Promise<void> {
+    if (!this.queue) return;
+    try {
+      const pendingJobs = await this.queue.getJobs(['waiting', 'delayed']);
+      const seenDocIds = new Set<string>();
 
-        this.logger.log(
-            `BullMQ Queues [${DOCUMENT_QUEUE_NAME}] & [${DOCUMENT_EMBEDDING_QUEUE_NAME}] đã khởi tạo thành công`
-        );
+      for (const job of pendingJobs) {
+        const docId = job?.data?.documentId;
+        if (!docId) continue;
+
+        if (seenDocIds.has(docId)) {
+          await job.remove().catch(() => {});
+          this.logger.warn(
+            `Đã xóa job trùng lặp [${job.id}] trong hàng đợi cho tài liệu [${docId}]`,
+          );
+        } else {
+          seenDocIds.add(docId);
+        }
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Không thể dọn dẹp job trùng lặp: ${message}`);
+    }
+  }
+
+  async addProcessingJob(data: DocumentJobData): Promise<void> {
+    if (!this.queue) {
+      this.logger.warn(
+        `Queue [${DOCUMENT_QUEUE_NAME}] chưa được khởi tạo, bỏ qua job cho document ${data.documentId}`,
+      );
+      return;
     }
 
-    async addProcessingJob(data: DocumentJobData): Promise<void> {
-        if (!this.queue) {
-            this.logger.warn(`Queue [${DOCUMENT_QUEUE_NAME}] chưa được khởi tạo, bỏ qua job cho document ${data.documentId}`);
-            return;
+    const jobId = `ingest-${data.documentId}`;
+
+    try {
+      const existingJob = await this.queue.getJob(jobId);
+      if (existingJob) {
+        const state = await existingJob.getState();
+        if (
+          state === 'active' ||
+          state === 'waiting' ||
+          state === 'delayed' ||
+          state === 'prioritized' ||
+          state === 'waiting-children'
+        ) {
+          this.logger.debug(
+            `Bỏ qua đẩy job trùng lặp: Tài liệu [${data.documentId}] đã có job [${jobId}] đang ở trạng thái [${state}]`,
+          );
+          return;
         }
-
-        await this.queue.add('process-document', data, {
-            attempts: 3,
-            backoff: {
-                type: 'exponential',
-                delay: 3000,
-            },
-            removeOnComplete: true,
-            removeOnFail: false,
-        });
-
-        this.logger.log(`Đã đẩy job trích xuất văn bản [${data.documentId}] vào hàng đợi [${DOCUMENT_QUEUE_NAME}]`);
+        await existingJob.remove().catch(() => {});
+      }
+    } catch {
+      // Nếu không đọc/xóa được job cũ, tiếp tục thử add vào queue
     }
 
-    async addEmbeddingJob(data: DocumentEmbeddingJobData): Promise<void> {
-        if (!this.embeddingQueue) {
-            this.logger.warn(`Queue [${DOCUMENT_EMBEDDING_QUEUE_NAME}] chưa được khởi tạo, bỏ qua job cho document ${data.documentId}`);
-            return;
-        }
+    await this.queue.add('ingest-document', data, {
+      jobId,
+      attempts: 2,
+      backoff: {
+        type: 'exponential',
+        delay: 15_000,
+      },
+      removeOnComplete: true,
+      removeOnFail: false,
+    });
 
-        await this.embeddingQueue.add('embed-document', data, {
-            attempts: 3,
-            backoff: {
-                type: 'exponential',
-                delay: 3000,
-            },
-            removeOnComplete: true,
-            removeOnFail: false,
-        });
+    this.logger.log(
+      `Đã đẩy job xử lý tài liệu [${data.documentId}] vào hàng đợi [${DOCUMENT_QUEUE_NAME}]`,
+    );
+  }
 
-        this.logger.log(`Đã đẩy job embedding [${data.documentId}] vào hàng đợi [${DOCUMENT_EMBEDDING_QUEUE_NAME}]`);
+  async onApplicationShutdown() {
+    if (this.queue) {
+      await this.queue.close().catch(() => {});
+      this.logger.log(`BullMQ Queue [${DOCUMENT_QUEUE_NAME}] đã đóng kết nối`);
     }
-
-    async onApplicationShutdown() {
-        if (this.queue) {
-            await this.queue.close().catch(() => {});
-            this.logger.log(`BullMQ Queue [${DOCUMENT_QUEUE_NAME}] đã đóng kết nối`);
-        }
-        if (this.embeddingQueue) {
-            await this.embeddingQueue.close().catch(() => {});
-            this.logger.log(`BullMQ Queue [${DOCUMENT_EMBEDDING_QUEUE_NAME}] đã đóng kết nối`);
-        }
-    }
+  }
 }
