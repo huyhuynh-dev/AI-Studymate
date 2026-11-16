@@ -28,9 +28,11 @@ describe('QuizService', () => {
     let mockQuizAiService: any;
     let mockDocumentsRepo: any;
     let mockDocumentChunksRepo: any;
+    let mockDeckFlashcardRepo: any;
 
     beforeEach(async () => {
         mockQuizRepo = {
+            assertConversationOwnership: vi.fn().mockResolvedValue(undefined),
             getQuizzesByConversation: vi.fn(),
             getQuizById: vi.fn(),
             createQuizWithQuestions: vi.fn(),
@@ -43,6 +45,7 @@ describe('QuizService', () => {
             updateAttemptProgress: vi.fn(),
             saveSubmittedAttempt: vi.fn(),
             updateAnswerEvaluationAndScore: vi.fn(),
+            getWeakQuestionSignalsByConversation: vi.fn().mockResolvedValue([]),
         };
 
         mockQuizAiService = {
@@ -56,6 +59,14 @@ describe('QuizService', () => {
 
         mockDocumentChunksRepo = {
             findChunksByDocumentIds: vi.fn().mockResolvedValue([]),
+            findChunksWithNeighborsByIds: vi.fn().mockResolvedValue([]),
+        };
+
+        mockDeckFlashcardRepo = {
+            getDeckById: vi.fn(),
+            createDeck: vi.fn(),
+            createManyFlashcards: vi.fn(),
+            getWeakFlashcardSignalsByConversation: vi.fn().mockResolvedValue([]),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -72,11 +83,7 @@ describe('QuizService', () => {
                 },
                 {
                     provide: DeckFlashcardRepoService,
-                    useValue: {
-                        getDeckById: vi.fn(),
-                        createDeck: vi.fn(),
-                        createManyFlashcards: vi.fn(),
-                    },
+                    useValue: mockDeckFlashcardRepo,
                 },
                 {
                     provide: QuizAiService,
@@ -459,6 +466,281 @@ describe('QuizService', () => {
                     ],
                 })
             ).rejects.toThrow(BadRequestException);
+        });
+    });
+
+    describe('Bloom Quota & Targeted Weak-Chunk Quiz', () => {
+        it('forwards bloomQuota when generating AI quiz with bloomPreset', async () => {
+            const now = new Date();
+            mockDocumentsRepo.getAllDocumentsByConversationId.mockResolvedValue([
+                {
+                    id: 'doc-1',
+                    file_name: 'Algo.pdf',
+                    ocr_status: 'done',
+                    raw_text: 'Binary search tree properties.',
+                },
+            ]);
+            mockDocumentChunksRepo.findChunksByDocumentIds.mockResolvedValue([
+                {
+                    id: 'chk-1',
+                    document_id: 'doc-1',
+                    chunk_index: 0,
+                    content: 'Binary search tree properties.',
+                    raw_content: null,
+                    page_numbers: [1],
+                    headings: ['BST'],
+                    bboxes: null,
+                },
+            ]);
+            mockQuizAiService.generateQuizFromContext.mockResolvedValue({
+                title: 'BST Bloom Test',
+                description: 'Desc',
+                rows: [
+                    {
+                        question_type: 'single_choice',
+                        order_index: 0,
+                        question_text: '<p>BST?</p>',
+                        points: 1,
+                        options: [
+                            { id: '1', text: 'A', isCorrect: true },
+                            { id: '2', text: 'B', isCorrect: false },
+                        ],
+                        grading_criteria: [],
+                        explanation: '<p>Explain</p>',
+                        bloom_level: 'analyze',
+                    },
+                ],
+                rejected: [],
+            });
+            mockQuizRepo.createQuizWithQuestions.mockResolvedValue({
+                id: 'quiz-bloom-1',
+                conversation_id: 'conv-1',
+                title: 'BST Bloom Test',
+                description: 'Desc',
+                time_limit_sec: null,
+                source: 'ai',
+                source_deck_id: null,
+                created_at: now,
+                updated_at: now,
+                questions: [
+                    {
+                        id: 'q-1',
+                        quiz_id: 'quiz-bloom-1',
+                        question_type: QuestionTypeEnum.single_choice,
+                        order_index: 0,
+                        question_text: '<p>BST?</p>',
+                        points: 1,
+                        options: [
+                            { id: '1', text: 'A', isCorrect: true },
+                            { id: '2', text: 'B', isCorrect: false },
+                        ],
+                        sample_answer: null,
+                        grading_criteria: [],
+                        explanation: '<p>Explain</p>',
+                        bloom_level: 'analyze',
+                        source_refs: null,
+                    },
+                ],
+            });
+
+            const res = await service.generateWithAI('user-1', 'conv-1', {
+                documentIds: ['doc-1'],
+                questionCount: 10,
+                types: [QuestionTypeEnum.single_choice],
+                difficulty: 'applied',
+                bloomPreset: 'exam_prep',
+            });
+
+            expect(
+                mockQuizAiService.generateQuizFromContext
+            ).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    bloomQuota: { remember: 1, understand: 2, apply: 4, analyze: 3 },
+                })
+            );
+            expect(res.questions[0].bloomLevel).toBe('analyze');
+        });
+
+        it('getWeakAreasSummary returns aggregated signals from wrong quiz answers and leech cards', async () => {
+            mockQuizRepo.getWeakQuestionSignalsByConversation.mockResolvedValue([
+                {
+                    question_id: 'q-1',
+                    evaluation_status: 'incorrect',
+                    missing_points: ['Thiếu điều kiện dừng'],
+                    question: {
+                        id: 'q-1',
+                        question_text: '<p>Đệ quy là gì?</p>',
+                        source_refs: [
+                            {
+                                documentId: 'doc-1',
+                                fileName: 'Algo.pdf',
+                                chunkId: 'chk-1',
+                                headings: ['Đệ quy'],
+                            },
+                        ],
+                    },
+                },
+            ]);
+            mockDeckFlashcardRepo.getWeakFlashcardSignalsByConversation.mockResolvedValue([
+                {
+                    id: 'card-1',
+                    front_text: 'Base case?',
+                    ease_factor: 1.7,
+                    state: 'relearning',
+                    source_refs: [
+                        {
+                            documentId: 'doc-1',
+                            fileName: 'Algo.pdf',
+                            chunkId: 'chk-2',
+                            headings: ['Base case'],
+                        },
+                    ],
+                    reviews: [{ id: 'rev-1' }],
+                },
+            ]);
+
+            const summary = await service.getWeakAreasSummary('user-1', 'conv-1');
+
+            expect(mockQuizRepo.assertConversationOwnership).toHaveBeenCalledWith(
+                'conv-1',
+                'user-1'
+            );
+            expect(summary.hasWeakAreas).toBe(true);
+            expect(summary.weakChunkCount).toBe(2);
+            expect(summary.incorrectQuizCount).toBe(1);
+            expect(summary.leechCardCount).toBe(1);
+            expect(summary.topMissingPoints).toContain('Thiếu điều kiện dừng');
+        });
+
+        it('generateTargetedQuiz throws BadRequestException when no weak areas exist', async () => {
+            mockQuizRepo.getWeakQuestionSignalsByConversation.mockResolvedValue([]);
+            mockDeckFlashcardRepo.getWeakFlashcardSignalsByConversation.mockResolvedValue([]);
+
+            await expect(
+                service.generateTargetedQuiz('user-1', 'conv-1', {
+                    questionCount: 5,
+                    types: [QuestionTypeEnum.single_choice],
+                })
+            ).rejects.toThrow(BadRequestException);
+        });
+
+        it('generateTargetedQuiz expands neighbor chunks, applies remediationFocus, and prefixes quiz title', async () => {
+            const now = new Date();
+            mockQuizRepo.getWeakQuestionSignalsByConversation.mockResolvedValue([
+                {
+                    question_id: 'q-old-1',
+                    evaluation_status: 'incorrect',
+                    missing_points: ['Quên nêu Big-O'],
+                    question: {
+                        id: 'q-old-1',
+                        question_text: '<p>Độ phức tạp Binary Search?</p>',
+                        source_refs: [
+                            {
+                                documentId: 'doc-1',
+                                fileName: 'DSA.pdf',
+                                chunkId: 'chk-2',
+                                headings: ['Binary Search'],
+                            },
+                        ],
+                    },
+                },
+            ]);
+
+            mockDocumentChunksRepo.findChunksWithNeighborsByIds.mockResolvedValue([
+                {
+                    documentId: 'doc-1',
+                    fileName: 'DSA.pdf',
+                    chunks: [
+                        {
+                            id: 'chk-1',
+                            chunk_index: 0,
+                            content: 'Context liền trước.',
+                            raw_content: null,
+                            page_numbers: [5],
+                            headings: ['Binary Search'],
+                            bboxes: null,
+                        },
+                        {
+                            id: 'chk-2',
+                            chunk_index: 1,
+                            content: 'Độ phức tạp tìm kiếm nhị phân là O(log n).',
+                            raw_content: null,
+                            page_numbers: [5],
+                            headings: ['Binary Search'],
+                            bboxes: null,
+                        },
+                    ],
+                },
+            ]);
+
+            mockQuizAiService.generateQuizFromContext.mockResolvedValue({
+                title: 'Ôn tập Tìm kiếm nhị phân',
+                description: 'Luyện lại',
+                rows: [
+                    {
+                        question_type: 'essay',
+                        order_index: 0,
+                        question_text: '<p>Tình huống áp dụng Binary Search?</p>',
+                        points: 2,
+                        sample_answer: '<p>Mẫu</p>',
+                        grading_criteria: ['Nêu O(log n)'],
+                        explanation: '<p>Giải thích</p>',
+                        bloom_level: 'apply',
+                    },
+                ],
+                rejected: [],
+            });
+
+            mockQuizRepo.createQuizWithQuestions.mockResolvedValue({
+                id: 'quiz-targeted-1',
+                conversation_id: 'conv-1',
+                title: '[Luyện vùng yếu] Ôn tập Tìm kiếm nhị phân',
+                description: 'Luyện lại',
+                time_limit_sec: null,
+                source: 'ai',
+                source_deck_id: null,
+                created_at: now,
+                updated_at: now,
+                questions: [
+                    {
+                        id: 'q-new-1',
+                        quiz_id: 'quiz-targeted-1',
+                        question_type: QuestionTypeEnum.essay,
+                        order_index: 0,
+                        question_text: '<p>Tình huống áp dụng Binary Search?</p>',
+                        points: 2,
+                        options: null,
+                        sample_answer: '<p>Mẫu</p>',
+                        grading_criteria: ['Nêu O(log n)'],
+                        explanation: '<p>Giải thích</p>',
+                        bloom_level: 'apply',
+                        source_refs: null,
+                    },
+                ],
+            });
+
+            const res = await service.generateTargetedQuiz('user-1', 'conv-1', {
+                questionCount: 5,
+                types: [QuestionTypeEnum.essay],
+                bloomPreset: 'exam_prep',
+            });
+
+            expect(
+                mockDocumentChunksRepo.findChunksWithNeighborsByIds
+            ).toHaveBeenCalledWith(['chk-2'], 'user-1', 'conv-1');
+            expect(
+                mockQuizAiService.generateQuizFromContext
+            ).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    remediationFocus: expect.objectContaining({
+                        weakTopics: ['Binary Search'],
+                        missingPoints: ['Quên nêu Big-O'],
+                        priorFailedQuestions: ['Độ phức tạp Binary Search?'],
+                    }),
+                })
+            );
+            expect(res.title).toContain('[Luyện vùng yếu]');
+            expect(res.questions[0].bloomLevel).toBe('apply');
         });
     });
 });

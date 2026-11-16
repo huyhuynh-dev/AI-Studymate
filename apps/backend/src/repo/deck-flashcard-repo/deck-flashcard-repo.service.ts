@@ -337,6 +337,42 @@ export class DeckFlashcardRepoService {
         }
     }
 
+    /**
+     * Lấy các thẻ khó nhớ (ease_factor < 2.1, đang relearning hoặc từng bị bấm Again rating=1)
+     * trong một phiên học để phục vụ chẩn đoán và sinh đề đặc trị vùng yếu.
+     */
+    async getWeakFlashcardSignalsByConversation(
+        conversationId: string,
+        userId: string
+    ) {
+        return await this.prisma.flashcard.findMany({
+            where: {
+                deck: {
+                    conversation_id: conversationId,
+                    user_id: userId,
+                },
+                OR: [
+                    { ease_factor: { lt: 2.1 } },
+                    { state: 'relearning' },
+                    { reviews: { some: { rating: 1 } } },
+                ],
+            },
+            select: {
+                id: true,
+                front_text: true,
+                ease_factor: true,
+                state: true,
+                source_refs: true,
+                reviews: {
+                    where: { rating: 1 },
+                    select: { id: true },
+                },
+            },
+            orderBy: { ease_factor: 'asc' },
+            take: 150,
+        });
+    }
+
     private async assertDeckOwnership(deckId: string, userId: string): Promise<void> {
         const deck = await this.prisma.flashcardDeck.findFirst({
             where: {

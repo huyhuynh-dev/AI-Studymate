@@ -7,7 +7,7 @@ import type { AttemptAnswer, EvaluationStatus, QuizQuestion } from "../types";
 import { Badge, Button, Segmented } from "../ui/primitives";
 import { RichTextView } from "../ui/RichTextView";
 import { ChoiceList } from "../ui/ChoiceList";
-import { TypeBadge } from "../ui/badges";
+import { BloomBadge, TypeBadge } from "../ui/badges";
 import { EVAL_META } from "../constants";
 import { cx, fmtPoints, isAnswered, isHtmlEmpty } from "../utils";
 
@@ -35,9 +35,10 @@ export function ReviewCard({ index, q, a, onOverride }: {
   return (
     <article className="rounded-[24px] border border-[var(--border-subtle)] bg-card p-5 shadow-[var(--qz-shadow-card)] sm:p-6" aria-label={`Câu ${index + 1}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-[14px] font-semibold font-heading tabular-nums">Câu {index + 1}</span>
           <TypeBadge type={q.type} />
+          <BloomBadge level={q.bloomLevel} />
         </div>
         <Badge tone={meta.tone}>
           {meta.label} · <span className="tabular-nums">{earned > 0 ? "+" : ""}{fmtPoints(earned)}/{fmtPoints(q.points)}đ</span>

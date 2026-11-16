@@ -205,6 +205,7 @@ export const QuizQuestionScalarFieldEnum = {
   sample_answer: 'sample_answer',
   grading_criteria: 'grading_criteria',
   explanation: 'explanation',
+  bloom_level: 'bloom_level',
   source_refs: 'source_refs',
   created_at: 'created_at',
   updated_at: 'updated_at'

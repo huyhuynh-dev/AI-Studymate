@@ -12,7 +12,7 @@ import "./quiztab.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { useFocusMode } from "@/components/layout";
-import type { DeckOption, DocumentOption, FlashcardTarget, Quiz, QuizAttempt, QuizDraft, QuizSource, TestSetup, EvaluationStatus } from "./types";
+import type { DeckOption, DocumentOption, FlashcardTarget, Quiz, QuizAttempt, QuizCreateMode, QuizDraft, TestSetup, EvaluationStatus } from "./types";
 import type { QuizApi } from "./data/quizApi";
 import { createMockQuizApi } from "./data/mockApi";
 import { MOCK_DOCUMENTS } from "./data/mockDocuments";
@@ -64,7 +64,7 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
   const [view, setView] = useState<View>({ name: "list" });
   const [pendingQuizId, setPendingQuizId] = useState<string | null>(null);
   const [handledRequestKey, setHandledRequestKey] = useState<string | null>(null);
-  const [createSource, setCreateSource] = useState<QuizSource | null>(null);
+  const [createSource, setCreateSource] = useState<QuizCreateMode | null>(null);
   const [setup, setSetup] = useState<{ quizId: string; retryIds?: string[] } | null>(null);
   const [deleting, setDeleting] = useState<Quiz | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -130,7 +130,7 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
   const attemptOf = (quizId: string, id: string): QuizAttempt | null => (store.attempts[quizId] ?? []).find((a) => a.id === id) ?? null;
   const go = (v: View) => setView(v);
 
-  const openCreate = (s: QuizSource) => (s === "manual" ? go({ name: "builder", quizId: null }) : setCreateSource(s));
+  const openCreate = (s: QuizCreateMode) => (s === "manual" ? go({ name: "builder", quizId: null }) : setCreateSource(s));
 
   const saveQuiz = async (quizId: string | null, draft: QuizDraft) => {
     const q = quizId ? await store.updateQuiz(quizId, draft) : await store.createQuiz(draft);
@@ -166,7 +166,7 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
   if (view.name === "list") {
     content = (
       <QuizListView
-        quizzes={store.quizzes} attempts={store.attempts} loading={store.loading} error={store.error} onRetry={store.reload}
+        quizzes={store.quizzes} attempts={store.attempts} weakSummary={store.weakSummary} loading={store.loading} error={store.error} onRetry={store.reload}
         onCreate={openCreate}
         hasDocuments={hasDocuments} hasDecks={decks.length > 0} onUploadDocument={onUploadDocument}
         onOpen={(q) => go({ name: "detail", quizId: q.id })}
@@ -199,7 +199,7 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
     } else {
       content = (
         <QuizListView
-          quizzes={store.quizzes} attempts={store.attempts} loading={store.loading} error={store.error} onRetry={store.reload}
+          quizzes={store.quizzes} attempts={store.attempts} weakSummary={store.weakSummary} loading={store.loading} error={store.error} onRetry={store.reload}
           onCreate={openCreate}
           hasDocuments={hasDocuments} hasDecks={decks.length > 0} onUploadDocument={onUploadDocument}
           onOpen={(q) => go({ name: "detail", quizId: q.id })}
@@ -246,6 +246,7 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
           onRetryAll={() => setSetup({ quizId: quiz.id })}
           onRetryIncomplete={(ids) => setSetup({ quizId: quiz.id, retryIds: ids })}
           onOverride={(qid, s: Exclude<EvaluationStatus, "pending">) => store.overrideEvaluation(att, qid, s)}
+          onGenerateTargeted={() => setCreateSource("targeted")}
           onConvert={async (ids, target: FlashcardTarget) => {
             const r = await store.convertToFlashcards(att.id, ids, target);
             notify(`Đã tạo ${r.created} thẻ Flashcard`);
@@ -264,9 +265,10 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
 
       {createSource && (
         <CreateQuizDialog
-          open key={createSource} initialSource={createSource} decks={decks} documents={documents} onClose={() => setCreateSource(null)} onManual={() => undefined}
+          open key={createSource} initialSource={createSource} decks={decks} documents={documents} weakSummary={store.weakSummary} onClose={() => setCreateSource(null)} onManual={() => undefined}
           onGenerateAI={async (o) => { const q = await store.generateWithAI(o); setCreateSource(null); notify("AI đã tạo xong đề kiểm tra"); go({ name: "detail", quizId: q.id }); }}
           onGenerateDeck={async (o) => { const q = await store.generateFromDeck(o); setCreateSource(null); notify("Đã tạo bài kiểm tra từ bộ thẻ"); go({ name: "detail", quizId: q.id }); }}
+          onGenerateTargeted={async (o) => { const q = await store.generateTargetedQuiz(o); setCreateSource(null); notify("AI đã tạo xong đề ôn tập bù lỗ hổng"); go({ name: "detail", quizId: q.id }); }}
         />
       )}
 

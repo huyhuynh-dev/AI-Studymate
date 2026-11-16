@@ -20,12 +20,17 @@ import {
   visionIngestionSchema,
   type VisionIngestionOutput,
 } from './vision-ingestion.schema.js';
+import {
+  queryDecomposeSchema,
+  type QueryDecomposeOutput,
+} from './query-decompose.schema.js';
 
 export * from './blocknote.schema.js';
 export * from './quiz-ai.schema.js';
 export * from './flashcard-ai.schema.js';
 export * from './chat-agent.schema.js';
 export * from './vision-ingestion.schema.js';
+export * from './query-decompose.schema.js';
 
 export interface FeatureOutputMap {
   SUMMARIZE_GENERATE: SummaryOutput;
@@ -35,6 +40,7 @@ export interface FeatureOutputMap {
   FLASHCARD_GENERATE: LlmFlashcardOutput;
   FOLLOW_UP_SUGGESTIONS: FollowUpSuggestionsOutput;
   VISION_OCR: VisionIngestionOutput;
+  QUERY_DECOMPOSE: QueryDecomposeOutput;
 }
 
 export type StructuredFeatureKey = keyof FeatureOutputMap;
@@ -92,6 +98,12 @@ export const FEATURE_SCHEMAS: {
     schemaName: 'VisionDocumentIngestion',
     schemaDescription:
       'Kết quả trích xuất OCR, mô tả hình ảnh và phân đoạn ngữ nghĩa (chunking) từ hình ảnh học tập',
+  },
+  QUERY_DECOMPOSE: {
+    schema: queryDecomposeSchema,
+    schemaName: 'QueryDecomposition',
+    schemaDescription:
+      'Phân rã câu hỏi đa ý và mở rộng từ khóa chuyên ngành phục vụ truy xuất Hybrid RAG',
   },
 };
 

@@ -20,6 +20,11 @@ export interface DocumentCitationItem {
   previewSnippet?: string;
   bboxes?: unknown;
   assets?: unknown[];
+  rrfScore?: number;
+  rerankScore?: number | null;
+  rrfRank?: number | null;
+  vectorRank?: number | null;
+  keywordRank?: number | null;
 }
 
 export interface WebCitationItem {
@@ -55,6 +60,7 @@ export interface SearchDocumentChunksSourceSummary {
 export interface SearchDocumentChunksToolOutput {
   semanticQuery: string;
   keywords: string[];
+  subQueriesUsed?: string[];
   totalChunks: number;
   sources: SearchDocumentChunksSourceSummary[];
   chunks: Array<{
@@ -76,6 +82,10 @@ export interface SearchDocumentChunksToolOutput {
       next?: { chunkIndex: number; content: string; pageNumbers: number[] } | null;
     };
     rrfScore: number;
+    rerankScore?: number | null;
+    rrfRank?: number | null;
+    vectorRank?: number | null;
+    keywordRank?: number | null;
   }>;
 }
 
@@ -332,12 +342,14 @@ export type QuizToolQuestionType =
   | 'essay';
 
 export type QuizToolDifficulty = 'basic' | 'applied' | 'advanced';
+export type QuizToolBloomPreset = 'familiarize' | 'balanced' | 'exam_prep';
 
 export interface CreateQuizToolInput {
   documentIds?: string[];
   questionCount?: number;
   types?: QuizToolQuestionType[];
   difficulty?: QuizToolDifficulty;
+  bloomPreset?: QuizToolBloomPreset;
   deckId?: string;
 }
 

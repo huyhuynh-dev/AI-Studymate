@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ConfigService } from '@nestjs/config';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiService } from './ai.service.js';
 import { AiModelFactory } from './ai-model.factory.js';
 import { PromptRegistryService } from './prompts/prompt-registry.service.js';
@@ -10,9 +11,16 @@ import { resolveFeatureSchema } from './schemas/index.js';
 
 describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () => {
   let service: AiService;
+  let mockRerankingModel: {
+    specificationVersion: 'v3';
+    provider: string;
+    modelId: string;
+    doRerank: ReturnType<typeof vi.fn>;
+  };
   let mockFactory: {
     getModel: ReturnType<typeof vi.fn>;
     getEmbeddingModel: ReturnType<typeof vi.fn>;
+    getRerankingModel: ReturnType<typeof vi.fn>;
     getCustomModel: ReturnType<typeof vi.fn>;
     getModelForTask: ReturnType<typeof vi.fn>;
   };
@@ -20,9 +28,23 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
   let toolRegistry: ToolRegistryService;
 
   beforeEach(async () => {
+    mockRerankingModel = {
+      specificationVersion: 'v3',
+      provider: 'cohere.reranking',
+      modelId: 'bge-reranker-v2-m3',
+      doRerank: vi.fn().mockResolvedValue({
+        ranking: [
+          { index: 1, relevanceScore: -1.8969 },
+          { index: 0, relevanceScore: -11.0202 },
+        ],
+        warnings: [],
+      }),
+    };
+
     mockFactory = {
       getModel: vi.fn((profile) => ({ id: `model-${profile}` }) as any),
       getEmbeddingModel: vi.fn(() => ({ id: 'model-embedding' }) as any),
+      getRerankingModel: vi.fn(() => mockRerankingModel as any),
       getCustomModel: vi.fn((name) => ({ id: `custom-${name}` }) as any),
       getModelForTask: vi.fn((task) => ({ id: `task-${task}` }) as any),
     };
@@ -95,6 +117,17 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
       expect(rendered.prompt).toContain('Trình bày định luật Ohm');
       expect(rendered.prompt).toContain('Đúng công thức');
     });
+
+    it('renders QUERY_DECOMPOSE prompt with query and initial keywords', () => {
+      const rendered = promptRegistry.render('QUERY_DECOMPOSE', {
+        semanticQuery: 'So sánh thuật toán Round Robin và Banker',
+        keywords: ['Round Robin', 'Banker'],
+      });
+      expect(rendered.system).toContain('Retrieval Query Planner');
+      expect(rendered.prompt).toContain('<user_query>');
+      expect(rendered.prompt).toContain('So sánh thuật toán Round Robin và Banker');
+      expect(rendered.prompt).toContain('Round Robin, Banker');
+    });
   });
 
   describe('SchemaRegistry (resolveFeatureSchema)', () => {
@@ -122,6 +155,13 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
       });
       expect(followUpConfig.schemaName).toBe('FollowUpSuggestions');
       expect(followUpConfig.schema).toBeDefined();
+
+      const decomposeConfig = resolveFeatureSchema('QUERY_DECOMPOSE', {
+        semanticQuery: 'test',
+        keywords: [],
+      });
+      expect(decomposeConfig.schemaName).toBe('QueryDecomposition');
+      expect(decomposeConfig.schema).toBeDefined();
     });
 
     it('resolves dynamic schema factory based on payload', () => {
@@ -188,7 +228,7 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
         plainAnswer: 'Đáp án',
       });
 
-      expect(preparedObj.model).toEqual({ id: 'model-STANDARD' });
+      expect(preparedObj.model).toEqual({ id: 'model-REASONING' });
       expect(preparedObj.schema).toBeDefined();
       expect(preparedObj.schemaName).toBe('EssayGrading');
       expect(preparedObj.system).toContain('academic grading assistant');
@@ -208,6 +248,94 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
 
       expect(mockFactory.getCustomModel).toHaveBeenCalledWith('cx/gpt-custom-model');
       expect(prepared.model).toEqual({ id: 'custom-cx/gpt-custom-model' });
+    });
+
+    it('calls Vercel AI SDK rerank() via AiService.rerankDocuments', async () => {
+      const result = await service.rerankDocuments({
+        query: 'Cách tối ưu hóa truy vấn SQL?',
+        documents: [
+          'Hôm nay trời nắng đẹp.',
+          'Sử dụng Index và tránh SELECT * giúp tăng tốc độ truy vấn.',
+        ],
+        topN: 2,
+      });
+
+      expect(mockFactory.getRerankingModel).toHaveBeenCalledTimes(1);
+      expect(mockRerankingModel.doRerank).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: 'Cách tối ưu hóa truy vấn SQL?',
+          topN: 2,
+        }),
+      );
+      expect(result.ranking).toEqual([
+        {
+          originalIndex: 1,
+          score: -1.8969,
+          document: 'Sử dụng Index và tránh SELECT * giúp tăng tốc độ truy vấn.',
+        },
+        {
+          originalIndex: 0,
+          score: -11.0202,
+          document: 'Hôm nay trời nắng đẹp.',
+        },
+      ]);
+    });
+  });
+
+  describe('AiModelFactory Rerank Integration', () => {
+    const originalFetch = globalThis.fetch;
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    it('creates bge-reranker-v2-m3 model pointing to LLAMA_SERVER_URL_RERANK and adapts llama-server JSON without meta', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            model: 'bge-reranker-v2-m3',
+            object: 'list',
+            usage: { prompt_tokens: 78, total_tokens: 78 },
+            results: [
+              { index: 1, relevance_score: -1.8969 },
+              { index: 0, relevance_score: -11.0202 },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+      globalThis.fetch = fetchMock as typeof fetch;
+
+      const configMock = {
+        get: vi.fn((key: string) => {
+          if (key === 'GEMINI_API_KEY') return 'test-gemini-key';
+          if (key === 'LLAMA_SERVER_URL_RERANK') return 'http://127.0.0.1:8081';
+          return undefined;
+        }),
+      } as unknown as ConfigService;
+
+      const factory = new AiModelFactory(configMock);
+      const rerankModel = factory.getRerankingModel();
+      expect(rerankModel.modelId).toBe('bge-reranker-v2-m3');
+      expect(() => factory.getModel('RERANK')).toThrow();
+
+      const res = await (rerankModel as any).doRerank({
+        query: 'Tối ưu SQL?',
+        documents: { type: 'text', values: ['Trời nắng', 'Dùng Index'] },
+        topN: 2,
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://127.0.0.1:8081/v1/rerank',
+        expect.objectContaining({ method: 'POST' }),
+      );
+      expect(res.ranking).toEqual([
+        { index: 1, relevanceScore: -1.8969 },
+        { index: 0, relevanceScore: -11.0202 },
+      ]);
     });
   });
 

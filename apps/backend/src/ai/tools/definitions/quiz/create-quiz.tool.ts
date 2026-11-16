@@ -46,6 +46,12 @@ export const createQuizInputSchema = z.object({
     .describe(
       'Difficulty level: "basic" (recall & core definitions), "applied" (apply concepts to scenarios & analyze examples), or "advanced" (deep synthesis & evaluation). Default: "applied".',
     ),
+  bloomPreset: z
+    .enum(['familiarize', 'balanced', 'exam_prep'])
+    .optional()
+    .describe(
+      'Optional Bloom cognitive distribution preset: "familiarize" (75% Remember/Understand), "balanced" (balanced across 4 Bloom levels), or "exam_prep" (70% Apply/Analyze). When omitted, inferred from difficulty.',
+    ),
   deckId: z
     .string()
     .optional()

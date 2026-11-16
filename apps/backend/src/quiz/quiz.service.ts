@@ -4,6 +4,7 @@ import {
     CreateQuizDto,
     GenerateQuizFromDeckDto,
     GenerateQuizWithAiDto,
+    GenerateTargetedQuizDto,
     OverrideEvaluationDto,
     QuestionDraftDto,
     SaveAnswerDto,
@@ -24,6 +25,7 @@ import {
     QuizOptionItem,
     QuizQuestionResponse,
     QuizResponse,
+    WeakAreasSummaryResponse,
 } from './quiz.types.js';
 import {
     sanitizeQuizHtml,
@@ -41,6 +43,7 @@ export type {
     QuizOptionItem,
     QuizQuestionResponse,
     QuizResponse,
+    WeakAreasSummaryResponse,
     AttemptAnswerResponse,
     AttemptConfigResponse,
     QuizAttemptResponse,
@@ -120,6 +123,28 @@ export class QuizService {
         dto: GenerateQuizWithAiDto
     ): Promise<QuizResponse> {
         return this.quizManageService.generateWithAI(
+            userId,
+            conversationId,
+            dto
+        );
+    }
+
+    async getWeakAreasSummary(
+        userId: string,
+        conversationId: string
+    ): Promise<WeakAreasSummaryResponse> {
+        return this.quizManageService.getWeakAreasSummary(
+            userId,
+            conversationId
+        );
+    }
+
+    async generateTargetedQuiz(
+        userId: string,
+        conversationId: string,
+        dto: GenerateTargetedQuizDto
+    ): Promise<QuizResponse> {
+        return this.quizManageService.generateTargetedQuiz(
             userId,
             conversationId,
             dto

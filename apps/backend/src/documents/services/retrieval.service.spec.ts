@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RetrievalService } from './retrieval.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { EmbeddingService } from '../../ai/embedding.service.js';
+import type { AiService } from '../../ai/ai.service.js';
 
 describe('RetrievalService', () => {
   let service: RetrievalService;
@@ -473,6 +474,245 @@ describe('RetrievalService', () => {
       );
       expect(output.chunks).toHaveLength(1);
       expect(output.chunks[0].pageNumbers).toEqual([3]);
+    });
+  });
+
+  describe('Pipeline 5 bước: Query Decomposition + Multi-Query RRF + Cross-Encoder Rerank', () => {
+    let aiServiceMock: {
+      generateObjectForFeature: ReturnType<typeof vi.fn>;
+      rerankDocuments: ReturnType<typeof vi.fn>;
+    };
+    let enhancedEmbeddingMock: {
+      embedSingle: ReturnType<typeof vi.fn>;
+      embedBatch: ReturnType<typeof vi.fn>;
+    };
+    let enhancedService: RetrievalService;
+
+    beforeEach(() => {
+      aiServiceMock = {
+        generateObjectForFeature: vi.fn(),
+        rerankDocuments: vi.fn(),
+      };
+      enhancedEmbeddingMock = {
+        embedSingle: vi.fn().mockResolvedValue(dummyVector),
+        embedBatch: vi.fn().mockResolvedValue([
+          { index: 0, values: dummyVector },
+          { index: 1, values: dummyVector },
+        ]),
+      };
+      enhancedService = new RetrievalService(
+        prismaMock as unknown as PrismaService,
+        enhancedEmbeddingMock as unknown as EmbeddingService,
+        aiServiceMock as unknown as AiService,
+      );
+    });
+
+    it('nên bỏ qua Query Decomposition (Fast-path) với câu hỏi ngắn đơn giản và vẫn chạy Rerank Model đảo thứ hạng Top-K', async () => {
+      prismaMock.$queryRaw.mockResolvedValueOnce([
+        {
+          id: 'chunk-rrf-1',
+          documentId: validDocId,
+          fileName: 'OS.pdf',
+          chunkIndex: 1,
+          pageNumbers: [10],
+          content: 'Deadlock xuất hiện ở mục lục chương 4.',
+          headings: ['Chương 4'],
+          chunkType: 'text',
+          hasImage: false,
+          hasTable: false,
+          bboxes: null,
+          assetsJson: [],
+          rrfScore: 0.032,
+          vectorRank: 1,
+          keywordRank: 1,
+        },
+        {
+          id: 'chunk-rrf-2',
+          documentId: validDocId,
+          fileName: 'OS.pdf',
+          chunkIndex: 5,
+          pageNumbers: [15],
+          content: 'Deadlock là trạng thái các tiến trình chờ đợi vòng tròn tài nguyên của nhau.',
+          headings: ['4.1 Khái niệm Deadlock'],
+          chunkType: 'text',
+          hasImage: false,
+          hasTable: false,
+          bboxes: null,
+          assetsJson: [],
+          rrfScore: 0.015,
+          vectorRank: 3,
+          keywordRank: null,
+        },
+      ]);
+
+      aiServiceMock.rerankDocuments.mockResolvedValueOnce({
+        ranking: [
+          { originalIndex: 1, score: -0.75, document: 'doc2' },
+          { originalIndex: 0, score: -5.4, document: 'doc1' },
+        ],
+      });
+
+      const results = await enhancedService.searchRelevantChunks({
+        userId: validUserId,
+        conversationId: validConversationId,
+        semanticQuery: 'Deadlock là gì?',
+        keywords: ['deadlock'],
+        topK: 2,
+      });
+
+      expect(aiServiceMock.generateObjectForFeature).not.toHaveBeenCalled();
+      expect(aiServiceMock.rerankDocuments).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: 'Deadlock là gì?',
+          topN: 2,
+          documents: [
+            '[Mục: Chương 4]\nDeadlock xuất hiện ở mục lục chương 4.',
+            '[Mục: 4.1 Khái niệm Deadlock]\nDeadlock là trạng thái các tiến trình chờ đợi vòng tròn tài nguyên của nhau.',
+          ],
+        }),
+      );
+      expect(results[0].id).toBe('chunk-rrf-2');
+      expect(results[0].rerankScore).toBe(-0.75);
+      expect(results[0].rrfRank).toBe(2);
+      expect(results[1].id).toBe('chunk-rrf-1');
+      expect(results[1].rerankScore).toBe(-5.4);
+      expect(results[1].rrfRank).toBe(1);
+    });
+
+    it('nên tách câu hỏi so sánh thành 2 subQueries, hợp nhất Multi-Query RRF và lọc tinh qua Rerank Model', async () => {
+      aiServiceMock.generateObjectForFeature.mockResolvedValueOnce({
+        object: {
+          isComplex: true,
+          subQueries: [
+            {
+              semanticQuery: 'Thuật toán lập lịch CPU Round Robin và quantum time',
+              keywords: ['Round Robin', 'CPU scheduling', 'time quantum'],
+            },
+            {
+              semanticQuery: 'Thuật toán Banker tránh deadlock trong hệ điều hành',
+              keywords: ['Banker', 'deadlock avoidance', 'safe state'],
+            },
+          ],
+        },
+      });
+
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce([
+          {
+            id: 'chunk-rr',
+            documentId: validDocId,
+            fileName: 'OS.pdf',
+            chunkIndex: 10,
+            pageNumbers: [22],
+            content: 'Round Robin chia sẻ CPU công bằng theo lát thời gian q.',
+            headings: ['Chương 2: Round Robin'],
+            chunkType: 'text',
+            hasImage: false,
+            hasTable: false,
+            bboxes: null,
+            assetsJson: [],
+            rrfScore: 0.031,
+            vectorRank: 1,
+            keywordRank: 1,
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'chunk-banker',
+            documentId: validDocId,
+            fileName: 'OS.pdf',
+            chunkIndex: 42,
+            pageNumbers: [58],
+            content: 'Thuật toán Banker kiểm tra trạng thái an toàn trước khi cấp phát tài nguyên.',
+            headings: ['Chương 4: Banker'],
+            chunkType: 'text',
+            hasImage: false,
+            hasTable: false,
+            bboxes: null,
+            assetsJson: [],
+            rrfScore: 0.016,
+            vectorRank: 1,
+            keywordRank: null,
+          },
+        ]);
+
+      aiServiceMock.rerankDocuments.mockResolvedValueOnce({
+        ranking: [
+          { originalIndex: 1, score: -0.92, document: 'banker' },
+          { originalIndex: 0, score: -1.15, document: 'rr' },
+        ],
+      });
+
+      const results = await enhancedService.searchRelevantChunks({
+        userId: validUserId,
+        conversationId: validConversationId,
+        semanticQuery: 'So sánh ưu nhược điểm của thuật toán lập lịch CPU Round Robin ở Chương 2 và thuật toán Banker tránh deadlock ở Chương 4',
+        keywords: ['Round Robin', 'Banker'],
+        topK: 2,
+      });
+
+      expect(aiServiceMock.generateObjectForFeature).toHaveBeenCalledWith(
+        'QUERY_DECOMPOSE',
+        expect.objectContaining({
+          keywords: ['Round Robin', 'Banker'],
+        }),
+        expect.any(Object),
+      );
+      expect(enhancedEmbeddingMock.embedBatch).toHaveBeenCalledWith([
+        'Thuật toán lập lịch CPU Round Robin và quantum time',
+        'Thuật toán Banker tránh deadlock trong hệ điều hành',
+      ]);
+      expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+      expect(results).toHaveLength(2);
+      expect(results[0].id).toBe('chunk-banker');
+      expect(results[0].rerankScore).toBe(-0.92);
+      expect(results[0].subQueriesUsed).toEqual([
+        'Thuật toán lập lịch CPU Round Robin và quantum time',
+        'Thuật toán Banker tránh deadlock trong hệ điều hành',
+      ]);
+      expect(results[1].id).toBe('chunk-rr');
+    });
+
+    it('nên fallback an toàn khi Query Decomposition và Rerank Server gặp lỗi', async () => {
+      aiServiceMock.generateObjectForFeature.mockRejectedValueOnce(
+        new Error('FAST model timeout'),
+      );
+      prismaMock.$queryRaw.mockResolvedValueOnce([
+        {
+          id: 'chunk-fallback-1',
+          documentId: validDocId,
+          fileName: 'CSDL.pdf',
+          chunkIndex: 3,
+          pageNumbers: [8],
+          content: 'Hệ quản trị CSDL quan hệ (RDBMS) lưu dữ liệu dưới dạng bảng.',
+          headings: ['Chương 1: RDBMS'],
+          chunkType: 'text',
+          hasImage: false,
+          hasTable: false,
+          bboxes: null,
+          assetsJson: [],
+          rrfScore: 0.029,
+          vectorRank: 1,
+          keywordRank: 2,
+        },
+      ]);
+      aiServiceMock.rerankDocuments.mockRejectedValueOnce(
+        new Error('ECONNREFUSED 127.0.0.1:8081'),
+      );
+
+      const results = await enhancedService.searchRelevantChunks({
+        userId: validUserId,
+        conversationId: validConversationId,
+        semanticQuery: 'So sánh ưu nhược điểm của CSDL quan hệ RDBMS và NoSQL trong tài liệu này',
+        keywords: ['CSDL quan hệ', 'RDBMS'],
+        topK: 5,
+      });
+
+      expect(enhancedEmbeddingMock.embedSingle).toHaveBeenCalledTimes(1);
+      expect(results).toHaveLength(1);
+      expect(results[0].id).toBe('chunk-fallback-1');
+      expect(results[0].rerankScore).toBeNull();
+      expect(results[0].rrfRank).toBe(1);
     });
   });
 });

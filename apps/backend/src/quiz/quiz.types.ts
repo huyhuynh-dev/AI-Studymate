@@ -1,3 +1,4 @@
+import type { BloomLevel } from '../common/types/bloom.types.js';
 import type { SourceReferenceItem } from '../common/types/source-ref.types.js';
 import {
     AttemptStatusEnum,
@@ -24,7 +25,17 @@ export interface QuizQuestionResponse {
     sampleAnswer: string | null;
     gradingCriteria: string[];
     explanation: string | null;
+    bloomLevel: BloomLevel | null;
     sourceRefs: SourceReferenceItem[];
+}
+
+export interface WeakAreasSummaryResponse {
+    hasWeakAreas: boolean;
+    weakChunkCount: number;
+    incorrectQuizCount: number;
+    leechCardCount: number;
+    topWeakTopics: string[];
+    topMissingPoints: string[];
 }
 
 export interface QuizResponse {

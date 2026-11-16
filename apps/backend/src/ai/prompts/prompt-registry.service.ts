@@ -21,6 +21,7 @@ import {
 } from './templates/chat-agent.prompt.js';
 import { blocknoteEditPrompt } from './templates/blocknote.prompt.js';
 import { visionOcrPrompt } from './templates/vision-ocr.prompt.js';
+import { queryDecomposePrompt } from './templates/query-decompose.prompt.js';
 
 @Injectable()
 export class PromptRegistryService {
@@ -37,6 +38,7 @@ export class PromptRegistryService {
     FOLLOW_UP_SUGGESTIONS: followUpSuggestionsPrompt,
     BLOCKNOTE_EDIT: blocknoteEditPrompt,
     VISION_OCR: visionOcrPrompt,
+    QUERY_DECOMPOSE: queryDecomposePrompt,
   };
 
   /**

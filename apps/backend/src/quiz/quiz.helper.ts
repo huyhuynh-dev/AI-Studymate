@@ -1,3 +1,4 @@
+import { normalizeBloomLevel } from '../common/types/bloom.types.js';
 import { parseSourceRefs } from '../common/types/source-ref.types.js';
 import { Prisma } from '../generated/prisma/client.js';
 import {
@@ -170,6 +171,7 @@ export function mapQuizToResponse(quiz: any): QuizResponse {
                 sampleAnswer: q.sample_answer ?? null,
                 gradingCriteria: parseGradingCriteria(q.grading_criteria),
                 explanation: q.explanation ?? null,
+                bloomLevel: normalizeBloomLevel(q.bloom_level) ?? null,
                 sourceRefs: parseSourceRefs(q.source_refs),
             })
         ),

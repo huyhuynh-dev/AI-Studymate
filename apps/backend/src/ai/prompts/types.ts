@@ -1,4 +1,5 @@
 import type { AvailableDocumentItem } from '../../documents/services/retrieval.service.js';
+import type { BloomDistribution } from '../../common/types/bloom.types.js';
 import type {
   BudgetDoc,
   GenerateFlashcardsRequest,
@@ -6,6 +7,12 @@ import type {
 import type { AIQuestionType } from '../schemas/quiz-ai.schema.js';
 
 export type QuizDifficulty = 'basic' | 'applied' | 'advanced';
+
+export interface QuizRemediationFocus {
+  weakTopics: string[];
+  missingPoints: string[];
+  priorFailedQuestions: string[];
+}
 
 export interface PromptPayloadMap {
   SUMMARIZE_GENERATE: {
@@ -25,6 +32,8 @@ export interface PromptPayloadMap {
     types: AIQuestionType[];
     count: number;
     difficulty: QuizDifficulty;
+    bloomQuota?: BloomDistribution;
+    remediationFocus?: QuizRemediationFocus;
   };
   ESSAY_GRADE: {
     questionPlain: string;
@@ -56,6 +65,10 @@ export interface PromptPayloadMap {
   };
   VISION_OCR: {
     fileName?: string;
+  };
+  QUERY_DECOMPOSE: {
+    semanticQuery: string;
+    keywords: string[];
   };
 }
 

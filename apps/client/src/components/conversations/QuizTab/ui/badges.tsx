@@ -1,6 +1,6 @@
 import { Layers, PenLine, Sparkles } from "lucide-react";
-import type { EvaluationStatus, Quiz, QuestionType } from "../types";
-import { EVAL_META, QUESTION_TYPE_META } from "../constants";
+import type { BloomLevel, EvaluationStatus, Quiz, QuestionType } from "../types";
+import { BLOOM_META, EVAL_META, QUESTION_TYPE_META } from "../constants";
 import { Badge } from "./primitives";
 
 export function SourceBadge({ quiz }: { quiz: Pick<Quiz, "source" | "sourceDeckName"> }) {
@@ -15,6 +15,17 @@ export function SourceBadge({ quiz }: { quiz: Pick<Quiz, "source" | "sourceDeckN
 }
 
 export const TypeBadge = ({ type }: { type: QuestionType }) => <Badge tone="neutral">{QUESTION_TYPE_META[type].short}</Badge>;
+
+export const BloomBadge = ({ level }: { level?: BloomLevel | null }) => {
+  if (!level) return null;
+  const meta = BLOOM_META[level];
+  if (!meta) return null;
+  return (
+    <span title={meta.description} className="inline-flex">
+      <Badge tone={meta.tone}>{meta.short}</Badge>
+    </span>
+  );
+};
 
 export function EvalBadge({ status, points }: { status: EvaluationStatus; points?: string }) {
   const m = EVAL_META[status];

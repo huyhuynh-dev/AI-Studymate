@@ -100,6 +100,150 @@ export class DocumentChunksRepoService {
         });
     }
 
+    /**
+     * Truy xuất danh sách chunks mục tiêu (kèm các chunk liền kề chunk_index ± 1 trong cùng tài liệu)
+     * phục vụ tính năng Weak-Chunk Targeted Quiz mà vẫn giữ đầy đủ ngữ cảnh và tọa độ source_refs.
+     */
+    async findChunksWithNeighborsByIds(
+        chunkIds: string[],
+        userId: string,
+        conversationId: string
+    ): Promise<
+        Array<{
+            documentId: string;
+            fileName: string;
+            chunks: Array<{
+                id: string;
+                chunkIndex: number;
+                content: string;
+                rawContent: string | null;
+                pageNumbers: number[];
+                headings: string[];
+                bboxes: Prisma.JsonValue | null;
+            }>;
+        }>
+    > {
+        const uniqueIds = [...new Set(chunkIds.filter(Boolean))];
+        if (uniqueIds.length === 0) return [];
+
+        const targetRows = await this.prisma.documentChunk.findMany({
+            where: {
+                id: { in: uniqueIds },
+                document: {
+                    user_id: userId,
+                    conversation_id: conversationId,
+                },
+            },
+            select: {
+                id: true,
+                document_id: true,
+                chunk_index: true,
+                content: true,
+                raw_content: true,
+                page_numbers: true,
+                headings: true,
+                bboxes: true,
+                document: {
+                    select: {
+                        file_name: true,
+                    },
+                },
+            },
+        });
+
+        if (targetRows.length === 0) return [];
+
+        const neighborIndexesByDoc = new Map<string, Set<number>>();
+        const docNameMap = new Map<string, string>();
+
+        for (const row of targetRows) {
+            docNameMap.set(row.document_id, row.document.file_name);
+            let idxSet = neighborIndexesByDoc.get(row.document_id);
+            if (!idxSet) {
+                idxSet = new Set<number>();
+                neighborIndexesByDoc.set(row.document_id, idxSet);
+            }
+            if (row.chunk_index > 0) idxSet.add(row.chunk_index - 1);
+            idxSet.add(row.chunk_index);
+            idxSet.add(row.chunk_index + 1);
+        }
+
+        const orConditions = Array.from(neighborIndexesByDoc.entries()).map(
+            ([docId, indexes]) => ({
+                document_id: docId,
+                chunk_index: { in: Array.from(indexes) },
+            })
+        );
+
+        const expandedRows = await this.prisma.documentChunk.findMany({
+            where: {
+                OR: orConditions,
+                document: {
+                    user_id: userId,
+                    conversation_id: conversationId,
+                },
+            },
+            select: {
+                id: true,
+                document_id: true,
+                chunk_index: true,
+                content: true,
+                raw_content: true,
+                page_numbers: true,
+                headings: true,
+                bboxes: true,
+                document: {
+                    select: {
+                        file_name: true,
+                    },
+                },
+            },
+            orderBy: [{ document_id: 'asc' }, { chunk_index: 'asc' }],
+        });
+
+        const grouped = new Map<
+            string,
+            {
+                documentId: string;
+                fileName: string;
+                chunks: Array<{
+                    id: string;
+                    chunkIndex: number;
+                    content: string;
+                    rawContent: string | null;
+                    pageNumbers: number[];
+                    headings: string[];
+                    bboxes: Prisma.JsonValue | null;
+                }>;
+            }
+        >();
+
+        for (const row of expandedRows) {
+            let entry = grouped.get(row.document_id);
+            if (!entry) {
+                entry = {
+                    documentId: row.document_id,
+                    fileName:
+                        docNameMap.get(row.document_id) ??
+                        row.document.file_name,
+                    chunks: [],
+                };
+                grouped.set(row.document_id, entry);
+            }
+            entry.chunks.push({
+                id: row.id,
+                chunkIndex: row.chunk_index,
+                content: row.content,
+                rawContent: row.raw_content,
+                pageNumbers: row.page_numbers,
+                headings: row.headings,
+                bboxes: row.bboxes,
+            });
+        }
+
+        return Array.from(grouped.values());
+    }
+
     async getDocumentChunkById(
         chunkId: string,
         documentId: string,

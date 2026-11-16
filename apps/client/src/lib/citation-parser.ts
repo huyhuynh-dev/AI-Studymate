@@ -34,6 +34,11 @@ export interface DocumentCitationItem {
   previewSnippet?: string;
   bboxes?: unknown;
   assets?: RetrievedChunkAsset[] | unknown[];
+  rrfScore?: number;
+  rerankScore?: number | null;
+  rrfRank?: number | null;
+  vectorRank?: number | null;
+  keywordRank?: number | null;
 }
 
 export interface WebCitationItem {
@@ -61,6 +66,53 @@ export interface ParsedCitationsResult {
   citedList: CitationBadgeMeta[];
   citationMap: Map<string, CitationItem>;
   metaMap: Map<string, CitationBadgeMeta>;
+}
+
+export interface CitationRankingMeta {
+  label: string;
+  detail: string;
+  isReranked: boolean;
+}
+
+/**
+ * Tạo nhãn tóm tắt minh bạch quá trình xếp hạng nguồn (Cross-Encoder Rerank + Hybrid RRF)
+ */
+export function formatCitationRankingMeta(
+  docItem?: DocumentCitationItem,
+): CitationRankingMeta | null {
+  if (!docItem) return null;
+
+  const hasRerank = typeof docItem.rerankScore === 'number';
+  const hasRrf = typeof docItem.rrfScore === 'number';
+  if (!hasRerank && !hasRrf) return null;
+
+  const vecLabel =
+    typeof docItem.vectorRank === 'number' ? `#${docItem.vectorRank}` : '—';
+  const kwLabel =
+    typeof docItem.keywordRank === 'number' ? `#${docItem.keywordRank}` : '—';
+  const rrfValue = hasRrf ? docItem.rrfScore!.toFixed(4) : '—';
+
+  const detailParts = [
+    `Vector ${vecLabel}`,
+    `Keyword ${kwLabel}`,
+    `RRF Score ${rrfValue}`,
+  ];
+
+  if (hasRerank) {
+    const rrfRankPart =
+      typeof docItem.rrfRank === 'number' ? ` · RRF #${docItem.rrfRank}` : '';
+    return {
+      label: `Rerank ${docItem.rerankScore!.toFixed(2)}${rrfRankPart}`,
+      detail: `Điểm Rerank: ${docItem.rerankScore!.toFixed(4)} | ${detailParts.join(' · ')}`,
+      isReranked: true,
+    };
+  }
+
+  return {
+    label: `RRF ${rrfValue}`,
+    detail: detailParts.join(' · '),
+    isReranked: false,
+  };
 }
 
 /**
@@ -102,6 +154,14 @@ export function extractCitationsMap(
               previewSnippet: chunk.previewSnippet || chunk.content?.slice(0, 300),
               bboxes: chunk.bboxes,
               assets: chunk.assets,
+              rrfScore: typeof chunk.rrfScore === 'number' ? chunk.rrfScore : undefined,
+              rerankScore:
+                typeof chunk.rerankScore === 'number' ? chunk.rerankScore : null,
+              rrfRank: typeof chunk.rrfRank === 'number' ? chunk.rrfRank : null,
+              vectorRank:
+                typeof chunk.vectorRank === 'number' ? chunk.vectorRank : null,
+              keywordRank:
+                typeof chunk.keywordRank === 'number' ? chunk.keywordRank : null,
             });
           }
         }

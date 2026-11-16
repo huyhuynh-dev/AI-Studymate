@@ -16,6 +16,11 @@ export interface QuizApi {
   deleteQuiz(quizId: string): Promise<void>;
   generateWithAI(conversationId: string, opts: AIGenerateOptions): Promise<Quiz>;
   generateFromDeck(conversationId: string, opts: DeckGenerateOptions): Promise<Quiz>;
+  getWeakAreasSummary(conversationId: string): Promise<import("../types").WeakAreasSummary>;
+  generateTargetedQuiz(
+    conversationId: string,
+    opts: import("../types").TargetedQuizOptions
+  ): Promise<Quiz>;
   /** Tạo lượt làm bài. config gồm thứ tự câu/đáp án đã được đảo trộn phía client. */
   startAttempt(quizId: string, config: AttemptConfig): Promise<QuizAttempt>;
   /** Lưu nháp 1 câu (UPSERT theo attempt_id + question_id) */

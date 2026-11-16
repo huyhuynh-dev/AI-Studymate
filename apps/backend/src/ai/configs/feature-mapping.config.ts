@@ -1,6 +1,8 @@
 import type { ModelProfile } from '../ai-model.factory.js';
 import type { FeatureKey } from '../prompts/types.js';
 
+export type AiFeatureKey = FeatureKey | 'DOCUMENT_RERANK';
+
 export interface FeatureRuntimeConfig {
   profile: ModelProfile;
   temperature?: number;
@@ -8,7 +10,7 @@ export interface FeatureRuntimeConfig {
   providerOptions?: Record<string, Record<string, unknown>>;
 }
 
-export const FEATURE_MAP: Record<FeatureKey, FeatureRuntimeConfig> = {
+export const FEATURE_MAP: Record<AiFeatureKey, FeatureRuntimeConfig> = {
   SUMMARIZE_GENERATE: {
     profile: 'REASONING',
     temperature: 0.2,
@@ -54,5 +56,14 @@ export const FEATURE_MAP: Record<FeatureKey, FeatureRuntimeConfig> = {
     profile: 'VISION',
     temperature: 0.1,
     maxRetries: 2,
+  },
+  QUERY_DECOMPOSE: {
+    profile: 'FAST',
+    temperature: 0.1,
+    maxRetries: 1,
+  },
+  DOCUMENT_RERANK: {
+    profile: 'RERANK',
+    maxRetries: 1,
   },
 };

@@ -47,6 +47,7 @@ export type QuizQuestionMinAggregateOutputType = {
   points: number | null
   sample_answer: string | null
   explanation: string | null
+  bloom_level: string | null
   created_at: Date | null
   updated_at: Date | null
 }
@@ -62,6 +63,7 @@ export type QuizQuestionMaxAggregateOutputType = {
   points: number | null
   sample_answer: string | null
   explanation: string | null
+  bloom_level: string | null
   created_at: Date | null
   updated_at: Date | null
 }
@@ -79,6 +81,7 @@ export type QuizQuestionCountAggregateOutputType = {
   sample_answer: number
   grading_criteria: number
   explanation: number
+  bloom_level: number
   source_refs: number
   created_at: number
   updated_at: number
@@ -107,6 +110,7 @@ export type QuizQuestionMinAggregateInputType = {
   points?: true
   sample_answer?: true
   explanation?: true
+  bloom_level?: true
   created_at?: true
   updated_at?: true
 }
@@ -122,6 +126,7 @@ export type QuizQuestionMaxAggregateInputType = {
   points?: true
   sample_answer?: true
   explanation?: true
+  bloom_level?: true
   created_at?: true
   updated_at?: true
 }
@@ -139,6 +144,7 @@ export type QuizQuestionCountAggregateInputType = {
   sample_answer?: true
   grading_criteria?: true
   explanation?: true
+  bloom_level?: true
   source_refs?: true
   created_at?: true
   updated_at?: true
@@ -244,6 +250,7 @@ export type QuizQuestionGroupByOutputType = {
   sample_answer: string | null
   grading_criteria: runtime.JsonValue
   explanation: string | null
+  bloom_level: string | null
   source_refs: runtime.JsonValue | null
   created_at: Date
   updated_at: Date
@@ -285,6 +292,7 @@ export type QuizQuestionWhereInput = {
   sample_answer?: Prisma.StringNullableFilter<"QuizQuestion"> | string | null
   grading_criteria?: Prisma.JsonFilter<"QuizQuestion">
   explanation?: Prisma.StringNullableFilter<"QuizQuestion"> | string | null
+  bloom_level?: Prisma.StringNullableFilter<"QuizQuestion"> | string | null
   source_refs?: Prisma.JsonNullableFilter<"QuizQuestion">
   created_at?: Prisma.DateTimeFilter<"QuizQuestion"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"QuizQuestion"> | Date | string
@@ -305,6 +313,7 @@ export type QuizQuestionOrderByWithRelationInput = {
   sample_answer?: Prisma.SortOrderInput | Prisma.SortOrder
   grading_criteria?: Prisma.SortOrder
   explanation?: Prisma.SortOrderInput | Prisma.SortOrder
+  bloom_level?: Prisma.SortOrderInput | Prisma.SortOrder
   source_refs?: Prisma.SortOrderInput | Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
@@ -328,6 +337,7 @@ export type QuizQuestionWhereUniqueInput = Prisma.AtLeast<{
   sample_answer?: Prisma.StringNullableFilter<"QuizQuestion"> | string | null
   grading_criteria?: Prisma.JsonFilter<"QuizQuestion">
   explanation?: Prisma.StringNullableFilter<"QuizQuestion"> | string | null
+  bloom_level?: Prisma.StringNullableFilter<"QuizQuestion"> | string | null
   source_refs?: Prisma.JsonNullableFilter<"QuizQuestion">
   created_at?: Prisma.DateTimeFilter<"QuizQuestion"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"QuizQuestion"> | Date | string
@@ -348,6 +358,7 @@ export type QuizQuestionOrderByWithAggregationInput = {
   sample_answer?: Prisma.SortOrderInput | Prisma.SortOrder
   grading_criteria?: Prisma.SortOrder
   explanation?: Prisma.SortOrderInput | Prisma.SortOrder
+  bloom_level?: Prisma.SortOrderInput | Prisma.SortOrder
   source_refs?: Prisma.SortOrderInput | Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
@@ -374,6 +385,7 @@ export type QuizQuestionScalarWhereWithAggregatesInput = {
   sample_answer?: Prisma.StringNullableWithAggregatesFilter<"QuizQuestion"> | string | null
   grading_criteria?: Prisma.JsonWithAggregatesFilter<"QuizQuestion">
   explanation?: Prisma.StringNullableWithAggregatesFilter<"QuizQuestion"> | string | null
+  bloom_level?: Prisma.StringNullableWithAggregatesFilter<"QuizQuestion"> | string | null
   source_refs?: Prisma.JsonNullableWithAggregatesFilter<"QuizQuestion">
   created_at?: Prisma.DateTimeWithAggregatesFilter<"QuizQuestion"> | Date | string
   updated_at?: Prisma.DateTimeWithAggregatesFilter<"QuizQuestion"> | Date | string
@@ -391,6 +403,7 @@ export type QuizQuestionCreateInput = {
   sample_answer?: string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: string | null
+  bloom_level?: string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Date | string
   updated_at?: Date | string
@@ -411,6 +424,7 @@ export type QuizQuestionUncheckedCreateInput = {
   sample_answer?: string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: string | null
+  bloom_level?: string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Date | string
   updated_at?: Date | string
@@ -429,6 +443,7 @@ export type QuizQuestionUpdateInput = {
   sample_answer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bloom_level?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -449,6 +464,7 @@ export type QuizQuestionUncheckedUpdateInput = {
   sample_answer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bloom_level?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -468,6 +484,7 @@ export type QuizQuestionCreateManyInput = {
   sample_answer?: string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: string | null
+  bloom_level?: string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Date | string
   updated_at?: Date | string
@@ -485,6 +502,7 @@ export type QuizQuestionUpdateManyMutationInput = {
   sample_answer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bloom_level?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -503,6 +521,7 @@ export type QuizQuestionUncheckedUpdateManyInput = {
   sample_answer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bloom_level?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -531,6 +550,7 @@ export type QuizQuestionCountOrderByAggregateInput = {
   sample_answer?: Prisma.SortOrder
   grading_criteria?: Prisma.SortOrder
   explanation?: Prisma.SortOrder
+  bloom_level?: Prisma.SortOrder
   source_refs?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
@@ -552,6 +572,7 @@ export type QuizQuestionMaxOrderByAggregateInput = {
   points?: Prisma.SortOrder
   sample_answer?: Prisma.SortOrder
   explanation?: Prisma.SortOrder
+  bloom_level?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
@@ -567,6 +588,7 @@ export type QuizQuestionMinOrderByAggregateInput = {
   points?: Prisma.SortOrder
   sample_answer?: Prisma.SortOrder
   explanation?: Prisma.SortOrder
+  bloom_level?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
@@ -653,6 +675,7 @@ export type QuizQuestionCreateWithoutQuizInput = {
   sample_answer?: string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: string | null
+  bloom_level?: string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Date | string
   updated_at?: Date | string
@@ -671,6 +694,7 @@ export type QuizQuestionUncheckedCreateWithoutQuizInput = {
   sample_answer?: string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: string | null
+  bloom_level?: string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Date | string
   updated_at?: Date | string
@@ -719,6 +743,7 @@ export type QuizQuestionScalarWhereInput = {
   sample_answer?: Prisma.StringNullableFilter<"QuizQuestion"> | string | null
   grading_criteria?: Prisma.JsonFilter<"QuizQuestion">
   explanation?: Prisma.StringNullableFilter<"QuizQuestion"> | string | null
+  bloom_level?: Prisma.StringNullableFilter<"QuizQuestion"> | string | null
   source_refs?: Prisma.JsonNullableFilter<"QuizQuestion">
   created_at?: Prisma.DateTimeFilter<"QuizQuestion"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"QuizQuestion"> | Date | string
@@ -736,6 +761,7 @@ export type QuizQuestionCreateWithoutAttempt_answersInput = {
   sample_answer?: string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: string | null
+  bloom_level?: string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Date | string
   updated_at?: Date | string
@@ -755,6 +781,7 @@ export type QuizQuestionUncheckedCreateWithoutAttempt_answersInput = {
   sample_answer?: string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: string | null
+  bloom_level?: string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Date | string
   updated_at?: Date | string
@@ -788,6 +815,7 @@ export type QuizQuestionUpdateWithoutAttempt_answersInput = {
   sample_answer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bloom_level?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -807,6 +835,7 @@ export type QuizQuestionUncheckedUpdateWithoutAttempt_answersInput = {
   sample_answer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bloom_level?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -824,6 +853,7 @@ export type QuizQuestionCreateManyQuizInput = {
   sample_answer?: string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: string | null
+  bloom_level?: string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Date | string
   updated_at?: Date | string
@@ -841,6 +871,7 @@ export type QuizQuestionUpdateWithoutQuizInput = {
   sample_answer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bloom_level?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -859,6 +890,7 @@ export type QuizQuestionUncheckedUpdateWithoutQuizInput = {
   sample_answer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bloom_level?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -877,6 +909,7 @@ export type QuizQuestionUncheckedUpdateManyWithoutQuizInput = {
   sample_answer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   grading_criteria?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   explanation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bloom_level?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -926,6 +959,7 @@ export type QuizQuestionSelect<ExtArgs extends runtime.Types.Extensions.Internal
   sample_answer?: boolean
   grading_criteria?: boolean
   explanation?: boolean
+  bloom_level?: boolean
   source_refs?: boolean
   created_at?: boolean
   updated_at?: boolean
@@ -947,6 +981,7 @@ export type QuizQuestionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   sample_answer?: boolean
   grading_criteria?: boolean
   explanation?: boolean
+  bloom_level?: boolean
   source_refs?: boolean
   created_at?: boolean
   updated_at?: boolean
@@ -966,6 +1001,7 @@ export type QuizQuestionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   sample_answer?: boolean
   grading_criteria?: boolean
   explanation?: boolean
+  bloom_level?: boolean
   source_refs?: boolean
   created_at?: boolean
   updated_at?: boolean
@@ -985,12 +1021,13 @@ export type QuizQuestionSelectScalar = {
   sample_answer?: boolean
   grading_criteria?: boolean
   explanation?: boolean
+  bloom_level?: boolean
   source_refs?: boolean
   created_at?: boolean
   updated_at?: boolean
 }
 
-export type QuizQuestionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "quiz_id" | "question_type" | "order_index" | "question_text" | "image_url" | "audio_url" | "points" | "options" | "sample_answer" | "grading_criteria" | "explanation" | "source_refs" | "created_at" | "updated_at", ExtArgs["result"]["quizQuestion"]>
+export type QuizQuestionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "quiz_id" | "question_type" | "order_index" | "question_text" | "image_url" | "audio_url" | "points" | "options" | "sample_answer" | "grading_criteria" | "explanation" | "bloom_level" | "source_refs" | "created_at" | "updated_at", ExtArgs["result"]["quizQuestion"]>
 export type QuizQuestionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   quiz?: boolean | Prisma.QuizDefaultArgs<ExtArgs>
   attempt_answers?: boolean | Prisma.QuizQuestion$attempt_answersArgs<ExtArgs>
@@ -1022,6 +1059,7 @@ export type $QuizQuestionPayload<ExtArgs extends runtime.Types.Extensions.Intern
     sample_answer: string | null
     grading_criteria: runtime.JsonValue
     explanation: string | null
+    bloom_level: string | null
     source_refs: runtime.JsonValue | null
     created_at: Date
     updated_at: Date
@@ -1462,6 +1500,7 @@ export interface QuizQuestionFieldRefs {
   readonly sample_answer: Prisma.FieldRef<"QuizQuestion", 'String'>
   readonly grading_criteria: Prisma.FieldRef<"QuizQuestion", 'Json'>
   readonly explanation: Prisma.FieldRef<"QuizQuestion", 'String'>
+  readonly bloom_level: Prisma.FieldRef<"QuizQuestion", 'String'>
   readonly source_refs: Prisma.FieldRef<"QuizQuestion", 'Json'>
   readonly created_at: Prisma.FieldRef<"QuizQuestion", 'DateTime'>
   readonly updated_at: Prisma.FieldRef<"QuizQuestion", 'DateTime'>

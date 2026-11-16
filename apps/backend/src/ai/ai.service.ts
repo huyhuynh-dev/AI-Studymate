@@ -3,6 +3,7 @@ import {
   embedMany,
   generateText,
   streamText,
+  rerank,
   Output,
 } from 'ai';
 import { AiModelFactory } from './ai-model.factory.js';
@@ -15,6 +16,19 @@ import {
   type FeatureOutputMap,
   type StructuredFeatureKey,
 } from './schemas/index.js';
+
+export type RerankDocumentInput = NonNullable<
+  Parameters<typeof rerank>[0]['documents']
+>[number];
+
+export interface RerankDocumentsParams<
+  T extends RerankDocumentInput = string,
+> {
+  query: string;
+  documents: T[];
+  topN?: number;
+  abortSignal?: AbortSignal;
+}
 
 @Injectable()
 export class AiService {
@@ -83,6 +97,7 @@ export class AiService {
       modelName?: string;
       temperature?: number;
       maxRetries?: number;
+      abortSignal?: AbortSignal;
       messages?: NonNullable<Parameters<typeof generateText>[0]['messages']>;
     },
   ): Promise<{
@@ -112,6 +127,7 @@ export class AiService {
       system: preparedObj.system,
       temperature: options?.temperature ?? preparedObj.temperature,
       maxRetries: options?.maxRetries ?? preparedObj.maxRetries,
+      ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {}),
     });
 
     return {
@@ -155,6 +171,28 @@ export class AiService {
     });
   }
 
+  /**
+   * Tái xếp hạng (Cross-Encoder Reranking) danh sách đoạn văn bản theo độ liên quan với câu truy vấn
+   */
+  async rerankDocuments<T extends RerankDocumentInput = string>(
+    params: RerankDocumentsParams<T>,
+  ) {
+    const config = FEATURE_MAP.DOCUMENT_RERANK;
+    const model = this.aiModelFactory.getRerankingModel();
+
+    return rerank({
+      model,
+      query: params.query,
+      documents: params.documents,
+      ...(params.topN !== undefined ? { topN: params.topN } : {}),
+      maxRetries: config.maxRetries ?? 1,
+      abortSignal: params.abortSignal,
+      ...(config.providerOptions
+        ? { providerOptions: config.providerOptions as any }
+        : {}),
+    });
+  }
+
   generateText(
     messages: NonNullable<Parameters<typeof generateText>[0]['messages']>,
   ) {
@@ -165,7 +203,7 @@ export class AiService {
   }
 
   generateTextForTask(
-    task: Exclude<AiTask, 'EMBEDDING'>,
+    task: Exclude<AiTask, 'EMBEDDING' | 'RERANK'>,
     messages: NonNullable<Parameters<typeof generateText>[0]['messages']>,
   ) {
     if (task === 'SUMMARIZE') {
@@ -198,7 +236,7 @@ export class AiService {
   }
 
   async generateObjectForTask<T = unknown>(
-    task: Exclude<AiTask, 'EMBEDDING'>,
+    task: Exclude<AiTask, 'EMBEDDING' | 'RERANK'>,
     options: {
       schema: unknown;
       schemaName?: string;
@@ -248,7 +286,7 @@ export class AiService {
   }
 
   streamTextForTask(
-    task: Exclude<AiTask, 'EMBEDDING'>,
+    task: Exclude<AiTask, 'EMBEDDING' | 'RERANK'>,
     options: Omit<
       Parameters<typeof streamText>[0],
       'model' | 'prompt' | 'messages'

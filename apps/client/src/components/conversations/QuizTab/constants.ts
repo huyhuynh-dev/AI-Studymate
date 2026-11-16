@@ -1,4 +1,4 @@
-import type { Difficulty, EvaluationStatus, QuestionType } from "./types";
+import type { BloomLevel, BloomPreset, Difficulty, EvaluationStatus, QuestionType } from "./types";
 import type { Tone } from "./utils";
 
 export const QUESTION_TYPE_META: Record<QuestionType, { label: string; short: string; hint: string }> = {
@@ -22,6 +22,75 @@ export const DIFFICULTY_OPTIONS: { value: Difficulty; label: string }[] = [
   { value: "basic", label: "Cơ bản" },
   { value: "applied", label: "Vận dụng" },
   { value: "advanced", label: "Nâng cao" },
+];
+
+export const BLOOM_LEVELS: readonly BloomLevel[] = [
+  "remember",
+  "understand",
+  "apply",
+  "analyze",
+] as const;
+
+export const BLOOM_META: Record<
+  BloomLevel,
+  { label: string; short: string; description: string; tone: Tone }
+> = {
+  remember: {
+    label: "Ghi nhớ (Remember)",
+    short: "Ghi nhớ",
+    description: "Nhận diện khái niệm, định nghĩa, thuật ngữ cốt lõi",
+    tone: "neutral",
+  },
+  understand: {
+    label: "Thông hiểu (Understand)",
+    short: "Thông hiểu",
+    description: "Giải thích ý nghĩa, so sánh, phân biệt cơ chế",
+    tone: "primary",
+  },
+  apply: {
+    label: "Vận dụng (Apply)",
+    short: "Vận dụng",
+    description: "Áp dụng kiến thức giải quyết tình huống thực tế",
+    tone: "warning",
+  },
+  analyze: {
+    label: "Phân tích (Analyze)",
+    short: "Phân tích",
+    description: "Phân tích nguyên nhân, hệ quả, cấu trúc vấn đề",
+    tone: "ai",
+  },
+};
+
+export const BLOOM_PRESET_OPTIONS: {
+  value: BloomPreset;
+  label: string;
+  description: string;
+  weights: Record<BloomLevel, number>;
+}[] = [
+  {
+    value: "familiarize",
+    label: "Làm quen kiến thức",
+    description: "Ưu tiên Ghi nhớ & Thông hiểu để nắm nền tảng",
+    weights: { remember: 40, understand: 35, apply: 20, analyze: 5 },
+  },
+  {
+    value: "balanced",
+    label: "Cân bằng toàn diện",
+    description: "Phân bổ đều cả 4 cấp độ tư duy Bloom",
+    weights: { remember: 25, understand: 30, apply: 30, analyze: 15 },
+  },
+  {
+    value: "exam_prep",
+    label: "Ôn thi chuyên sâu",
+    description: "Tập trung Vận dụng & Phân tích tình huống nâng cao",
+    weights: { remember: 10, understand: 20, apply: 40, analyze: 30 },
+  },
+  {
+    value: "custom",
+    label: "Tùy chỉnh tỷ lệ",
+    description: "Tự điều chỉnh % cho từng cấp độ Bloom",
+    weights: { remember: 25, understand: 25, apply: 25, analyze: 25 },
+  },
 ];
 
 /** Lớp Tailwind đầy đủ theo tone (viết literal để Tailwind quét được) */

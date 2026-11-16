@@ -10,10 +10,17 @@ import {
     IsOptional,
     IsString,
     IsUUID,
+    Max,
     MaxLength,
     Min,
     ValidateNested,
 } from 'class-validator';
+import {
+    BLOOM_LEVELS,
+    BLOOM_PRESETS,
+    type BloomLevel,
+    type BloomPreset,
+} from '../../common/types/bloom.types.js';
 import { QuestionTypeEnum } from '../../generated/prisma/client.js';
 
 export class QuizOptionDto {
@@ -72,6 +79,12 @@ export class QuestionDraftDto {
     @IsOptional()
     @IsString()
     explanation?: string | null;
+
+    @IsOptional()
+    @IsIn(BLOOM_LEVELS, {
+        message: 'Cấp độ Bloom phải là remember, understand, apply hoặc analyze',
+    })
+    bloomLevel?: BloomLevel | null;
 }
 
 export class CreateQuizDto {
@@ -197,6 +210,45 @@ export class GenerateQuizWithAiDto {
         message: 'Mức độ khó phải là basic, applied hoặc advanced',
     })
     difficulty!: 'basic' | 'applied' | 'advanced';
+
+    @IsOptional()
+    @IsIn(BLOOM_PRESETS, {
+        message: 'Chế độ Bloom phải là familiarize, balanced, exam_prep hoặc custom',
+    })
+    bloomPreset?: BloomPreset;
+
+    @IsOptional()
+    @IsObject({ message: 'Phân bổ Bloom tùy chỉnh không hợp lệ' })
+    bloomDistribution?: Partial<Record<BloomLevel, number>>;
+}
+
+export class GenerateTargetedQuizDto {
+    @Type(() => Number)
+    @IsNumber()
+    @Min(3, { message: 'Số lượng câu hỏi phải ít nhất là 3' })
+    @Max(15, { message: 'Số lượng câu hỏi đặc trị tối đa là 15' })
+    questionCount!: number;
+
+    @IsArray({ message: 'Danh sách loại câu hỏi phải là một mảng' })
+    @IsEnum(QuestionTypeEnum, {
+        each: true,
+        message: 'Loại câu hỏi không hợp lệ',
+    })
+    types!: QuestionTypeEnum[];
+
+    @IsOptional()
+    @IsIn(BLOOM_PRESETS, {
+        message: 'Chế độ Bloom phải là familiarize, balanced, exam_prep hoặc custom',
+    })
+    bloomPreset?: BloomPreset;
+
+    @IsOptional()
+    @IsArray({ message: 'Danh sách chunkIds phải là một mảng' })
+    @IsUUID('4', {
+        each: true,
+        message: 'chunkId không hợp lệ',
+    })
+    chunkIds?: string[];
 }
 
 export class FlashcardTargetDto {

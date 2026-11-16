@@ -21,6 +21,21 @@ describe('QuizController', () => {
             generateWithAI: vi
                 .fn()
                 .mockResolvedValue({ id: 'quiz-ai-1', source: 'ai' }),
+            generateFromDeck: vi
+                .fn()
+                .mockResolvedValue({ id: 'quiz-deck-1', source: 'flashcard' }),
+            getWeakAreasSummary: vi.fn().mockResolvedValue({
+                hasWeakAreas: true,
+                weakChunkCount: 2,
+                incorrectQuizCount: 1,
+                leechCardCount: 1,
+                topWeakTopics: ['SQL Index'],
+                topMissingPoints: [],
+            }),
+            generateTargetedQuiz: vi.fn().mockResolvedValue({
+                id: 'quiz-target-1',
+                source: 'ai',
+            }),
             listAttempts: vi.fn().mockResolvedValue([]),
             startAttempt: vi.fn().mockResolvedValue({ id: 'att-1' }),
             saveAnswer: vi.fn().mockResolvedValue({ success: true }),
@@ -115,6 +130,24 @@ describe('QuizController', () => {
             'att-1',
             'q-1',
             { status: 'partial' }
+        );
+
+        await controller.getWeakAreasSummary(fakeReq, 'conv-1');
+        expect(mockQuizService.getWeakAreasSummary).toHaveBeenCalledWith(
+            'user-123',
+            'conv-1'
+        );
+
+        const targetedDto = {
+            questionCount: 5,
+            types: [QuestionTypeEnum.single_choice, QuestionTypeEnum.essay],
+            bloomPreset: 'exam_prep' as const,
+        };
+        await controller.generateTargetedQuiz(fakeReq, 'conv-1', targetedDto);
+        expect(mockQuizService.generateTargetedQuiz).toHaveBeenCalledWith(
+            'user-123',
+            'conv-1',
+            targetedDto
         );
     });
 });
