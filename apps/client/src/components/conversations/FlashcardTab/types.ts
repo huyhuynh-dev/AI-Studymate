@@ -1,3 +1,5 @@
+import type { SourceReference } from "@/types";
+
 export type CardType = "basic" | "cloze" | "typein";
 export type CardStatus = "new" | "learning" | "relearning" | "review";
 export type Rating = "again" | "hard" | "good" | "easy";
@@ -37,6 +39,7 @@ export interface Flashcard {
   dueInDays: number;
   intervalDays: number;
   ease: number;
+  sourceRefs?: SourceReference[];
 }
 
 export type CardDraft = Pick<Flashcard, "type" | "front" | "back" | "imageUrl" | "audioUrl">;

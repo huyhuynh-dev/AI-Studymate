@@ -1,3 +1,4 @@
+import { SourceReferenceButton } from "@/components/ui/SourceReferenceButton";
 import { CARD_TYPE_LABEL } from "../../constants";
 import { RichText } from "../../richtext";
 import type { Flashcard } from "../../types";
@@ -30,6 +31,7 @@ export function BasicCard({ card, revealed, onReveal }: { card: Flashcard; revea
             align="center"
             className={cx(FONT_HEADING, "text-xl sm:text-2xl font-semibold text-neutral-900 dark:text-white")}
           />
+          <SourceReferenceButton sourceRefs={card.sourceRefs} variant="inline" align="center" className="mt-5" />
         </div>
       </Collapse>
       <Collapse open={!revealed}>

@@ -171,10 +171,13 @@ describe('chunk-context.helper & parseSourceRefs', () => {
 
     it('parseSourceRefs safely sanitizes DB jsonb values', () => {
         expect(parseSourceRefs(null)).toEqual([]);
+        expect(parseSourceRefs(undefined)).toEqual([]);
+        expect(parseSourceRefs([])).toEqual([]);
         expect(parseSourceRefs('invalid')).toEqual([]);
         expect(
             parseSourceRefs([
                 { invalid: true },
+                { documentId: '   ', fileName: 'EmptyDoc.pdf' },
                 {
                     documentId: 'doc-1',
                     fileName: 'Slide.pdf',
@@ -184,6 +187,11 @@ describe('chunk-context.helper & parseSourceRefs', () => {
                     bboxes: [{ page_no: 7, l: 1, t: 2, r: 3, b: 4 }],
                     headings: ['Mục 2', ''],
                     snippet: '  Trích đoạn mẫu  ',
+                },
+                {
+                    documentId: 'doc-2',
+                    fileName: 'NoPage.pdf',
+                    pageNumbers: [0, -5],
                 },
             ])
         ).toEqual([
@@ -196,6 +204,11 @@ describe('chunk-context.helper & parseSourceRefs', () => {
                 bboxes: [{ page_no: 7, l: 1, t: 2, r: 3, b: 4 }],
                 headings: ['Mục 2'],
                 snippet: 'Trích đoạn mẫu',
+            },
+            {
+                documentId: 'doc-2',
+                fileName: 'NoPage.pdf',
+                pageNumbers: [1],
             },
         ]);
     });

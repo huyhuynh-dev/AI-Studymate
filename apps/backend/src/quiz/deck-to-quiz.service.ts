@@ -224,15 +224,9 @@ export class DeckToQuizService {
         allowedTypes: QuestionTypeEnum[],
         random = Math.random
     ): QuestionCreatePayload[] {
-        // Nhóm thẻ theo loại
+        // Nhóm thẻ basic phục vụ kiểm tra đủ phương án nhiễu cho single_choice
         const basicCards = cards.filter(
             (c) => c.card_type === CardTypeEnum.basic
-        );
-        const clozeCards = cards.filter(
-            (c) => c.card_type === CardTypeEnum.cloze
-        );
-        const typeInCards = cards.filter(
-            (c) => c.card_type === CardTypeEnum.type_in
         );
 
         const allowSingle = allowedTypes.includes(

@@ -1,12 +1,30 @@
 import { axiosClient } from '@/lib/axios.client';
 import { splitClozeHtml } from '@/components/conversations/FlashcardTab/richtext';
-import type { CardDraft, Flashcard, Rating } from '@/components/conversations/FlashcardTab/types';
+import type { CardDraft, CardStatus, Flashcard, Rating } from '@/components/conversations/FlashcardTab/types';
+import { parseClientSourceRefs } from '@/types';
 
-export function mapBackendToClientCard(b: any): Flashcard {
+export interface RawBackendFlashcard {
+  id: string;
+  deck_id: string;
+  card_type: 'basic' | 'cloze' | 'type_in';
+  front_text: string;
+  back_text: string;
+  image_url?: string | null;
+  audio_url?: string | null;
+  state: CardStatus;
+  due_date: string | Date;
+  interval: number;
+  ease_factor: number;
+  source_refs?: unknown;
+  sourceRefs?: unknown;
+}
+
+export function mapBackendToClientCard(b: RawBackendFlashcard): Flashcard {
   const dueDate = new Date(b.due_date);
   const now = new Date();
   const diffMs = dueDate.getTime() - now.getTime();
   const dueInDays = b.state === 'new' ? 0 : Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const sourceRefs = parseClientSourceRefs(b.source_refs ?? b.sourceRefs);
 
   return {
     id: b.id,
@@ -20,6 +38,7 @@ export function mapBackendToClientCard(b: any): Flashcard {
     dueInDays,
     intervalDays: b.interval,
     ease: b.ease_factor,
+    ...(sourceRefs.length > 0 ? { sourceRefs } : {}),
   };
 }
 
@@ -44,7 +63,7 @@ export interface GenerateFlashcardsAiRequest {
 
 export interface GenerateFlashcardsAiResponse {
   deckId: string;
-  cards: any[];
+  cards: RawBackendFlashcard[];
   stats: {
     requested: number;
     saved: number;
@@ -97,7 +116,7 @@ export const flashcardApi = {
   },
 
   update: async (id: string, data: Partial<CardDraft>): Promise<Flashcard> => {
-    const payload: any = {};
+    const payload: Record<string, unknown> = {};
     if (data.front !== undefined) payload.frontText = data.front;
     if (data.back !== undefined) payload.backText = data.back;
     if (data.type !== undefined) payload.cardType = data.type === 'typein' ? 'type_in' : data.type;

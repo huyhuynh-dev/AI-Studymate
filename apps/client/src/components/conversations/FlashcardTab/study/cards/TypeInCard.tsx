@@ -1,4 +1,5 @@
 import { CheckCircle2 } from "lucide-react";
+import { SourceReferenceButton } from "@/components/ui/SourceReferenceButton";
 import { CARD_TYPE_LABEL } from "../../constants";
 import { RichText, richToPlain } from "../../richtext";
 import type { Flashcard } from "../../types";
@@ -103,6 +104,9 @@ export function TypeInCard({ card, revealed, value, onChange, onSubmit }: Props)
               <p className="mt-1 break-all text-base font-bold text-emerald-700 dark:text-emerald-400">{expected}</p>
             </div>
           </div>
+        )}
+        {revealed && (
+          <SourceReferenceButton sourceRefs={card.sourceRefs} variant="inline" align="center" className="mt-5" />
         )}
       </div>
     </CardShell>

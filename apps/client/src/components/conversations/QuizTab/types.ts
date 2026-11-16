@@ -1,4 +1,5 @@
 /* Kiểu dữ liệu QuizTab — ánh xạ camelCase từ Quiz_DatabaseSchema.md */
+import type { SourceReference } from "@/types";
 
 export type QuestionType = "single_choice" | "multiple_choice" | "true_false" | "short_answer" | "essay";
 export type AttemptStatus = "in_progress" | "grading" | "submitted";
@@ -30,6 +31,7 @@ export interface QuizQuestion {
   gradingCriteria: string[];
   /** HTML */
   explanation?: string | null;
+  sourceRefs?: SourceReference[];
 }
 
 export interface Quiz {
