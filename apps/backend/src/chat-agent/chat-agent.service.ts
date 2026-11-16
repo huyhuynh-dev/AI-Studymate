@@ -5,6 +5,7 @@ import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.serv
 import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
 import { SummariesService } from '../summaries/summaries.service.js';
+import { FlashcardAiManageService } from '../deck-flashcard/flashcard-ai-manage.service.js';
 import { TavilyService } from '../search/tavily.service.js';
 import {
   SummaryLength,
@@ -69,6 +70,7 @@ export class ChatAgentService {
     @Optional() private readonly summariesService?: SummariesService,
     @Optional() private readonly documentsRepo?: DocumentsRepoService,
     @Optional() private readonly tavilyService?: TavilyService,
+    @Optional() private readonly flashcardAiManageService?: FlashcardAiManageService,
   ) {}
 
   async createChatSession(
@@ -538,6 +540,89 @@ export class ChatAgentService {
                   created.created_at instanceof Date
                     ? created.created_at.toISOString()
                     : String(created.created_at),
+              };
+            },
+            onCreateFlashcards: async (input) => {
+              if (!this.flashcardAiManageService) {
+                throw new Error('FlashcardAiManageService chưa được khởi tạo');
+              }
+
+              const catalogMap = new Map(
+                (availableDocuments ?? []).map((d) => [
+                  d.documentId,
+                  d.fileName,
+                ]),
+              );
+              const requestedIds = Array.isArray(input.documentIds)
+                ? input.documentIds.filter((id) => catalogMap.has(id))
+                : [];
+              const resolvedDocumentIds: string[] | 'all' =
+                requestedIds.length > 0
+                  ? [...new Set(requestedIds)]
+                  : ragContext.attachedDocumentIds &&
+                      ragContext.attachedDocumentIds.length > 0
+                    ? [...new Set(ragContext.attachedDocumentIds)]
+                    : 'all';
+
+              const uuidRegex =
+                /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+              const targetDeckId =
+                typeof input.deckId === 'string' &&
+                uuidRegex.test(input.deckId.trim())
+                  ? input.deckId.trim()
+                  : undefined;
+              const target = targetDeckId
+                ? ({ kind: 'deck', deckId: targetDeckId } as const)
+                : ({ kind: 'new' } as const);
+
+              const rawCount =
+                typeof input.count === 'number' && Number.isFinite(input.count)
+                  ? Math.round(input.count)
+                  : 10;
+              const count = Math.min(50, Math.max(1, rawCount));
+
+              const allowedTypes = new Set<'basic' | 'cloze' | 'type_in'>([
+                'basic',
+                'cloze',
+                'type_in',
+              ]);
+              const filteredTypes = Array.isArray(input.types)
+                ? [...new Set(input.types.filter((t) => allowedTypes.has(t)))]
+                : [];
+              const types: Array<'basic' | 'cloze' | 'type_in'> =
+                filteredTypes.length > 0 ? filteredTypes : ['basic', 'cloze'];
+
+              const created = await this.flashcardAiManageService.generateWithAi(
+                ragContext.userId,
+                {
+                  conversationId: ragContext.conversationId,
+                  target,
+                  documentIds: resolvedDocumentIds,
+                  count,
+                  types,
+                  instructions: input.instructions?.trim() || '',
+                  deckName: input.deckName?.trim() || undefined,
+                },
+              );
+
+              const documentNames =
+                resolvedDocumentIds === 'all'
+                  ? (availableDocuments ?? []).map((d) => d.fileName)
+                  : resolvedDocumentIds
+                      .map((id) => catalogMap.get(id))
+                      .filter((name): name is string => Boolean(name));
+
+              return {
+                deckId: created.deckId,
+                deckName: created.deckName,
+                deckDescription: created.deckDescription,
+                targetKind: target.kind,
+                savedCount: created.stats.saved,
+                requestedCount: created.stats.requested,
+                droppedCount: created.stats.dropped,
+                types,
+                documentNames,
+                createdAt: new Date().toISOString(),
               };
             },
           }

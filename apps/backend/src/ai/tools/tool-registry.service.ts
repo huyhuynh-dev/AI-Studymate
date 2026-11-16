@@ -26,6 +26,10 @@ import {
   createDocumentSummaryInputSchema,
 } from './definitions/summaries/index.js';
 import {
+  createCreateFlashcardsTool,
+  createFlashcardsInputSchema,
+} from './definitions/flashcards/index.js';
+import {
   createSearchInternetTool,
   searchInternetInputSchema,
   createExtractWebPageTool,
@@ -207,6 +211,10 @@ export class ToolRegistryService {
         description: 'Khởi tạo bản tóm tắt tài liệu',
         inputSchema: createDocumentSummaryInputSchema,
       }),
+      createFlashcards: tool({
+        description: 'Khởi tạo bộ thẻ ghi nhớ Flashcard từ tài liệu học tập',
+        inputSchema: createFlashcardsInputSchema,
+      }),
       searchInternet: tool({
         description: 'Tìm kiếm thông tin trên Internet qua Tavily Search API',
         inputSchema: searchInternetInputSchema,
@@ -260,6 +268,13 @@ export class ToolRegistryService {
     if (callbacks?.onCreateDocumentSummary) {
       tools.createDocumentSummary = createCreateDocumentSummaryTool(
         callbacks.onCreateDocumentSummary,
+        tracker,
+      );
+    }
+
+    if (callbacks?.onCreateFlashcards) {
+      tools.createFlashcards = createCreateFlashcardsTool(
+        callbacks.onCreateFlashcards,
         tracker,
       );
     }

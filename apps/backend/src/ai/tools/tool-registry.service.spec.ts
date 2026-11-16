@@ -8,12 +8,14 @@ import {
   type GetDocumentSectionOrPagesToolOutput,
   type SearchInternetToolOutput,
   type ExtractWebPageToolOutput,
+  type CreateFlashcardsToolOutput,
   type WebCitationItem,
 } from './types.js';
 import { createSearchDocumentChunksTool } from './definitions/documents/search-document-chunks.tool.js';
 import { createGetDocumentSectionOrPagesTool } from './definitions/documents/get-document-section-or-pages.tool.js';
 import { createSearchInternetTool } from './definitions/web/search-internet.tool.js';
 import { createExtractWebPageTool } from './definitions/web/extract-web-page.tool.js';
+import { createCreateFlashcardsTool } from './definitions/flashcards/create-flashcards.tool.js';
 import { HttpLoggingFilter } from '../../common/filters/http-logging.filter.js';
 
 describe('ToolRegistryService & ChatSessionToolTracker', () => {
@@ -422,14 +424,81 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
     });
   });
 
+  describe('createFlashcardsTool', () => {
+    it('thực thi execute, lưu lightweightOutput vào tracker và định dạng toModelOutput chuẩn', async () => {
+      const tracker = new ChatSessionToolTracker();
+      const mockCallback = vi.fn().mockResolvedValue({
+        deckId: 'deck-uuid-123',
+        deckName: 'Cấu trúc dữ liệu - Cây AVL',
+        deckDescription: 'Ôn tập nguyên lý cân bằng cây AVL',
+        targetKind: 'new',
+        savedCount: 10,
+        requestedCount: 10,
+        droppedCount: 0,
+        types: ['basic', 'cloze'],
+        documentNames: ['Giao_trinh_CTDL.pdf'],
+        createdAt: '2026-11-16T10:00:00.000Z',
+      });
+
+      const toolInstance = createCreateFlashcardsTool(mockCallback, tracker);
+      expect(toolInstance.execute).toBeDefined();
+
+      const output = (await toolInstance.execute!(
+        {
+          documentIds: ['doc-1'],
+          count: 10,
+          types: ['basic', 'cloze'],
+          deckName: 'Cấu trúc dữ liệu - Cây AVL',
+        },
+        { toolCallId: 'tc-fc-1', messages: [] },
+      )) as CreateFlashcardsToolOutput;
+
+      expect(output.deckId).toBe('deck-uuid-123');
+      expect(output.savedCount).toBe(10);
+
+      const lightweight = tracker.getLightweightOutput('tc-fc-1');
+      expect(lightweight).toEqual({
+        deckId: 'deck-uuid-123',
+        deckName: 'Cấu trúc dữ liệu - Cây AVL',
+        deckDescription: 'Ôn tập nguyên lý cân bằng cây AVL',
+        targetKind: 'new',
+        savedCount: 10,
+        requestedCount: 10,
+        droppedCount: 0,
+        types: ['basic', 'cloze'],
+        documentNames: ['Giao_trinh_CTDL.pdf'],
+        createdAt: '2026-11-16T10:00:00.000Z',
+      });
+
+      const modelOut = toolInstance.toModelOutput!({
+        toolCallId: 'tc-fc-1',
+        input: {
+          documentIds: ['doc-1'],
+          count: 10,
+          types: ['basic', 'cloze'],
+          deckName: 'Cấu trúc dữ liệu - Cây AVL',
+        },
+        output,
+      }) as {
+        type: 'text';
+        value: string;
+      };
+      expect(modelOut.type).toBe('text');
+      expect(modelOut.value).toContain('deck-uuid-123');
+      expect(modelOut.value).toContain('Cấu trúc dữ liệu - Cây AVL');
+      expect(modelOut.value).toContain('10/10 thẻ');
+    });
+  });
+
   describe('ToolRegistryService toolset creation & validation', () => {
-    it('createChatSessionToolset đăng ký searchInternet và extractWebPage khi có callback', () => {
+    it('createChatSessionToolset đăng ký searchInternet, extractWebPage và createFlashcards khi có callback', () => {
       const registry = new ToolRegistryService();
       const { tools, tracker } = registry.createChatSessionToolset({
         onSearchDocumentChunks: vi.fn(),
         onGetDocumentSectionOrPages: vi.fn(),
         onSearchInternet: vi.fn(),
         onExtractWebPage: vi.fn(),
+        onCreateFlashcards: vi.fn(),
       });
 
       expect(tracker).toBeDefined();
@@ -437,17 +506,77 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       expect(tools.getDocumentSectionOrPages).toBeDefined();
       expect(tools.searchInternet).toBeDefined();
       expect(tools.extractWebPage).toBeDefined();
+      expect(tools.createFlashcards).toBeDefined();
       expect(tools.getConversationDocumentsMetadata).toBeUndefined();
       expect(tools.askUserQuestion).toBeDefined();
     });
 
-    it('getChatValidationTools chứa đầy đủ schema của searchInternet và extractWebPage', () => {
+    it('getChatValidationTools chứa đầy đủ schema của searchInternet, extractWebPage và createFlashcards', () => {
       const registry = new ToolRegistryService();
       const validationTools = registry.getChatValidationTools();
 
       expect(validationTools.searchInternet).toBeDefined();
       expect(validationTools.extractWebPage).toBeDefined();
       expect(validationTools.searchDocumentChunks).toBeDefined();
+      expect(validationTools.createFlashcards).toBeDefined();
+    });
+
+    it('extractAssistantUIParts trích xuất đúng part tool-createFlashcards kèm lightweightOutput', () => {
+      const registry = new ToolRegistryService();
+      const tracker = new ChatSessionToolTracker();
+      tracker.recordOutput(
+        'tc-fc-extract',
+        'createFlashcards',
+        { deckId: 'deck-999' },
+        {
+          deckId: 'deck-999',
+          deckName: 'Bộ thẻ Đệ quy',
+          savedCount: 12,
+          requestedCount: 12,
+          types: ['basic'],
+        },
+      );
+
+      const parts = registry.extractAssistantUIParts(
+        [
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'tool-call',
+                toolName: 'createFlashcards',
+                toolCallId: 'tc-fc-extract',
+                input: { count: 12, types: ['basic'] },
+              },
+              {
+                type: 'text',
+                text: 'Mình đã tạo xong bộ thẻ Đệ quy cho bạn.',
+              },
+            ],
+          },
+        ],
+        tracker,
+      );
+
+      expect(parts).toEqual([
+        {
+          type: 'tool-createFlashcards',
+          toolCallId: 'tc-fc-extract',
+          state: 'output-available',
+          input: { count: 12, types: ['basic'] },
+          output: {
+            deckId: 'deck-999',
+            deckName: 'Bộ thẻ Đệ quy',
+            savedCount: 12,
+            requestedCount: 12,
+            types: ['basic'],
+          },
+        },
+        {
+          type: 'text',
+          text: 'Mình đã tạo xong bộ thẻ Đệ quy cho bạn.',
+        },
+      ]);
     });
   });
 

@@ -20,6 +20,8 @@ import { sanitizeFlashcardHtml } from './flashcard/flashcard.service.js';
 
 export interface GenerateFlashcardsWithAiResponse {
     deckId: string;
+    deckName: string;
+    deckDescription: string | null;
     cards: Prisma.FlashcardModel[];
     stats: {
         requested: number;
@@ -127,6 +129,13 @@ export class FlashcardAiManageService {
             dbRows
         );
 
+        const resolvedDeckName = existingDeck
+            ? existingDeck.name
+            : (aiResult.deckMeta?.name ?? 'Bộ thẻ AI');
+        const resolvedDeckDescription = existingDeck
+            ? null
+            : (aiResult.deckMeta?.description ?? null);
+
         const totalMs = Date.now() - startTime;
         this.logger.log(
             `[generateWithAi] Hoàn tất trong ${totalMs}ms | user=${userId} target=${req.target.kind} deckId=${saved.deckId} docs=${aiResult.docCount} requested=${req.count} saved=${saved.cards.length} dropped=${aiResult.dropped.length}`
@@ -134,6 +143,8 @@ export class FlashcardAiManageService {
 
         return {
             deckId: saved.deckId,
+            deckName: resolvedDeckName,
+            deckDescription: resolvedDeckDescription,
             cards: saved.cards,
             stats: {
                 requested: req.count,

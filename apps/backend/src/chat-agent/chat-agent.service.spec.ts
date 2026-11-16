@@ -6,6 +6,7 @@ import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.serv
 import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
 import { SummariesService } from '../summaries/summaries.service.js';
+import { FlashcardAiManageService } from '../deck-flashcard/flashcard-ai-manage.service.js';
 import { TavilyService } from '../search/tavily.service.js';
 
 describe('ChatAgentService', () => {
@@ -28,6 +29,9 @@ describe('ChatAgentService', () => {
   };
   let summariesMock: {
     createSummary: ReturnType<typeof vi.fn>;
+  };
+  let flashcardAiManageMock: {
+    generateWithAi: ReturnType<typeof vi.fn>;
   };
   let documentsRepoMock: {
     getAllDocumentsByConversationId: ReturnType<typeof vi.fn>;
@@ -121,6 +125,21 @@ describe('ChatAgentService', () => {
       }),
     };
 
+    flashcardAiManageMock = {
+      generateWithAi: vi.fn().mockResolvedValue({
+        deckId: 'deck-uuid-1',
+        deckName: 'Ôn tập Cây AVL',
+        deckDescription: 'Bộ thẻ ôn tập cân bằng cây AVL',
+        cards: [{ id: 'card-1' }, { id: 'card-2' }],
+        stats: {
+          requested: 10,
+          saved: 2,
+          dropped: 0,
+          truncatedDocuments: 0,
+        },
+      }),
+    };
+
     documentsRepoMock = {
       getAllDocumentsByConversationId: vi.fn().mockResolvedValue([
         {
@@ -142,6 +161,7 @@ describe('ChatAgentService', () => {
         { provide: ChatAgentAiService, useValue: aiMock },
         { provide: RetrievalService, useValue: retrievalMock },
         { provide: SummariesService, useValue: summariesMock },
+        { provide: FlashcardAiManageService, useValue: flashcardAiManageMock },
         { provide: DocumentsRepoService, useValue: documentsRepoMock },
         { provide: TavilyService, useValue: tavilyMock },
       ],
@@ -268,6 +288,74 @@ describe('ChatAgentService', () => {
     );
     expect(summaryResult.summaryId).toBe('summary-uuid-1');
     expect(summaryResult.title).toBe('Tóm tắt Giáo trình Cấu trúc dữ liệu');
+
+    // Kiểm tra callback Tool 6: createFlashcards
+    expect(options?.onCreateFlashcards).toBeDefined();
+    const flashcardResult = await options.onCreateFlashcards({
+      documentIds: ['doc-attached-1'],
+      count: 10,
+      types: ['basic', 'cloze'],
+      deckName: 'Ôn tập Cây AVL',
+      instructions: 'Tập trung phép xoay cây',
+    });
+    expect(flashcardAiManageMock.generateWithAi).toHaveBeenCalledWith(
+      'user-1',
+      {
+        conversationId: 'conv-1',
+        target: { kind: 'new' },
+        documentIds: ['doc-attached-1'],
+        count: 10,
+        types: ['basic', 'cloze'],
+        instructions: 'Tập trung phép xoay cây',
+        deckName: 'Ôn tập Cây AVL',
+      },
+    );
+    expect(flashcardResult.deckId).toBe('deck-uuid-1');
+    expect(flashcardResult.deckName).toBe('Ôn tập Cây AVL');
+    expect(flashcardResult.savedCount).toBe(2);
+    expect(flashcardResult.requestedCount).toBe(10);
+    expect(flashcardResult.targetKind).toBe('new');
+    expect(flashcardResult.documentNames).toEqual(['Giao_trinh_CTDL.pdf']);
+  });
+
+  it('onCreateFlashcards nên fallback về tất cả tài liệu và hỗ trợ thêm vào deckId hợp lệ', async () => {
+    await service.handleChatStream(
+      'user-1',
+      'session-1',
+      [
+        {
+          id: 'u1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'Thêm 5 thẻ type_in vào bộ thẻ cũ' }],
+        },
+      ],
+      undefined,
+      [],
+    );
+
+    const options = aiMock.executeChatStream.mock.calls[0]?.[3];
+    const existingDeckUuid = '11111111-2222-3333-4444-555555555555';
+    const result = await options.onCreateFlashcards({
+      count: 5,
+      types: ['type_in'],
+      deckId: existingDeckUuid,
+    });
+
+    expect(flashcardAiManageMock.generateWithAi).toHaveBeenCalledWith(
+      'user-1',
+      {
+        conversationId: 'conv-1',
+        target: { kind: 'deck', deckId: existingDeckUuid },
+        documentIds: 'all',
+        count: 5,
+        types: ['type_in'],
+        instructions: '',
+        deckName: undefined,
+      },
+    );
+    expect(result.targetKind).toBe('deck');
+    expect(result.types).toEqual(['type_in']);
+    expect(result.documentNames).toEqual(['Giao_trinh_CTDL.pdf']);
   });
 
   it('nên xác thực quyền truy cập phiên và gọi generateFollowUpSuggestions từ ChatAgentAiService', async () => {

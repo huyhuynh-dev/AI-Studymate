@@ -296,6 +296,33 @@ export type ExtractWebPageCallback = (
   message?: string;
 }>;
 
+// ── Tool 7: createFlashcards (Server-Side Tool) ──
+export interface CreateFlashcardsToolInput {
+  documentIds?: string[];
+  count?: number;
+  types?: Array<'basic' | 'cloze' | 'type_in'>;
+  deckName?: string;
+  instructions?: string;
+  deckId?: string;
+}
+
+export interface CreateFlashcardsToolOutput {
+  deckId: string;
+  deckName: string;
+  deckDescription?: string | null;
+  targetKind: 'new' | 'deck';
+  savedCount: number;
+  requestedCount: number;
+  droppedCount: number;
+  types: Array<'basic' | 'cloze' | 'type_in'>;
+  documentNames: string[];
+  createdAt: string;
+}
+
+export type CreateFlashcardsCallback = (
+  input: CreateFlashcardsToolInput,
+) => Promise<CreateFlashcardsToolOutput>;
+
 // ── Tên định danh các Tool của Chat Agent ──
 export type ChatAgentToolName =
   | 'searchDocumentChunks'
@@ -304,6 +331,7 @@ export type ChatAgentToolName =
   | 'getConversationDocumentsMetadata'
   | 'askUserQuestion'
   | 'createDocumentSummary'
+  | 'createFlashcards'
   | 'searchInternet'
   | 'extractWebPage';
 
@@ -335,6 +363,7 @@ export interface ChatSessionToolCallbacks {
   onGetDocumentsFullContent?: GetDocumentsFullContentCallback;
   onGetDocumentsMetadata?: GetConversationDocumentsMetadataCallback;
   onCreateDocumentSummary?: CreateDocumentSummaryCallback;
+  onCreateFlashcards?: CreateFlashcardsCallback;
   onSearchInternet?: SearchInternetCallback;
   onExtractWebPage?: ExtractWebPageCallback;
 }
