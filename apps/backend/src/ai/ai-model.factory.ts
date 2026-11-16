@@ -4,7 +4,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createOllama } from 'ollama-ai-provider-v2';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 
 import type {
@@ -55,15 +54,17 @@ export class AiModelFactory {
             supportsStructuredOutputs: true,
         });
 
-        // Ollama Provider
-        const ollamaServerUrl =
-            this.configService.get<string>('OLLAMA_SERVER_URL')
-            ?? 'http://localhost:11434';
+        // Llama Server Embedding Provider (OpenAI Compatible)
+        const llamaEmbeddingUrl =
+            this.configService.get<string>('LLAMA_SERVER_URL_EMBEDDING')
+            ?? 'http://127.0.0.1:8082';
+        const normalizedLlamaEmbeddingUrl = llamaEmbeddingUrl.replace(/\/+$/, '');
 
-        const ollama = createOllama({
-            baseURL: ollamaServerUrl.endsWith('/api')
-                ? ollamaServerUrl
-                : `${ollamaServerUrl}/api`,
+        const llamaEmbeddingProvider = createOpenAICompatible({
+            name: 'llama-server-embedding',
+            baseURL: normalizedLlamaEmbeddingUrl.endsWith('/v1')
+                ? normalizedLlamaEmbeddingUrl
+                : `${normalizedLlamaEmbeddingUrl}/v1`,
         });
 
         // 4 Model Profiles chuẩn hóa
@@ -71,11 +72,11 @@ export class AiModelFactory {
             FAST: this.customProvider('groq/openai/gpt-oss-120b'),
             STANDARD: this.customProvider('cx/gpt-6-luna'),
             REASONING: this.customProvider('cx/gpt-6-luna-medium'),
-            VISION: this.customProvider('cx/gpt-5.6-luna'),
+            VISION: this.customProvider('gemini/gemini-3.5-flash-lite'),
         };
 
-        this.embeddingModel = ollama.embeddingModel(
-            'nomic-embed-text-v2-moe:latest',
+        this.embeddingModel = llamaEmbeddingProvider.embeddingModel(
+            'nomic-embed-text-v2-moe',
         );
     }
 
