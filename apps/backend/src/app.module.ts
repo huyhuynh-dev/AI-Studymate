@@ -22,6 +22,7 @@ import { ChatAgentModule } from './chat-agent/chat-agent.module.js';
 import { DeckFlashcardModule } from './deck-flashcard/deck-flashcard.module.js';
 import { QuizModule } from './quiz/quiz.module.js';
 import { SearchModule } from './search/search.module.js';
+import { AnalyticsModule } from './analytics/analytics.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -60,6 +61,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     DeckFlashcardModule,
     QuizModule,
     SearchModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [
