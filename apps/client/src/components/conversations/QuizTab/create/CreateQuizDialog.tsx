@@ -183,8 +183,9 @@ const SOURCES: { key: QuizCreateMode; icon: typeof Sparkles; title: string; desc
   { key: "manual", icon: PenLine, title: "Tự soạn đề", desc: "Tự viết từng câu hỏi và đáp án.", tone: "text-[var(--on-surface-variant)] bg-[var(--qz-fill)]" },
 ];
 
-export function CreateQuizDialog({ open, initialSource, decks, documents, weakSummary, onClose, onGenerateAI, onGenerateDeck, onGenerateTargeted, onManual }: {
-  open: boolean; initialSource: QuizCreateMode | null; decks: DeckOption[]; documents: DocumentOption[]; weakSummary?: WeakAreasSummary | null; onClose: () => void;
+export function CreateQuizDialog({ open, initialSource, decks, documents, weakSummary, targetedChunkIds, targetedSectionTitle, initialBloomPreset, onClose, onGenerateAI, onGenerateDeck, onGenerateTargeted, onManual }: {
+  open: boolean; initialSource: QuizCreateMode | null; decks: DeckOption[]; documents: DocumentOption[]; weakSummary?: WeakAreasSummary | null;
+  targetedChunkIds?: string[]; targetedSectionTitle?: string; initialBloomPreset?: BloomPreset; onClose: () => void;
   onGenerateAI: (o: AIGenerateOptions) => Promise<void>;
   onGenerateDeck: (o: DeckGenerateOptions) => Promise<void>;
   onGenerateTargeted?: (o: TargetedQuizOptions) => Promise<void>;
@@ -199,7 +200,7 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, weakSu
       : ["single_choice", "essay"]
   );
   const [difficulty, setDifficulty] = useState<Difficulty>("applied");
-  const [bloomPreset, setBloomPreset] = useState<BloomPreset>("balanced");
+  const [bloomPreset, setBloomPreset] = useState<BloomPreset>(() => initialBloomPreset ?? "balanced");
   const [customWeights, setCustomWeights] = useState<Record<BloomLevel, number>>({
     remember: 25,
     understand: 30,
@@ -237,6 +238,9 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, weakSu
           questionCount: Math.min(Math.max(count, 3), 15),
           types,
           bloomPreset: bloomPreset === "custom" ? "balanced" : bloomPreset,
+          ...(Array.isArray(targetedChunkIds) && targetedChunkIds.length > 0
+            ? { chunkIds: targetedChunkIds }
+            : {}),
         });
       } else if (source === "flashcard") {
         const allowedTypes = types.filter((t) => ["single_choice", "true_false", "short_answer"].includes(t));
@@ -287,10 +291,11 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, weakSu
   const isAI = source === "ai";
   const isTargeted = source === "targeted";
   const isDeck = source === "flashcard";
+  const hasExplicitChunks = Array.isArray(targetedChunkIds) && targetedChunkIds.length > 0;
   const noDecks = isDeck && decks.length === 0;
   const noDocs = isAI && documents.length === 0;
   const noSelection = isAI && documents.length > 0 && validDocIds.length === 0;
-  const noWeakAreas = isTargeted && (!weakSummary || !weakSummary.hasWeakAreas);
+  const noWeakAreas = isTargeted && !hasExplicitChunks && (!weakSummary || !weakSummary.hasWeakAreas);
   const invalidCustomBloom = isAI && bloomPreset === "custom" && customTotalWeight <= 0;
   const effectiveMax = isTargeted ? 15 : isAI ? 30 : deckMax;
   const effectiveCount = Math.min(Math.max(count, 3), effectiveMax);
@@ -332,7 +337,23 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, weakSu
           </Field>
         )}
         {isTargeted && (
-          noWeakAreas ? (
+          hasExplicitChunks ? (
+            <div className="rounded-2xl border border-[var(--border-outline)] bg-[var(--qz-ai-soft)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[14px] font-semibold font-heading text-foreground">
+                  {targetedSectionTitle
+                    ? `Mục tiêu: ${targetedSectionTitle}`
+                    : "Đề đặc trị theo vùng kiến thức đã chọn"}
+                </p>
+                <span className="shrink-0 rounded-full bg-[var(--qz-elevated)] px-2.5 py-0.5 text-[12px] font-semibold tabular-nums text-foreground">
+                  {targetedChunkIds.length} đoạn nguồn
+                </span>
+              </div>
+              <p className="mt-1.5 text-[12.5px] leading-5 text-[var(--on-surface-variant)]">
+                AI sẽ mở rộng ngữ cảnh liền kề quanh các đoạn văn của mục này và sinh câu hỏi mới giúp củng cố kiến thức.
+              </p>
+            </div>
+          ) : noWeakAreas ? (
             <div className="rounded-2xl border border-[var(--border-outline)] bg-[var(--qz-fill)] px-4 py-4 text-[14px] leading-5 text-[var(--on-surface-variant)]">
               Chưa phát hiện lỗ hổng kiến thức nào. Hãy làm ít nhất 1 bài kiểm tra hoặc ôn tập Flashcard trước để hệ thống xác định vùng kiến thức yếu.
             </div>

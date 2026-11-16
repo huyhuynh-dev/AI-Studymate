@@ -31,6 +31,10 @@ export interface DocumentsTabProps {
   onUpload?: (files: File[]) => void;
   onDelete?: (documentId: string) => void;
   onDownload?: (documentId: string, fileName: string) => void;
+  onCreateTargetedQuiz?: (opts: {
+    chunkIds: string[];
+    sectionTitle: string;
+  }) => void;
   className?: string;
   maxSizeMB?: number;
 }
@@ -87,6 +91,7 @@ export default function DocumentsTab({
   onUpload,
   onDelete,
   onDownload,
+  onCreateTargetedQuiz,
   className = "",
   maxSizeMB = 50,
 }: DocumentsTabProps) {
@@ -292,6 +297,7 @@ export default function DocumentsTab({
         <DocumentPdfViewer
           document={viewingDoc}
           onClose={handleCloseViewer}
+          onCreateTargetedQuiz={onCreateTargetedQuiz}
           className={className}
         />
       );
