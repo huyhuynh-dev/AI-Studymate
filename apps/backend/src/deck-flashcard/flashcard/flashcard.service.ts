@@ -13,6 +13,22 @@ export const EASY_BONUS = 1.3; // Hệ số thưởng Easy
 
 export type NormalizedRating = 'again' | 'hard' | 'good' | 'easy';
 
+export const MAX_REVIEW_TIME_TAKEN_MS = 3_600_000;
+
+const RATING_TO_INT: Record<NormalizedRating, number> = {
+    again: 1,
+    hard: 2,
+    good: 3,
+    easy: 4,
+};
+
+export interface SaveSrsReviewLogInput {
+    userId: string;
+    rating: number;
+    stateBefore: CardStateEnum;
+    timeTakenMs?: number | null;
+}
+
 export interface FlashcardSrsState {
     state: CardStateEnum;
     step_index: number;
@@ -187,7 +203,8 @@ export class FlashcardService {
     async reviewFlashcard(
         cardId: string,
         userId: string,
-        ratingInput: ReviewRating | string | number
+        ratingInput: ReviewRating | string | number,
+        timeTakenMs?: number
     ): Promise<Prisma.FlashcardModel> {
         const rating = this.normalizeRating(ratingInput);
 
@@ -221,8 +238,13 @@ export class FlashcardService {
             now
         );
 
-        // Bước 2: Lưu kết quả xuống Database thông qua Hàm 3
-        return await this.saveSrsReview(cardId, calculated);
+        // Bước 2: Lưu trạng thái SM-2 và ghi nhận lịch sử ôn tập nguyên tử xuống Database thông qua Hàm 3
+        return await this.saveSrsReview(cardId, calculated, {
+            userId,
+            rating: RATING_TO_INT[rating],
+            stateBefore: card.state,
+            timeTakenMs,
+        });
     }
 
     /**
@@ -328,22 +350,52 @@ export class FlashcardService {
 
     /**
      * HÀM 3: HÀM CẬP NHẬT DATABASE QUA PRISMA (DB PERSISTENCE)
-     * Lưu trữ trực tiếp kết quả tính toán SRS vào cơ sở dữ liệu.
+     * Lưu trữ đồng thời trạng thái SRS mới và lịch sử ôn tập (flashcard_reviews) trong cùng transaction.
      */
     async saveSrsReview(
         cardId: string,
-        result: CalculatedSrsResult
+        result: CalculatedSrsResult,
+        reviewLog?: SaveSrsReviewLogInput
     ): Promise<Prisma.FlashcardModel> {
-        return await this.prisma.flashcard.update({
-            where: { id: cardId },
-            data: {
-                state: result.state,
-                step_index: result.step_index,
-                interval: result.interval,
-                ease_factor: result.ease_factor,
-                due_date: result.due_date,
-                last_reviewed_at: result.last_reviewed_at,
-            },
+        const srsData = {
+            state: result.state,
+            step_index: result.step_index,
+            interval: result.interval,
+            ease_factor: result.ease_factor,
+            due_date: result.due_date,
+            last_reviewed_at: result.last_reviewed_at,
+        };
+
+        if (!reviewLog) {
+            return await this.prisma.flashcard.update({
+                where: { id: cardId },
+                data: srsData,
+            });
+        }
+
+        const sanitizedTimeMs =
+            typeof reviewLog.timeTakenMs === 'number' && Number.isFinite(reviewLog.timeTakenMs)
+                ? Math.max(0, Math.min(MAX_REVIEW_TIME_TAKEN_MS, Math.round(reviewLog.timeTakenMs)))
+                : null;
+
+        return await this.prisma.$transaction(async (tx) => {
+            const updatedCard = await tx.flashcard.update({
+                where: { id: cardId },
+                data: srsData,
+            });
+
+            await tx.flashcardReview.create({
+                data: {
+                    flashcard_id: cardId,
+                    user_id: reviewLog.userId,
+                    rating: reviewLog.rating,
+                    state_before: reviewLog.stateBefore,
+                    time_taken_ms: sanitizedTimeMs,
+                    reviewed_at: result.last_reviewed_at,
+                },
+            });
+
+            return updatedCard;
         });
     }
 

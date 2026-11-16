@@ -1719,6 +1719,7 @@ export const FlashcardScalarFieldEnum = {
   back_text: 'back_text',
   image_url: 'image_url',
   audio_url: 'audio_url',
+  source_refs: 'source_refs',
   state: 'state',
   step_index: 'step_index',
   interval: 'interval',
@@ -1774,6 +1775,7 @@ export const QuizQuestionScalarFieldEnum = {
   sample_answer: 'sample_answer',
   grading_criteria: 'grading_criteria',
   explanation: 'explanation',
+  source_refs: 'source_refs',
   created_at: 'created_at',
   updated_at: 'updated_at'
 } as const
@@ -2017,6 +2019,20 @@ export type ListEnumCardTypeEnumFieldRefInput<$PrismaModel> = FieldRefInputType<
 
 
 /**
+ * Reference to a field of type 'Json'
+ */
+export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+    
+
+
+/**
+ * Reference to a field of type 'QueryMode'
+ */
+export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+/**
  * Reference to a field of type 'CardStateEnum'
  */
 export type EnumCardStateEnumFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CardStateEnum'>
@@ -2069,20 +2085,6 @@ export type EnumQuestionTypeEnumFieldRefInput<$PrismaModel> = FieldRefInputType<
  * Reference to a field of type 'QuestionTypeEnum[]'
  */
 export type ListEnumQuestionTypeEnumFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QuestionTypeEnum[]'>
-    
-
-
-/**
- * Reference to a field of type 'Json'
- */
-export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
-    
-
-
-/**
- * Reference to a field of type 'QueryMode'
- */
-export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 

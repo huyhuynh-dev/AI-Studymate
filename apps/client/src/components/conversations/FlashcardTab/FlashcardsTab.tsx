@@ -244,8 +244,8 @@ export default function FlashcardsTab({
         key={`${view.deckId}-${view.mode}-${view.nonce}`}
         initialIds={ids}
         cards={deckCards}
-        onPersist={async (c, rating) => {
-          await reviewCard(c.id, rating);
+        onPersist={async (c, rating, timeTakenMs) => {
+          await reviewCard(c.id, rating, timeTakenMs);
           refreshDecks();
         }}
         onEditCard={(card) => setCardEditor({ open: true, card, deckId: card.deckId })}

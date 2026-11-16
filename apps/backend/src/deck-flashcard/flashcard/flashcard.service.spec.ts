@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { NotFoundException } from '@nestjs/common';
+import { describe, expect, it, vi } from 'vitest';
 import { CardStateEnum } from '../../generated/prisma/client.js';
 import {
     EASY_BONUS,
@@ -7,6 +8,7 @@ import {
     FlashcardSrsState,
     GRADUATING_INTERVAL,
     LEARNING_STEPS,
+    MAX_REVIEW_TIME_TAKEN_MS,
     MIN_EASE_FACTOR,
     RELEARNING_STEPS,
     sanitizeFlashcardHtml,
@@ -200,6 +202,115 @@ describe('FlashcardService - SM-2 Algorithm (calculateNextReview)', () => {
         it('Gỡ thẻ <span data-cloze="true"> nhưng giữ nội dung bên trong khi allowCloze = false', () => {
             const input = '<p>Năm <span data-cloze="true">1945</span></p>';
             expect(sanitizeFlashcardHtml(input, false)).toBe('<p>Năm 1945</p>');
+        });
+    });
+
+    describe('Ghi nhận lịch sử ôn tập (reviewFlashcard & flashcard_reviews)', () => {
+        const createMockPrisma = (cardRecord: Record<string, any> | null) => {
+            const txFlashcardUpdate = vi.fn().mockImplementation(async ({ data }) => ({
+                ...cardRecord,
+                ...data,
+            }));
+            const txReviewCreate = vi.fn().mockImplementation(async ({ data }) => ({
+                id: 'rev-1',
+                ...data,
+            }));
+            const tx = {
+                flashcard: { update: txFlashcardUpdate },
+                flashcardReview: { create: txReviewCreate },
+            };
+            const prismaMock = {
+                flashcard: {
+                    findFirst: vi.fn().mockResolvedValue(cardRecord),
+                    update: txFlashcardUpdate,
+                },
+                $transaction: vi.fn().mockImplementation(async (cb: (t: typeof tx) => unknown) => cb(tx)),
+            };
+            return { prismaMock, txFlashcardUpdate, txReviewCreate };
+        };
+
+        it('Cập nhật flashcard và tạo bản ghi flashcard_reviews trong cùng $transaction với rating số và time_taken_ms', async () => {
+            const existingCard = {
+                id: 'card-1',
+                deck_id: 'deck-1',
+                state: CardStateEnum.new,
+                step_index: 0,
+                interval: 0,
+                ease_factor: 2.5,
+                due_date: new Date('2026-11-16T10:00:00Z'),
+                last_reviewed_at: null,
+            };
+            const { prismaMock, txFlashcardUpdate, txReviewCreate } = createMockPrisma(existingCard);
+            const reviewService = new FlashcardService(prismaMock as any, null as any);
+
+            const updated = await reviewService.reviewFlashcard('card-1', 'user-1', 'good', 4250);
+
+            expect(prismaMock.flashcard.findFirst).toHaveBeenCalledWith({
+                where: { id: 'card-1', deck: { user_id: 'user-1' } },
+            });
+            expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+            expect(txFlashcardUpdate).toHaveBeenCalledWith({
+                where: { id: 'card-1' },
+                data: expect.objectContaining({
+                    state: CardStateEnum.learning,
+                    step_index: 1,
+                }),
+            });
+            expect(txReviewCreate).toHaveBeenCalledWith({
+                data: {
+                    flashcard_id: 'card-1',
+                    user_id: 'user-1',
+                    rating: 3,
+                    state_before: CardStateEnum.new,
+                    time_taken_ms: 4250,
+                    reviewed_at: updated.last_reviewed_at,
+                },
+            });
+        });
+
+        it('Ánh xạ đúng rating (again=1, hard=2, easy=4), giữ state_before và xử lý timeTakenMs biên', async () => {
+            const reviewCard = {
+                id: 'card-2',
+                deck_id: 'deck-1',
+                state: CardStateEnum.review,
+                step_index: 0,
+                interval: 6,
+                ease_factor: 2.5,
+                due_date: new Date('2026-11-16T10:00:00Z'),
+                last_reviewed_at: new Date('2026-11-10T10:00:00Z'),
+            };
+
+            const againMock = createMockPrisma(reviewCard);
+            const svcAgain = new FlashcardService(againMock.prismaMock as any, null as any);
+            await svcAgain.reviewFlashcard('card-2', 'user-1', 'again');
+            expect(againMock.txReviewCreate).toHaveBeenCalledWith({
+                data: expect.objectContaining({
+                    rating: 1,
+                    state_before: CardStateEnum.review,
+                    time_taken_ms: null,
+                }),
+            });
+
+            const easyMock = createMockPrisma(reviewCard);
+            const svcEasy = new FlashcardService(easyMock.prismaMock as any, null as any);
+            await svcEasy.reviewFlashcard('card-2', 'user-1', 4, MAX_REVIEW_TIME_TAKEN_MS + 5000);
+            expect(easyMock.txReviewCreate).toHaveBeenCalledWith({
+                data: expect.objectContaining({
+                    rating: 4,
+                    state_before: CardStateEnum.review,
+                    time_taken_ms: MAX_REVIEW_TIME_TAKEN_MS,
+                }),
+            });
+        });
+
+        it('Ném NotFoundException nếu thẻ không tồn tại hoặc không thuộc user', async () => {
+            const { prismaMock } = createMockPrisma(null);
+            const svc = new FlashcardService(prismaMock as any, null as any);
+
+            await expect(svc.reviewFlashcard('missing-id', 'user-1', 'good', 1000)).rejects.toThrow(
+                NotFoundException
+            );
+            expect(prismaMock.$transaction).not.toHaveBeenCalled();
         });
     });
 });

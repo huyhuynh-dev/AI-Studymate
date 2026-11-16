@@ -145,7 +145,12 @@ export class DeckFlashcardController {
         @Param('id', new ParseUUIDPipe()) id: string,
         @Body() data: ReviewFlashcardDto
     ): Promise<Prisma.FlashcardModel> {
-        return this.flashcardService.reviewFlashcard(id, this.getUserId(req), data.rating);
+        return this.flashcardService.reviewFlashcard(
+            id,
+            this.getUserId(req),
+            data.rating,
+            data.timeTakenMs
+        );
     }
 
     /* ==========================================================

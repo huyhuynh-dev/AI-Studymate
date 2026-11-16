@@ -82,6 +82,7 @@ export type FlashcardCountAggregateOutputType = {
   back_text: number
   image_url: number
   audio_url: number
+  source_refs: number
   state: number
   step_index: number
   interval: number
@@ -150,6 +151,7 @@ export type FlashcardCountAggregateInputType = {
   back_text?: true
   image_url?: true
   audio_url?: true
+  source_refs?: true
   state?: true
   step_index?: true
   interval?: true
@@ -255,6 +257,7 @@ export type FlashcardGroupByOutputType = {
   back_text: string
   image_url: string | null
   audio_url: string | null
+  source_refs: runtime.JsonValue | null
   state: $Enums.CardStateEnum
   step_index: number
   interval: number
@@ -296,6 +299,7 @@ export type FlashcardWhereInput = {
   back_text?: Prisma.StringFilter<"Flashcard"> | string
   image_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
   audio_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
+  source_refs?: Prisma.JsonNullableFilter<"Flashcard">
   state?: Prisma.EnumCardStateEnumFilter<"Flashcard"> | $Enums.CardStateEnum
   step_index?: Prisma.IntFilter<"Flashcard"> | number
   interval?: Prisma.IntFilter<"Flashcard"> | number
@@ -316,6 +320,7 @@ export type FlashcardOrderByWithRelationInput = {
   back_text?: Prisma.SortOrder
   image_url?: Prisma.SortOrderInput | Prisma.SortOrder
   audio_url?: Prisma.SortOrderInput | Prisma.SortOrder
+  source_refs?: Prisma.SortOrderInput | Prisma.SortOrder
   state?: Prisma.SortOrder
   step_index?: Prisma.SortOrder
   interval?: Prisma.SortOrder
@@ -339,6 +344,7 @@ export type FlashcardWhereUniqueInput = Prisma.AtLeast<{
   back_text?: Prisma.StringFilter<"Flashcard"> | string
   image_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
   audio_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
+  source_refs?: Prisma.JsonNullableFilter<"Flashcard">
   state?: Prisma.EnumCardStateEnumFilter<"Flashcard"> | $Enums.CardStateEnum
   step_index?: Prisma.IntFilter<"Flashcard"> | number
   interval?: Prisma.IntFilter<"Flashcard"> | number
@@ -359,6 +365,7 @@ export type FlashcardOrderByWithAggregationInput = {
   back_text?: Prisma.SortOrder
   image_url?: Prisma.SortOrderInput | Prisma.SortOrder
   audio_url?: Prisma.SortOrderInput | Prisma.SortOrder
+  source_refs?: Prisma.SortOrderInput | Prisma.SortOrder
   state?: Prisma.SortOrder
   step_index?: Prisma.SortOrder
   interval?: Prisma.SortOrder
@@ -385,6 +392,7 @@ export type FlashcardScalarWhereWithAggregatesInput = {
   back_text?: Prisma.StringWithAggregatesFilter<"Flashcard"> | string
   image_url?: Prisma.StringNullableWithAggregatesFilter<"Flashcard"> | string | null
   audio_url?: Prisma.StringNullableWithAggregatesFilter<"Flashcard"> | string | null
+  source_refs?: Prisma.JsonNullableWithAggregatesFilter<"Flashcard">
   state?: Prisma.EnumCardStateEnumWithAggregatesFilter<"Flashcard"> | $Enums.CardStateEnum
   step_index?: Prisma.IntWithAggregatesFilter<"Flashcard"> | number
   interval?: Prisma.IntWithAggregatesFilter<"Flashcard"> | number
@@ -402,6 +410,7 @@ export type FlashcardCreateInput = {
   back_text: string
   image_url?: string | null
   audio_url?: string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: $Enums.CardStateEnum
   step_index?: number
   interval?: number
@@ -422,6 +431,7 @@ export type FlashcardUncheckedCreateInput = {
   back_text: string
   image_url?: string | null
   audio_url?: string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: $Enums.CardStateEnum
   step_index?: number
   interval?: number
@@ -440,6 +450,7 @@ export type FlashcardUpdateInput = {
   back_text?: Prisma.StringFieldUpdateOperationsInput | string
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
   step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
@@ -460,6 +471,7 @@ export type FlashcardUncheckedUpdateInput = {
   back_text?: Prisma.StringFieldUpdateOperationsInput | string
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
   step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
@@ -479,6 +491,7 @@ export type FlashcardCreateManyInput = {
   back_text: string
   image_url?: string | null
   audio_url?: string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: $Enums.CardStateEnum
   step_index?: number
   interval?: number
@@ -496,6 +509,7 @@ export type FlashcardUpdateManyMutationInput = {
   back_text?: Prisma.StringFieldUpdateOperationsInput | string
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
   step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
@@ -514,6 +528,7 @@ export type FlashcardUncheckedUpdateManyInput = {
   back_text?: Prisma.StringFieldUpdateOperationsInput | string
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
   step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
@@ -542,6 +557,7 @@ export type FlashcardCountOrderByAggregateInput = {
   back_text?: Prisma.SortOrder
   image_url?: Prisma.SortOrder
   audio_url?: Prisma.SortOrder
+  source_refs?: Prisma.SortOrder
   state?: Prisma.SortOrder
   step_index?: Prisma.SortOrder
   interval?: Prisma.SortOrder
@@ -696,6 +712,7 @@ export type FlashcardCreateWithoutDeckInput = {
   back_text: string
   image_url?: string | null
   audio_url?: string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: $Enums.CardStateEnum
   step_index?: number
   interval?: number
@@ -714,6 +731,7 @@ export type FlashcardUncheckedCreateWithoutDeckInput = {
   back_text: string
   image_url?: string | null
   audio_url?: string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: $Enums.CardStateEnum
   step_index?: number
   interval?: number
@@ -762,6 +780,7 @@ export type FlashcardScalarWhereInput = {
   back_text?: Prisma.StringFilter<"Flashcard"> | string
   image_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
   audio_url?: Prisma.StringNullableFilter<"Flashcard"> | string | null
+  source_refs?: Prisma.JsonNullableFilter<"Flashcard">
   state?: Prisma.EnumCardStateEnumFilter<"Flashcard"> | $Enums.CardStateEnum
   step_index?: Prisma.IntFilter<"Flashcard"> | number
   interval?: Prisma.IntFilter<"Flashcard"> | number
@@ -779,6 +798,7 @@ export type FlashcardCreateWithoutReviewsInput = {
   back_text: string
   image_url?: string | null
   audio_url?: string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: $Enums.CardStateEnum
   step_index?: number
   interval?: number
@@ -798,6 +818,7 @@ export type FlashcardUncheckedCreateWithoutReviewsInput = {
   back_text: string
   image_url?: string | null
   audio_url?: string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: $Enums.CardStateEnum
   step_index?: number
   interval?: number
@@ -831,6 +852,7 @@ export type FlashcardUpdateWithoutReviewsInput = {
   back_text?: Prisma.StringFieldUpdateOperationsInput | string
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
   step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
@@ -850,6 +872,7 @@ export type FlashcardUncheckedUpdateWithoutReviewsInput = {
   back_text?: Prisma.StringFieldUpdateOperationsInput | string
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
   step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
@@ -867,6 +890,7 @@ export type FlashcardCreateManyDeckInput = {
   back_text: string
   image_url?: string | null
   audio_url?: string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: $Enums.CardStateEnum
   step_index?: number
   interval?: number
@@ -884,6 +908,7 @@ export type FlashcardUpdateWithoutDeckInput = {
   back_text?: Prisma.StringFieldUpdateOperationsInput | string
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
   step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
@@ -902,6 +927,7 @@ export type FlashcardUncheckedUpdateWithoutDeckInput = {
   back_text?: Prisma.StringFieldUpdateOperationsInput | string
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
   step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
@@ -920,6 +946,7 @@ export type FlashcardUncheckedUpdateManyWithoutDeckInput = {
   back_text?: Prisma.StringFieldUpdateOperationsInput | string
   image_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   audio_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  source_refs?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   state?: Prisma.EnumCardStateEnumFieldUpdateOperationsInput | $Enums.CardStateEnum
   step_index?: Prisma.IntFieldUpdateOperationsInput | number
   interval?: Prisma.IntFieldUpdateOperationsInput | number
@@ -969,6 +996,7 @@ export type FlashcardSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   back_text?: boolean
   image_url?: boolean
   audio_url?: boolean
+  source_refs?: boolean
   state?: boolean
   step_index?: boolean
   interval?: boolean
@@ -990,6 +1018,7 @@ export type FlashcardSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   back_text?: boolean
   image_url?: boolean
   audio_url?: boolean
+  source_refs?: boolean
   state?: boolean
   step_index?: boolean
   interval?: boolean
@@ -1009,6 +1038,7 @@ export type FlashcardSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   back_text?: boolean
   image_url?: boolean
   audio_url?: boolean
+  source_refs?: boolean
   state?: boolean
   step_index?: boolean
   interval?: boolean
@@ -1028,6 +1058,7 @@ export type FlashcardSelectScalar = {
   back_text?: boolean
   image_url?: boolean
   audio_url?: boolean
+  source_refs?: boolean
   state?: boolean
   step_index?: boolean
   interval?: boolean
@@ -1038,7 +1069,7 @@ export type FlashcardSelectScalar = {
   updated_at?: boolean
 }
 
-export type FlashcardOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "deck_id" | "card_type" | "front_text" | "back_text" | "image_url" | "audio_url" | "state" | "step_index" | "interval" | "ease_factor" | "due_date" | "last_reviewed_at" | "created_at" | "updated_at", ExtArgs["result"]["flashcard"]>
+export type FlashcardOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "deck_id" | "card_type" | "front_text" | "back_text" | "image_url" | "audio_url" | "source_refs" | "state" | "step_index" | "interval" | "ease_factor" | "due_date" | "last_reviewed_at" | "created_at" | "updated_at", ExtArgs["result"]["flashcard"]>
 export type FlashcardInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   deck?: boolean | Prisma.FlashcardDeckDefaultArgs<ExtArgs>
   reviews?: boolean | Prisma.Flashcard$reviewsArgs<ExtArgs>
@@ -1065,6 +1096,7 @@ export type $FlashcardPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     back_text: string
     image_url: string | null
     audio_url: string | null
+    source_refs: runtime.JsonValue | null
     state: $Enums.CardStateEnum
     step_index: number
     interval: number
@@ -1505,6 +1537,7 @@ export interface FlashcardFieldRefs {
   readonly back_text: Prisma.FieldRef<"Flashcard", 'String'>
   readonly image_url: Prisma.FieldRef<"Flashcard", 'String'>
   readonly audio_url: Prisma.FieldRef<"Flashcard", 'String'>
+  readonly source_refs: Prisma.FieldRef<"Flashcard", 'Json'>
   readonly state: Prisma.FieldRef<"Flashcard", 'CardStateEnum'>
   readonly step_index: Prisma.FieldRef<"Flashcard", 'Int'>
   readonly interval: Prisma.FieldRef<"Flashcard", 'Int'>

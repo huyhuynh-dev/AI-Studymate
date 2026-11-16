@@ -97,17 +97,24 @@ export function useFlashcards(deckId?: string | null) {
   );
 
   const reviewCard = useCallback(
-    async (id: string, rating: Rating): Promise<Flashcard | undefined> => {
+    async (id: string, rating: Rating, timeTakenMs?: number): Promise<Flashcard | undefined> => {
       setErrorMessage(null);
       try {
-        const updated = await flashcardApi.review(id, rating);
+        const updated = await flashcardApi.review(id, rating, timeTakenMs);
         await mutate(
           cards.map((c) => (c.id === id ? { ...c, ...updated } : c)),
           false
         );
         return updated;
-      } catch (err: any) {
-        const msg = err.response?.data?.message || err.message || 'Không thể lưu kết quả ôn tập';
+      } catch (err: unknown) {
+        const axiosMsg =
+          typeof err === 'object' && err !== null && 'response' in err
+            ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+            : undefined;
+        const msg =
+          axiosMsg ||
+          (err instanceof Error ? err.message : undefined) ||
+          'Không thể lưu kết quả ôn tập';
         setErrorMessage(msg);
         throw err;
       }

@@ -113,8 +113,13 @@ export const flashcardApi = {
     return res.data;
   },
 
-  review: async (id: string, rating: Rating): Promise<Flashcard> => {
-    const res = await axiosClient.post(`/deck-flashcard/flashcards/${id}/review`, { rating });
+  review: async (id: string, rating: Rating, timeTakenMs?: number): Promise<Flashcard> => {
+    const res = await axiosClient.post(`/deck-flashcard/flashcards/${id}/review`, {
+      rating,
+      ...(typeof timeTakenMs === 'number' && Number.isFinite(timeTakenMs)
+        ? { timeTakenMs: Math.max(0, Math.round(timeTakenMs)) }
+        : {}),
+    });
     return mapBackendToClientCard(res.data);
   },
 
