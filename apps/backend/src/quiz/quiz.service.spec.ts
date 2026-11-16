@@ -7,12 +7,14 @@ import {
     EvaluationStatusEnum,
     QuestionTypeEnum,
 } from '../generated/prisma/client.js';
+import { DocumentChunksRepoService } from '../repo/document-chunks-repo/document-chunks-repo.service.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import { QuizRepoService } from '../repo/quiz-repo/quiz-repo.service.js';
 import { QuizManageService } from './quiz-manage.service.js';
 import { QuizAttemptService } from './quiz-attempt.service.js';
 import { QuizGradingService } from './quiz-grading.service.js';
 import { QuizToFlashcardService } from './quiz-to-flashcard.service.js';
+import { DeckToQuizService } from './deck-to-quiz.service.js';
 import { DeckFlashcardRepoService } from '../repo/deck-flashcard-repo/deck-flashcard-repo.service.js';
 import {
     QuizService,
@@ -25,6 +27,7 @@ describe('QuizService', () => {
     let mockQuizRepo: any;
     let mockQuizAiService: any;
     let mockDocumentsRepo: any;
+    let mockDocumentChunksRepo: any;
 
     beforeEach(async () => {
         mockQuizRepo = {
@@ -51,6 +54,10 @@ describe('QuizService', () => {
             getAllDocumentsByConversationId: vi.fn(),
         };
 
+        mockDocumentChunksRepo = {
+            findChunksByDocumentIds: vi.fn().mockResolvedValue([]),
+        };
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 QuizService,
@@ -58,6 +65,7 @@ describe('QuizService', () => {
                 QuizAttemptService,
                 QuizGradingService,
                 QuizToFlashcardService,
+                DeckToQuizService,
                 {
                     provide: QuizRepoService,
                     useValue: mockQuizRepo,
@@ -77,6 +85,10 @@ describe('QuizService', () => {
                 {
                     provide: DocumentsRepoService,
                     useValue: mockDocumentsRepo,
+                },
+                {
+                    provide: DocumentChunksRepoService,
+                    useValue: mockDocumentChunksRepo,
                 },
             ],
         }).compile();
@@ -132,6 +144,30 @@ describe('QuizService', () => {
                 },
             ]);
 
+            mockDocumentChunksRepo.findChunksByDocumentIds.mockResolvedValue([
+                {
+                    id: 'chk-1',
+                    document_id: 'doc-1',
+                    chunk_index: 0,
+                    content: 'Nội dung chương 1 về Spaced Repetition.',
+                    raw_content: null,
+                    page_numbers: [3],
+                    headings: ['Chương 1'],
+                    bboxes: [{ page_no: 3, l: 10, t: 100, r: 200, b: 80 }],
+                },
+            ]);
+
+            const sourceRefItem = {
+                documentId: 'doc-1',
+                fileName: 'Chuong1.pdf',
+                chunkId: 'chk-1',
+                chunkIndex: 0,
+                pageNumbers: [3],
+                bboxes: [{ page_no: 3, l: 10, t: 100, r: 200, b: 80 }],
+                headings: ['Chương 1'],
+                snippet: 'Nội dung chương 1 về Spaced Repetition.',
+            };
+
             mockQuizAiService.generateQuizFromContext.mockResolvedValue({
                 title: 'Đề AI Chương 1',
                 description: 'Ôn tập chương 1',
@@ -147,6 +183,7 @@ describe('QuizService', () => {
                         ],
                         grading_criteria: [],
                         explanation: '<p>Giải thích</p>',
+                        source_refs: [sourceRefItem],
                     },
                 ],
                 rejected: [],
@@ -177,6 +214,7 @@ describe('QuizService', () => {
                         sample_answer: null,
                         grading_criteria: [],
                         explanation: '<p>Giải thích</p>',
+                        source_refs: [sourceRefItem],
                     },
                 ],
             });
@@ -188,14 +226,19 @@ describe('QuizService', () => {
                 difficulty: 'applied',
             });
 
+            expect(mockDocumentChunksRepo.findChunksByDocumentIds).toHaveBeenCalledWith(
+                ['doc-1'],
+                'user-1'
+            );
             expect(
                 mockQuizAiService.generateQuizFromContext
             ).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    context: expect.stringContaining('Nội dung chương 1'),
+                    context: expect.stringContaining('[CHUNK #1 | Trang 3 | Mục: Chương 1]'),
                     count: 5,
                     types: [QuestionTypeEnum.single_choice],
                     difficulty: 'applied',
+                    sourceChunkMap: expect.any(Map),
                 })
             );
             expect(
@@ -208,10 +251,15 @@ describe('QuizService', () => {
                     title: 'Đề AI Chương 1',
                     source: 'ai',
                 }),
-                expect.any(Array)
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        source_refs: [sourceRefItem],
+                    }),
+                ])
             );
             expect(res.source).toBe('ai');
             expect(res.questions).toHaveLength(1);
+            expect(res.questions[0].sourceRefs).toEqual([sourceRefItem]);
         });
     });
 

@@ -53,6 +53,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                         text: 'Spaced repetition giúp ghi nhớ dài hạn tốt hơn học dồn.',
                         correctAnswer: true,
                         explanation: 'Vì khoảng cách ôn tập tăng dần giúp củng cố trí nhớ.',
+                        sourceChunkIndex: 1,
                     },
                 ],
             });
@@ -66,6 +67,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                         sampleAnswer: 'Bài viết mẫu dài trên 40 ký tự giải thích rõ ràng cơ chế.',
                         gradingCriteria: ['Nêu khái niệm', 'Nêu ví dụ'],
                         explanation: 'Giải thích chi tiết.',
+                        sourceChunkIndex: 1,
                     },
                 ],
             });
@@ -89,6 +91,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                     ],
                     explanation:
                         'Hermann Ebbinghaus phát hiện trí nhớ suy giảm theo hàm mũ.',
+                    sourceChunkIndex: 1,
                 },
                 // Bị loại: dùng "Tất cả các đáp án trên"
                 {
@@ -101,6 +104,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                         'Tất cả các đáp án trên',
                     ],
                     explanation: 'Giải thích hợp lệ đủ độ dài.',
+                    sourceChunkIndex: 1,
                 },
                 // Bị loại: câu true_false viết dạng câu hỏi có dấu ?
                 {
@@ -108,6 +112,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                     text: 'Học dồn có tốt hơn học giãn cách không?',
                     correctAnswer: false,
                     explanation: 'Học giãn cách tốt hơn cho trí nhớ dài hạn.',
+                    sourceChunkIndex: 1,
                 },
                 // Bị loại: short_answer chứa ký tự '|'
                 {
@@ -115,6 +120,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                     text: 'Thuật toán lập lịch của Anki tên là gì?',
                     acceptedAnswers: ['SM-2|SM2'],
                     explanation: 'Thuật toán SM-2 ra đời năm 1987.',
+                    sourceChunkIndex: 1,
                 },
                 // Hợp lệ: essay
                 {
@@ -127,6 +133,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                         'Giải thích nguyên lý giãn cách thời gian',
                     ],
                     explanation: 'Hai phương pháp bổ trợ trực tiếp cho nhau.',
+                    sourceChunkIndex: 2,
                 },
             ];
 
@@ -147,6 +154,20 @@ describe('QuizAiService & QuizAiSchema', () => {
                 '<p>Khái niệm <strong>quan trọng</strong>:</p><ul><li><p>Ý thứ nhất</p></li><li><p>Ý thứ hai</p></li></ul>'
             );
 
+            const sourceChunkMap = new Map([
+                [
+                    1,
+                    {
+                        documentId: 'doc-1',
+                        fileName: 'Anki.pdf',
+                        chunkId: 'chk-1',
+                        chunkIndex: 0,
+                        pageNumbers: [2],
+                        headings: ['Giới thiệu'],
+                    },
+                ],
+            ]);
+
             const inserts = toQuizQuestionInserts(
                 [
                     {
@@ -155,24 +176,29 @@ describe('QuizAiService & QuizAiSchema', () => {
                         correctAnswer: 'Đáp án đúng',
                         distractors: ['Sai 1', 'Sai 2', 'Sai 3'],
                         explanation: 'Giải thích câu 1.',
+                        sourceChunkIndex: 1,
                     },
                     {
                         type: 'true_false',
                         text: 'Mệnh đề khẳng định đúng.',
                         correctAnswer: true,
                         explanation: 'Giải thích câu 2.',
+                        sourceChunkIndex: 1,
                     },
                     {
                         type: 'short_answer',
                         text: 'Điền tên thuật toán của Anki.',
                         acceptedAnswers: ['SM-2', 'SM2'],
                         explanation: 'Giải thích câu 3.',
+                        sourceChunkIndex: 99,
                     },
                 ],
-                { quizId: 'quiz-1', random: () => 0.5 }
+                { quizId: 'quiz-1', random: () => 0.5, sourceChunkMap }
             );
 
             expect(inserts).toHaveLength(3);
+            expect(inserts[0].source_refs).toEqual([sourceChunkMap.get(1)]);
+            expect(inserts[2].source_refs).toBeUndefined();
             expect(inserts[0].options).toHaveLength(4);
             expect(inserts[0].options?.filter((o) => o.isCorrect)).toHaveLength(
                 1
@@ -203,16 +229,30 @@ describe('QuizAiService & QuizAiSchema', () => {
                             ],
                             explanation:
                                 'Ebbinghaus công bố nghiên cứu về đường cong quên vào năm 1885.',
+                            sourceChunkIndex: 1,
                         },
                     ],
                 },
             });
 
+            const sourceChunkMap = new Map([
+                [
+                    1,
+                    {
+                        documentId: 'doc-1',
+                        fileName: 'Memory.pdf',
+                        chunkId: 'chk-1',
+                        pageNumbers: [1],
+                    },
+                ],
+            ]);
+
             const res = await service.generateQuizFromContext({
-                context: 'Tài liệu về đường cong quên lãng Ebbinghaus...',
+                context: '[CHUNK #1 | Trang 1]\nTài liệu về đường cong quên lãng Ebbinghaus...',
                 count: 5,
                 types: ['single_choice'],
                 difficulty: 'applied',
+                sourceChunkMap,
             });
 
             expect(mockAiService.generateObjectForFeature).toHaveBeenCalledWith(
@@ -225,6 +265,7 @@ describe('QuizAiService & QuizAiSchema', () => {
             expect(res.title).toBe('Đề ôn tập Trí nhớ');
             expect(res.rows).toHaveLength(1);
             expect(res.rows[0].question_type).toBe('single_choice');
+            expect(res.rows[0].source_refs).toEqual([sourceChunkMap.get(1)]);
         });
 
         it('throws BadRequestException when all generated questions fail quality validation', async () => {
@@ -238,6 +279,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                             text: 'Câu hỏi có dấu chấm hỏi ở cuối?',
                             correctAnswer: true,
                             explanation: 'Giải thích đủ dài cho câu hỏi.',
+                            sourceChunkIndex: 1,
                         },
                     ],
                 },

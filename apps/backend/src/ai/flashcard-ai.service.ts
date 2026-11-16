@@ -5,6 +5,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { NoObjectGeneratedError } from 'ai';
+import type { SourceReferenceItem } from '../common/types/source-ref.types.js';
 import { AiService } from './ai.service.js';
 import {
   type AICardType,
@@ -17,11 +18,11 @@ import {
   LlmMoreCardsOutputSchema,
   LlmNewDeckOutputSchema,
   dedupeKey,
-  fitToBudget,
   normalizeCard,
   stripToPlain,
   toFlashcardRows,
 } from './schemas/flashcard-ai.schema.js';
+import { packChunkedDocuments } from './utils/chunk-context.helper.js';
 import {
   buildFlashcardSystemPrompt,
   buildFlashcardUserPrompt,
@@ -52,6 +53,7 @@ export interface PreparedFlashcardPromptContext {
   system: string;
   prompt: string;
   existingDedupeKeys: Set<string>;
+  chunkRefMap: Map<number, SourceReferenceItem>;
   docCount: number;
   truncatedDocs: number;
 }
@@ -114,7 +116,9 @@ export class FlashcardAiService {
     input: GenerateFlashcardsAiInput,
   ): PreparedFlashcardPromptContext {
     const usableDocs = input.documents.filter(
-      (d) => d.text.trim().length > 0,
+      (d) =>
+        d.text.trim().length > 0 ||
+        (Array.isArray(d.chunks) && d.chunks.length > 0),
     );
     if (usableDocs.length === 0) {
       throw new UnprocessableEntityException(
@@ -122,7 +126,16 @@ export class FlashcardAiService {
       );
     }
 
-    const budgetedDocs = fitToBudget(usableDocs, MAX_CONTEXT_CHARS);
+    const packed = packChunkedDocuments(
+      usableDocs.map((d) => ({
+        id: d.id,
+        fileName: d.name,
+        rawText: d.text,
+        chunks: d.chunks ?? [],
+      })),
+      MAX_CONTEXT_CHARS,
+    );
+    const budgetedDocs = packed.docs;
     const rawExistingFronts = (
       input.existingDeck?.existingFrontTexts ?? []
     ).slice(0, MAX_EXISTING_FOR_DEDUPE);
@@ -152,8 +165,9 @@ export class FlashcardAiService {
         deckName,
       ),
       existingDedupeKeys,
+      chunkRefMap: packed.chunkRefMap,
       docCount: budgetedDocs.length,
-      truncatedDocs: budgetedDocs.filter((d) => d.truncated).length,
+      truncatedDocs: packed.truncatedDocCount,
     };
   }
 
@@ -270,7 +284,7 @@ export class FlashcardAiService {
       }
 
       seenInBatch.add(key);
-      rows.push(...toFlashcardRows(normalized));
+      rows.push(...toFlashcardRows(normalized, ctx.chunkRefMap));
     });
 
     if (rows.length === 0) {

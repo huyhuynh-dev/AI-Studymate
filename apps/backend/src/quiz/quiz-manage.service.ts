@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { Prisma, QuestionTypeEnum } from '../generated/prisma/client.js';
 import { QuizAiService } from '../ai/quiz-ai.service.js';
+import { packChunkedDocuments } from '../ai/utils/chunk-context.helper.js';
+import { DocumentChunksRepoService } from '../repo/document-chunks-repo/document-chunks-repo.service.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import {
     QuestionCreatePayload,
@@ -23,6 +25,8 @@ import {
 } from './quiz.helper.js';
 import { QuizResponse } from './quiz.types.js';
 
+const MAX_QUIZ_CONTEXT_CHARS = 200_000;
+
 @Injectable()
 export class QuizManageService {
     private readonly logger = new Logger(QuizManageService.name);
@@ -30,7 +34,8 @@ export class QuizManageService {
     constructor(
         private readonly quizRepo: QuizRepoService,
         private readonly quizAiService: QuizAiService,
-        private readonly documentsRepo: DocumentsRepoService
+        private readonly documentsRepo: DocumentsRepoService,
+        private readonly documentChunksRepo: DocumentChunksRepoService
     ) {}
 
     /* ==========================================================
@@ -157,14 +162,34 @@ export class QuizManageService {
             );
         }
 
-        const contextText = readyDocs
-            .map((doc, idx) => {
-                const header = doc.file_name
-                    ? `=== TÀI LIỆU ${idx + 1}: ${doc.file_name} ===`
-                    : `=== TÀI LIỆU ${idx + 1} ===`;
-                return `${header}\n${doc.raw_text!.trim()}\n`;
-            })
-            .join('\n\n');
+        const chunkRows = await this.documentChunksRepo.findChunksByDocumentIds(
+            readyDocs.map((d) => d.id),
+            userId
+        );
+        const chunksByDocId = new Map<string, typeof chunkRows>();
+        for (const chunk of chunkRows) {
+            const list = chunksByDocId.get(chunk.document_id) ?? [];
+            list.push(chunk);
+            chunksByDocId.set(chunk.document_id, list);
+        }
+
+        const packed = packChunkedDocuments(
+            readyDocs.map((doc) => ({
+                id: doc.id,
+                fileName: doc.file_name || doc.id,
+                rawText: doc.raw_text!.trim(),
+                chunks: (chunksByDocId.get(doc.id) ?? []).map((c) => ({
+                    id: c.id,
+                    chunkIndex: c.chunk_index,
+                    content: c.content,
+                    rawContent: c.raw_content,
+                    pageNumbers: c.page_numbers,
+                    headings: c.headings,
+                    bboxes: c.bboxes,
+                })),
+            })),
+            MAX_QUIZ_CONTEXT_CHARS
+        );
 
         const count = Math.max(1, Math.min(30, Number(dto.questionCount) || 10));
         const types =
@@ -173,14 +198,15 @@ export class QuizManageService {
                 : [QuestionTypeEnum.single_choice];
 
         this.logger.log(
-            `[generateWithAI] Tổng hợp ngữ cảnh: ${contextText.length} ký tự từ ${readyDocs.length} tài liệu. Bắt đầu gọi QuizAiService sinh ${count} câu hỏi (Types: [${types.join(', ')}], Độ khó: ${dto.difficulty})...`
+            `[generateWithAI] Tổng hợp ngữ cảnh: ${packed.combinedContext.length} ký tự (${packed.totalChunksIncluded} chunks) từ ${readyDocs.length} tài liệu. Bắt đầu gọi QuizAiService sinh ${count} câu hỏi (Types: [${types.join(', ')}], Độ khó: ${dto.difficulty})...`
         );
 
         const generated = await this.quizAiService.generateQuizFromContext({
-            context: contextText,
+            context: packed.combinedContext,
             count,
             types,
             difficulty: dto.difficulty || 'applied',
+            sourceChunkMap: packed.chunkRefMap,
         });
 
         this.logger.log(
@@ -202,6 +228,10 @@ export class QuizManageService {
                 grading_criteria: (r.grading_criteria ??
                     []) as unknown as Prisma.InputJsonValue,
                 explanation: r.explanation ?? null,
+                source_refs:
+                    r.source_refs && r.source_refs.length > 0
+                        ? (r.source_refs as unknown as Prisma.InputJsonValue)
+                        : Prisma.DbNull,
             })
         );
 

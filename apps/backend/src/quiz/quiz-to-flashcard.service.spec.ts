@@ -296,5 +296,51 @@ describe('QuizToFlashcardService', () => {
                 })
             ).rejects.toThrow(BadRequestException);
         });
+
+        it('preserves source_refs when converting quiz questions to flashcards', async () => {
+            const sampleRefs = [
+                {
+                    documentId: 'doc-1',
+                    fileName: 'KienTrucMayTinh.pdf',
+                    chunkId: 'chk-5',
+                    chunkIndex: 5,
+                    pageNumbers: [10],
+                    bboxes: [{ page_no: 10, l: 10, t: 20, r: 100, b: 10 }],
+                    headings: ['CPU'],
+                },
+            ];
+            mockQuizRepo.getAttemptByIdWithDetails.mockResolvedValue({
+                ...mockAttempt,
+                quiz: {
+                    ...mockAttempt.quiz,
+                    questions: [
+                        {
+                            ...mockAttempt.quiz.questions[0],
+                            source_refs: sampleRefs,
+                        },
+                    ],
+                },
+            });
+            mockDeckRepo.getDeckById.mockResolvedValue({
+                id: 'deck-1',
+                name: 'Bộ thẻ Máy tính',
+            });
+            mockDeckRepo.createManyFlashcards.mockResolvedValue(1);
+
+            await service.convertToFlashcards('user-1', 'attempt-1', {
+                questionIds: ['q-1'],
+                target: { deckId: 'deck-1' },
+            });
+
+            expect(mockDeckRepo.createManyFlashcards).toHaveBeenCalledWith(
+                'deck-1',
+                [
+                    expect.objectContaining({
+                        card_type: CardTypeEnum.basic,
+                        source_refs: sampleRefs,
+                    }),
+                ]
+            );
+        });
     });
 });

@@ -59,6 +59,47 @@ export class DocumentChunksRepoService {
         });
     }
 
+    /**
+     * Lấy danh sách chunks (kèm page_numbers, headings, bboxes) cho nhiều tài liệu một lượt,
+     * phục vụ sinh Flashcard & Quiz AI gắn nguồn gốc tọa độ.
+     */
+    async findChunksByDocumentIds(
+        documentIds: string[],
+        userId?: string
+    ): Promise<
+        Array<{
+            id: string;
+            document_id: string;
+            chunk_index: number;
+            content: string;
+            raw_content: string | null;
+            page_numbers: number[];
+            headings: string[];
+            bboxes: Prisma.JsonValue | null;
+        }>
+    > {
+        const uniqueIds = [...new Set(documentIds.filter(Boolean))];
+        if (uniqueIds.length === 0) return [];
+
+        return await this.prisma.documentChunk.findMany({
+            where: {
+                document_id: { in: uniqueIds },
+                ...(userId ? { document: { user_id: userId } } : {}),
+            },
+            select: {
+                id: true,
+                document_id: true,
+                chunk_index: true,
+                content: true,
+                raw_content: true,
+                page_numbers: true,
+                headings: true,
+                bboxes: true,
+            },
+            orderBy: [{ document_id: 'asc' }, { chunk_index: 'asc' }],
+        });
+    }
+
     async getDocumentChunkById(
         chunkId: string,
         documentId: string,

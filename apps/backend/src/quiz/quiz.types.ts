@@ -1,3 +1,4 @@
+import type { SourceReferenceItem } from '../common/types/source-ref.types.js';
 import {
     AttemptStatusEnum,
     EvaluationStatusEnum,
@@ -23,6 +24,7 @@ export interface QuizQuestionResponse {
     sampleAnswer: string | null;
     gradingCriteria: string[];
     explanation: string | null;
+    sourceRefs: SourceReferenceItem[];
 }
 
 export interface QuizResponse {
