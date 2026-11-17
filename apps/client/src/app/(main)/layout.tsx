@@ -3,10 +3,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { LeftSidebar, RightSidebar, FocusModeProvider, useFocusMode } from "@/components/layout";
 import { CitationNavigationProvider } from "@/contexts/CitationNavigationContext";
-import { usePathname } from "next/navigation";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { usePathname, useRouter } from "next/navigation";
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
+    const router = useRouter();
+    const { user: currentUser } = useCurrentUser();
 
     const {
         isFocusMode,
@@ -55,8 +58,18 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                         }
                     >
                         <LeftSidebar
+                            user={
+                                currentUser
+                                    ? {
+                                          name: currentUser.name,
+                                          email: currentUser.email,
+                                          avatarUrl: currentUser.avatarUrl ?? undefined,
+                                      }
+                                    : undefined
+                            }
                             isCollapsed={effectiveLeftCollapsed}
                             onToggleCollapse={() => setIsLeftCollapsed(!isLeftCollapsed)}
+                            onSettingsClick={() => router.push("/profile")}
                         />
                     </React.Suspense>
                 </aside>
