@@ -202,4 +202,91 @@ describe('document-mastery.helper', () => {
     expect(mastery.weakSectionsCount).toBe(1);
     expect(mastery.masteredSectionsCount).toBe(1);
   });
+
+  it('handles un-OCRed documents, null source_refs legacy items, deep heading nesting on same page, and 0.55/0.45 score fusion', () => {
+    const emptyMastery = computeDocumentMastery({
+      documentId: 'doc-empty',
+      conversationId: convId,
+      fileName: 'Pending.pdf',
+      pageCount: null,
+      docMetadata: null,
+      chunks: [],
+      latestQuizAnswers: [],
+      flashcards: [],
+    });
+    expect(emptyMastery.totalSections).toBe(0);
+    expect(emptyMastery.overallMasteryScore).toBeNull();
+    expect(emptyMastery.overallStatus).toBe('unstudied');
+
+    // Deep heading matching & null sourceRefs tolerance + exact 0.55 Quiz + 0.45 Flashcard fusion
+    const nestedMastery = computeDocumentMastery({
+      documentId: docId,
+      conversationId: convId,
+      fileName: 'OS.pdf',
+      pageCount: 55,
+      docMetadata,
+      chunks,
+      latestQuizAnswers: [
+        {
+          questionId: 'q-null-ref',
+          evaluationStatus: EvaluationStatusEnum.incorrect,
+          pointsEarned: 0,
+          missingPoints: [],
+          answeredAt: new Date(),
+          question: {
+            id: 'q-null-ref',
+            questionText: '<p>Legacy</p>',
+            points: 1,
+            bloomLevel: null,
+            sourceRefs: null,
+          },
+        },
+        {
+          questionId: 'q-deep',
+          evaluationStatus: EvaluationStatusEnum.partial,
+          pointsEarned: 1,
+          missingPoints: [],
+          answeredAt: new Date(),
+          question: {
+            id: 'q-deep',
+            questionText: '<p>Điều kiện cần?</p>',
+            points: 2,
+            bloomLevel: 'understand',
+            sourceRefs: [
+              // Không truyền chunkId/headings, chỉ truyền pageNumbers: [26] -> phải rơi vào sub-heading cấp 2 (3.1 Điều kiện cần)
+              { documentId: docId, fileName: 'OS.pdf', pageNumbers: [26] },
+            ],
+          },
+        },
+      ],
+      flashcards: [
+        {
+          id: 'fc-deep',
+          deckId: 'd-1',
+          deckName: 'OS Deck',
+          conversationId: convId,
+          frontText: 'Coffman 4 conditions',
+          state: CardStateEnum.review,
+          interval: 28,
+          easeFactor: 2.5,
+          dueDate: new Date(),
+          lastReviewedAt: new Date(),
+          sourceRefs: [
+            { documentId: docId, fileName: 'OS.pdf', pageNumbers: [26] },
+          ],
+          againCount: 0,
+        },
+      ],
+    });
+
+    // Chương 3 (index 2) vs 3.1 Điều kiện cần (index 3) đều cover trang 26; index 3 có level=2 sâu hơn nên nhận bài này
+    expect(nestedMastery.sections[2].status).toBe('unstudied');
+    const secDeep = nestedMastery.sections[3];
+    // Quiz = 50% (1/2); Flashcard (review, interval=28, ease=2.5, again=0): round(62 + 28*1 + 0.4*18) = round(97.2) = 97
+    // Combined = round(50 * 0.55 + 97 * 0.45) = round(27.5 + 43.65) = 71 -> developing
+    expect(secDeep.quizTotal).toBe(1);
+    expect(secDeep.cardReviewed).toBe(1);
+    expect(secDeep.masteryScore).toBe(71);
+    expect(secDeep.status).toBe('developing');
+  });
 });

@@ -417,7 +417,7 @@ describe('QuizAiService & QuizAiSchema', () => {
             expect(system).toContain('<remediation_rules>');
             expect(system).toContain('Rephrase & Scenario Shift');
 
-            const user = quizGeneratePrompt.renderUser({
+            const user = quizGeneratePrompt.renderUser?.({
                 context: '[CHUNK #1]\nBinary Search',
                 count: 5,
                 types: ['single_choice'],
@@ -431,6 +431,32 @@ describe('QuizAiService & QuizAiSchema', () => {
             expect(user).toContain('<remediation_focus>');
             expect(user).toContain('Binary Search');
             expect(user).toContain('<prior_failed_questions');
+        });
+
+        it('toQuizQuestionInserts maps valid bloomLevel and falls back safely when unknown or missing', () => {
+            const inserts = toQuizQuestionInserts([
+                {
+                    type: 'single_choice',
+                    text: 'Độ phức tạp Binary Search?',
+                    correctAnswer: 'O(log n)',
+                    distractors: ['O(n)', 'O(n^2)', 'O(1)'],
+                    explanation: 'Chia đôi mảng ở mỗi bước.',
+                    bloomLevel: 'APPLY' as unknown as 'apply',
+                    sourceChunkIndex: 1,
+                },
+                {
+                    type: 'essay',
+                    text: 'Phân tích thuật toán tìm kiếm.',
+                    sampleAnswer: 'Đoạn văn mẫu phân tích chi tiết.',
+                    gradingCriteria: ['Nêu độ phức tạp'],
+                    explanation: 'Dựa trên số phép so sánh.',
+                    bloomLevel: undefined as unknown as 'understand',
+                    sourceChunkIndex: 1,
+                },
+            ]);
+
+            expect(inserts[0].bloom_level).toBe('apply');
+            expect(inserts[1].bloom_level).toBe('analyze');
         });
     });
 });

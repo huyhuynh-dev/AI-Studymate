@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { CardStateEnum, CardTypeEnum, Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { DeckFlashcardRepoService } from '../../repo/deck-flashcard-repo/deck-flashcard-repo.service.js';
-import { CreateFlashcardDto, ReviewRating, UpdateFlashcardDto } from '../dto/flashcard.dto.js';
+import { CreateFlashcardDto, UpdateFlashcardDto } from '../dto/flashcard.dto.js';
 
 export const LEARNING_STEPS = [1, 10]; // Bước học thẻ mới (phút)
 export const RELEARNING_STEPS = [10]; // Bước học lại khi quên (phút)
@@ -203,7 +203,7 @@ export class FlashcardService {
     async reviewFlashcard(
         cardId: string,
         userId: string,
-        ratingInput: ReviewRating | string | number,
+        ratingInput: string | number,
         timeTakenMs?: number
     ): Promise<Prisma.FlashcardModel> {
         const rating = this.normalizeRating(ratingInput);
@@ -399,7 +399,7 @@ export class FlashcardService {
         });
     }
 
-    private normalizeRating(ratingInput: ReviewRating | string | number): NormalizedRating {
+    private normalizeRating(ratingInput: string | number): NormalizedRating {
         const val = typeof ratingInput === 'string' ? ratingInput.toLowerCase().trim() : ratingInput;
 
         if (val === 1 || val === '1' || val === 'again') return 'again';

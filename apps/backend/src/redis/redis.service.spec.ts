@@ -1,4 +1,6 @@
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
 import { RedisService } from './redis.service.js';
 
 describe('RedisService', () => {
@@ -6,7 +8,17 @@ describe('RedisService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [RedisService],
+      providers: [
+        RedisService,
+        {
+          provide: ConfigService,
+          useValue: {
+            getOrThrow: vi.fn((key: string) =>
+              key === 'REDIS_URL' ? 'redis://127.0.0.1:6379' : 'mock-pass',
+            ),
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<RedisService>(RedisService);

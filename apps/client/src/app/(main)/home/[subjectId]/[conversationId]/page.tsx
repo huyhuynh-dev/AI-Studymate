@@ -97,9 +97,16 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
   // Tự động chuyển sang Tab "Tài liệu" khi người dùng bấm vào một Badge trích dẫn tài liệu từ Chatbox
   useEffect(() => {
-    if (activeTarget?.documentId) {
-      setActiveTab("documents");
-    }
+    if (!activeTarget?.documentId) return;
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        setActiveTab("documents");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [activeTarget]);
 
   // Lắng nghe sự kiện mở trực tiếp bản tóm tắt từ Badge trong RightSidebar AI Chat

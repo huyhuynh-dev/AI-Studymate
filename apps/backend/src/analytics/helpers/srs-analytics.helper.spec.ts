@@ -215,5 +215,63 @@ describe('srs-analytics.helper', () => {
       expect(stats.studyStreakDays).toBe(1);
       expect(stats.retentionRate).toBeNull();
     });
+
+    it('handles negative tzOffsetMinutes (UTC-5), zero/null response time fallback, and >6d future cards safely', () => {
+      // 2026-11-17T03:00:00Z = 2026-11-16 22:00 at UTC-5 (-300 min)
+      const boundaryNow = new Date('2026-11-17T03:00:00.000Z');
+      expect(computeLocalDateKey(boundaryNow, -300)).toBe('2026-11-16');
+
+      const timing = computeRetentionAndTiming(
+        [
+          {
+            flashcardId: 'fc-0',
+            rating: 3,
+            stateBefore: CardStateEnum.review,
+            timeTakenMs: 0,
+            reviewedAt: boundaryNow,
+          },
+          {
+            flashcardId: 'fc-null',
+            rating: 4,
+            stateBefore: CardStateEnum.learning,
+            timeTakenMs: null,
+            reviewedAt: boundaryNow,
+          },
+        ],
+        30,
+        boundaryNow,
+      );
+      expect(timing.overallRetentionRate).toBe(100);
+      expect(timing.matureRetentionRate).toBe(100);
+      expect(timing.avgResponseTimeMs).toBeNull();
+
+      // 3 cards due today + 1 card beyond 7 days (ignored in 7-day buckets)
+      const forecast = computeWorkloadForecast7Days(
+        [
+          ...sampleCards,
+          {
+            id: 'card-day10',
+            deckId: 'deck-1',
+            deckName: 'Deck 1',
+            conversationId: 'conv-1',
+            frontText: '<p>Far future card</p>',
+            state: CardStateEnum.review,
+            interval: 30,
+            easeFactor: 2.5,
+            dueDate: new Date('2026-11-28T10:00:00.000Z'),
+            lastReviewedAt: boundaryNow,
+            sourceRefs: null,
+            againCount: 0,
+          },
+        ],
+        null, // fallback 20s/card
+        boundaryNow,
+        -300,
+      );
+      expect(forecast[0].date).toBe('2026-11-16');
+      expect(forecast[0].dueCount).toBe(2);
+      expect(forecast[0].estimatedMinutes).toBe(1);
+      expect(forecast.reduce((s, d) => s + d.dueCount, 0)).toBe(3);
+    });
   });
 });

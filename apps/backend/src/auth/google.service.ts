@@ -4,8 +4,6 @@ import {
     OnModuleInit,
     UnauthorizedException,
     HttpException,
-    ConflictException,
-    ForbiddenException,
 } from '@nestjs/common';
 import { google } from 'googleapis';
 import { ConfigService } from '@nestjs/config';

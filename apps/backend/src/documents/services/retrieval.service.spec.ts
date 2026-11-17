@@ -714,5 +714,151 @@ describe('RetrievalService', () => {
       expect(results[0].rerankScore).toBeNull();
       expect(results[0].rrfRank).toBe(1);
     });
+
+    it('bỏ qua QUERY_DECOMPOSE khi enableQueryDecompose=false và không gọi rerankDocuments khi enableRerank=false', async () => {
+      prismaMock.$queryRaw.mockResolvedValueOnce([
+        {
+          id: 'chunk-no-rerank-1',
+          documentId: validDocId,
+          fileName: 'OS.pdf',
+          chunkIndex: 1,
+          pageNumbers: [4],
+          content: 'Round Robin sử dụng hàng đợi FIFO.',
+          headings: ['2.1 Scheduling'],
+          chunkType: 'text',
+          hasImage: false,
+          hasTable: false,
+          bboxes: null,
+          assetsJson: [],
+          rrfScore: 0.03,
+          vectorRank: 1,
+          keywordRank: 2,
+        },
+        {
+          id: 'chunk-no-rerank-2',
+          documentId: validDocId,
+          fileName: 'OS.pdf',
+          chunkIndex: 2,
+          pageNumbers: [5],
+          content: 'Banker kiểm tra điều kiện an toàn.',
+          headings: ['4.2 Deadlock'],
+          chunkType: 'text',
+          hasImage: false,
+          hasTable: false,
+          bboxes: null,
+          assetsJson: [],
+          rrfScore: 0.02,
+          vectorRank: 2,
+          keywordRank: null,
+        },
+      ]);
+
+      const results = await enhancedService.searchRelevantChunks({
+        userId: validUserId,
+        conversationId: validConversationId,
+        semanticQuery:
+          'So sánh ưu nhược điểm của thuật toán lập lịch CPU Round Robin và thuật toán Banker',
+        keywords: ['Round Robin', 'Banker'],
+        topK: 2,
+        enableQueryDecompose: false,
+        enableRerank: false,
+      });
+
+      expect(aiServiceMock.generateObjectForFeature).not.toHaveBeenCalled();
+      expect(aiServiceMock.rerankDocuments).not.toHaveBeenCalled();
+      expect(results).toHaveLength(2);
+      expect(results[0].rerankScore).toBeUndefined();
+      expect(results.map((r) => r.id)).toEqual([
+        'chunk-no-rerank-1',
+        'chunk-no-rerank-2',
+      ]);
+    });
+
+    it('nới effectiveRrfPoolSize >= topK * 3 (vd topK=12 -> M=36) và gộp bảo toàn từ khóa gốc khi subQuery có chuỗi rỗng', async () => {
+      aiServiceMock.generateObjectForFeature.mockResolvedValueOnce({
+        object: {
+          isComplex: true,
+          subQueries: [
+            {
+              semanticQuery: '  ',
+              keywords: ['  ', 'indexing'],
+            },
+            {
+              semanticQuery: 'B-Tree index structure in RDBMS',
+              keywords: ['B-Tree', 'RDBMS'],
+            },
+          ],
+        },
+      });
+
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce([
+          {
+            id: 'chk-pool-1',
+            documentId: validDocId,
+            fileName: 'DB.pdf',
+            chunkIndex: 1,
+            pageNumbers: [2],
+            content: 'Index tối ưu hóa truy vấn SQL.',
+            headings: ['Indexing'],
+            chunkType: 'text',
+            hasImage: false,
+            hasTable: false,
+            bboxes: null,
+            assetsJson: [],
+            rrfScore: 0.035,
+            vectorRank: 1,
+            keywordRank: 1,
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'chk-pool-2',
+            documentId: validDocId,
+            fileName: 'DB.pdf',
+            chunkIndex: 5,
+            pageNumbers: [12],
+            content: 'B-Tree giữ dữ liệu sắp xếp cân bằng.',
+            headings: ['B-Tree'],
+            chunkType: 'text',
+            hasImage: false,
+            hasTable: false,
+            bboxes: null,
+            assetsJson: [],
+            rrfScore: 0.015,
+            vectorRank: 2,
+            keywordRank: null,
+          },
+        ]);
+
+      aiServiceMock.rerankDocuments.mockResolvedValueOnce({
+        ranking: [
+          { originalIndex: 1, score: -0.35, document: 'btree' },
+          { originalIndex: 0, score: -1.1, document: 'idx' },
+        ],
+      });
+
+      const results = await enhancedService.searchRelevantChunks({
+        userId: validUserId,
+        conversationId: validConversationId,
+        semanticQuery:
+          'So sánh cơ chế SQL Index và cấu trúc cây B-Tree trong cơ sở dữ liệu quan hệ',
+        keywords: ['SQL Index'],
+        topK: 12,
+      });
+
+      // SubQuery #1 phải fallback semanticQuery về câu gốc khi AI trả chuỗi trống
+      expect(enhancedEmbeddingMock.embedBatch).toHaveBeenCalledWith([
+        'So sánh cơ chế SQL Index và cấu trúc cây B-Tree trong cơ sở dữ liệu quan hệ',
+        'B-Tree index structure in RDBMS',
+      ]);
+
+      // Kiểm tra LIMIT truyền vào SQL CTE phải là 36 (>= topK * 3)
+      const firstSqlTemplate = prismaMock.$queryRaw.mock.calls[0][0] as {
+        values?: unknown[];
+      };
+      expect(firstSqlTemplate.values).toContain(36);
+      expect(results.map((r) => r.id)).toEqual(['chk-pool-2', 'chk-pool-1']);
+    });
   });
 });

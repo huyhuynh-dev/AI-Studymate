@@ -6,6 +6,7 @@ import {
   computeBloomMasteryBreakdown,
   computeQuizPerformanceSummary,
   deduplicateLatestQuizAnswers,
+  extractWeakTopicsFromDocuments,
   generateStudyRecommendations,
 } from './knowledge-gap.helper.js';
 
@@ -264,5 +265,158 @@ describe('knowledge-gap.helper', () => {
       'read_unstudied_section',
     ]);
     expect(recs[1].payload.chunkIds).toEqual(['chk-3']);
+  });
+
+  it('extractWeakTopicsFromDocuments sorts lowest masteryScore first and skips developing sections without issues', () => {
+    const weakTopics = extractWeakTopicsFromDocuments([
+      {
+        conversationTitle: 'Buổi 1',
+        mastery: {
+          documentId: 'doc-1',
+          conversationId: 'conv-1',
+          fileName: 'DSA.pdf',
+          pageCount: 20,
+          overallMasteryScore: 60,
+          overallStatus: 'developing',
+          totalSections: 3,
+          studiedSectionsCount: 3,
+          weakSectionsCount: 2,
+          developingSectionsCount: 1,
+          masteredSectionsCount: 0,
+          sections: [
+            {
+              index: 0,
+              text: '1. Clean Developing',
+              level: 1,
+              startPage: 1,
+              endPage: 5,
+              status: 'developing',
+              masteryScore: 70,
+              quizCorrect: 1,
+              quizTotal: 1,
+              cardTotal: 1,
+              cardReviewed: 1,
+              cardMastered: 1,
+              leechCount: 0,
+              missingPoints: [],
+              chunkIds: ['chk-clean'],
+            },
+            {
+              index: 1,
+              text: '2. Moderate Weak',
+              level: 1,
+              startPage: 6,
+              endPage: 10,
+              status: 'weak',
+              masteryScore: 48,
+              quizCorrect: 0,
+              quizTotal: 1,
+              cardTotal: 0,
+              cardReviewed: 0,
+              cardMastered: 0,
+              leechCount: 0,
+              missingPoints: [],
+              chunkIds: ['chk-mid'],
+            },
+            {
+              index: 2,
+              text: '3. Severe Weak',
+              level: 1,
+              startPage: 11,
+              endPage: 20,
+              status: 'weak',
+              masteryScore: 20,
+              quizCorrect: 0,
+              quizTotal: 2,
+              cardTotal: 1,
+              cardReviewed: 1,
+              cardMastered: 0,
+              leechCount: 1,
+              missingPoints: ['Big-O'],
+              chunkIds: ['chk-sev'],
+            },
+          ],
+        },
+      },
+    ]);
+
+    expect(weakTopics.map((t) => t.topic)).toEqual([
+      '3. Severe Weak',
+      '2. Moderate Weak',
+    ]);
+  });
+
+  it('triggers address_bloom_gap only when remember/understand >= 70% while apply/analyze < 60% with >= 2 answered', () => {
+    const noGap = generateStudyRecommendations({
+      defaultConversationId: 'conv-1',
+      srsOverview: {
+        totalCards: 0,
+        dueNowCount: 0,
+        newCount: 0,
+        learningCount: 0,
+        reviewCount: 0,
+        relearningCount: 0,
+        masteredCount: 0,
+        retentionRate: null,
+        matureRetentionRate: null,
+        totalReviewsInWindow: 0,
+        againCountInWindow: 0,
+        avgResponseTimeMs: null,
+        studyStreakDays: 0,
+        longestStreakDays: 0,
+        studiedToday: false,
+        activeDaysLast30: 0,
+      },
+      leechCards: [],
+      weakTopics: [],
+      bloomMastery: {
+        levels: [
+          { level: 'remember', totalAnswered: 2, correctCount: 1, partialCount: 0, incorrectCount: 1, accuracyRate: 50 },
+          { level: 'understand', totalAnswered: 0, correctCount: 0, partialCount: 0, incorrectCount: 0, accuracyRate: null },
+          { level: 'apply', totalAnswered: 1, correctCount: 0, partialCount: 0, incorrectCount: 1, accuracyRate: 0 },
+          { level: 'analyze', totalAnswered: 0, correctCount: 0, partialCount: 0, incorrectCount: 0, accuracyRate: null },
+        ],
+        untaggedCount: 0,
+      },
+      documentMasteries: [],
+    });
+    expect(noGap).toEqual([]);
+
+    const withGap = generateStudyRecommendations({
+      defaultConversationId: 'conv-1',
+      srsOverview: {
+        totalCards: 0,
+        dueNowCount: 0,
+        newCount: 0,
+        learningCount: 0,
+        reviewCount: 0,
+        relearningCount: 0,
+        masteredCount: 0,
+        retentionRate: null,
+        matureRetentionRate: null,
+        totalReviewsInWindow: 0,
+        againCountInWindow: 0,
+        avgResponseTimeMs: null,
+        studyStreakDays: 0,
+        longestStreakDays: 0,
+        studiedToday: false,
+        activeDaysLast30: 0,
+      },
+      leechCards: [],
+      weakTopics: [],
+      bloomMastery: {
+        levels: [
+          { level: 'remember', totalAnswered: 4, correctCount: 4, partialCount: 0, incorrectCount: 0, accuracyRate: 100 },
+          { level: 'understand', totalAnswered: 2, correctCount: 2, partialCount: 0, incorrectCount: 0, accuracyRate: 100 },
+          { level: 'apply', totalAnswered: 2, correctCount: 0, partialCount: 0, incorrectCount: 2, accuracyRate: 0 },
+          { level: 'analyze', totalAnswered: 2, correctCount: 1, partialCount: 0, incorrectCount: 1, accuracyRate: 50 },
+        ],
+        untaggedCount: 0,
+      },
+      documentMasteries: [],
+    });
+    expect(withGap).toHaveLength(1);
+    expect(withGap[0].actionType).toBe('address_bloom_gap');
+    expect(withGap[0].payload.bloomPreset).toBe('exam_prep');
   });
 });

@@ -353,13 +353,14 @@ describe('ChatAgentService', () => {
     expect(flashcardResult.targetKind).toBe('new');
     expect(flashcardResult.documentNames).toEqual(['Giao_trinh_CTDL.pdf']);
 
-    // Kiểm tra callback Tool 7: createQuiz (từ tài liệu AI)
+    // Kiểm tra callback Tool 7: createQuiz (từ tài liệu AI) kèm bloomPreset
     expect(options?.onCreateQuiz).toBeDefined();
     const quizResult = await options.onCreateQuiz({
       documentIds: ['doc-attached-1'],
       questionCount: 10,
       types: ['single_choice', 'essay'],
       difficulty: 'applied',
+      bloomPreset: 'exam_prep',
     });
     expect(quizServiceMock.generateWithAI).toHaveBeenCalledWith(
       'user-1',
@@ -369,6 +370,7 @@ describe('ChatAgentService', () => {
         questionCount: 10,
         types: [QuestionTypeEnum.single_choice, QuestionTypeEnum.essay],
         difficulty: 'applied',
+        bloomPreset: 'exam_prep',
       },
     );
     expect(quizResult.quizId).toBe('quiz-uuid-1');

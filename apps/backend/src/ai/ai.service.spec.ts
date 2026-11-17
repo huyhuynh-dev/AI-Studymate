@@ -319,10 +319,13 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
 
       const factory = new AiModelFactory(configMock);
       const rerankModel = factory.getRerankingModel();
+      if (typeof rerankModel !== 'object' || rerankModel === null) {
+        throw new Error('Expected object RerankingModel');
+      }
       expect(rerankModel.modelId).toBe('bge-reranker-v2-m3');
       expect(() => factory.getModel('RERANK')).toThrow();
 
-      const res = await (rerankModel as any).doRerank({
+      const res = await rerankModel.doRerank({
         query: 'Tối ưu SQL?',
         documents: { type: 'text', values: ['Trời nắng', 'Dùng Index'] },
         topN: 2,

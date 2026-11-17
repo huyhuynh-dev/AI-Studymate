@@ -742,5 +742,189 @@ describe('QuizService', () => {
             expect(res.title).toContain('[Luyện vùng yếu]');
             expect(res.questions[0].bloomLevel).toBe('apply');
         });
+
+        it('generateTargetedQuiz hỗ trợ truyền trực tiếp chunkIds từ TOC Heatmap và ném lỗi khi rỗng hoặc khác tenant', async () => {
+            // 1. Truyền thẳng chunkIds mà không có weakQuestionSignals hay weakFlashcardSignals
+            mockQuizRepo.getWeakQuestionSignalsByConversation.mockResolvedValueOnce(
+                []
+            );
+            mockDeckFlashcardRepo.getWeakFlashcardSignalsByConversation.mockResolvedValueOnce(
+                []
+            );
+            mockDocumentChunksRepo.findChunksWithNeighborsByIds.mockResolvedValueOnce(
+                [
+                    {
+                        documentId: 'doc-1',
+                        fileName: 'DSA.pdf',
+                        chunks: [
+                            {
+                                id: 'chk-toc-9',
+                                chunk_index: 9,
+                                content: 'Cấu trúc Dijkstra tìm đường đi ngắn nhất.',
+                                raw_content: null,
+                                page_numbers: [14],
+                                headings: ['Chương 5: Đồ thị', '5.2 Dijkstra'],
+                                bboxes: null,
+                            },
+                        ],
+                    },
+                ]
+            );
+            mockQuizAiService.generateQuizFromContext.mockResolvedValueOnce({
+                title: '[Luyện vùng yếu] Thuật toán Dijkstra',
+                description: 'Ôn tập mục 5.2',
+                rows: [
+                    {
+                        question_type: 'single_choice',
+                        order_index: 0,
+                        question_text: '<p>Điều kiện cạnh đối với Dijkstra?</p>',
+                        points: 1,
+                        options: [
+                            { id: 'opt_1', text: 'Trọng số không âm', isCorrect: true },
+                            { id: 'opt_2', text: 'Có chu trình âm', isCorrect: false },
+                        ],
+                        grading_criteria: [],
+                        explanation: '<p>Dijkstra yêu cầu trọng số không âm.</p>',
+                        bloom_level: 'understand',
+                    },
+                ],
+                rejected: [],
+            });
+            mockQuizRepo.createQuizWithQuestions.mockResolvedValueOnce({
+                id: 'quiz-toc-1',
+                conversation_id: 'conv-1',
+                title: '[Luyện vùng yếu] Thuật toán Dijkstra',
+                description: 'Ôn tập mục 5.2',
+                time_limit_sec: null,
+                source: 'ai',
+                source_deck_id: null,
+                created_at: new Date(),
+                updated_at: new Date(),
+                questions: [
+                    {
+                        id: 'q-toc-1',
+                        quiz_id: 'quiz-toc-1',
+                        question_type: QuestionTypeEnum.single_choice,
+                        order_index: 0,
+                        question_text: '<p>Điều kiện cạnh đối với Dijkstra?</p>',
+                        points: 1,
+                        options: [
+                            { id: 'opt_1', text: 'Trọng số không âm', isCorrect: true },
+                            { id: 'opt_2', text: 'Có chu trình âm', isCorrect: false },
+                        ],
+                        sample_answer: null,
+                        grading_criteria: [],
+                        explanation: '<p>Dijkstra yêu cầu trọng số không âm.</p>',
+                        bloom_level: 'understand',
+                        source_refs: null,
+                    },
+                ],
+            });
+
+            const directRes = await service.generateTargetedQuiz(
+                'user-1',
+                'conv-1',
+                {
+                    questionCount: 5,
+                    types: [QuestionTypeEnum.single_choice],
+                    bloomPreset: 'familiarize',
+                    chunkIds: ['chk-toc-9', 'chk-toc-9'],
+                }
+            );
+            expect(
+                mockDocumentChunksRepo.findChunksWithNeighborsByIds
+            ).toHaveBeenCalledWith(['chk-toc-9'], 'user-1', 'conv-1');
+            expect(directRes.id).toBe('quiz-toc-1');
+
+            // 2. Không có weak areas và cũng không truyền chunkIds -> BadRequestException
+            mockQuizRepo.getWeakQuestionSignalsByConversation.mockResolvedValueOnce(
+                []
+            );
+            mockDeckFlashcardRepo.getWeakFlashcardSignalsByConversation.mockResolvedValueOnce(
+                []
+            );
+            await expect(
+                service.generateTargetedQuiz('user-1', 'conv-1', {
+                    questionCount: 5,
+                    types: [QuestionTypeEnum.single_choice],
+                })
+            ).rejects.toThrow(BadRequestException);
+
+            // 3. chunkIds thuộc conversation/user khác -> findChunksWithNeighborsByIds trả [] -> BadRequestException
+            mockQuizRepo.getWeakQuestionSignalsByConversation.mockResolvedValueOnce(
+                []
+            );
+            mockDeckFlashcardRepo.getWeakFlashcardSignalsByConversation.mockResolvedValueOnce(
+                []
+            );
+            mockDocumentChunksRepo.findChunksWithNeighborsByIds.mockResolvedValueOnce(
+                []
+            );
+            await expect(
+                service.generateTargetedQuiz('user-1', 'conv-1', {
+                    questionCount: 5,
+                    types: [QuestionTypeEnum.single_choice],
+                    chunkIds: ['foreign-chunk-id'],
+                })
+            ).rejects.toThrow(BadRequestException);
+        });
+
+        it('getWeakAreasSummary tổng hợp vùng yếu không gọi LLM (0% LLM)', async () => {
+            mockQuizRepo.getWeakQuestionSignalsByConversation.mockResolvedValueOnce(
+                [
+                    {
+                        question_id: 'q-w1',
+                        evaluation_status: 'incorrect',
+                        missing_points: ['Thiếu điều kiện dừng'],
+                        question: {
+                            id: 'q-w1',
+                            question_text: '<p>Khi nào dừng Binary Search?</p>',
+                            source_refs: [
+                                {
+                                    documentId: 'doc-1',
+                                    fileName: 'DSA.pdf',
+                                    chunkId: 'chk-10',
+                                    headings: ['Binary Search'],
+                                },
+                            ],
+                        },
+                    },
+                ]
+            );
+            mockDeckFlashcardRepo.getWeakFlashcardSignalsByConversation.mockResolvedValueOnce(
+                [
+                    {
+                        id: 'fc-w1',
+                        front_text: 'Độ phức tạp Binary Search?',
+                        ease_factor: 1.7,
+                        state: 'relearning',
+                        source_refs: [
+                            {
+                                documentId: 'doc-1',
+                                fileName: 'DSA.pdf',
+                                chunkId: 'chk-10',
+                                headings: ['Binary Search'],
+                            },
+                        ],
+                        reviews: [{ id: 'r1' }, { id: 'r2' }],
+                    },
+                ]
+            );
+
+            const summary = await service.getWeakAreasSummary(
+                'user-1',
+                'conv-1'
+            );
+
+            expect(mockQuizAiService.generateQuizFromContext).not.toHaveBeenCalled();
+            expect(summary).toEqual({
+                hasWeakAreas: true,
+                weakChunkCount: 1,
+                incorrectQuizCount: 1,
+                leechCardCount: 1,
+                topWeakTopics: ['Binary Search'],
+                topMissingPoints: ['Thiếu điều kiện dừng'],
+            });
+        });
     });
 });

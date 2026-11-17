@@ -1,5 +1,8 @@
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthController } from './auth.controller.js';
+import { AuthService } from './auth.service.js';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -7,7 +10,14 @@ describe('AuthController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
-    }).compile();
+      providers: [
+        { provide: AuthService, useValue: {} },
+        { provide: ConfigService, useValue: { get: () => undefined } },
+      ],
+    })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<AuthController>(AuthController);
   });

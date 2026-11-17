@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
@@ -5,6 +6,11 @@ export default defineConfig({
   // Resolves the path aliases declared in tsconfig.json, including the ones
   // added by `nest g library`.
   plugins: [tsconfigPaths()],
+  resolve: {
+    alias: {
+      '@': path.resolve(import.meta.dirname, '../client/src'),
+    },
+  },
   test: {
     globals: true,
     root: './',

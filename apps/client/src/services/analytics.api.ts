@@ -297,7 +297,7 @@ function normalizeRecommendations(raw: unknown): StudyRecommendation[] {
   });
 }
 
-function normalizeDocumentMastery(raw: unknown): DocumentMasteryResponse {
+export function normalizeDocumentMastery(raw: unknown): DocumentMasteryResponse {
   const d = asRecord(raw);
   return {
     documentId: asString(d.documentId),
@@ -315,7 +315,7 @@ function normalizeDocumentMastery(raw: unknown): DocumentMasteryResponse {
   };
 }
 
-function normalizeConversationAnalytics(
+export function normalizeConversationAnalytics(
   raw: unknown
 ): ConversationAnalyticsResponse {
   const r = asRecord(raw);
@@ -359,7 +359,7 @@ function normalizeSubjectConversationSummaries(
   });
 }
 
-function normalizeSubjectAnalytics(raw: unknown): SubjectAnalyticsResponse {
+export function normalizeSubjectAnalytics(raw: unknown): SubjectAnalyticsResponse {
   const r = asRecord(raw);
   return {
     subjectId: asString(r.subjectId),

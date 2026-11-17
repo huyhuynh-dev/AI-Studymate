@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from '../../prisma/prisma.service.js';
 import { DeckFlashcardRepoService } from './deck-flashcard-repo.service.js';
 
 describe('DeckFlashcardRepoService', () => {
@@ -6,7 +7,10 @@ describe('DeckFlashcardRepoService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DeckFlashcardRepoService],
+      providers: [
+        DeckFlashcardRepoService,
+        { provide: PrismaService, useValue: {} },
+      ],
     }).compile();
 
     service = module.get<DeckFlashcardRepoService>(DeckFlashcardRepoService);

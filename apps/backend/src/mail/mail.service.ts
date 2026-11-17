@@ -29,7 +29,7 @@ export class MailService {
             return {
                 success: true,
             };
-        } catch (error) {
+        } catch {
             return {
                 success: false,
             };
