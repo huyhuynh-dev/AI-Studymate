@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  startTransition,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -326,55 +332,49 @@ export default function LeftSidebar({
   );
 
   const handleToggleExpandSubject = useCallback((subjectId: string) => {
-    setExpandedSubjectIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(subjectId)) {
-        next.delete(subjectId);
-      } else {
-        next.add(subjectId);
-      }
-      return next;
+    startTransition(() => {
+      setExpandedSubjectIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(subjectId)) {
+          next.delete(subjectId);
+        } else {
+          next.add(subjectId);
+        }
+        return next;
+      });
     });
   }, []);
 
-  // Chọn môn học
-  const handleSubjectClick = useCallback(
+  // Chọn môn học (Link tự điều hướng, callback chỉ cập nhật state)
+  const handleSelectSubject = useCallback(
     (subject: Subject) => {
       setActiveId(subject.id);
       onSelectSubject?.(subject);
-      router.push(`/home/${subject.id}`);
     },
-    [onSelectSubject, router]
-  );
-
-  // Chọn phiên học
-  const handleSelectConversation = useCallback(
-    (subjectId: string, conversation: Conversation) => {
-      setActiveId(subjectId);
-      router.push(`/home/${subjectId}/${conversation.id}`);
-    },
-    [router]
+    [onSelectSubject]
   );
 
   // Ghim / Bỏ ghim phiên học
   const handleTogglePinConversation = useCallback(
     (conversationId: string) => {
-      setPinnedConversationIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(conversationId)) {
-          next.delete(conversationId);
-        } else {
-          next.add(conversationId);
-        }
-        try {
-          window.localStorage.setItem(
-            PINNED_STORAGE_KEY,
-            JSON.stringify(Array.from(next))
-          );
-        } catch {
-          // Bỏ qua lỗi lưu localStorage
-        }
-        return next;
+      startTransition(() => {
+        setPinnedConversationIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(conversationId)) {
+            next.delete(conversationId);
+          } else {
+            next.add(conversationId);
+          }
+          try {
+            window.localStorage.setItem(
+              PINNED_STORAGE_KEY,
+              JSON.stringify(Array.from(next))
+            );
+          } catch {
+            // Bỏ qua lỗi lưu localStorage
+          }
+          return next;
+        });
       });
     },
     []
@@ -549,7 +549,7 @@ export default function LeftSidebar({
 
   return (
     <aside
-      className={`flex h-full flex-col justify-between border-r border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] select-none transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+      className={`flex h-full flex-col justify-between border-r border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] select-none transition-[width,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
         isCollapsed ? "w-14 px-1.5 py-3 items-center" : "w-68 p-3 opacity-100"
       } ${className}`.trim()}
     >
@@ -569,7 +569,7 @@ export default function LeftSidebar({
                 });
               }}
               onMouseLeave={() => setRailTooltip(null)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg hover:scale-105 active:scale-95 transition-transform motion-reduce:transition-none"
+              className="flex h-8 w-8 items-center justify-center rounded-lg hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-transform duration-150 motion-reduce:transition-none"
             >
               <Image
                 src="/logo.svg"
@@ -594,9 +594,9 @@ export default function LeftSidebar({
                   });
                 }}
                 onMouseLeave={() => setRailTooltip(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#777587] hover:text-[#0B1C30] dark:hover:text-white hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-all motion-reduce:transition-none cursor-pointer"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#777587] hover:text-[#0B1C30] dark:hover:text-white hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
               >
-                <PanelLeftOpen className="h-4 w-4" />
+                <PanelLeftOpen aria-hidden="true" className="h-4 w-4" />
               </button>
             )}
 
@@ -612,23 +612,23 @@ export default function LeftSidebar({
                 });
               }}
               onMouseLeave={() => setRailTooltip(null)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#777587] hover:text-[#4F46E5] hover:bg-[#EEF2FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-all motion-reduce:transition-none cursor-pointer"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#777587] hover:text-[#4F46E5] hover:bg-[#EEF2FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
             >
-              <Plus className="h-4 w-4" />
+              <Plus aria-hidden="true" className="h-4 w-4" />
             </button>
           </div>
 
           {/* Phần giữa (Thu gọn): Danh sách môn học */}
-          <div className="flex-1 w-full min-h-0 flex flex-col items-center gap-1.5 py-3 overflow-y-auto overflow-x-hidden no-scrollbar">
+          <div className="flex-1 w-full min-h-0 flex flex-col items-center gap-1.5 py-3 overflow-y-auto overflow-x-hidden overscroll-contain no-scrollbar">
             {subjects.map((subject) => {
               const isActive = activeId === subject.id;
               const subjectColor = subject.color || "#4F46E5";
 
               return (
-                <button
+                <Link
                   key={subject.id}
-                  type="button"
-                  onClick={() => handleSubjectClick(subject)}
+                  href={`/home/${subject.id}`}
+                  onClick={() => handleSelectSubject(subject)}
                   aria-label={subject.name}
                   onMouseEnter={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
@@ -638,7 +638,7 @@ export default function LeftSidebar({
                     });
                   }}
                   onMouseLeave={() => setRailTooltip(null)}
-                  className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-all motion-reduce:transition-none cursor-pointer ${
+                  className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none ${
                     isActive
                       ? "bg-[#EEF2FF] dark:bg-white/[0.12] text-[#4F46E5] shadow-2xs ring-1 ring-[#C7D2FE] dark:ring-white/20"
                       : "text-[#777587] hover:bg-[#F8F9FF] dark:hover:bg-white/[0.04] hover:text-[#0B1C30]"
@@ -646,20 +646,23 @@ export default function LeftSidebar({
                 >
                   {isActive ? (
                     <FolderOpen
+                      aria-hidden="true"
                       className="h-4 w-4"
                       style={{ color: subjectColor }}
                     />
                   ) : (
                     <Folder
+                      aria-hidden="true"
                       className="h-4 w-4"
                       style={{ color: subjectColor }}
                     />
                   )}
                   <span
+                    aria-hidden="true"
                     className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
                     style={{ backgroundColor: subjectColor }}
                   />
-                </button>
+                </Link>
               );
             })}
           </div>
@@ -678,7 +681,7 @@ export default function LeftSidebar({
                 });
               }}
               onMouseLeave={() => setRailTooltip(null)}
-              className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-[#E5EEFF] dark:border-white/[0.1] bg-gradient-to-br from-indigo-500 to-violet-600 text-[0.6875rem] font-bold text-white hover:ring-2 hover:ring-[#4F46E5]/40 transition-all cursor-pointer active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5]"
+              className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-[#E5EEFF] dark:border-white/[0.1] bg-gradient-to-br from-indigo-500 to-violet-600 text-[0.6875rem] font-bold text-white hover:ring-2 hover:ring-[#4F46E5]/40 transition-[box-shadow,transform] duration-150 motion-reduce:transition-none cursor-pointer active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5]"
             >
               {user?.avatarUrl ? (
                 <Image
@@ -712,7 +715,10 @@ export default function LeftSidebar({
                 unoptimized
                 className="h-7 w-7 shrink-0 transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none"
               />
-              <span className="text-[0.9375rem] font-bold font-heading tracking-tight text-[#0B1C30] dark:text-[#EFF0F6] truncate group-hover:text-[#4F46E5] dark:group-hover:text-[#818CF8] transition-colors">
+              <span
+                translate="no"
+                className="text-[0.9375rem] font-bold font-heading tracking-tight text-[#0B1C30] dark:text-[#EFF0F6] truncate group-hover:text-[#4F46E5] dark:group-hover:text-[#818CF8] transition-colors duration-150"
+              >
                 AI StudyMate
               </span>
             </Link>
@@ -723,9 +729,9 @@ export default function LeftSidebar({
                 onClick={handleToggleCollapse}
                 aria-label="Thu gọn thanh bên"
                 title="Thu gọn"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#777587] dark:text-neutral-400 hover:text-[#0B1C30] dark:hover:text-white hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-all motion-reduce:transition-none cursor-pointer"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#777587] dark:text-neutral-400 hover:text-[#0B1C30] dark:hover:text-white hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
               >
-                <PanelLeftClose className="h-4 w-4" />
+                <PanelLeftClose aria-hidden="true" className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -741,16 +747,20 @@ export default function LeftSidebar({
                 onClick={handleOpenCreateModal}
                 aria-label="Tạo không gian học tập mới"
                 title="Tạo không gian mới"
-                className="flex h-6 w-6 items-center justify-center rounded-lg text-[#777587] dark:text-neutral-400 hover:text-[#4F46E5] dark:hover:text-[#818CF8] hover:bg-[#EEF2FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-all motion-reduce:transition-none cursor-pointer"
+                className="flex h-6 w-6 items-center justify-center rounded-lg text-[#777587] dark:text-neutral-400 hover:text-[#4F46E5] dark:hover:text-[#818CF8] hover:bg-[#EEF2FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
               >
-                <Plus className="h-4 w-4" />
+                <Plus aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-0.5 pr-0.5 pb-2">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar space-y-0.5 pr-0.5 pb-2">
               {/* Loading Skeleton */}
               {isLoading && subjects.length === 0 && (
-                <div className="space-y-1 animate-pulse px-1">
+                <div
+                  aria-busy="true"
+                  aria-label="Đang tải danh sách không gian học tập…"
+                  className="space-y-1 animate-pulse motion-reduce:animate-none px-1"
+                >
                   {[1, 2, 3].map((idx) => (
                     <div
                       key={idx}
@@ -770,15 +780,15 @@ export default function LeftSidebar({
               {error && subjects.length === 0 && (
                 <div className="rounded-xl border border-rose-200/60 bg-rose-50/50 dark:bg-rose-950/20 p-3 text-center space-y-2 mx-1">
                   <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0" />
                     <span className="truncate">{error}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => refresh()}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-900 bg-white dark:bg-neutral-900 px-2.5 py-1 text-xs font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-50 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-900 bg-white dark:bg-neutral-900 px-2.5 py-1 text-xs font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-colors duration-150 cursor-pointer"
                   >
-                    <RefreshCw className="h-3 w-3" />
+                    <RefreshCw aria-hidden="true" className="h-3 w-3" />
                     <span>Thử lại</span>
                   </button>
                 </div>
@@ -788,7 +798,7 @@ export default function LeftSidebar({
               {!isLoading && subjects.length === 0 && !error && (
                 <div className="rounded-2xl border border-dashed border-[#E5EEFF] dark:border-white/[0.1] bg-[#F8F9FF] dark:bg-white/[0.02] p-4 text-center space-y-2.5 mx-1">
                   <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEF2FF] text-[#4F46E5]">
-                    <Folder className="h-4 w-4" />
+                    <Folder aria-hidden="true" className="h-4 w-4" />
                   </div>
                   <div>
                     <p className="text-xs font-semibold font-heading text-[#0B1C30] dark:text-neutral-300">
@@ -801,9 +811,9 @@ export default function LeftSidebar({
                   <button
                     type="button"
                     onClick={handleOpenCreateModal}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#4F46E5] hover:bg-[#3525CD] px-3 py-1.5 text-xs font-medium text-white shadow-xs active:scale-95 transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#4F46E5] hover:bg-[#3525CD] px-3 py-1.5 text-xs font-medium text-white shadow-xs active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] focus-visible:outline-offset-2 transition-[background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
                   >
-                    <Plus className="h-3.5 w-3.5" />
+                    <Plus aria-hidden="true" className="h-3.5 w-3.5" />
                     <span>Tạo không gian</span>
                   </button>
                 </div>
@@ -828,10 +838,9 @@ export default function LeftSidebar({
                   }
                   pinnedConversationIds={pinnedConversationIds}
                   onToggleExpand={handleToggleExpandSubject}
-                  onSelectSubject={handleSubjectClick}
+                  onSelectSubject={handleSelectSubject}
                   onCreateConversation={handleOpenCreateConversation}
                   onToggleSubjectMenu={handleToggleSubjectMenu}
-                  onSelectConversation={handleSelectConversation}
                   onTogglePinConversation={handleTogglePinConversation}
                   onToggleConversationMenu={handleToggleConversationMenu}
                 />
@@ -878,9 +887,9 @@ export default function LeftSidebar({
                 );
               }
             }}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#464555] dark:text-neutral-200 hover:bg-[#4F46E5] hover:text-white transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#464555] dark:text-neutral-200 hover:bg-[#4F46E5] hover:text-white focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-colors duration-150 cursor-pointer"
           >
-            <Edit3 className="h-3.5 w-3.5" />
+            <Edit3 aria-hidden="true" className="h-3.5 w-3.5" />
             <span>Chỉnh sửa</span>
           </button>
           <button
@@ -897,9 +906,9 @@ export default function LeftSidebar({
                 );
               }
             }}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white focus-visible:outline-2 focus-visible:outline-rose-500 transition-colors duration-150 cursor-pointer"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
             <span>Xóa</span>
           </button>
         </div>
