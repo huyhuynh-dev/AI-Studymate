@@ -71,6 +71,8 @@ export interface AvailableDocumentItem {
   toc?: AvailableDocumentTocItem[];
 }
 
+export type RetrievalSearchMode = 'hybrid' | 'vector_only' | 'keyword_only';
+
 export interface HybridSearchParams {
   userId: string;
   conversationId: string;
@@ -125,6 +127,10 @@ export interface HybridSearchParams {
    * Bật/tắt bước Cross-Encoder Reranking (Mặc định: true)
    */
   enableRerank?: boolean;
+  /**
+   * Chế độ truy xuất (Mặc định: 'hybrid'). Dùng 'vector_only' hoặc 'keyword_only' cho Ablation Study.
+   */
+  searchMode?: RetrievalSearchMode;
 }
 
 export interface GetDocumentSectionOrPagesParams {
@@ -187,6 +193,7 @@ export interface DocumentFullContent {
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ZERO_VECTOR_768_LITERAL = `[${Array.from({ length: 768 }, () => '0').join(',')}]`;
 
 @Injectable()
 export class RetrievalService {
@@ -588,6 +595,7 @@ export class RetrievalService {
       rrfK = DEFAULT_RRF_K,
       enableQueryDecompose = true,
       enableRerank = true,
+      searchMode = 'hybrid',
     } = params;
 
     const trimmedSemanticQuery = semanticQuery?.trim() || '';
@@ -617,13 +625,16 @@ export class RetrievalService {
       enableQueryDecompose,
     );
 
-    // Bước 1: Sinh vector embedding cho toàn bộ subQueries
+    // Bước 1: Sinh vector embedding cho toàn bộ subQueries (bỏ qua nếu chỉ chạy keyword_only)
     const queryTexts = plannedQueries.map(
       (sq) =>
         sq.semanticQuery.trim() ||
         sq.keywords.slice(0, MAX_KEYWORDS).join(' '),
     );
-    const vectorStrings = await this.embedSubQueries(queryTexts);
+    const vectorStrings =
+      searchMode === 'keyword_only'
+        ? queryTexts.map(() => ZERO_VECTOR_768_LITERAL)
+        : await this.embedSubQueries(queryTexts);
 
     const validPreferredDocIds = this.extractValidUuids(preferredDocumentIds);
     let rrfPool: RetrievedChunk[] = [];
@@ -644,6 +655,7 @@ export class RetrievalService {
         poolSize: effectivePoolSize,
         candidateLimit,
         rrfK,
+        searchMode,
       });
 
       if (rrfPool.length === 0) {
@@ -664,6 +676,7 @@ export class RetrievalService {
         poolSize: effectivePoolSize,
         candidateLimit,
         rrfK,
+        searchMode,
       });
     }
 
@@ -827,6 +840,7 @@ export class RetrievalService {
     poolSize: number;
     candidateLimit: number;
     rrfK: number;
+    searchMode: RetrievalSearchMode;
   }): Promise<RetrievedChunk[]> {
     const {
       userId,
@@ -839,6 +853,7 @@ export class RetrievalService {
       poolSize,
       candidateLimit,
       rrfK,
+      searchMode,
     } = options;
 
     const perQueryResults = await Promise.all(
@@ -854,6 +869,7 @@ export class RetrievalService {
           topK: poolSize,
           candidateLimit,
           rrfK,
+          searchMode,
         }),
       ),
     );
@@ -1034,6 +1050,7 @@ export class RetrievalService {
     topK: number;
     candidateLimit: number;
     rrfK: number;
+    searchMode?: RetrievalSearchMode;
   }): Promise<RetrievedChunk[]> {
     const {
       userId,
@@ -1046,9 +1063,11 @@ export class RetrievalService {
       topK,
       candidateLimit,
       rrfK,
+      searchMode = 'hybrid',
     } = options;
 
-    const hasKeywords = pgrnQuery.length > 0;
+    const hasVector = searchMode !== 'keyword_only';
+    const hasKeywords = searchMode !== 'vector_only' && pgrnQuery.length > 0;
     const documentFilterSql =
       documentIds && documentIds.length > 0
         ? Prisma.sql`AND d."id" = ANY(${documentIds}::uuid[])`
@@ -1119,7 +1138,8 @@ export class RetrievalService {
           ) AS rn
         FROM "document_chunks" dc
         INNER JOIN allowed_docs ad ON ad."id" = dc."document_id"
-        WHERE dc."embedding" IS NOT NULL
+        WHERE ${hasVector}
+          AND dc."embedding" IS NOT NULL
           ${pageFilterSql}
         ORDER BY dc."embedding" <=> ${vectorString}::vector ASC, dc."chunk_index" ASC
         LIMIT ${candidateLimit}

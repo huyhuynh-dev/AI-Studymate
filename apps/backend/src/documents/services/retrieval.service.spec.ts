@@ -860,5 +860,87 @@ describe('RetrievalService', () => {
       expect(firstSqlTemplate.values).toContain(36);
       expect(results.map((r) => r.id)).toEqual(['chk-pool-2', 'chk-pool-1']);
     });
+
+    it('nên bỏ qua embedSubQueries và tắt vector_search khi searchMode=keyword_only', async () => {
+      prismaMock.$queryRaw.mockResolvedValueOnce([
+        {
+          id: 'chk-kw-only',
+          documentId: validDocId,
+          fileName: 'DB.pdf',
+          chunkIndex: 1,
+          pageNumbers: [10],
+          content: 'PGroonga &@~ full-text search',
+          headings: ['5.2 PGroonga'],
+          chunkType: 'text',
+          hasImage: false,
+          hasTable: false,
+          bboxes: null,
+          assetsJson: [],
+          rrfScore: 0.01639,
+          vectorRank: null,
+          keywordRank: 1,
+        },
+      ]);
+
+      const results = await enhancedService.searchRelevantChunks({
+        userId: validUserId,
+        conversationId: validConversationId,
+        semanticQuery: 'Tìm toán tử PGroonga',
+        keywords: ['PGroonga', '&@~'],
+        topK: 5,
+        searchMode: 'keyword_only',
+        enableQueryDecompose: false,
+        enableRerank: false,
+      });
+
+      expect(enhancedEmbeddingMock.embedSingle).not.toHaveBeenCalled();
+      expect(enhancedEmbeddingMock.embedBatch).not.toHaveBeenCalled();
+      const sqlTemplate = prismaMock.$queryRaw.mock.calls[0][0] as {
+        values?: unknown[];
+      };
+      expect(sqlTemplate.values?.[3]).toBe(false); // hasVector = false
+      expect(results[0].id).toBe('chk-kw-only');
+    });
+
+    it('nên tắt keyword_search khi searchMode=vector_only nhưng vẫn chạy embedSingle', async () => {
+      prismaMock.$queryRaw.mockResolvedValueOnce([
+        {
+          id: 'chk-vec-only',
+          documentId: validDocId,
+          fileName: 'OS.pdf',
+          chunkIndex: 2,
+          pageNumbers: [24],
+          content: 'Deadlock occurs when four Coffman conditions hold.',
+          headings: ['3.2 Deadlock'],
+          chunkType: 'text',
+          hasImage: false,
+          hasTable: false,
+          bboxes: null,
+          assetsJson: [],
+          rrfScore: 0.01639,
+          vectorRank: 1,
+          keywordRank: null,
+        },
+      ]);
+
+      const results = await enhancedService.searchRelevantChunks({
+        userId: validUserId,
+        conversationId: validConversationId,
+        semanticQuery: 'Deadlock là gì?',
+        keywords: ['Deadlock'],
+        topK: 5,
+        searchMode: 'vector_only',
+        enableQueryDecompose: false,
+        enableRerank: false,
+      });
+
+      expect(enhancedEmbeddingMock.embedSingle).toHaveBeenCalledTimes(1);
+      const sqlTemplate = prismaMock.$queryRaw.mock.calls[0][0] as {
+        values?: unknown[];
+      };
+      expect(sqlTemplate.values?.[3]).toBe(true); // hasVector = true
+      expect(sqlTemplate.values?.[6]).toBe(false); // hasKeywords = false
+      expect(results[0].id).toBe('chk-vec-only');
+    });
   });
 });

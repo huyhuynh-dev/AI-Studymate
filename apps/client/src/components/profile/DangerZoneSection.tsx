@@ -1,74 +1,153 @@
 "use client";
 
-import React, { useState } from "react";
+import { useId, useRef, useState, type FormEvent } from "react";
 import { AlertTriangle, Trash2 } from "lucide-react";
+import { Button, Row, RowGroup, SectionCard, TextField } from "./shared";
 
 export interface DangerZoneSectionProps {
-    onDeleteAccount?: () => void;
+    onDeleteAccount?: () => void | Promise<void>;
 }
 
-export default function DangerZoneSection({ onDeleteAccount }: DangerZoneSectionProps) {
-    const [isConfirming, setIsConfirming] = useState(false);
+/** Bỏ dấu + chữ thường để "XÓA", "xóa", "xoa" đều hợp lệ (bàn phím không gõ được dấu vẫn xác nhận được). */
+function normalize(value: string): string {
+    return value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+}
 
-    const handleDeleteClick = () => {
-        if (isConfirming) {
-            onDeleteAccount?.();
-            setIsConfirming(false);
-        } else {
-            setIsConfirming(true);
+const CONFIRM_KEYWORD = "xoa";
+
+function DeleteDialogContent({
+    titleId,
+    onCancel,
+    onConfirm,
+}: {
+    titleId: string;
+    onCancel: () => void;
+    onConfirm: () => Promise<void>;
+}) {
+    const [confirmText, setConfirmText] = useState("");
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [hasError, setHasError] = useState(false);
+
+    const canConfirm = normalize(confirmText) === CONFIRM_KEYWORD;
+
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!canConfirm) return;
+
+        setIsDeleting(true);
+        setHasError(false);
+        try {
+            await onConfirm();
+        } catch {
+            setHasError(true);
+            setIsDeleting(false);
         }
     };
 
     return (
-        <div className="rounded-2xl border border-red-100 bg-white p-6 shadow-sm">
-            {/* Header */}
-            <div className="mb-5 flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100">
-                        <AlertTriangle className="h-5 w-5 text-red-500" />
-                    </div>
-                    <div>
-                        <h2 className="text-base font-bold font-heading text-gray-900">Vùng nguy hiểm</h2>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                            Hành động vĩnh viễn không thể khôi phục dữ liệu đã lưu trữ.
-                        </p>
-                    </div>
-                </div>
-                <span className="text-xs font-semibold font-heading uppercase tracking-wide text-red-500">CẢNH BÁO</span>
+        <form onSubmit={handleSubmit} noValidate className="landing-pop p-6">
+            <span className="flex size-12 items-center justify-center rounded-2xl bg-error/10 text-error">
+                <AlertTriangle className="size-6" aria-hidden />
+            </span>
+
+            <h2
+                id={titleId}
+                className="mt-4 font-heading text-xl font-semibold tracking-tight text-foreground"
+            >
+                Xóa tài khoản vĩnh viễn?
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+                Toàn bộ tài liệu đã tải lên, tóm tắt bài giảng AI và các bộ flashcard của bạn sẽ bị xóa
+                khỏi hệ thống. Hành động này không thể hoàn tác.
+            </p>
+
+            <div className="mt-5">
+                <TextField
+                    label="Nhập “XÓA” để xác nhận"
+                    autoFocus
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    error={hasError ? "Không thể xóa tài khoản. Vui lòng thử lại." : undefined}
+                />
             </div>
 
-            {/* Delete Account Card */}
-            <div className="rounded-xl border border-red-100 bg-red-50/50 p-4">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                        <p className="text-sm font-semibold font-heading text-gray-800">Xóa tài khoản vĩnh viễn</p>
-                        <p className="mt-1 text-xs text-gray-500">
-                            Mọi tài liệu tải lên, tóm tắt bài giảng AI và các bộ flashcards cá nhân sẽ bị xóa hoàn
-                            toàn khỏi cơ sở dữ liệu.
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={handleDeleteClick}
-                        className={`shrink-0 flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all active:scale-95 cursor-pointer ${
-                            isConfirming
-                                ? "bg-red-700 hover:bg-red-800"
-                                : "bg-red-600 hover:bg-red-700"
-                        }`}
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button onClick={onCancel} disabled={isDeleting}>
+                    Hủy
+                </Button>
+                <Button type="submit" variant="danger" disabled={!canConfirm} isLoading={isDeleting}>
+                    <Trash2 className="size-4" aria-hidden />
+                    Xóa vĩnh viễn
+                </Button>
+            </div>
+        </form>
+    );
+}
+
+export default function DangerZoneSection({ onDeleteAccount }: DangerZoneSectionProps) {
+    const titleId = useId();
+    const dialogRef = useRef<HTMLDialogElement>(null);
+    // Nội dung dialog chỉ mount khi mở → state nhập liệu tự reset, animation chạy lại mỗi lần mở.
+    const [isOpen, setIsOpen] = useState(false);
+
+    const openDialog = () => {
+        setIsOpen(true);
+        dialogRef.current?.showModal(); // focus trap + Esc + inert nền do trình duyệt xử lý
+    };
+
+    const closeDialog = () => dialogRef.current?.close();
+
+    const confirmDelete = async () => {
+        await onDeleteAccount?.();
+        closeDialog();
+    };
+
+    return (
+        <>
+            <SectionCard
+                id="danger-zone"
+                tone="danger"
+                title="Vùng nguy hiểm"
+                description="Các hành động vĩnh viễn, không thể khôi phục."
+            >
+                <RowGroup>
+                    <Row
+                        label="Xóa tài khoản"
+                        description="Xóa toàn bộ tài liệu, tóm tắt AI và flashcard cá nhân khỏi hệ thống."
                     >
-                        <Trash2 className="h-4 w-4" />
-                        {isConfirming ? "Xác nhận xóa" : "Xóa tài khoản"}
-                    </button>
-                </div>
+                        <Button variant="danger-quiet" onClick={openDialog} aria-haspopup="dialog">
+                            <Trash2 className="size-4" aria-hidden />
+                            Xóa tài khoản
+                        </Button>
+                    </Row>
+                </RowGroup>
+            </SectionCard>
 
-                {isConfirming && (
-                    <div className="mt-3 rounded-lg border border-red-200 bg-red-100 p-3 text-xs text-red-700">
-                        ⚠️ Bạn có chắc chắn? Hành động này không thể hoàn tác. Nhấn &quot;Xác nhận xóa&quot; để
-                        tiếp tục hoặc làm mới trang để hủy.
-                    </div>
+            <dialog
+                ref={dialogRef}
+                aria-labelledby={titleId}
+                onClose={() => setIsOpen(false)}
+                onClick={(event) => {
+                    if (event.target === event.currentTarget) closeDialog(); // bấm nền mờ để đóng
+                }}
+                className="m-auto w-[calc(100%-2rem)] max-w-md rounded-3xl border border-hairline bg-raised p-0 text-foreground shadow-[0_24px_64px_-16px_rgba(11,28,48,0.28)] backdrop:bg-black/40 backdrop:backdrop-blur-sm"
+            >
+                {isOpen && (
+                    <DeleteDialogContent
+                        titleId={titleId}
+                        onCancel={closeDialog}
+                        onConfirm={confirmDelete}
+                    />
                 )}
-            </div>
-        </div>
+            </dialog>
+        </>
     );
 }
 

@@ -23,6 +23,7 @@ import { DeckFlashcardModule } from './deck-flashcard/deck-flashcard.module.js';
 import { QuizModule } from './quiz/quiz.module.js';
 import { SearchModule } from './search/search.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
+import { RagBenchmarkModule } from './rag-benchmark/rag-benchmark.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -62,6 +63,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     QuizModule,
     SearchModule,
     AnalyticsModule,
+    RagBenchmarkModule,
   ],
   controllers: [AppController],
   providers: [
