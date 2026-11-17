@@ -34,7 +34,7 @@ function RowAction({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-[#777587] transition-colors duration-150 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] ${
+      className={`flex h-6 w-6 [@media(pointer:coarse)]:h-9 [@media(pointer:coarse)]:w-9 cursor-pointer items-center justify-center rounded-lg text-[#777587] transition-colors duration-150 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] ${
         danger
           ? "hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400"
           : "hover:bg-white dark:hover:bg-[#12151C] hover:text-[#4F46E5] dark:hover:text-[#818CF8]"
@@ -313,7 +313,7 @@ export function HistorySessionRow({
       </button>
 
       {/* Cột phải cố định bề rộng */}
-      <div className="flex h-8 w-16 shrink-0 items-center justify-end pr-1.5">
+      <div className="flex h-8 [@media(pointer:coarse)]:h-9 w-16 [@media(pointer:coarse)]:w-20 shrink-0 items-center justify-end pr-1.5">
         <span className="truncate text-[10px] text-[#777587] group-hover:hidden group-focus-within:hidden [@media(pointer:coarse)]:hidden">
           {session.timestamp}
         </span>

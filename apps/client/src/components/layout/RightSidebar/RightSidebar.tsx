@@ -812,15 +812,35 @@ export default function RightSidebar({
       {/* Thanh kéo dãn chiều rộng bên trái (ẩn khi đang fullscreen hoặc collapsed) */}
       {!isCollapsed && !isFullscreen && (
         <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Thay đổi độ rộng trợ lý AI"
+          aria-valuemin={320}
+          aria-valuenow={sidebarWidth}
+          tabIndex={0}
           onMouseDown={handleMouseDown}
+          onKeyDown={(e) => {
+            const step = e.shiftKey ? 48 : 24;
+            const maxWidth =
+              typeof window !== "undefined"
+                ? Math.floor(window.innerWidth * 0.6)
+                : 720;
+            if (e.key === "ArrowLeft") {
+              e.preventDefault();
+              setSidebarWidth((prev) => Math.min(maxWidth, prev + step));
+            } else if (e.key === "ArrowRight") {
+              e.preventDefault();
+              setSidebarWidth((prev) => Math.max(320, prev - step));
+            }
+          }}
           title="Kéo sang trái/phải để thay đổi kích thước (Tối đa 60%)"
-          className="group absolute -left-1.5 top-0 bottom-0 z-40 w-3 cursor-col-resize select-none touch-none flex items-center justify-center hover:bg-transparent"
+          className="group absolute -left-1.5 top-0 bottom-0 z-40 w-3 cursor-col-resize select-none touch-none flex items-center justify-center hover:bg-transparent focus-visible:outline-2 focus-visible:outline-[#4F46E5]"
         >
           <div
             className={`h-full w-1 transition-colors duration-150 ${
               isDragging
                 ? "bg-[#4F46E5] shadow-xs"
-                : "bg-transparent group-hover:bg-[#4F46E5]/70"
+                : "bg-transparent group-hover:bg-[#4F46E5]/70 group-focus-visible:bg-[#4F46E5]"
             }`}
           />
         </div>
@@ -830,6 +850,8 @@ export default function RightSidebar({
         type="file"
         ref={fileInputRef}
         onChange={handleLocalInputChange}
+        aria-hidden="true"
+        tabIndex={-1}
         className="hidden"
         multiple
         accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.txt"

@@ -50,7 +50,16 @@ export function HistoryMenu({
   const showSearch = sessions.length > SEARCH_THRESHOLD;
 
   return (
-    <div ref={containerRef} className="contents">
+    <div
+      ref={containerRef}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && isOpen) {
+          e.stopPropagation();
+          close();
+        }
+      }}
+      className="contents"
+    >
       <IconButton
         label="Lịch sử trò chuyện"
         isActive={isOpen}
