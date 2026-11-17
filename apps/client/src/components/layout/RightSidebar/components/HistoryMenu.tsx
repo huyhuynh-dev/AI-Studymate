@@ -16,7 +16,7 @@ interface HistoryMenuProps {
   activeChatId: string | null;
   onSelect: (id: string) => void;
   onRename: (id: string, newTitle: string) => Promise<void>;
-  onRequestDelete: (session: ChatSessionItem) => void;
+  onDelete: (id: string) => Promise<void>;
 }
 
 export function HistoryMenu({
@@ -25,7 +25,7 @@ export function HistoryMenu({
   activeChatId,
   onSelect,
   onRename,
-  onRequestDelete,
+  onDelete,
 }: HistoryMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -82,15 +82,15 @@ export function HistoryMenu({
                   type="button"
                   aria-label="Xóa từ khóa"
                   onClick={() => setQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-[#777587] hover:text-[#0B1C30] dark:hover:text-white"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded text-[#777587] hover:text-[#0B1C30] dark:hover:text-white focus-visible:outline-2 focus-visible:outline-[#4F46E5]"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X aria-hidden="true" className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
           )}
 
-          <div className="max-h-72 overflow-y-auto p-1.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="max-h-72 overflow-y-auto overscroll-contain p-1.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {isLoading && sessions.length === 0 ? (
               <div className="animate-pulse space-y-1 p-1">
                 {[1, 2, 3].map((i) => (
@@ -119,10 +119,7 @@ export function HistoryMenu({
                       close();
                     }}
                     onRename={(newTitle) => onRename(session.id, newTitle)}
-                    onRequestDelete={() => {
-                      close();
-                      onRequestDelete(session);
-                    }}
+                    onDelete={() => onDelete(session.id)}
                   />
                 ))}
               </div>

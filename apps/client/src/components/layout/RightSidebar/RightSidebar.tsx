@@ -14,7 +14,6 @@ import { chatSessionsApi } from "@/services/chatSessions.api";
 
 import { ChatComposer } from "./components/ChatComposer";
 import { ChatHeader } from "./components/ChatHeader";
-import { ConfirmDeleteDialog } from "./components/ConfirmDeleteDialog";
 import { EmptyState } from "./components/EmptyState";
 import { MessageList } from "./components/MessageList";
 import { Loader2 } from "lucide-react";
@@ -114,7 +113,6 @@ export default function RightSidebar({
   const [inputValue, setInputValue] = useState("");
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [, setIsLoadingMessages] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<ChatSessionItem | null>(null);
 
   /** Quản lý lượt gửi tin đang chờ tài liệu tải lên hoặc xử lý hoàn tất */
   const [pendingSubmission, setPendingSubmission] = useState<{
@@ -451,7 +449,6 @@ export default function RightSidebar({
   if (trackedConversationId !== conversationId) {
     setTrackedConversationId(conversationId);
     handleNewChat();
-    setPendingDelete(null);
   }
 
   const handleSelectChat = useCallback(
@@ -513,17 +510,16 @@ export default function RightSidebar({
     [updateSession]
   );
 
-  /** Ném lỗi nếu API thất bại → ConfirmDeleteDialog tự hiển thị thông báo */
-  const handleConfirmDelete = useCallback(async () => {
-    if (!pendingDelete) return;
-    const id = pendingDelete.id;
+  /** Ném lỗi nếu API thất bại → HistorySessionRow tự hiển thị thông báo */
+  const handleDeleteChat = useCallback(
+    async (id: string) => {
+      await deleteSession(id);
 
-    await deleteSession(id);
-
-    // Đang mở chính đoạn chat vừa xóa → quay về đoạn chat mới
-    if (id === activeChatId) handleNewChat();
-    setPendingDelete(null);
-  }, [pendingDelete, deleteSession, activeChatId, handleNewChat]);
+      // Đang mở chính đoạn chat vừa xóa → quay về đoạn chat mới
+      if (id === activeChatId) handleNewChat();
+    },
+    [deleteSession, activeChatId, handleNewChat]
+  );
 
   /** Gửi tin nhắn thực tế kèm danh sách documentId đã sẵn sàng */
   const executeDirectSend = useCallback(
@@ -805,7 +801,7 @@ export default function RightSidebar({
         isFullscreen
           ? "fixed inset-0 z-50 flex h-screen w-screen flex-col border-none bg-white dark:bg-[#12151C] text-[#0B1C30] dark:text-[#EFF0F6] select-none animate-in fade-in-50 duration-150 overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           : `relative flex h-full flex-col border-l border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] text-[#0B1C30] dark:text-[#EFF0F6] select-none ${
-              isDragging ? "transition-none" : "transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+              isDragging ? "transition-none" : "transition-[width,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
             } ${
               isCollapsed
                 ? "w-0 border-l-0 overflow-hidden opacity-0 pointer-events-none"
@@ -846,7 +842,7 @@ export default function RightSidebar({
         activeChatId={activeChatId}
         onSelectChat={handleSelectChat}
         onRenameChat={handleRenameChat}
-        onRequestDeleteChat={setPendingDelete}
+        onDeleteChat={handleDeleteChat}
         onNewChat={handleNewChat}
         isFullscreen={isFullscreen}
         onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
@@ -888,7 +884,7 @@ export default function RightSidebar({
               <Loader2 className="h-4 w-4 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 truncate">
-                  Đang phân tích {pendingSubmission.attachedFiles.map((f) => f.name).join(", ")}...
+                  Đang phân tích {pendingSubmission.attachedFiles.map((f) => f.name).join(", ")}…
                 </p>
                 <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
                   Câu hỏi sẽ tự động được gửi khi tài liệu sẵn sàng tra cứu.
@@ -898,7 +894,7 @@ export default function RightSidebar({
             <button
               type="button"
               onClick={handleCancelPendingSubmission}
-              className="shrink-0 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors cursor-pointer"
+              className="shrink-0 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-colors cursor-pointer"
             >
               Hủy
             </button>
@@ -927,12 +923,6 @@ export default function RightSidebar({
           contextTitle={contextTitle}
         />
       </div>
-
-      <ConfirmDeleteDialog
-        session={pendingDelete}
-        onCancel={() => setPendingDelete(null)}
-        onConfirm={handleConfirmDelete}
-      />
     </aside>
   );
 

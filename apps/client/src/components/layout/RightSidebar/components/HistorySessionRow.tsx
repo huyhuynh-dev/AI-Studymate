@@ -13,7 +13,8 @@ interface HistorySessionRowProps {
   onSelect: () => void;
   /** Ném lỗi nếu đổi tên thất bại – dòng sẽ giữ nguyên chế độ sửa và báo lỗi */
   onRename: (newTitle: string) => Promise<void>;
-  onRequestDelete: () => void;
+  /** Ném lỗi nếu xóa thất bại – dòng sẽ giữ nguyên chế độ xác nhận và báo lỗi */
+  onDelete: () => Promise<void>;
 }
 
 function RowAction({
@@ -24,7 +25,7 @@ function RowAction({
 }: {
   label: string;
   danger?: boolean;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   children: React.ReactNode;
 }) {
   return (
@@ -33,7 +34,7 @@ function RowAction({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-[#777587] transition-colors focus-visible:outline-2 focus-visible:outline-[#4F46E5] ${
+      className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-[#777587] transition-colors duration-150 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] ${
         danger
           ? "hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400"
           : "hover:bg-white dark:hover:bg-[#12151C] hover:text-[#4F46E5] dark:hover:text-[#818CF8]"
@@ -49,13 +50,19 @@ export function HistorySessionRow({
   isActive,
   onSelect,
   onRename,
-  onRequestDelete,
+  onDelete,
 }: HistorySessionRowProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(session.title);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
+  const confirmDeleteBtnRef = useRef<HTMLButtonElement>(null);
   /** Chặn lưu hai lần (Enter rồi blur) hoặc lưu sau khi đã hủy bằng Esc */
   const settledRef = useRef(false);
 
@@ -66,10 +73,19 @@ export function HistorySessionRow({
     }
   }, [isEditing]);
 
-  const startEditing = () => {
+  useEffect(() => {
+    if (isConfirmingDelete) {
+      confirmDeleteBtnRef.current?.focus();
+    }
+  }, [isConfirmingDelete]);
+
+  const startEditing = (e: React.MouseEvent) => {
+    e.stopPropagation();
     settledRef.current = false;
     setDraft(session.title);
     setError(null);
+    setIsConfirmingDelete(false);
+    setDeleteError(null);
     setIsEditing(true);
   };
 
@@ -102,6 +118,100 @@ export function HistorySessionRow({
     }
   };
 
+  const startConfirmingDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(false);
+    setError(null);
+    setDeleteError(null);
+    setIsConfirmingDelete(true);
+  };
+
+  const cancelDelete = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (isDeleting) return;
+    setIsConfirmingDelete(false);
+    setDeleteError(null);
+  };
+
+  const commitDelete = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (isDeleting) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete();
+      setIsConfirmingDelete(false);
+    } catch {
+      setDeleteError("Không thể xóa. Vui lòng thử lại.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // ── Chế độ xác nhận xóa ngay tại dòng ──
+  if (isConfirmingDelete) {
+    return (
+      <div
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            cancelDelete();
+          }
+        }}
+        className="rounded-xl border border-rose-200/80 dark:border-rose-500/25 bg-rose-50/90 dark:bg-rose-950/30 px-2.5 py-1.5"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span
+            title={`Xóa "${session.title}"?`}
+            className="min-w-0 flex-1 truncate text-[0.8125rem] font-medium text-rose-900 dark:text-rose-200"
+          >
+            Xóa &ldquo;{session.title}&rdquo;?
+          </span>
+
+          <div className="flex shrink-0 items-center gap-1">
+            {isDeleting ? (
+              <Loader2
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 animate-spin text-rose-600 dark:text-rose-400"
+              />
+            ) : (
+              <>
+                <button
+                  ref={confirmDeleteBtnRef}
+                  type="button"
+                  aria-label="Xác nhận xóa"
+                  title="Xác nhận xóa"
+                  onClick={(e) => void commitDelete(e)}
+                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-[#BA1A1A] text-white transition-colors duration-150 hover:bg-[#93000A] active:scale-95 focus-visible:outline-2 focus-visible:outline-rose-600 focus-visible:outline-offset-1"
+                >
+                  <Check aria-hidden="true" className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Hủy xóa"
+                  title="Hủy (Esc)"
+                  onClick={cancelDelete}
+                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[#777587] transition-colors duration-150 hover:bg-white dark:hover:bg-[#12151C] hover:text-[#0B1C30] dark:hover:text-white active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] focus-visible:outline-offset-1"
+                >
+                  <X aria-hidden="true" className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {deleteError && (
+          <p
+            role="alert"
+            className="px-0.5 pt-1 text-[11px] text-rose-600 dark:text-rose-400"
+          >
+            {deleteError}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   // ── Chế độ sửa tên ──
   if (isEditing) {
     return (
@@ -128,7 +238,10 @@ export function HistorySessionRow({
           />
 
           {isSaving ? (
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#4F46E5]" />
+            <Loader2
+              aria-hidden="true"
+              className="h-4 w-4 shrink-0 animate-spin text-[#4F46E5]"
+            />
           ) : (
             <>
               <button
@@ -137,9 +250,9 @@ export function HistorySessionRow({
                 title="Lưu (Enter)"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => void commit()}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-[#4F46E5] text-white transition-colors hover:bg-[#3525CD]"
+                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-[#4F46E5] text-white transition-colors duration-150 hover:bg-[#3525CD] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] focus-visible:outline-offset-1"
               >
-                <Check className="h-3.5 w-3.5" />
+                <Check aria-hidden="true" className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
@@ -147,16 +260,19 @@ export function HistorySessionRow({
                 title="Hủy (Esc)"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={cancel}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[#777587] transition-colors hover:bg-white dark:hover:bg-[#12151C] hover:text-[#0B1C30] dark:hover:text-white"
+                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[#777587] transition-colors duration-150 hover:bg-white dark:hover:bg-[#12151C] hover:text-[#0B1C30] dark:hover:text-white active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] focus-visible:outline-offset-1"
               >
-                <X className="h-3.5 w-3.5" />
+                <X aria-hidden="true" className="h-3.5 w-3.5" />
               </button>
             </>
           )}
         </div>
 
         {error && (
-          <p role="alert" className="px-1 pt-1.5 text-[11px] text-rose-600 dark:text-rose-400">
+          <p
+            role="alert"
+            className="px-1 pt-1.5 text-[11px] text-rose-600 dark:text-rose-400"
+          >
             {error}
           </p>
         )}
@@ -167,7 +283,7 @@ export function HistorySessionRow({
   // ── Chế độ xem ──
   return (
     <div
-      className={`group flex items-center rounded-xl transition-colors ${
+      className={`group flex items-center rounded-xl transition-colors duration-150 ${
         isActive
           ? "bg-[#EEF2FF] dark:bg-[#4F46E5]/20"
           : "hover:bg-[#F8F9FF] dark:hover:bg-white/[0.04] focus-within:bg-[#F8F9FF]"
@@ -176,18 +292,22 @@ export function HistorySessionRow({
       <button
         type="button"
         onClick={onSelect}
-        className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl py-2 pl-2.5 pr-1 text-left ${
+        className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl py-2 pl-2.5 pr-1 text-left focus-visible:outline-2 focus-visible:outline-[#4F46E5] ${
           isActive
             ? "text-[#4F46E5] dark:text-[#818CF8] font-bold"
             : "text-[#464555] dark:text-[#EFF0F6] font-medium"
         }`}
       >
         <MessageSquare
+          aria-hidden="true"
           className={`h-4 w-4 shrink-0 ${
             isActive ? "text-[#4F46E5] dark:text-[#818CF8]" : "text-[#777587]"
           }`}
         />
-        <span className="min-w-0 flex-1 truncate text-[13px]" title={session.title}>
+        <span
+          className="min-w-0 flex-1 truncate text-[13px]"
+          title={session.title}
+        >
           {session.title}
         </span>
       </button>
@@ -199,10 +319,14 @@ export function HistorySessionRow({
         </span>
         <div className="hidden items-center gap-0.5 group-hover:flex group-focus-within:flex [@media(pointer:coarse)]:flex">
           <RowAction label="Đổi tên" onClick={startEditing}>
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
           </RowAction>
-          <RowAction label="Xóa đoạn chat" danger onClick={onRequestDelete}>
-            <Trash2 className="h-3.5 w-3.5" />
+          <RowAction
+            label="Xóa đoạn chat"
+            danger
+            onClick={startConfirmingDelete}
+          >
+            <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
           </RowAction>
         </div>
       </div>

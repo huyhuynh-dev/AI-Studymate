@@ -13,7 +13,7 @@ interface ChatHeaderProps {
   activeChatId: string | null;
   onSelectChat: (id: string) => void;
   onRenameChat: (id: string, newTitle: string) => Promise<void>;
-  onRequestDeleteChat: (session: ChatSessionItem) => void;
+  onDeleteChat: (id: string) => Promise<void>;
   onNewChat: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
@@ -28,7 +28,7 @@ export function ChatHeader({
   activeChatId,
   onSelectChat,
   onRenameChat,
-  onRequestDeleteChat,
+  onDeleteChat,
   onNewChat,
   isFullscreen = false,
   onToggleFullscreen,
@@ -52,7 +52,7 @@ export function ChatHeader({
           activeChatId={activeChatId}
           onSelect={onSelectChat}
           onRename={onRenameChat}
-          onRequestDelete={onRequestDeleteChat}
+          onDelete={onDeleteChat}
         />
         <IconButton label="Tạo đoạn chat mới" onClick={onNewChat}>
           <Plus className="h-4 w-4" />
