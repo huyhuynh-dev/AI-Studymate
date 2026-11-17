@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import type { BloomDistribution } from '../common/types/bloom.types.js';
 import type { SourceReferenceItem } from '../common/types/source-ref.types.js';
 import { EvaluationStatusEnum } from '../generated/prisma/client.js';
 import { AiService } from './ai.service.js';
+import type { QuizRemediationFocus } from './prompts/types.js';
 import {
   type AIQuestionType,
   type QuizQuestionInsert,
@@ -46,6 +48,8 @@ export interface GenerateQuizFromContextInput {
   difficulty: QuizDifficulty;
   quizId?: string;
   sourceChunkMap?: Map<number, SourceReferenceItem>;
+  bloomQuota?: BloomDistribution;
+  remediationFocus?: QuizRemediationFocus;
 }
 
 export interface GenerateQuizFromContextResult {
@@ -92,6 +96,10 @@ export class QuizAiService {
         count: args.count,
         types: args.types,
         difficulty: args.difficulty,
+        ...(args.bloomQuota ? { bloomQuota: args.bloomQuota } : {}),
+        ...(args.remediationFocus
+          ? { remediationFocus: args.remediationFocus }
+          : {}),
       },
     );
 
@@ -132,8 +140,16 @@ export class QuizAiService {
       sourceChunkMap: args.sourceChunkMap,
     });
 
+    const bloomCounts = rows.reduce(
+      (acc, r) => {
+        acc[r.bloom_level] = (acc[r.bloom_level] ?? 0) + 1;
+        return acc;
+      },
+      { remember: 0, understand: 0, apply: 0, analyze: 0 },
+    );
+
     this.logger.log(
-      `[generateQuizFromContext] Đã chuyển đổi thành công ${rows.length} câu hỏi sang định dạng DB và HTML TipTap (Tổng thời gian xử lý AI: ${Date.now() - startTime}ms)`,
+      `[generateQuizFromContext] Đã chuyển đổi thành công ${rows.length} câu hỏi (Bloom thực tế: remember=${bloomCounts.remember}, understand=${bloomCounts.understand}, apply=${bloomCounts.apply}, analyze=${bloomCounts.analyze}) | Tổng thời gian AI: ${Date.now() - startTime}ms`,
     );
 
     return {

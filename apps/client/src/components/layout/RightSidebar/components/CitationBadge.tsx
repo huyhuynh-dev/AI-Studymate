@@ -11,7 +11,13 @@ import {
   Layers,
 } from "lucide-react";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
-import type { CitationItem, DocumentCitationItem, WebCitationItem, RetrievedChunkAsset } from "@/lib/citation-parser";
+import {
+  formatCitationRankingMeta,
+  type CitationItem,
+  type DocumentCitationItem,
+  type WebCitationItem,
+  type RetrievedChunkAsset,
+} from "@/lib/citation-parser";
 
 interface CitationBadgeProps {
   displayNumber: string | number;
@@ -42,10 +48,11 @@ export const CitationBadge = React.memo(function CitationBadge({
   const hasTables = assets.some((a) => a.assetType === "table");
 
   // Xử lý số trang
+  const legacyPageNo = (docItem as { pageNo?: number } | undefined)?.pageNo;
   const pageNo =
     (Array.isArray(docItem?.pageNumbers) && docItem!.pageNumbers.length > 0
       ? docItem!.pageNumbers[0]
-      : (docItem as any)?.pageNo) || 1;
+      : legacyPageNo) || 1;
 
   // Xử lý heading
   const heading =
@@ -58,6 +65,8 @@ export const CitationBadge = React.memo(function CitationBadge({
     (docItem?.previewSnippet || docItem?.rawContent || docItem?.content || webItem?.previewSnippet || "")
       .trim()
       .slice(0, 240);
+
+  const rankingMeta = !isWeb ? formatCitationRankingMeta(docItem) : null;
 
   const handleMouseEnter = () => {
     if (hideTimeoutRef.current) {
@@ -216,9 +225,22 @@ export const CitationBadge = React.memo(function CitationBadge({
             </span>
           )}
 
-          {/* Badges bổ trợ Assets / Bảng biểu */}
-          {!isWeb && (hasImages || hasTables) && (
+          {/* Badges bổ trợ Assets / Bảng biểu / Điểm xếp hạng RAG */}
+          {!isWeb && (hasImages || hasTables || rankingMeta) && (
             <span className="mt-2 flex flex-wrap items-center gap-1">
+              {rankingMeta && (
+                <span
+                  title={rankingMeta.detail}
+                  className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${
+                    rankingMeta.isReranked
+                      ? "border-violet-200/70 dark:border-violet-800/40 bg-violet-50/80 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300"
+                      : "border-slate-200/70 dark:border-slate-700/50 bg-slate-50/80 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300"
+                  }`}
+                >
+                  <Layers className="h-2.5 w-2.5" />
+                  <span>{rankingMeta.label}</span>
+                </span>
+              )}
               {hasImages && (
                 <span className="inline-flex items-center gap-1 rounded-md border border-amber-200/60 dark:border-amber-800/40 bg-amber-50/80 dark:bg-amber-950/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
                   <ImageIcon className="h-3 w-3" />

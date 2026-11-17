@@ -60,12 +60,7 @@ export interface LeftSidebarProps {
 }
 
 export default function LeftSidebar({
-  user = {
-    name: "Nguyễn Văn A",
-    email: "a.nguyen@student.edu.vn",
-    avatarUrl:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-  },
+  user,
   selectedSubjectId,
   isCollapsed = false,
   onToggleCollapse,
@@ -78,6 +73,23 @@ export default function LeftSidebar({
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlSubjectId = searchParams.get("subject_id");
+
+  const displayName = user?.name || "Tài khoản";
+  const displayEmail = user?.email || "Đang đồng bộ…";
+  const userInitials = displayName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("") || "U";
+  const handleOpenProfile = () => {
+    if (onSettingsClick) {
+      onSettingsClick();
+      return;
+    }
+    router.push("/profile");
+  };
 
   // SWR hook quản lý danh sách và CRUD Không gian học tập
   const {
@@ -326,26 +338,27 @@ export default function LeftSidebar({
           <div className="flex flex-col items-center pt-2.5 border-t border-[#E5EEFF] dark:border-white/[0.08] shrink-0 w-full">
             <button
               type="button"
-              onClick={onSettingsClick}
-              aria-label="Cài đặt tài khoản"
+              onClick={handleOpenProfile}
+              aria-label="Hồ sơ & Cài đặt tài khoản"
               onMouseEnter={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
-                setRailTooltip({ text: "Cài đặt tài khoản", top: rect.top + rect.height / 2 });
+                setRailTooltip({ text: "Hồ sơ & Cài đặt", top: rect.top + rect.height / 2 });
               }}
               onMouseLeave={() => setRailTooltip(null)}
-              className="relative h-8 w-8 overflow-hidden rounded-full border border-[#E5EEFF] dark:border-white/[0.1] hover:ring-2 hover:ring-[#4F46E5]/40 transition-all cursor-pointer active:scale-95"
+              className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-[#E5EEFF] dark:border-white/[0.1] bg-gradient-to-br from-indigo-500 to-violet-600 text-[11px] font-bold text-white hover:ring-2 hover:ring-[#4F46E5]/40 transition-all cursor-pointer active:scale-95"
             >
-              <Image
-                src={
-                  user.avatarUrl ||
-                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
-                }
-                alt={user.name}
-                width={32}
-                height={32}
-                unoptimized
-                className="h-full w-full object-cover"
-              />
+              {user?.avatarUrl ? (
+                <Image
+                  src={user.avatarUrl}
+                  alt={displayName}
+                  width={32}
+                  height={32}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span>{userInitials}</span>
+              )}
             </button>
           </div>
         </div>
@@ -526,35 +539,41 @@ export default function LeftSidebar({
           </div>
 
           {/* Bottom: User Profile & Quick Settings */}
-          <div className="border-t border-[#E5EEFF] dark:border-white/[0.08] pt-3 px-1 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#E5EEFF] dark:border-white/[0.1]">
-                <Image
-                  src={
-                    user.avatarUrl ||
-                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
-                  }
-                  alt={user.name}
-                  width={32}
-                  height={32}
-                  unoptimized
-                  className="h-full w-full object-cover"
-                />
+          <div className="border-t border-[#E5EEFF] dark:border-white/[0.08] pt-3 px-1 flex items-center justify-between gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleOpenProfile}
+              className="flex flex-1 items-center gap-2.5 min-w-0 rounded-xl p-1 -ml-1 text-left hover:bg-[#F8F9FF] dark:hover:bg-white/[0.04] transition-colors cursor-pointer"
+            >
+              <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E5EEFF] dark:border-white/[0.1] bg-gradient-to-br from-indigo-500 to-violet-600 text-[11px] font-bold text-white">
+                {user?.avatarUrl ? (
+                  <Image
+                    src={user.avatarUrl}
+                    alt={displayName}
+                    width={32}
+                    height={32}
+                    unoptimized
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span>{userInitials}</span>
+                )}
               </div>
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold font-heading text-[#0B1C30] dark:text-neutral-100 truncate leading-snug">
-                  {user.name}
+                  {displayName}
                 </p>
                 <p className="text-[11px] text-[#777587] dark:text-neutral-500 truncate leading-none">
-                  {user.email}
+                  {displayEmail}
                 </p>
               </div>
-            </div>
+            </button>
 
             <button
               type="button"
-              onClick={onSettingsClick}
-              aria-label="Cài đặt"
+              onClick={handleOpenProfile}
+              aria-label="Hồ sơ & Cài đặt tài khoản"
+              title="Hồ sơ & Cài đặt tài khoản"
               className="flex h-7 w-7 items-center justify-center rounded-lg text-[#777587] hover:text-[#0B1C30] dark:hover:text-neutral-200 hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer shrink-0"
             >
               <Settings className="h-4 w-4" />

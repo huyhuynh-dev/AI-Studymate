@@ -37,7 +37,7 @@ export class SubjectsRepoService {
         });
     }
 
-    async getSubjectById(subjectId: string, userId: string): Promise<any | null> {
+    async getSubjectById(subjectId: string, userId: string) {
         return await this.prisma.subject.findFirst({
             where: {
                 id: subjectId,

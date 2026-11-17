@@ -25,7 +25,7 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
         }
     }
 
-    async onApplicationShutdown(signal?: string) {
+    async onApplicationShutdown(_signal?: string) {
         if (this.client.isOpen) {
             await this.client.quit();
         }

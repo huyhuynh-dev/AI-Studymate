@@ -256,6 +256,13 @@ export class ChatAgentAiService {
       `[ChatAgentAiService] convertToModelMessages: input count=${messages.length}, output count=${modelMessages.length}, activeTools=${activeTools ? Object.keys(activeTools).join(',') : 'none'}, model=${chatConfig.modelName}, temp=${chatConfig.temperature}, maxTokens=${chatConfig.maxOutputTokens}, topK=${chatConfig.topK}`,
     );
 
+    const startedAt = Date.now();
+    const telemetryService =
+      typeof this.aiService.getTelemetryService === 'function'
+        ? this.aiService.getTelemetryService()
+        : undefined;
+    const capturedUserId = telemetryService?.getCurrentUserId();
+
     const streamResult = this.aiService.streamChatAgent(chatConfig.modelName, {
       system: finalSystemPrompt,
       messages: modelMessages,
@@ -265,6 +272,34 @@ export class ChatAgentAiService {
       stopWhen: stepCountIs(5),
       abortSignal,
       onFinish: async (event) => {
+        const rawUsage = (event as { totalUsage?: unknown; usage?: unknown })
+          .totalUsage ?? (event as { usage?: unknown }).usage;
+        const usageObj = (rawUsage ?? null) as {
+          inputTokens?: number;
+          outputTokens?: number;
+          totalTokens?: number;
+          promptTokens?: number;
+          completionTokens?: number;
+        } | null;
+
+        telemetryService?.recordUsage({
+          userId: capturedUserId,
+          featureKey: 'CHAT_AGENT',
+          profile: 'REASONING',
+          modelName: chatConfig.modelName,
+          promptTokens:
+            usageObj?.inputTokens ??
+            usageObj?.promptTokens ??
+            Math.max(1, Math.ceil(finalSystemPrompt.length / 4)),
+          completionTokens:
+            usageObj?.outputTokens ??
+            usageObj?.completionTokens ??
+            Math.max(0, Math.ceil((event.text?.length ?? 0) / 4)),
+          totalTokens: usageObj?.totalTokens,
+          latencyMs: Date.now() - startedAt,
+          status: 'success',
+        });
+
         const responseMessages = event.response?.messages ?? [];
         const assistantParts = this.toolRegistry.extractAssistantUIParts(
           responseMessages,

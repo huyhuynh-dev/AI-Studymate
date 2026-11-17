@@ -12,7 +12,7 @@ import "./quiztab.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { useFocusMode } from "@/components/layout";
-import type { DeckOption, DocumentOption, FlashcardTarget, Quiz, QuizAttempt, QuizDraft, QuizSource, TestSetup, EvaluationStatus } from "./types";
+import type { DeckOption, DocumentOption, FlashcardTarget, Quiz, QuizAttempt, QuizCreateMode, QuizDraft, TestSetup, EvaluationStatus } from "./types";
 import type { QuizApi } from "./data/quizApi";
 import { createMockQuizApi } from "./data/mockApi";
 import { MOCK_DOCUMENTS } from "./data/mockDocuments";
@@ -28,12 +28,21 @@ import { TestTakingView } from "./take/TestTakingView";
 import { GradingState } from "./take/GradingState";
 import { ResultView } from "./result/ResultView";
 
+export interface TargetedQuizRequest {
+  nonce: number;
+  chunkIds?: string[];
+  sectionTitle?: string;
+  bloomPreset?: "familiarize" | "balanced" | "exam_prep";
+}
+
 export interface QuizTabProps {
   conversationId: string;
   /** ID đề kiểm tra cần mở trực tiếp (ví dụ khi nhấn Badge từ RightSidebar AI Chat) */
   initialQuizId?: string;
   /** Nonce kích hoạt mở lại đề khi nhấn nhiều lần */
   openNonce?: number;
+  /** Yêu cầu mở nhanh chế độ tạo đề đặc trị từ Analytics hoặc TOC Heatmap PDF */
+  targetedRequest?: TargetedQuizRequest | null;
   /** Các bộ Flashcard của không gian học tập (dùng cho "Tạo từ Flashcard" và "Chuyển câu sai thành Flashcard") */
   decks?: DeckOption[];
   /** Tài liệu của không gian học tập, dùng cho bộ chọn nguồn khi tạo đề bằng AI. Bỏ trống = dữ liệu giả để test. */
@@ -57,14 +66,16 @@ type View =
   | { name: "grading"; quizId: string; attemptId: string }
   | { name: "result"; quizId: string; attemptId: string };
 
-export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], documents = MOCK_DOCUMENTS, api, className, hasDocuments = true, onUploadDocument, onFlashcardsCreated }: QuizTabProps) {
+export function QuizTab({ conversationId, initialQuizId, openNonce, targetedRequest, decks = [], documents = MOCK_DOCUMENTS, api, className, hasDocuments = true, onUploadDocument, onFlashcardsCreated }: QuizTabProps) {
   const resolvedApi = useMemo(() => api ?? createMockQuizApi(conversationId), [api, conversationId]);
   const store = useQuizStore(resolvedApi, conversationId);
 
   const [view, setView] = useState<View>({ name: "list" });
   const [pendingQuizId, setPendingQuizId] = useState<string | null>(null);
   const [handledRequestKey, setHandledRequestKey] = useState<string | null>(null);
-  const [createSource, setCreateSource] = useState<QuizSource | null>(null);
+  const [handledTargetedNonce, setHandledTargetedNonce] = useState<number | null>(null);
+  const [activeTargetedMeta, setActiveTargetedMeta] = useState<Omit<TargetedQuizRequest, "nonce"> | null>(null);
+  const [createSource, setCreateSource] = useState<QuizCreateMode | null>(null);
   const [setup, setSetup] = useState<{ quizId: string; retryIds?: string[] } | null>(null);
   const [deleting, setDeleting] = useState<Quiz | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -76,6 +87,17 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
     setHandledRequestKey(currentRequestKey);
     setPendingQuizId(initialQuizId);
     setView({ name: "detail", quizId: initialQuizId });
+  }
+
+  if (targetedRequest && targetedRequest.nonce !== handledTargetedNonce) {
+    setHandledTargetedNonce(targetedRequest.nonce);
+    setActiveTargetedMeta({
+      chunkIds: targetedRequest.chunkIds,
+      sectionTitle: targetedRequest.sectionTitle,
+      bloomPreset: targetedRequest.bloomPreset,
+    });
+    setCreateSource("targeted");
+    setView({ name: "list" });
   }
 
   const reloadQuizzes = store.reload;
@@ -130,7 +152,11 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
   const attemptOf = (quizId: string, id: string): QuizAttempt | null => (store.attempts[quizId] ?? []).find((a) => a.id === id) ?? null;
   const go = (v: View) => setView(v);
 
-  const openCreate = (s: QuizSource) => (s === "manual" ? go({ name: "builder", quizId: null }) : setCreateSource(s));
+  const openCreate = (s: QuizCreateMode) => {
+    setActiveTargetedMeta(null);
+    if (s === "manual") go({ name: "builder", quizId: null });
+    else setCreateSource(s);
+  };
 
   const saveQuiz = async (quizId: string | null, draft: QuizDraft) => {
     const q = quizId ? await store.updateQuiz(quizId, draft) : await store.createQuiz(draft);
@@ -166,7 +192,7 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
   if (view.name === "list") {
     content = (
       <QuizListView
-        quizzes={store.quizzes} attempts={store.attempts} loading={store.loading} error={store.error} onRetry={store.reload}
+        quizzes={store.quizzes} attempts={store.attempts} weakSummary={store.weakSummary} loading={store.loading} error={store.error} onRetry={store.reload}
         onCreate={openCreate}
         hasDocuments={hasDocuments} hasDecks={decks.length > 0} onUploadDocument={onUploadDocument}
         onOpen={(q) => go({ name: "detail", quizId: q.id })}
@@ -199,7 +225,7 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
     } else {
       content = (
         <QuizListView
-          quizzes={store.quizzes} attempts={store.attempts} loading={store.loading} error={store.error} onRetry={store.reload}
+          quizzes={store.quizzes} attempts={store.attempts} weakSummary={store.weakSummary} loading={store.loading} error={store.error} onRetry={store.reload}
           onCreate={openCreate}
           hasDocuments={hasDocuments} hasDecks={decks.length > 0} onUploadDocument={onUploadDocument}
           onOpen={(q) => go({ name: "detail", quizId: q.id })}
@@ -246,6 +272,7 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
           onRetryAll={() => setSetup({ quizId: quiz.id })}
           onRetryIncomplete={(ids) => setSetup({ quizId: quiz.id, retryIds: ids })}
           onOverride={(qid, s: Exclude<EvaluationStatus, "pending">) => store.overrideEvaluation(att, qid, s)}
+          onGenerateTargeted={() => setCreateSource("targeted")}
           onConvert={async (ids, target: FlashcardTarget) => {
             const r = await store.convertToFlashcards(att.id, ids, target);
             notify(`Đã tạo ${r.created} thẻ Flashcard`);
@@ -264,9 +291,20 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, decks = [], 
 
       {createSource && (
         <CreateQuizDialog
-          open key={createSource} initialSource={createSource} decks={decks} documents={documents} onClose={() => setCreateSource(null)} onManual={() => undefined}
-          onGenerateAI={async (o) => { const q = await store.generateWithAI(o); setCreateSource(null); notify("AI đã tạo xong đề kiểm tra"); go({ name: "detail", quizId: q.id }); }}
-          onGenerateDeck={async (o) => { const q = await store.generateFromDeck(o); setCreateSource(null); notify("Đã tạo bài kiểm tra từ bộ thẻ"); go({ name: "detail", quizId: q.id }); }}
+          open
+          key={`${createSource}:${handledTargetedNonce ?? 0}`}
+          initialSource={createSource}
+          decks={decks}
+          documents={documents}
+          weakSummary={store.weakSummary}
+          targetedChunkIds={activeTargetedMeta?.chunkIds}
+          targetedSectionTitle={activeTargetedMeta?.sectionTitle}
+          initialBloomPreset={activeTargetedMeta?.bloomPreset}
+          onClose={() => { setCreateSource(null); setActiveTargetedMeta(null); }}
+          onManual={() => undefined}
+          onGenerateAI={async (o) => { const q = await store.generateWithAI(o); setCreateSource(null); setActiveTargetedMeta(null); notify("AI đã tạo xong đề kiểm tra"); go({ name: "detail", quizId: q.id }); }}
+          onGenerateDeck={async (o) => { const q = await store.generateFromDeck(o); setCreateSource(null); setActiveTargetedMeta(null); notify("Đã tạo bài kiểm tra từ bộ thẻ"); go({ name: "detail", quizId: q.id }); }}
+          onGenerateTargeted={async (o) => { const q = await store.generateTargetedQuiz(o); setCreateSource(null); setActiveTargetedMeta(null); notify("AI đã tạo xong đề ôn tập bù lỗ hổng"); go({ name: "detail", quizId: q.id }); }}
         />
       )}
 

@@ -10,6 +10,7 @@ import { SummariesRepoService } from './summaries-repo/summaries-repo.service.js
 import { ChatAgentRepoService } from './chat-agent-repo/chat-agent-repo.service.js';
 import { DeckFlashcardRepoService } from './deck-flashcard-repo/deck-flashcard-repo.service.js';
 import { QuizRepoService } from './quiz-repo/quiz-repo.service.js';
+import { AnalyticsRepoService } from './analytics-repo/analytics-repo.service.js';
 
 @Module({
   imports: [PrismaModule],
@@ -24,6 +25,7 @@ import { QuizRepoService } from './quiz-repo/quiz-repo.service.js';
     ChatAgentRepoService,
     DeckFlashcardRepoService,
     QuizRepoService,
+    AnalyticsRepoService,
   ],
   exports: [
     UsersRepoService,
@@ -36,6 +38,7 @@ import { QuizRepoService } from './quiz-repo/quiz-repo.service.js';
     ChatAgentRepoService,
     DeckFlashcardRepoService,
     QuizRepoService,
+    AnalyticsRepoService,
   ],
 })
 export class RepoModule { }

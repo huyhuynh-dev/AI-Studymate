@@ -31,6 +31,10 @@ export interface DocumentsTabProps {
   onUpload?: (files: File[]) => void;
   onDelete?: (documentId: string) => void;
   onDownload?: (documentId: string, fileName: string) => void;
+  onCreateTargetedQuiz?: (opts: {
+    chunkIds: string[];
+    sectionTitle: string;
+  }) => void;
   className?: string;
   maxSizeMB?: number;
 }
@@ -87,6 +91,7 @@ export default function DocumentsTab({
   onUpload,
   onDelete,
   onDownload,
+  onCreateTargetedQuiz,
   className = "",
   maxSizeMB = 50,
 }: DocumentsTabProps) {
@@ -100,13 +105,23 @@ export default function DocumentsTab({
 
   // Tự động mở tài liệu tương ứng khi người dùng click vào trích dẫn từ Chatbox / Flashcard / Quiz
   useEffect(() => {
-    if (!activeTarget?.documentId) return;
-    setViewingDocId(activeTarget.documentId);
+    const targetDocId = activeTarget?.documentId;
+    if (!targetDocId) return;
 
-    const matchedDoc = documents.find((d) => d.id === activeTarget.documentId);
-    if (matchedDoc && matchedDoc.mime_type !== "application/pdf") {
-      consumeActiveTarget();
-    }
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      setViewingDocId(targetDocId);
+
+      const matchedDoc = documents.find((d) => d.id === targetDocId);
+      if (matchedDoc && matchedDoc.mime_type !== "application/pdf") {
+        consumeActiveTarget();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeTarget, documents, consumeActiveTarget]);
 
   const viewingDoc = useMemo(
@@ -292,6 +307,7 @@ export default function DocumentsTab({
         <DocumentPdfViewer
           document={viewingDoc}
           onClose={handleCloseViewer}
+          onCreateTargetedQuiz={onCreateTargetedQuiz}
           className={className}
         />
       );

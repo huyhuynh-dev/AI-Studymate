@@ -2,10 +2,17 @@ import {
     BadRequestException,
     Injectable,
     Logger,
+    Optional,
 } from '@nestjs/common';
+import {
+    computeBloomQuota,
+    resolveBloomPreset,
+} from '../common/types/bloom.types.js';
 import { Prisma, QuestionTypeEnum } from '../generated/prisma/client.js';
 import { QuizAiService } from '../ai/quiz-ai.service.js';
+import type { QuizQuestionInsert } from '../ai/schemas/quiz-ai.schema.js';
 import { packChunkedDocuments } from '../ai/utils/chunk-context.helper.js';
+import { DeckFlashcardRepoService } from '../repo/deck-flashcard-repo/deck-flashcard-repo.service.js';
 import { DocumentChunksRepoService } from '../repo/document-chunks-repo/document-chunks-repo.service.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import {
@@ -15,6 +22,7 @@ import {
 import {
     CreateQuizDto,
     GenerateQuizWithAiDto,
+    GenerateTargetedQuizDto,
     QuestionDraftDto,
     UpdateQuizDto,
 } from './dto/quiz.dto.js';
@@ -23,7 +31,8 @@ import {
     sanitizeQuizHtml,
     stripHtml,
 } from './quiz.helper.js';
-import { QuizResponse } from './quiz.types.js';
+import { QuizResponse, WeakAreasSummaryResponse } from './quiz.types.js';
+import { aggregateWeakChunkSignals } from './weak-chunk.helper.js';
 
 const MAX_QUIZ_CONTEXT_CHARS = 200_000;
 
@@ -35,7 +44,9 @@ export class QuizManageService {
         private readonly quizRepo: QuizRepoService,
         private readonly quizAiService: QuizAiService,
         private readonly documentsRepo: DocumentsRepoService,
-        private readonly documentChunksRepo: DocumentChunksRepoService
+        private readonly documentChunksRepo: DocumentChunksRepoService,
+        @Optional()
+        private readonly deckFlashcardRepo?: DeckFlashcardRepoService
     ) {}
 
     /* ==========================================================
@@ -197,6 +208,19 @@ export class QuizManageService {
                 ? dto.types
                 : [QuestionTypeEnum.single_choice];
 
+        const resolvedPreset =
+            dto.bloomPreset ??
+            resolveBloomPreset(undefined, dto.difficulty || 'applied');
+        const bloomQuota = computeBloomQuota(
+            count,
+            resolvedPreset,
+            dto.bloomDistribution
+        );
+
+        this.logger.log(
+            `[generateWithAI] Bloom Quota (${resolvedPreset}, ${count} câu): remember=${bloomQuota.remember}, understand=${bloomQuota.understand}, apply=${bloomQuota.apply}, analyze=${bloomQuota.analyze}`
+        );
+
         this.logger.log(
             `[generateWithAI] Tổng hợp ngữ cảnh: ${packed.combinedContext.length} ký tự (${packed.totalChunksIncluded} chunks) từ ${readyDocs.length} tài liệu. Bắt đầu gọi QuizAiService sinh ${count} câu hỏi (Types: [${types.join(', ')}], Độ khó: ${dto.difficulty})...`
         );
@@ -207,33 +231,14 @@ export class QuizManageService {
             types,
             difficulty: dto.difficulty || 'applied',
             sourceChunkMap: packed.chunkRefMap,
+            bloomQuota,
         });
 
         this.logger.log(
             `[generateWithAI] QuizAiService hoàn tất: tiêu đề "${generated.title}", nhận ${generated.rows.length} câu hỏi hợp lệ (bị loại: ${generated.rejected.length})`
         );
 
-        const questionsPayload: QuestionCreatePayload[] = generated.rows.map(
-            (r, index) => ({
-                question_type: r.question_type as QuestionTypeEnum,
-                order_index: r.order_index ?? index,
-                question_text: r.question_text,
-                image_url: null,
-                audio_url: null,
-                points: r.points,
-                options: r.options
-                    ? (r.options as unknown as Prisma.InputJsonValue)
-                    : Prisma.DbNull,
-                sample_answer: r.sample_answer ?? null,
-                grading_criteria: (r.grading_criteria ??
-                    []) as unknown as Prisma.InputJsonValue,
-                explanation: r.explanation ?? null,
-                source_refs:
-                    r.source_refs && r.source_refs.length > 0
-                        ? (r.source_refs as unknown as Prisma.InputJsonValue)
-                        : Prisma.DbNull,
-            })
-        );
+        const questionsPayload = this.toQuestionCreatePayloads(generated.rows);
 
         this.logger.log(
             `[generateWithAI] Đang lưu đề kiểm tra vào CSDL qua QuizRepoService (${questionsPayload.length} câu hỏi)...`
@@ -257,6 +262,190 @@ export class QuizManageService {
         );
 
         return mapQuizToResponse(created);
+    }
+
+    async getWeakAreasSummary(
+        userId: string,
+        conversationId: string
+    ): Promise<WeakAreasSummaryResponse> {
+        await this.quizRepo.assertConversationOwnership(conversationId, userId);
+
+        const [questionSignals, flashcardSignals] = await Promise.all([
+            this.quizRepo.getWeakQuestionSignalsByConversation(
+                conversationId,
+                userId
+            ),
+            this.deckFlashcardRepo
+                ? this.deckFlashcardRepo.getWeakFlashcardSignalsByConversation(
+                      conversationId,
+                      userId
+                  )
+                : Promise.resolve([]),
+        ]);
+
+        const aggregated = aggregateWeakChunkSignals(
+            questionSignals,
+            flashcardSignals
+        );
+
+        return {
+            hasWeakAreas: aggregated.hasWeakAreas,
+            weakChunkCount: aggregated.weakChunkCount,
+            incorrectQuizCount: aggregated.incorrectQuizCount,
+            leechCardCount: aggregated.leechCardCount,
+            topWeakTopics: aggregated.topWeakTopics,
+            topMissingPoints: aggregated.topMissingPoints,
+        };
+    }
+
+    async generateTargetedQuiz(
+        userId: string,
+        conversationId: string,
+        dto: GenerateTargetedQuizDto
+    ): Promise<QuizResponse> {
+        const startTime = Date.now();
+        await this.quizRepo.assertConversationOwnership(conversationId, userId);
+
+        const [questionSignals, flashcardSignals] = await Promise.all([
+            this.quizRepo.getWeakQuestionSignalsByConversation(
+                conversationId,
+                userId
+            ),
+            this.deckFlashcardRepo
+                ? this.deckFlashcardRepo.getWeakFlashcardSignalsByConversation(
+                      conversationId,
+                      userId
+                  )
+                : Promise.resolve([]),
+        ]);
+
+        const aggregated = aggregateWeakChunkSignals(
+            questionSignals,
+            flashcardSignals
+        );
+
+        const explicitChunkIds = Array.isArray(dto.chunkIds)
+            ? [...new Set(dto.chunkIds.filter(Boolean))]
+            : [];
+        const targetChunkIds =
+            explicitChunkIds.length > 0
+                ? explicitChunkIds
+                : aggregated.weakChunkIds;
+
+        if (targetChunkIds.length === 0) {
+            throw new BadRequestException(
+                'Chưa ghi nhận vùng kiến thức yếu nào (câu làm sai hoặc thẻ khó nhớ) gắn với tài liệu trong phiên học này để tạo đề đặc trị.'
+            );
+        }
+
+        const groupedDocs =
+            await this.documentChunksRepo.findChunksWithNeighborsByIds(
+                targetChunkIds,
+                userId,
+                conversationId
+            );
+
+        if (groupedDocs.length === 0) {
+            throw new BadRequestException(
+                'Không tìm thấy đoạn nội dung tài liệu tương ứng với vùng kiến thức yếu được chọn.'
+            );
+        }
+
+        const packed = packChunkedDocuments(
+            groupedDocs.map((doc) => ({
+                id: doc.documentId,
+                fileName: doc.fileName,
+                rawText: '',
+                chunks: doc.chunks,
+            })),
+            MAX_QUIZ_CONTEXT_CHARS
+        );
+
+        const derivedTopics =
+            aggregated.topWeakTopics.length > 0
+                ? aggregated.topWeakTopics
+                : Array.from(
+                      new Set(
+                          groupedDocs
+                              .flatMap((d) => d.chunks)
+                              .map((c) => c.headings[c.headings.length - 1]?.trim())
+                              .filter((h): h is string => Boolean(h))
+                      )
+                  ).slice(0, 5);
+
+        const count = Math.max(3, Math.min(15, Number(dto.questionCount) || 8));
+        const types =
+            Array.isArray(dto.types) && dto.types.length > 0
+                ? dto.types
+                : [QuestionTypeEnum.single_choice, QuestionTypeEnum.essay];
+
+        const preset = dto.bloomPreset ?? 'exam_prep';
+        const bloomQuota = computeBloomQuota(count, preset);
+
+        this.logger.log(
+            `[generateTargetedQuiz] Conversation=${conversationId} | TargetChunks=${targetChunkIds.length} -> ExpandedChunks=${packed.totalChunksIncluded} | Bloom(${preset}): remember=${bloomQuota.remember}, understand=${bloomQuota.understand}, apply=${bloomQuota.apply}, analyze=${bloomQuota.analyze} | WeakTopics=[${derivedTopics.join(', ')}] | MissingPoints=${aggregated.topMissingPoints.length}`
+        );
+
+        const generated = await this.quizAiService.generateQuizFromContext({
+            context: packed.combinedContext,
+            count,
+            types,
+            difficulty: preset === 'familiarize' ? 'basic' : 'applied',
+            sourceChunkMap: packed.chunkRefMap,
+            bloomQuota,
+            remediationFocus: {
+                weakTopics: derivedTopics,
+                missingPoints: aggregated.topMissingPoints,
+                priorFailedQuestions: aggregated.priorFailedQuestions,
+            },
+        });
+
+        const taggedTitle = generated.title.startsWith('[Luyện vùng yếu]')
+            ? generated.title
+            : `[Luyện vùng yếu] ${generated.title}`;
+
+        const created = await this.quizRepo.createQuizWithQuestions(
+            userId,
+            conversationId,
+            {
+                title: taggedTitle.slice(0, 255),
+                description: generated.description,
+                time_limit_sec: null,
+                source: 'ai',
+            },
+            this.toQuestionCreatePayloads(generated.rows)
+        );
+
+        this.logger.log(
+            `[generateTargetedQuiz] Hoàn tất tạo đề đặc trị trong ${Date.now() - startTime}ms | Quiz ID: ${created.id}, Câu hỏi: ${created.questions.length}`
+        );
+
+        return mapQuizToResponse(created);
+    }
+
+    private toQuestionCreatePayloads(
+        rows: QuizQuestionInsert[]
+    ): QuestionCreatePayload[] {
+        return rows.map((r, index) => ({
+            question_type: r.question_type as QuestionTypeEnum,
+            order_index: r.order_index ?? index,
+            question_text: r.question_text,
+            image_url: null,
+            audio_url: null,
+            points: r.points,
+            options: r.options
+                ? (r.options as unknown as Prisma.InputJsonValue)
+                : Prisma.DbNull,
+            sample_answer: r.sample_answer ?? null,
+            grading_criteria: (r.grading_criteria ??
+                []) as unknown as Prisma.InputJsonValue,
+            explanation: r.explanation ?? null,
+            bloom_level: r.bloom_level ?? null,
+            source_refs:
+                r.source_refs && r.source_refs.length > 0
+                    ? (r.source_refs as unknown as Prisma.InputJsonValue)
+                    : Prisma.DbNull,
+        }));
     }
 
     /* ==========================================================
@@ -343,6 +532,7 @@ export class QuizManageService {
                 explanation: q.explanation
                     ? sanitizeQuizHtml(q.explanation)
                     : null,
+                bloom_level: q.bloomLevel ?? null,
             };
         });
     }

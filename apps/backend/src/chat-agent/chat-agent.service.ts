@@ -741,6 +741,14 @@ export class ChatAgentService {
                     ? [...new Set(ragContext.attachedDocumentIds)]
                     : undefined;
 
+              const allowedBloomPresets = new Set<
+                'familiarize' | 'balanced' | 'exam_prep'
+              >(['familiarize', 'balanced', 'exam_prep']);
+              const bloomPreset =
+                input.bloomPreset && allowedBloomPresets.has(input.bloomPreset)
+                  ? input.bloomPreset
+                  : undefined;
+
               const created = await this.quizService.generateWithAI(
                 ragContext.userId,
                 ragContext.conversationId,
@@ -749,6 +757,7 @@ export class ChatAgentService {
                   questionCount,
                   types,
                   difficulty,
+                  ...(bloomPreset ? { bloomPreset } : {}),
                 },
               );
 

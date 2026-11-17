@@ -7,11 +7,15 @@ import {
   FileText,
   Globe,
   ArrowUpRight,
-  Calendar,
   Layers,
 } from "lucide-react";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
-import type { CitationBadgeMeta, DocumentCitationItem, WebCitationItem } from "@/lib/citation-parser";
+import {
+  formatCitationRankingMeta,
+  type CitationBadgeMeta,
+  type DocumentCitationItem,
+  type WebCitationItem,
+} from "@/lib/citation-parser";
 
 interface CollapsibleSourceBarProps {
   citedList: CitationBadgeMeta[];
@@ -77,7 +81,7 @@ export const CollapsibleSourceBar = React.memo(function CollapsibleSourceBar({
   };
 
   const handleCardClick = (
-    e: React.MouseEvent,
+    e: React.MouseEvent | React.KeyboardEvent,
     meta: CitationBadgeMeta
   ) => {
     e.preventDefault();
@@ -140,10 +144,12 @@ export const CollapsibleSourceBar = React.memo(function CollapsibleSourceBar({
               const docItem = !isWeb ? (meta.item as DocumentCitationItem | undefined) : undefined;
               const webItem = isWeb ? (meta.item as WebCitationItem | undefined) : undefined;
 
+              const legacyPageNo = (docItem as { pageNo?: number } | undefined)
+                ?.pageNo;
               const pageNo =
                 (Array.isArray(docItem?.pageNumbers) && docItem!.pageNumbers.length > 0
                   ? docItem!.pageNumbers[0]
-                  : (docItem as any)?.pageNo) || 1;
+                  : legacyPageNo) || 1;
 
               const heading =
                 Array.isArray(docItem?.headings) && docItem!.headings.length > 0
@@ -155,6 +161,10 @@ export const CollapsibleSourceBar = React.memo(function CollapsibleSourceBar({
                   .trim()
                   .slice(0, 200);
 
+              const rankingMeta = !isWeb
+                ? formatCitationRankingMeta(docItem)
+                : null;
+
               return (
                 <div
                   key={meta.citationId}
@@ -163,7 +173,7 @@ export const CollapsibleSourceBar = React.memo(function CollapsibleSourceBar({
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
-                      handleCardClick(e as any, meta);
+                      handleCardClick(e, meta);
                     }
                   }}
                   className="group relative flex cursor-pointer flex-col gap-1.5 rounded-xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#12151C] p-2.5 transition-all hover:border-indigo-500/40 hover:shadow-xs active:scale-[0.99]"
@@ -206,6 +216,19 @@ export const CollapsibleSourceBar = React.memo(function CollapsibleSourceBar({
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
+                      {rankingMeta && (
+                        <span
+                          title={rankingMeta.detail}
+                          className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums border ${
+                            rankingMeta.isReranked
+                              ? "border-violet-200/60 dark:border-violet-800/40 bg-violet-50/90 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                              : "border-slate-200/60 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300"
+                          }`}
+                        >
+                          <Layers className="h-2.5 w-2.5" />
+                          <span>{rankingMeta.label}</span>
+                        </span>
+                      )}
                       {!isWeb ? (
                         <span className="rounded bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/30">
                           Trang {pageNo}

@@ -5,6 +5,9 @@ export type QuestionType = "single_choice" | "multiple_choice" | "true_false" | 
 export type AttemptStatus = "in_progress" | "grading" | "submitted";
 export type EvaluationStatus = "pending" | "correct" | "partial" | "incorrect";
 export type QuizSource = "ai" | "flashcard" | "manual";
+export type QuizCreateMode = QuizSource | "targeted";
+export type BloomLevel = "remember" | "understand" | "apply" | "analyze";
+export type BloomPreset = "familiarize" | "balanced" | "exam_prep" | "custom";
 export type Difficulty = "basic" | "applied" | "advanced";
 export type FeedbackMode = "practice" | "exam";
 
@@ -31,6 +34,7 @@ export interface QuizQuestion {
   gradingCriteria: string[];
   /** HTML */
   explanation?: string | null;
+  bloomLevel?: BloomLevel | null;
   sourceRefs?: SourceReference[];
 }
 
@@ -110,6 +114,24 @@ export interface AIGenerateOptions {
   questionCount: number;
   types: QuestionType[];
   difficulty: Difficulty;
+  bloomPreset?: BloomPreset;
+  bloomDistribution?: Partial<Record<BloomLevel, number>>;
+}
+
+export interface TargetedQuizOptions {
+  questionCount: number;
+  types: QuestionType[];
+  bloomPreset?: BloomPreset;
+  chunkIds?: string[];
+}
+
+export interface WeakAreasSummary {
+  hasWeakAreas: boolean;
+  weakChunkCount: number;
+  incorrectQuizCount: number;
+  leechCardCount: number;
+  topWeakTopics: string[];
+  topMissingPoints: string[];
 }
 
 export interface DeckGenerateOptions {

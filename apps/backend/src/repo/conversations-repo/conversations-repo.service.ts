@@ -20,7 +20,7 @@ export class ConversationsRepoService {
         });
     }
 
-    async getConversationById(conversationId: string, userId: string): Promise<any | null> {
+    async getConversationById(conversationId: string, userId: string) {
         return await this.prisma.conversation.findFirst({
             where: {
                 id: conversationId,

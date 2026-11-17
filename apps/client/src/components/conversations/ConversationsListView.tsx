@@ -11,12 +11,16 @@ import {
   MoreVertical,
   MessageSquare,
   Sparkles,
+  BarChart3,
 } from "lucide-react";
 import ConversationUpsertModal from "./ConversationUpsertModal";
 import DeleteConversationModal from "./DeleteConversationModal";
 import ConversationContextMenu, { ContextMenuPosition } from "./ConversationContextMenu";
+import AnalyticsDashboardView from "@/components/analytics/AnalyticsDashboardView";
 import { useConversations } from "@/hooks/useConversations";
 import { useSubjects } from "@/hooks/useSubjects";
+import { useSubjectAnalytics } from "@/hooks/useLearningAnalytics";
+import type { SourceReference, StudyRecommendation } from "@/types";
 import { useRouter } from "next/navigation";
 
 export interface ConversationItem {
@@ -76,8 +80,59 @@ export default function ConversationsListView({
     }));
   }, [apiConversations]);
 
+  const [viewMode, setViewMode] = useState<"sessions" | "analytics">("sessions");
+  const [analyticsWindowDays, setAnalyticsWindowDays] = useState<number>(30);
   const [searchQuery, setSearchQuery] = useState("");
   const [focusedConversationId, setFocusedConversationId] = useState<string | null>(null);
+
+  const {
+    analytics: subjectAnalytics,
+    isLoading: isSubjectAnalyticsLoading,
+    isValidating: isSubjectAnalyticsValidating,
+    errorMessage: subjectAnalyticsError,
+    refresh: refreshSubjectAnalytics,
+  } = useSubjectAnalytics(
+    subjectId,
+    viewMode === "analytics",
+    analyticsWindowDays
+  );
+
+  const handleSubjectAction = (rec: StudyRecommendation) => {
+    if (!subjectId) return;
+    const convId = rec.payload.conversationId || conversations[0]?.id;
+    if (!convId) return;
+
+    if (
+      rec.actionType === "review_due_cards" ||
+      rec.actionType === "remediate_leech_cards"
+    ) {
+      const deckParam = rec.payload.deckId
+        ? `&deckId=${encodeURIComponent(rec.payload.deckId)}`
+        : "";
+      router.push(`/home/${subjectId}/${convId}?tab=flashcard${deckParam}`);
+      return;
+    }
+
+    if (
+      rec.actionType === "targeted_quiz_weak_chunk" ||
+      rec.actionType === "address_bloom_gap"
+    ) {
+      router.push(`/home/${subjectId}/${convId}?tab=quiz`);
+      return;
+    }
+
+    router.push(`/home/${subjectId}/${convId}?tab=documents`);
+  };
+
+  const handleJumpFromSubject = (
+    _ref: SourceReference,
+    targetConversationId?: string
+  ) => {
+    const convId = targetConversationId || conversations[0]?.id;
+    if (subjectId && convId) {
+      router.push(`/home/${subjectId}/${convId}?tab=documents`);
+    }
+  };
 
   // Trạng thái Context Menu
   const [contextMenu, setContextMenu] = useState<{
@@ -275,7 +330,78 @@ export default function ConversationsListView({
         </div>
       </div>
 
-      {/* ── Conversations List Rows ── */}
+      {/* ── Apple Segmented Switch: Phiên học vs Phân tích môn học ── */}
+      {subjectId && (
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div
+            role="tablist"
+            aria-label="Chế độ xem môn học"
+            className="inline-flex rounded-xl border border-black/[0.05] dark:border-white/[0.08] bg-black/[0.04] dark:bg-white/[0.06] p-1"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === "sessions"}
+              onClick={() => setViewMode("sessions")}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs sm:text-[13px] font-heading font-semibold transition-all cursor-pointer tabular-nums ${
+                viewMode === "sessions"
+                  ? "bg-white dark:bg-[#1E2330] text-[#4F46E5] dark:text-[#818CF8] shadow-2xs"
+                  : "text-[#777587] dark:text-[#9DA3AF] hover:text-[#0B1C30] dark:hover:text-white"
+              }`}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span>Phiên học ({displayCount})</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === "analytics"}
+              onClick={() => setViewMode("analytics")}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs sm:text-[13px] font-heading font-semibold transition-all cursor-pointer ${
+                viewMode === "analytics"
+                  ? "bg-white dark:bg-[#1E2330] text-[#4F46E5] dark:text-[#818CF8] shadow-2xs"
+                  : "text-[#777587] dark:text-[#9DA3AF] hover:text-[#0B1C30] dark:hover:text-white"
+              }`}
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span>Phân tích môn học</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {viewMode === "analytics" ? (
+        <AnalyticsDashboardView
+          mode="subject"
+          data={subjectAnalytics}
+          isLoading={isSubjectAnalyticsLoading}
+          isValidating={isSubjectAnalyticsValidating}
+          errorMessage={subjectAnalyticsError}
+          windowDays={analyticsWindowDays}
+          onWindowDaysChange={setAnalyticsWindowDays}
+          onRetry={() => void refreshSubjectAnalytics()}
+          onExecuteAction={handleSubjectAction}
+          onJumpToSource={handleJumpFromSubject}
+          onCreateTargetedQuiz={({ conversationId: cid }) => {
+            if (subjectId && cid) {
+              router.push(`/home/${subjectId}/${cid}?tab=quiz`);
+            }
+          }}
+          onOpenDeck={(deckId, cid) => {
+            if (subjectId && cid) {
+              router.push(
+                `/home/${subjectId}/${cid}?tab=flashcard&deckId=${encodeURIComponent(deckId)}`
+              );
+            }
+          }}
+          onOpenConversation={(cid) => {
+            if (subjectId && cid) {
+              router.push(`/home/${subjectId}/${cid}`);
+            }
+          }}
+        />
+      ) : (
+      /* ── Conversations List Rows ── */
       <div className="flex flex-col gap-3">
         {/* 1. Loading Skeleton */}
         {isLoading ? (
@@ -405,6 +531,7 @@ export default function ConversationsListView({
           </div>
         )}
       </div>
+      )}
 
       {/* ── Apple macOS Context Menu ── */}
       <ConversationContextMenu

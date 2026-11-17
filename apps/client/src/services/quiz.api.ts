@@ -2,6 +2,9 @@ import { axiosClient } from '@/lib/axios.client';
 import { parseClientSourceRefs } from '@/types';
 import type {
   AIGenerateOptions,
+  BloomLevel,
+  TargetedQuizOptions,
+  WeakAreasSummary,
   AttemptAnswer,
   AttemptConfig,
   AttemptStatus,
@@ -35,8 +38,55 @@ interface RawQuizQuestion {
   sampleAnswer?: string | null;
   gradingCriteria?: string[];
   explanation?: string | null;
+  bloomLevel?: unknown;
+  bloom_level?: unknown;
   sourceRefs?: unknown;
   source_refs?: unknown;
+}
+
+const VALID_BLOOM_LEVELS = new Set<BloomLevel>([
+  'remember',
+  'understand',
+  'apply',
+  'analyze',
+]);
+
+function parseBloomLevel(raw: unknown): BloomLevel | null {
+  if (typeof raw !== 'string') return null;
+  const normalized = raw.toLowerCase().trim() as BloomLevel;
+  return VALID_BLOOM_LEVELS.has(normalized) ? normalized : null;
+}
+
+interface BackendWeakAreasSummary {
+  hasWeakAreas?: boolean;
+  has_weak_areas?: boolean;
+  weakChunkCount?: number;
+  weak_chunk_count?: number;
+  incorrectQuizCount?: number;
+  incorrect_quiz_count?: number;
+  leechCardCount?: number;
+  leech_card_count?: number;
+  topWeakTopics?: unknown;
+  top_weak_topics?: unknown;
+  topMissingPoints?: unknown;
+  top_missing_points?: unknown;
+}
+
+function toStringArray(raw: unknown): string[] {
+  return Array.isArray(raw)
+    ? raw.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
+function mapWeakAreasSummary(raw: BackendWeakAreasSummary): WeakAreasSummary {
+  return {
+    hasWeakAreas: Boolean(raw.hasWeakAreas ?? raw.has_weak_areas ?? false),
+    weakChunkCount: Number(raw.weakChunkCount ?? raw.weak_chunk_count ?? 0),
+    incorrectQuizCount: Number(raw.incorrectQuizCount ?? raw.incorrect_quiz_count ?? 0),
+    leechCardCount: Number(raw.leechCardCount ?? raw.leech_card_count ?? 0),
+    topWeakTopics: toStringArray(raw.topWeakTopics ?? raw.top_weak_topics),
+    topMissingPoints: toStringArray(raw.topMissingPoints ?? raw.top_missing_points),
+  };
 }
 
 interface RawQuiz {
@@ -108,6 +158,7 @@ function mapQuiz(raw: RawQuiz): Quiz {
           sampleAnswer: q.sampleAnswer ?? null,
           gradingCriteria: Array.isArray(q.gradingCriteria) ? q.gradingCriteria : [],
           explanation: q.explanation ?? null,
+          bloomLevel: parseBloomLevel(q.bloomLevel ?? q.bloom_level),
           sourceRefs: parseClientSourceRefs(q.sourceRefs ?? q.source_refs),
         }))
       : [],
@@ -186,6 +237,7 @@ function toQuizPayload(draft: QuizDraft) {
       sampleAnswer: q.sampleAnswer || null,
       gradingCriteria: Array.isArray(q.gradingCriteria) ? q.gradingCriteria : [],
       explanation: q.explanation || null,
+      bloomLevel: q.bloomLevel ?? null,
     })),
   };
 }
@@ -227,6 +279,26 @@ export const quizApi: QuizApi = {
   ): Promise<Quiz> => {
     const res = await axiosClient.post(
       `/quiz/conversations/${conversationId}/quizzes/generate`,
+      opts
+    );
+    return mapQuiz(res.data);
+  },
+
+  getWeakAreasSummary: async (
+    conversationId: string
+  ): Promise<WeakAreasSummary> => {
+    const res = await axiosClient.get<BackendWeakAreasSummary>(
+      `/quiz/conversations/${conversationId}/quizzes/weak-summary`
+    );
+    return mapWeakAreasSummary(res.data);
+  },
+
+  generateTargetedQuiz: async (
+    conversationId: string,
+    opts: TargetedQuizOptions
+  ): Promise<Quiz> => {
+    const res = await axiosClient.post(
+      `/quiz/conversations/${conversationId}/quizzes/generate-targeted-ai`,
       opts
     );
     return mapQuiz(res.data);

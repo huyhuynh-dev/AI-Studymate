@@ -19,6 +19,7 @@ export interface QuestionCreatePayload {
     sample_answer?: string | null;
     grading_criteria: Prisma.InputJsonValue;
     explanation?: string | null;
+    bloom_level?: string | null;
     source_refs?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
 }
 
@@ -190,6 +191,7 @@ export class QuizRepoService {
                         sample_answer: q.sample_answer ?? null,
                         grading_criteria: q.grading_criteria ?? [],
                         explanation: q.explanation ?? null,
+                        bloom_level: q.bloom_level ?? null,
                         source_refs: q.source_refs ?? Prisma.DbNull,
                     })),
                 });
@@ -271,6 +273,7 @@ export class QuizRepoService {
                             sample_answer: q.sample_answer ?? null,
                             grading_criteria: q.grading_criteria ?? [],
                             explanation: q.explanation ?? null,
+                            bloom_level: q.bloom_level ?? null,
                             updated_at: now,
                         },
                     });
@@ -289,6 +292,7 @@ export class QuizRepoService {
                             sample_answer: q.sample_answer ?? null,
                             grading_criteria: q.grading_criteria ?? [],
                             explanation: q.explanation ?? null,
+                            bloom_level: q.bloom_level ?? null,
                             source_refs: q.source_refs ?? Prisma.DbNull,
                         },
                     });
@@ -556,6 +560,48 @@ export class QuizRepoService {
                     answers: true,
                 },
             });
+        });
+    }
+
+    /**
+     * Lấy danh sách tín hiệu câu hỏi làm sai / làm đúng một phần / thiếu ý tự luận trong một phiên học
+     * để phát hiện vùng kiến thức yếu (Weak-Chunk Targeted Quiz).
+     */
+    async getWeakQuestionSignalsByConversation(
+        conversationId: string,
+        userId: string
+    ) {
+        return await this.prisma.quizAttemptAnswer.findMany({
+            where: {
+                attempt: {
+                    user_id: userId,
+                    status: AttemptStatusEnum.submitted,
+                    quiz: {
+                        conversation_id: conversationId,
+                    },
+                },
+                evaluation_status: {
+                    in: [
+                        EvaluationStatusEnum.incorrect,
+                        EvaluationStatusEnum.partial,
+                    ],
+                },
+            },
+            select: {
+                question_id: true,
+                evaluation_status: true,
+                missing_points: true,
+                answered_at: true,
+                question: {
+                    select: {
+                        id: true,
+                        question_text: true,
+                        source_refs: true,
+                    },
+                },
+            },
+            orderBy: { answered_at: 'desc' },
+            take: 150,
         });
     }
 }

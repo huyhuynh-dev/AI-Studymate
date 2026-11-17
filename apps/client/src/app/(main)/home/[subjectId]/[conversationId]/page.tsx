@@ -6,14 +6,17 @@ import ConversationHeaderTabs, { TabKey } from "@/components/conversations/Conve
 import DocumentsTab from "@/components/conversations/DocumentsTab/DocumentsTab";
 import SummaryTab from "@/components/conversations/SummaryTab/SummaryTab";
 import FlashcardsTab from "@/components/conversations/FlashcardTab";
-import QuizTab from "@/components/conversations/QuizTab";
+import QuizTab, { type TargetedQuizRequest } from "@/components/conversations/QuizTab";
+import AnalyticsDashboardView from "@/components/analytics/AnalyticsDashboardView";
 import { useFocusMode } from "@/components/layout";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useConversations } from "@/hooks/useConversations";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useDecks } from "@/hooks/useDecks";
+import { useConversationAnalytics } from "@/hooks/useLearningAnalytics";
 import { quizApi } from "@/services/quiz.api";
+import type { SourceReference, StudyRecommendation } from "@/types";
 
 interface ConversationPageProps {
   params: Promise<{
@@ -39,6 +42,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     quizId: string;
     nonce: number;
   } | null>(null);
+  const [quizTargetedRequest, setQuizTargetedRequest] =
+    useState<TargetedQuizRequest | null>(null);
+  const [analyticsWindowDays, setAnalyticsWindowDays] = useState<number>(30);
   const {
     isFocusMode,
     isViewingDocument,
@@ -46,13 +52,61 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     isRightSidebarCollapsed,
     toggleRightSidebar,
   } = useFocusMode();
-  const { activeTarget } = useCitationNavigation();
+  const { activeTarget, navigateToDocumentCitation } = useCitationNavigation();
+
+  const {
+    analytics: conversationAnalytics,
+    isLoading: isAnalyticsLoading,
+    isValidating: isAnalyticsValidating,
+    errorMessage: analyticsError,
+    refresh: refreshConversationAnalytics,
+  } = useConversationAnalytics(
+    conversationId,
+    activeTab === "analytics",
+    analyticsWindowDays
+  );
+
+  // Đọc tham số điều hướng ban đầu từ Subject Analytics (?tab=analytics|flashcard|quiz)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    const deckIdParam = params.get("deckId");
+
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      if (
+        tabParam === "documents" ||
+        tabParam === "summary" ||
+        tabParam === "flashcard" ||
+        tabParam === "quiz" ||
+        tabParam === "analytics"
+      ) {
+        setActiveTab(tabParam);
+      }
+      if (tabParam === "flashcard" && deckIdParam) {
+        setFlashcardOpenRequest({ deckId: deckIdParam, nonce: Date.now() });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Tự động chuyển sang Tab "Tài liệu" khi người dùng bấm vào một Badge trích dẫn tài liệu từ Chatbox
   useEffect(() => {
-    if (activeTarget?.documentId) {
-      setActiveTab("documents");
-    }
+    if (!activeTarget?.documentId) return;
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        setActiveTab("documents");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [activeTarget]);
 
   // Lắng nghe sự kiện mở trực tiếp bản tóm tắt từ Badge trong RightSidebar AI Chat
@@ -173,6 +227,81 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     if (tab !== "documents" && tab !== "summary") {
       setFocusMode(false);
     }
+    if (tab === "analytics") {
+      void refreshConversationAnalytics();
+    }
+  };
+
+  const handleJumpToSourceRef = (ref: SourceReference) => {
+    setFocusMode(false);
+    navigateToDocumentCitation({
+      documentId: ref.documentId,
+      fileName: ref.fileName,
+      pageNo: ref.pageNumbers[0] ?? 1,
+      bboxes: ref.bboxes,
+    });
+  };
+
+  const handleOpenDocumentFromAnalytics = (
+    documentId: string,
+    fileName: string
+  ) => {
+    setFocusMode(false);
+    navigateToDocumentCitation({
+      documentId,
+      fileName,
+      pageNo: 1,
+    });
+  };
+
+  const handleTriggerTargetedQuiz = (opts: {
+    chunkIds?: string[];
+    sectionTitle?: string;
+    bloomPreset?: "familiarize" | "balanced" | "exam_prep";
+  }) => {
+    setFocusMode(false);
+    setQuizTargetedRequest({
+      nonce: Date.now(),
+      chunkIds: opts.chunkIds,
+      sectionTitle: opts.sectionTitle,
+      bloomPreset: opts.bloomPreset,
+    });
+    setActiveTab("quiz");
+  };
+
+  const handleExecuteStudyAction = (rec: StudyRecommendation) => {
+    const p = rec.payload;
+    if (
+      rec.actionType === "review_due_cards" ||
+      rec.actionType === "remediate_leech_cards"
+    ) {
+      setFocusMode(false);
+      if (p.deckId) {
+        setFlashcardOpenRequest({ deckId: p.deckId, nonce: Date.now() });
+      }
+      setActiveTab("flashcard");
+      return;
+    }
+
+    if (
+      rec.actionType === "targeted_quiz_weak_chunk" ||
+      rec.actionType === "address_bloom_gap"
+    ) {
+      handleTriggerTargetedQuiz({
+        chunkIds: p.chunkIds,
+        sectionTitle: p.sectionTitle,
+        bloomPreset: p.bloomPreset ?? "exam_prep",
+      });
+      return;
+    }
+
+    if (rec.actionType === "read_unstudied_section" && p.documentId) {
+      setFocusMode(false);
+      navigateToDocumentCitation({
+        documentId: p.documentId,
+        pageNo: p.pageNo ?? 1,
+      });
+    }
   };
 
   const isDocumentViewerActive =
@@ -244,6 +373,13 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               onUpload={uploadFiles}
               onDelete={deleteDocument}
               onDownload={downloadDocument}
+              onCreateTargetedQuiz={(opts) =>
+                handleTriggerTargetedQuiz({
+                  chunkIds: opts.chunkIds,
+                  sectionTitle: opts.sectionTitle,
+                  bloomPreset: "exam_prep",
+                })
+              }
               className="w-full flex-1"
             />
           )}
@@ -280,6 +416,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               conversationId={conversationId}
               initialQuizId={quizOpenRequest?.quizId}
               openNonce={quizOpenRequest?.nonce}
+              targetedRequest={quizTargetedRequest}
               decks={deckOptions}
               documents={documents.map((document) => ({
                 id: document.id,
@@ -290,6 +427,34 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               hasDocuments={documents.length > 0}
               onUploadDocument={handleGoToDocuments}
               className="w-full flex-1"
+            />
+          )}
+
+          {activeTab === "analytics" && (
+            <AnalyticsDashboardView
+              mode="conversation"
+              data={conversationAnalytics}
+              isLoading={isAnalyticsLoading}
+              isValidating={isAnalyticsValidating}
+              errorMessage={analyticsError}
+              windowDays={analyticsWindowDays}
+              onWindowDaysChange={setAnalyticsWindowDays}
+              onRetry={() => void refreshConversationAnalytics()}
+              onExecuteAction={handleExecuteStudyAction}
+              onJumpToSource={handleJumpToSourceRef}
+              onCreateTargetedQuiz={(opts) =>
+                handleTriggerTargetedQuiz({
+                  chunkIds: opts.chunkIds,
+                  sectionTitle: opts.sectionTitle,
+                  bloomPreset: "exam_prep",
+                })
+              }
+              onOpenDeck={(deckId) => {
+                setFocusMode(false);
+                setFlashcardOpenRequest({ deckId, nonce: Date.now() });
+                setActiveTab("flashcard");
+              }}
+              onOpenDocument={handleOpenDocumentFromAnalytics}
             />
           )}
         </div>

@@ -1,21 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, Layers, RotateCcw } from "lucide-react";
-import type { DeckOption, EvaluationStatus, FlashcardTarget, Quiz, QuizAttempt } from "../types";
+import { ArrowLeft, Layers, RotateCcw, Target } from "lucide-react";
+import type { BloomLevel, DeckOption, EvaluationStatus, FlashcardTarget, Quiz, QuizAttempt } from "../types";
 import { Button, Card, ScoreRing } from "../ui/primitives";
 import { cx, formatDuration, scoreLabel, summarizeAttempt, toPct, toScale10, toneForPct, fmtPoints } from "../utils";
-import { TONE } from "../constants";
+import { BLOOM_LEVELS, BLOOM_META, TONE } from "../constants";
 import { ReviewCard } from "./ReviewCard";
 import { FlashcardBridgeDialog } from "./FlashcardBridgeDialog";
 
 type Filter = "all" | "incorrect" | "partial" | "correct" | "essay";
 
-export function ResultView({ quiz, attempt, decks, onBack, onRetryAll, onRetryIncomplete, onOverride, onConvert }: {
+export function ResultView({ quiz, attempt, decks, onBack, onRetryAll, onRetryIncomplete, onOverride, onConvert, onGenerateTargeted }: {
   quiz: Quiz; attempt: QuizAttempt; decks: DeckOption[];
   onBack: () => void; onRetryAll: () => void; onRetryIncomplete: (ids: string[]) => void;
   onOverride: (questionId: string, status: Exclude<EvaluationStatus, "pending">) => Promise<void>;
   onConvert: (questionIds: string[], target: FlashcardTarget) => Promise<void>;
+  onGenerateTargeted?: () => void;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [bridge, setBridge] = useState(false);
@@ -36,6 +37,30 @@ export function ResultView({ quiz, attempt, decks, onBack, onRetryAll, onRetryIn
     { key: "essay", label: "Tự luận", n: questions.filter((q) => q.type === "essay").length },
   ];
   const visible = questions.filter((q) => filter === "all" ? true : filter === "essay" ? q.type === "essay" : st(q.id) === filter);
+  const bloomStats = useMemo(() => {
+    const counts: Record<BloomLevel, { total: number; correct: number }> = {
+      remember: { total: 0, correct: 0 },
+      understand: { total: 0, correct: 0 },
+      apply: { total: 0, correct: 0 },
+      analyze: { total: 0, correct: 0 },
+    };
+    let hasAnyBloom = false;
+    for (const q of questions) {
+      if (!q.bloomLevel) continue;
+      hasAnyBloom = true;
+      counts[q.bloomLevel].total += 1;
+      if ((attempt.answers[q.id]?.evaluationStatus ?? "incorrect") === "correct") {
+        counts[q.bloomLevel].correct += 1;
+      }
+    }
+    return hasAnyBloom
+      ? BLOOM_LEVELS.filter((lvl) => counts[lvl].total > 0).map((lvl) => ({
+          level: lvl,
+          total: counts[lvl].total,
+          correct: counts[lvl].correct,
+        }))
+      : [];
+  }, [questions, attempt.answers]);
 
   return (
     <div className="mx-auto max-w-[960px]">
@@ -78,13 +103,42 @@ export function ResultView({ quiz, attempt, decks, onBack, onRetryAll, onRetryIn
         </div>
       </Card>
 
+      {bloomStats.length > 0 && (
+        <Card className="mt-4 p-5">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-[14px] font-semibold font-heading text-foreground">Phân tích theo cấp độ tư duy Bloom</p>
+            <span className="text-[12.5px] text-[var(--on-surface-variant)]">Tỷ lệ trả lời đúng trọn vẹn</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {bloomStats.map((item) => {
+              const meta = BLOOM_META[item.level];
+              const itemPct = toPct(item.correct, item.total);
+              const itemTone = TONE[toneForPct(itemPct)];
+              return (
+                <div key={item.level} className="rounded-2xl bg-[var(--qz-fill)] p-3.5">
+                  <p className="text-[12.5px] font-semibold text-[var(--on-surface-variant)]">{meta.short}</p>
+                  <p className={cx("mt-1 text-[20px] font-semibold font-heading tabular-nums", itemTone.text)}>
+                    {item.correct}/{item.total} <span className="text-[13px] font-medium text-[var(--on-surface-variant)]">({itemPct}%)</span>
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       {incomplete.length > 0 && (
         <div className="mt-4 flex flex-col gap-4 rounded-[24px] bg-[var(--qz-ai-soft)] p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--qz-elevated)] text-[var(--qz-ai)]"><Layers className="h-5 w-5" /></span>
-            <p className="text-[14.5px] leading-6"><strong className="font-semibold">{incomplete.length} câu chưa trọn vẹn.</strong> Biến chúng thành Flashcard để ôn tập ngắt quãng.</p>
+            <p className="text-[14.5px] leading-6"><strong className="font-semibold">{incomplete.length} câu chưa trọn vẹn.</strong> Biến chúng thành Flashcard hoặc tạo đề đặc trị để lấp lỗ hổng.</p>
           </div>
-          <Button variant="secondary" className="shrink-0" onClick={() => setBridge(true)}>Chuyển thành Flashcard</Button>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            {onGenerateTargeted && (
+              <Button variant="tinted" icon={<Target className="h-4 w-4" />} onClick={onGenerateTargeted}>Luyện đề đặc trị</Button>
+            )}
+            <Button variant="secondary" onClick={() => setBridge(true)}>Chuyển thành Flashcard</Button>
+          </div>
         </div>
       )}
 

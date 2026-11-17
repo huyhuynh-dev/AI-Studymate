@@ -9,7 +9,8 @@ export class ConversationsService {
 
     async createConversation(userId: string, data: CreateConversationDto): Promise<any> {
         return this.conversationsRepo.createConversation({
-            ...data,
+            subject_id: data.subject_id,
+            title: data.title,
             user_id: userId,
         });
     }

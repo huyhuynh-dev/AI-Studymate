@@ -4,6 +4,8 @@ import {
   ToolRegistryService,
 } from './tool-registry.service.js';
 import {
+  type CitationItem,
+  type DocumentCitationItem,
   type SearchDocumentChunksToolOutput,
   type GetDocumentSectionOrPagesToolOutput,
   type SearchInternetToolOutput,
@@ -12,6 +14,15 @@ import {
   type CreateQuizToolOutput,
   type WebCitationItem,
 } from './types.js';
+
+function expectDocumentCitation(
+  citation: CitationItem | undefined,
+): DocumentCitationItem {
+  if (!citation || citation.sourceType !== 'document') {
+    throw new Error('Expected DocumentCitationItem');
+  }
+  return citation;
+}
 import { createSearchDocumentChunksTool } from './definitions/documents/search-document-chunks.tool.js';
 import { createGetDocumentSectionOrPagesTool } from './definitions/documents/get-document-section-or-pages.tool.js';
 import { createSearchInternetTool } from './definitions/web/search-internet.tool.js';
@@ -183,13 +194,21 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       expect(output.chunks[0].assets).toBeUndefined();
 
       // Nhưng tracker VẪN BẢO TOÀN 100% dữ liệu gốc cho Popover / PDF Jumper
-      const trackedCitation = tracker.getCitation('c1');
-      expect(trackedCitation?.rawContent).toBe('Đạo hàm của hàm số f(x) tại điểm x0...');
-      expect(trackedCitation?.bboxes).toBeNull();
-      expect(trackedCitation?.assets).toEqual([]);
+      const trackedCitation = expectDocumentCitation(tracker.getCitation('c1'));
+      expect(trackedCitation.rawContent).toBe('Đạo hàm của hàm số f(x) tại điểm x0...');
+      expect(trackedCitation.bboxes).toBeNull();
+      expect(trackedCitation.assets).toEqual([]);
 
       expect(toolInstance.toModelOutput).toBeDefined();
-      const modelOutput = toolInstance.toModelOutput!({ output }) as {
+      const modelOutput = toolInstance.toModelOutput!({
+        toolCallId: 'tc-1',
+        input: {
+          semanticQuery: 'Đạo hàm là gì',
+          keywords: ['đạo hàm'],
+          includeNeighbors: true,
+        },
+        output,
+      }) as {
         type: 'text';
         value: string;
       };
@@ -206,6 +225,83 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
 
       // Ngữ cảnh sau chunk 11 đã nằm sẵn trong kết quả chính (chunk-11) nên phải ĐƯỢC KHỬ TRÙNG LẶP
       expect(text).not.toContain('Ngữ cảnh sau liền kề #11');
+    });
+
+    it('nên lưu vết subQueriesUsed, rerankScore, rrfScore, rrfRank, vectorRank và keywordRank vào tracker và lightweightOutput', async () => {
+      const tracker = new ChatSessionToolTracker();
+      const mockCallback = vi.fn().mockResolvedValue([
+        {
+          id: 'chunk-rerank-1',
+          documentId: 'doc-1',
+          fileName: 'OS.pdf',
+          chunkIndex: 12,
+          pageNumbers: [20],
+          headings: ['Deadlock Avoidance'],
+          content: 'Banker algorithm checks safe state before resource allocation.',
+          rawContent: 'Banker algorithm checks safe state before resource allocation.',
+          chunkType: 'text',
+          hasImage: false,
+          hasTable: false,
+          bboxes: null,
+          assets: [],
+          rrfScore: 0.024684,
+          rerankScore: -0.6123,
+          rrfRank: 4,
+          vectorRank: 2,
+          keywordRank: 1,
+          subQueriesUsed: ['Round Robin scheduling', 'Banker algorithm deadlock'],
+        },
+      ]);
+
+      const toolInstance = createSearchDocumentChunksTool(mockCallback, tracker);
+      const input = {
+        semanticQuery: 'So sánh Round Robin và Banker',
+        keywords: ['Round Robin', 'Banker'],
+      };
+      const output = (await toolInstance.execute!(input, {
+        toolCallId: 'tc-rerank-1',
+        messages: [],
+      })) as SearchDocumentChunksToolOutput;
+
+      expect(output.subQueriesUsed).toEqual([
+        'Round Robin scheduling',
+        'Banker algorithm deadlock',
+      ]);
+      expect(output.chunks[0]).toMatchObject({
+        citationId: 'c1',
+        rrfScore: 0.02468,
+        rerankScore: -0.6123,
+        rrfRank: 4,
+        vectorRank: 2,
+        keywordRank: 1,
+      });
+
+      const tracked = expectDocumentCitation(tracker.getCitation('c1'));
+      expect(tracked).toMatchObject({
+        rrfScore: 0.02468,
+        rerankScore: -0.6123,
+        rrfRank: 4,
+        vectorRank: 2,
+        keywordRank: 1,
+      });
+
+      const lightweight = tracker.getLightweightOutput('tc-rerank-1') as {
+        subQueriesUsed?: string[];
+        citationIds?: string[];
+      };
+      expect(lightweight.subQueriesUsed).toEqual([
+        'Round Robin scheduling',
+        'Banker algorithm deadlock',
+      ]);
+      expect(lightweight.citationIds).toEqual(['c1']);
+
+      const modelOut = toolInstance.toModelOutput!({
+        toolCallId: 'tc-rerank-1',
+        input,
+        output,
+      }) as { type: 'text'; value: string };
+      expect(modelOut.value).toContain('Rerank: -0.6123');
+      expect(modelOut.value).toContain('RRF Score: 0.02468');
     });
   });
 
@@ -273,14 +369,23 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
 
       // Ghi nhận vào tracker với đầy đủ 100% dữ liệu gốc
       expect(tracker.getAllCitations()).toHaveLength(2);
-      expect(tracker.getCitation('c1')?.chunkId).toBe('chunk-sec-1');
-      expect(tracker.getCitation('c1')?.rawContent).toBe('Đoạn trích nội dung gốc đầy đủ của trang 1...');
-      expect(tracker.getCitation('c2')?.chunkId).toBe('chunk-sec-2');
-      expect(tracker.getCitation('c2')?.rawContent).toBe('Đoạn trích nội dung gốc đầy đủ của trang 2...');
+      const sec1 = expectDocumentCitation(tracker.getCitation('c1'));
+      const sec2 = expectDocumentCitation(tracker.getCitation('c2'));
+      expect(sec1.chunkId).toBe('chunk-sec-1');
+      expect(sec1.rawContent).toBe('Đoạn trích nội dung gốc đầy đủ của trang 1...');
+      expect(sec2.chunkId).toBe('chunk-sec-2');
+      expect(sec2.rawContent).toBe('Đoạn trích nội dung gốc đầy đủ của trang 2...');
 
       // Kiểm tra toModelOutput
       expect(toolInstance.toModelOutput).toBeDefined();
-      const modelOutput = toolInstance.toModelOutput!({ output }) as {
+      const modelOutput = toolInstance.toModelOutput!({
+        toolCallId: 'tc-2',
+        input: {
+          documentId: 'doc-1',
+          pageNumbers: [1, 2],
+        },
+        output,
+      }) as {
         type: 'text';
         value: string;
       };
@@ -369,8 +474,13 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       });
 
       const toolInstance = createSearchInternetTool(mockCallback, tracker);
+      const searchInput = {
+        query: 'Microsoft GraphRAG',
+        searchDepth: 'basic' as const,
+        exactMatch: false,
+      };
       const output = (await toolInstance.execute!(
-        { query: 'Microsoft GraphRAG', searchDepth: 'basic' },
+        searchInput,
         { toolCallId: 'tc-search-1', messages: [] },
       )) as SearchInternetToolOutput;
 
@@ -379,7 +489,11 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       expect(output.results[0].domain).toBe('microsoft.github.io');
 
       expect(toolInstance.toModelOutput).toBeDefined();
-      const modelOut = toolInstance.toModelOutput!({ output }) as {
+      const modelOut = toolInstance.toModelOutput!({
+        toolCallId: 'tc-search-1',
+        input: searchInput,
+        output,
+      }) as {
         type: 'text';
         value: string;
       };
@@ -409,15 +523,23 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       });
 
       const toolInstance = createExtractWebPageTool(mockCallback, tracker);
+      const extractInput = {
+        urls: ['https://arxiv.org/abs/2404.16130'],
+        query: 'Trích xuất thuật toán',
+      };
       const output = (await toolInstance.execute!(
-        { urls: ['https://arxiv.org/abs/2404.16130'], query: 'Trích xuất thuật toán' },
+        extractInput,
         { toolCallId: 'tc-extract-1', messages: [] },
       )) as ExtractWebPageToolOutput;
 
       expect(output.totalSuccess).toBe(1);
       expect(output.results[0].citationId).toBe('w1');
 
-      const modelOut = toolInstance.toModelOutput!({ output }) as {
+      const modelOut = toolInstance.toModelOutput!({
+        toolCallId: 'tc-extract-1',
+        input: extractInput,
+        output,
+      }) as {
         type: 'text';
         value: string;
       };
@@ -555,6 +677,42 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       expect(modelOut.value).toContain('quiz-uuid-456');
       expect(modelOut.value).toContain('Đề kiểm tra Cây AVL');
       expect(modelOut.value).toContain('10/10 câu');
+    });
+
+    it('truyền bloomPreset tùy chọn xuống callback createQuiz', async () => {
+      const tracker = new ChatSessionToolTracker();
+      const mockCallback = vi.fn().mockResolvedValue({
+        quizId: 'quiz-bloom-1',
+        title: 'Đề luyện thi',
+        description: '',
+        source: 'ai',
+        questionCount: 8,
+        requestedCount: 8,
+        types: ['single_choice'],
+        difficulty: 'advanced',
+        documentNames: ['OS.pdf'],
+        createdAt: '2026-11-16T11:00:00.000Z',
+      });
+
+      const toolInstance = createCreateQuizTool(mockCallback, tracker);
+      await toolInstance.execute!(
+        {
+          documentIds: ['doc-1'],
+          questionCount: 8,
+          types: ['single_choice'],
+          difficulty: 'advanced',
+          bloomPreset: 'exam_prep',
+        },
+        { toolCallId: 'tc-qz-bloom', messages: [] },
+      );
+
+      expect(mockCallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bloomPreset: 'exam_prep',
+          difficulty: 'advanced',
+          questionCount: 8,
+        }),
+      );
     });
   });
 

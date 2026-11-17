@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sparkles, PlayingCards, FileQuestion } from "lucide-react";
+import { BarChart3, Sparkles, PlayingCards, FileQuestion } from "lucide-react";
 
-export type TabKey = "documents" | "summary" | "flashcard" | "quiz";
+export type TabKey = "documents" | "summary" | "flashcard" | "quiz" | "analytics";
 
 export interface TabConfig<T extends string = TabKey> {
   id: T;
@@ -100,6 +100,13 @@ export const DEFAULT_TABS_CONFIG: TabConfig<TabKey>[] = [
     shortLabel: "Quiz",
     icon: FileQuestion,
     tooltip: "Kiểm tra kiến thức trắc nghiệm",
+  },
+  {
+    id: "analytics",
+    label: "Phân tích",
+    shortLabel: "Thống kê",
+    icon: BarChart3,
+    tooltip: "Phân tích tiến độ, lỗ hổng kiến thức & gợi ý học tập",
   },
 ];
 

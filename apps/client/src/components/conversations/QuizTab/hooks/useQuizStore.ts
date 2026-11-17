@@ -16,14 +16,29 @@ export function useQuizStore(api: QuizApi, conversationId: string) {
   const [error, setError] = useState<string | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  const [weakSummary, setWeakSummary] = useState<import("../types").WeakAreasSummary | null>(null);
+
+  const refreshWeakSummary = useCallback(async () => {
+    try {
+      const summary = await api.getWeakAreasSummary(conversationId);
+      setWeakSummary(summary);
+    } catch {
+      // Weak-summary indicator is non-blocking
+    }
+  }, [api, conversationId]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const qs = await api.listQuizzes(conversationId);
+      const [qs, summary] = await Promise.all([
+        api.listQuizzes(conversationId),
+        api.getWeakAreasSummary(conversationId).catch(() => null),
+      ]);
       const entries = await Promise.all(qs.map(async (q) => [q.id, await api.listAttempts(q.id)] as const));
       setQuizzes(qs);
       setAttempts(Object.fromEntries(entries));
+      setWeakSummary(summary);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể tải danh sách bài kiểm tra");
     } finally {
@@ -60,6 +75,7 @@ export function useQuizStore(api: QuizApi, conversationId: string) {
     },
     async generateWithAI(o: AIGenerateOptions) { const q = await api.generateWithAI(conversationId, o); putQuiz(q); setAttempts((p) => ({ ...p, [q.id]: [] })); return q; },
     async generateFromDeck(o: DeckGenerateOptions) { const q = await api.generateFromDeck(conversationId, o); putQuiz(q); setAttempts((p) => ({ ...p, [q.id]: [] })); return q; },
+    async generateTargetedQuiz(o: import("../types").TargetedQuizOptions) { const q = await api.generateTargetedQuiz(conversationId, o); putQuiz(q); setAttempts((p) => ({ ...p, [q.id]: [] })); return q; },
 
     async startAttempt(quiz: Quiz, setup: TestSetup) {
       const pool = setup.onlyQuestionIds?.length ? quiz.questions.filter((q) => setup.onlyQuestionIds!.includes(q.id)) : quiz.questions;
@@ -97,6 +113,7 @@ export function useQuizStore(api: QuizApi, conversationId: string) {
       if (hasEssay) putAttempt({ ...att, status: "grading", timeSpentSec });
       const res = await api.submitAttempt(att.id, timeSpentSec, Object.values(att.answers));
       putAttempt(res);
+      void refreshWeakSummary();
       return res;
     },
 
@@ -108,9 +125,9 @@ export function useQuizStore(api: QuizApi, conversationId: string) {
     convertToFlashcards(attemptId: string, questionIds: string[], target: FlashcardTarget) {
       return api.convertToFlashcards(attemptId, questionIds, target);
     },
-  }), [api, conversationId, load, putAttempt, putQuiz]);
+  }), [api, conversationId, load, putAttempt, putQuiz, refreshWeakSummary]);
 
-  return { quizzes, attempts, loading, error, ...actions };
+  return { quizzes, attempts, weakSummary, refreshWeakSummary, loading, error, ...actions };
 }
 
 export type QuizStore = ReturnType<typeof useQuizStore>;

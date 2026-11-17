@@ -54,6 +54,7 @@ export function toSearchChunksLightweightOutput(
   return {
     semanticQuery: output.semanticQuery,
     keywords: output.keywords,
+    ...(output.subQueriesUsed ? { subQueriesUsed: output.subQueriesUsed } : {}),
     totalChunks: output.totalChunks,
     sources: output.sources,
     citationIds: output.chunks.map((c) => c.citationId),
@@ -128,6 +129,12 @@ export function createSearchDocumentChunksTool(
       }));
 
       const chunksWithCitations = retrievedChunks.map((c, idx) => {
+        const roundedRrfScore = Number(c.rrfScore.toFixed(5));
+        const rerankScore = c.rerankScore ?? null;
+        const rrfRank = c.rrfRank ?? null;
+        const vectorRank = c.vectorRank ?? null;
+        const keywordRank = c.keywordRank ?? null;
+
         let citationId = `c${idx + 1}`;
         if (tracker) {
           citationId = tracker.allocateCitation({
@@ -140,6 +147,11 @@ export function createSearchDocumentChunksTool(
             rawContent: c.rawContent,
             bboxes: c.bboxes,
             assets: c.assets,
+            rrfScore: roundedRrfScore,
+            rerankScore,
+            rrfRank,
+            vectorRank,
+            keywordRank,
           });
         }
 
@@ -155,13 +167,22 @@ export function createSearchDocumentChunksTool(
           content: c.content,
           previewSnippet: c.content ? c.content.slice(0, 200) : '',
           neighbors: c.neighbors,
-          rrfScore: Number(c.rrfScore.toFixed(5)),
+          rrfScore: roundedRrfScore,
+          rerankScore,
+          rrfRank,
+          vectorRank,
+          keywordRank,
         };
       });
+
+      const subQueriesUsed = retrievedChunks.find(
+        (c) => Array.isArray(c.subQueriesUsed) && c.subQueriesUsed.length > 1,
+      )?.subQueriesUsed;
 
       const output: SearchDocumentChunksToolOutput = {
         semanticQuery,
         keywords: safeKeywords,
+        ...(subQueriesUsed ? { subQueriesUsed } : {}),
         totalChunks: chunksWithCitations.length,
         sources,
         chunks: chunksWithCitations,
@@ -204,7 +225,12 @@ export function createSearchDocumentChunksTool(
               ? ` | Mục: "${chunk.headings.join(' > ')}"`
               : '';
 
-          let textBlock = `[Dẫn chứng [${chunk.citationId}] | Hạng #${chunk.rank} | Tài liệu: "${chunk.fileName}" | ${pageLabel}${headingLabel} | RRF Score: ${chunk.rrfScore}]`;
+          const rerankLabel =
+            chunk.rerankScore !== undefined && chunk.rerankScore !== null
+              ? ` | Rerank: ${chunk.rerankScore}`
+              : '';
+
+          let textBlock = `[Dẫn chứng [${chunk.citationId}] | Hạng #${chunk.rank} | Tài liệu: "${chunk.fileName}" | ${pageLabel}${headingLabel}${rerankLabel} | RRF Score: ${chunk.rrfScore}]`;
 
           // Xử lý hiển thị includeNeighbors kèm khử trùng lặp
           const prevNeighbor = chunk.neighbors?.prev;

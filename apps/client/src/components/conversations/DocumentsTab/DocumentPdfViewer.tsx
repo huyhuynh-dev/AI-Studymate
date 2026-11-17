@@ -74,17 +74,24 @@ import {
   Save,
   Loader2,
   AlertCircle,
+  ListTree,
 } from "lucide-react";
 
 import { DocumentItem } from "@/types";
 import { documentsApi } from "@/services/documents.api";
 import { useFocusMode } from "@/components/layout";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
+import { useDocumentMastery } from "@/hooks/useLearningAnalytics";
 import { calcBoxPixels } from "@/lib/pdf-coordinates";
+import TocMasterySidebar from "./TocMasterySidebar";
 
 export interface DocumentPdfViewerProps {
   document: DocumentItem;
   onClose: () => void;
+  onCreateTargetedQuiz?: (opts: {
+    chunkIds: string[];
+    sectionTitle: string;
+  }) => void;
   className?: string;
 }
 
@@ -93,6 +100,8 @@ interface PdfToolbarProps {
   backendDocumentId: string;
   fileName: string;
   onClose: () => void;
+  isTocOpen: boolean;
+  onToggleToc: () => void;
 }
 
 /**
@@ -105,7 +114,10 @@ function PdfToolbar({
   backendDocumentId,
   fileName,
   onClose,
+  isTocOpen,
+  onToggleToc,
 }: PdfToolbarProps) {
+  const { mastery } = useDocumentMastery(backendDocumentId, true);
   const { provides: zoom, state: zoomState } = useZoom(documentId);
   const { provides: viewport } = useViewportCapability();
   const { provides: annotationApi, state: annotationState } = useAnnotation(documentId);
@@ -586,6 +598,27 @@ function PdfToolbar({
           </div>
         )}
 
+        {/* Nút bật/tắt Mục lục & Bản đồ nhiệt độ thuộc */}
+        <button
+          type="button"
+          onClick={onToggleToc}
+          title="Mục lục & Bản đồ nhiệt độ thuộc bài"
+          className={`relative inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0 ${
+            isTocOpen
+              ? "border-indigo-600 bg-[#4F46E5] text-white shadow-2xs hover:bg-[#4338CA]"
+              : "border-black/[0.08] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 shadow-2xs hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400"
+          }`}
+        >
+          <ListTree className="h-3.5 w-3.5" />
+          <span className="hidden lg:inline">Mục lục</span>
+          {(mastery?.weakSectionsCount ?? 0) > 0 && (
+            <span
+              aria-label={`${mastery?.weakSectionsCount} mục yếu`}
+              className="h-2 w-2 rounded-full bg-[#FF453A] ring-2 ring-white dark:ring-[#12151C]"
+            />
+          )}
+        </button>
+
         {/* Nút Chế độ tập trung (Focus Mode) */}
         <button
           type="button"
@@ -846,14 +879,55 @@ function CitationHighlightLayer({
   );
 }
 
+function PdfTocSidebarBridge({
+  documentId,
+  backendDocumentId,
+  onCreateTargetedQuiz,
+  onClose,
+}: {
+  documentId: string;
+  backendDocumentId: string;
+  onCreateTargetedQuiz?: (opts: {
+    chunkIds: string[];
+    sectionTitle: string;
+  }) => void;
+  onClose: () => void;
+}) {
+  const { provides: scroll } = useScroll(documentId);
+
+  const handleJumpToPage = useCallback(
+    (pageNumber: number) => {
+      try {
+        scroll?.scrollToPage({ pageNumber, behavior: "smooth" });
+      } catch (err) {
+        console.warn("[PdfTocSidebarBridge] scrollToPage warning:", err);
+      }
+    },
+    [scroll]
+  );
+
+  return (
+    <div className="absolute inset-y-0 left-0 z-30 flex sm:static sm:z-auto h-full max-w-[85vw]">
+      <TocMasterySidebar
+        documentId={backendDocumentId}
+        onJumpToPage={handleJumpToPage}
+        onCreateTargetedQuiz={onCreateTargetedQuiz}
+        onClose={onClose}
+      />
+    </div>
+  );
+}
+
 export default function DocumentPdfViewer({
   document,
   onClose,
+  onCreateTargetedQuiz,
   className = "",
 }: DocumentPdfViewerProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isLoadingUrl, setIsLoadingUrl] = useState<boolean>(true);
   const [urlError, setUrlError] = useState<string | null>(null);
+  const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
 
   const { isFocusMode, toggleFocusMode } = useFocusMode();
   const { engine, isLoading: isEngineLoading, error: engineError } = usePdfiumEngine();
@@ -1067,10 +1141,21 @@ export default function DocumentPdfViewer({
                           backendDocumentId={document.id}
                           fileName={document.file_name}
                           onClose={onClose}
+                          isTocOpen={isTocOpen}
+                          onToggleToc={() => setIsTocOpen((prev) => !prev)}
                         />
 
-                        {/* Vùng cuộn các trang PDF chiếm trọn 100% diện tích còn lại */}
-                        <div className="relative flex-1 min-h-0 overflow-hidden bg-neutral-200/60 dark:bg-[#0E1117]">
+                        {/* Không gian đọc PDF kèm Ngăn Mục lục Heatmap có thể thu gọn */}
+                        <div className="relative flex flex-1 min-h-0 overflow-hidden bg-neutral-200/60 dark:bg-[#0E1117]">
+                          {isTocOpen && (
+                            <PdfTocSidebarBridge
+                              documentId={activeDocumentId}
+                              backendDocumentId={document.id}
+                              onCreateTargetedQuiz={onCreateTargetedQuiz}
+                              onClose={() => setIsTocOpen(false)}
+                            />
+                          )}
+                          <div className="relative flex-1 min-w-0 min-h-0 overflow-hidden">
                           <Viewport
                             documentId={activeDocumentId}
                             style={{
@@ -1140,6 +1225,7 @@ export default function DocumentPdfViewer({
                               />
                             </ZoomGestureWrapper>
                           </Viewport>
+                          </div>
                         </div>
                       </>
                     )}

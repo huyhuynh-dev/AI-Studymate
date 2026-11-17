@@ -39,11 +39,7 @@ export interface HomeHeaderProps {
 }
 
 export default function HomeHeader({
-    user = {
-        name: "User",
-        avatarUrl:
-            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    },
+    user,
     focusTime = "25:00",
     hasNotifications = true,
     onSearch,
@@ -145,15 +141,19 @@ export default function HomeHeader({
                             aria-label="Tài khoản cá nhân"
                             className="relative flex items-center justify-center rounded-full ring-2 ring-transparent hover:ring-indigo-500/20 transition-all cursor-pointer"
                         >
-                            <div className="relative h-9 w-9 overflow-hidden rounded-full border border-gray-200 shadow-2xs">
-                                <Image
-                                    src={user.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"}
-                                    alt={user.name || "User Avatar"}
-                                    width={36}
-                                    height={36}
-                                    unoptimized
-                                    className="h-full w-full object-cover"
-                                />
+                            <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-bold text-white shadow-2xs">
+                                {user?.avatarUrl ? (
+                                    <Image
+                                        src={user.avatarUrl}
+                                        alt={user.name || "User Avatar"}
+                                        width={36}
+                                        height={36}
+                                        unoptimized
+                                        className="h-full w-full object-cover"
+                                    />
+                                ) : (
+                                    <span>{(user?.name?.trim()?.[0] || "U").toUpperCase()}</span>
+                                )}
                             </div>
                         </button>
 

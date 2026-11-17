@@ -1,14 +1,77 @@
-import { describe, it, expect } from 'vitest';
-import {
-  unwrapDoclingBBox,
-  toEmbedPdfRect,
-  calcBoxPixels,
-} from '../../../../client/src/lib/pdf-coordinates';
-import {
-  sanitizeStreamingCitations,
-  parseAndFormatCitations,
-  CitationItem,
-} from '../../../../client/src/lib/citation-parser';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
+
+type PdfMod = {
+  unwrapDoclingBBox: (raw: unknown) => Record<string, unknown> | null;
+  toEmbedPdfRect: (raw: unknown, pageHeight: number) => { x: number; y: number; width: number; height: number } | null;
+  calcBoxPixels: (
+    raw: unknown,
+    pw: number,
+    ph: number,
+    rw: number,
+    rh: number,
+  ) => { left: number; top: number; width: number; height: number } | null;
+};
+
+type CitationMod = {
+  sanitizeStreamingCitations: (text: string, isStreaming: boolean) => string;
+  parseAndFormatCitations: (
+    raw: string,
+    map: Map<string, CitationItem>,
+    isStreaming?: boolean,
+  ) => {
+    formattedContent: string;
+    citedList: Array<{ displayNumber: number; citationId: string }>;
+  };
+  extractCitationsMap: (message: unknown) => Map<string, CitationItem>;
+  formatCitationRankingMeta: (
+    item?: DocumentCitationItem,
+  ) => { label: string; detail: string; isReranked: boolean } | null;
+};
+
+let unwrapDoclingBBox: PdfMod['unwrapDoclingBBox'];
+let toEmbedPdfRect: PdfMod['toEmbedPdfRect'];
+let calcBoxPixels: PdfMod['calcBoxPixels'];
+let sanitizeStreamingCitations: CitationMod['sanitizeStreamingCitations'];
+let parseAndFormatCitations: CitationMod['parseAndFormatCitations'];
+let extractCitationsMap: CitationMod['extractCitationsMap'];
+let formatCitationRankingMeta: CitationMod['formatCitationRankingMeta'];
+
+type DocumentCitationItem = {
+  sourceType: 'document';
+  citationId: string;
+  documentId: string;
+  fileName: string;
+  pageNumbers: number[];
+  headings: string[];
+  rrfScore?: number;
+  rerankScore?: number | null;
+  rrfRank?: number | null;
+  vectorRank?: number | null;
+  keywordRank?: number | null;
+};
+
+type WebCitationItem = {
+  sourceType: 'web';
+  citationId: string;
+  title: string;
+  url: string;
+  domain: string;
+};
+
+type CitationItem = DocumentCitationItem | WebCitationItem;
+
+beforeAll(async () => {
+  const pdfMod = await vi.importActual<PdfMod>('../../../../client/src/lib/pdf-coordinates.ts');
+  unwrapDoclingBBox = pdfMod.unwrapDoclingBBox;
+  toEmbedPdfRect = pdfMod.toEmbedPdfRect;
+  calcBoxPixels = pdfMod.calcBoxPixels;
+
+  const citMod = await vi.importActual<CitationMod>('../../../../client/src/lib/citation-parser.ts');
+  sanitizeStreamingCitations = citMod.sanitizeStreamingCitations;
+  parseAndFormatCitations = citMod.parseAndFormatCitations;
+  extractCitationsMap = citMod.extractCitationsMap;
+  formatCitationRankingMeta = citMod.formatCitationRankingMeta;
+});
 
 describe('Phase 2 Client Logic Verification', () => {
   describe('pdf-coordinates', () => {
@@ -171,13 +234,95 @@ describe('Phase 2 Client Logic Verification', () => {
       expect(result.formattedContent).toContain('[4](#citation-c1) [5](#citation-w2)');
 
       // Kiểm tra danh sách trích dẫn citedList phục vụ CollapsibleSourceBar
-      expect(result.citedList.map((c) => ({ num: c.displayNumber, id: c.citationId }))).toEqual([
+      expect(
+        result.citedList.map((c: { displayNumber: number; citationId: string }) => ({
+          num: c.displayNumber,
+          id: c.citationId,
+        })),
+      ).toEqual([
         { num: 1, id: 'c4' },
         { num: 2, id: 'c13' },
         { num: 3, id: 'w1' },
         { num: 4, id: 'c1' },
         { num: 5, id: 'w2' },
       ]);
+    });
+
+    it('nên hiển thị nhãn formatCitationRankingMeta đúng chuẩn cho Rerank vs Fallback RRF và trích xuất từ extractCitationsMap', () => {
+      const rerankedDoc: DocumentCitationItem = {
+        sourceType: 'document',
+        citationId: 'c1',
+        documentId: 'doc-1',
+        fileName: 'OS.pdf',
+        pageNumbers: [12],
+        headings: ['Deadlock'],
+        rerankScore: -0.8412,
+        rrfScore: 0.025,
+        rrfRank: 4,
+        vectorRank: 2,
+        keywordRank: 1,
+      };
+      const meta = formatCitationRankingMeta(rerankedDoc);
+      expect(meta).toEqual({
+        label: 'Rerank -0.84 · RRF #4',
+        detail: 'Điểm Rerank: -0.8412 | Vector #2 · Keyword #1 · RRF Score 0.0250',
+        isReranked: true,
+      });
+
+      const rrfOnlyDoc: DocumentCitationItem = {
+        sourceType: 'document',
+        citationId: 'c2',
+        documentId: 'doc-1',
+        fileName: 'OS.pdf',
+        pageNumbers: [5],
+        headings: [],
+        rerankScore: null,
+        rrfScore: 0.032,
+        vectorRank: 1,
+        keywordRank: null,
+      };
+      expect(formatCitationRankingMeta(rrfOnlyDoc)).toEqual({
+        label: 'RRF 0.0320',
+        detail: 'Vector #1 · Keyword — · RRF Score 0.0320',
+        isReranked: false,
+      });
+
+      expect(formatCitationRankingMeta(undefined)).toBeNull();
+
+      const extracted = extractCitationsMap({
+        id: 'msg-1',
+        role: 'assistant',
+        parts: [
+          {
+            type: 'tool-searchDocumentChunks',
+            output: {
+              chunks: [
+                {
+                  citationId: 'c1',
+                  id: 'chk-1',
+                  documentId: 'doc-1',
+                  fileName: 'OS.pdf',
+                  pageNumbers: [12],
+                  headings: ['Deadlock'],
+                  content: 'Banker algorithm',
+                  rrfScore: 0.025,
+                  rerankScore: -0.8412,
+                  rrfRank: 4,
+                  vectorRank: 2,
+                  keywordRank: 1,
+                },
+              ],
+            },
+          },
+        ],
+      } as never);
+      expect(extracted.get('c1')).toMatchObject({
+        rerankScore: -0.8412,
+        rrfScore: 0.025,
+        rrfRank: 4,
+        vectorRank: 2,
+        keywordRank: 1,
+      });
     });
   });
 });

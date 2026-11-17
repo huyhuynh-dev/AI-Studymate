@@ -1,5 +1,12 @@
+import { normalizeBloomLevel } from '../common/types/bloom.types.js';
 import { parseSourceRefs } from '../common/types/source-ref.types.js';
+import {
+    parseGradingCriteria,
+    stripHtml,
+} from '../common/utils/text.utils.js';
 import { Prisma } from '../generated/prisma/client.js';
+
+export { parseGradingCriteria, stripHtml };
 import {
     AttemptAnswerResponse,
     AttemptConfigResponse,
@@ -58,18 +65,6 @@ export function sanitizeQuizHtml(raw?: string | null): string {
         .trim();
 }
 
-export function stripHtml(html?: string | null): string {
-    if (!html) return '';
-    return html
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/\s+/g, ' ')
-        .trim();
-}
-
 export function normalizeShortAnswer(text: string): string {
     return text
         .normalize('NFC')
@@ -86,14 +81,6 @@ export function parseQuizOptions(raw: Prisma.JsonValue | null): QuizOptionItem[]
         text: typeof item?.text === 'string' ? item.text : '',
         isCorrect: Boolean(item?.isCorrect ?? item?.is_correct),
     }));
-}
-
-export function parseGradingCriteria(raw: Prisma.JsonValue | null): string[] {
-    if (!Array.isArray(raw)) return [];
-    return raw
-        .filter((item): item is string => typeof item === 'string')
-        .map((s) => s.trim())
-        .filter(Boolean);
 }
 
 export function parseAttemptConfig(
@@ -170,6 +157,7 @@ export function mapQuizToResponse(quiz: any): QuizResponse {
                 sampleAnswer: q.sample_answer ?? null,
                 gradingCriteria: parseGradingCriteria(q.grading_criteria),
                 explanation: q.explanation ?? null,
+                bloomLevel: normalizeBloomLevel(q.bloom_level) ?? null,
                 sourceRefs: parseSourceRefs(q.source_refs),
             })
         ),

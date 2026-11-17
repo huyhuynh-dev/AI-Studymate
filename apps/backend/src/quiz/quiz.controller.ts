@@ -20,6 +20,7 @@ import {
     CreateQuizDto,
     GenerateQuizFromDeckDto,
     GenerateQuizWithAiDto,
+    GenerateTargetedQuizDto,
     OverrideEvaluationDto,
     SaveAnswerDto,
     SaveProgressDto,
@@ -31,6 +32,7 @@ import {
     QuizAttemptResponse,
     QuizResponse,
     QuizService,
+    WeakAreasSummaryResponse,
 } from './quiz.service.js';
 
 @Controller('quiz')
@@ -130,6 +132,34 @@ export class QuizController {
             `[POST /quiz/conversations/${conversationId}/quizzes/generate-from-deck] User ${userId} yêu cầu tạo Quiz từ bộ thẻ ${dto.deckId} | Số câu: ${dto.questionCount}`
         );
         return this.quizService.generateFromDeck(
+            userId,
+            conversationId,
+            dto
+        );
+    }
+
+    @Get('conversations/:conversationId/quizzes/weak-summary')
+    async getWeakAreasSummary(
+        @Req() req: Request,
+        @Param('conversationId', new ParseUUIDPipe()) conversationId: string
+    ): Promise<WeakAreasSummaryResponse> {
+        return this.quizService.getWeakAreasSummary(
+            this.getUserId(req),
+            conversationId
+        );
+    }
+
+    @Post('conversations/:conversationId/quizzes/generate-targeted-ai')
+    async generateTargetedQuiz(
+        @Req() req: Request,
+        @Param('conversationId', new ParseUUIDPipe()) conversationId: string,
+        @Body() dto: GenerateTargetedQuizDto
+    ): Promise<QuizResponse> {
+        const userId = this.getUserId(req);
+        this.logger.log(
+            `[POST /quiz/conversations/${conversationId}/quizzes/generate-targeted-ai] User ${userId} yêu cầu sinh đề đặc trị vùng yếu | Số câu: ${dto.questionCount}, Chunks chỉ định: ${dto.chunkIds?.length ?? 'tự động'}`
+        );
+        return this.quizService.generateTargetedQuiz(
             userId,
             conversationId,
             dto

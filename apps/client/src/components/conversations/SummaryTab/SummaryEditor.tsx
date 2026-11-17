@@ -1,9 +1,16 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { filterSuggestionItems } from "@blocknote/core/extensions";
-import { BlockNoteEditor, PartialBlock } from "@blocknote/core";
-import { FormattingToolbarController, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
+import type { PartialBlock } from "@blocknote/core";
+import {
+  FormattingToolbar,
+  FormattingToolbarController,
+  SuggestionMenuController,
+  getDefaultReactSlashMenuItems,
+  getFormattingToolbarItems,
+  useCreateBlockNote,
+} from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { MantineProvider } from "@mantine/core";
 
@@ -11,19 +18,22 @@ import "@mantine/core/styles.css";
 // Inter font is managed centrally via next/font in @/app/font.ts
 import "@blocknote/mantine/style.css";
 import "@blocknote/xl-ai/style.css";
-// import "@blocknote/math-block/style.css";
-import { BlockNoteSchema, createCodeBlockSpec, combineByGroup } from "@blocknote/core";
+import {
+  BlockNoteSchema,
+  combineByGroup,
+  createCodeBlockSpec,
+} from "@blocknote/core";
 import { codeBlockOptions, syntaxHighlighter } from "@blocknote/code-block";
 import {
-  createReactMathBlockSpec,
   createReactInlineMathSpec,
-  locales as mathLocales,
+  createReactMathBlockSpec,
   getMathSlashMenuItems,
+  locales as mathLocales,
 } from "@blocknote/math-block";
 import {
   createReactDiagramBlockSpec,
-  locales as diagramLocales,
   getDiagramSlashMenuItems,
+  locales as diagramLocales,
 } from "@blocknote/diagram-block";
 
 import { DefaultChatTransport } from "ai";
@@ -34,21 +44,62 @@ import {
   aiDocumentFormats,
   getAISlashMenuItems,
 } from "@blocknote/xl-ai";
-
-import {
-  FormattingToolbar,
-  getFormattingToolbarItems,
-  getDefaultReactSlashMenuItems,
-} from "@blocknote/react";
 import { en } from "@blocknote/core/locales";
 import { en as aiEn } from "@blocknote/xl-ai/locales";
 
 interface SummaryEditorProps {
   summaryId: string;
-  initialContent: any[];
-  onChange: (blocks: any[]) => void;
+  initialContent: unknown[];
+  onChange: (blocks: unknown[]) => void;
   editable?: boolean;
   zoomPercent?: number;
+}
+
+type JsonRecord = Record<string, unknown>;
+type BlockNoteExtensionFactory = typeof syntaxHighlighter;
+type StreamToolsProviderParam = NonNullable<
+  Parameters<typeof AIExtension>[0]
+>["streamToolsProvider"];
+
+interface StreamToolChunk {
+  operation?: { type?: string };
+  isPossiblyPartial?: boolean;
+  [key: string]: unknown;
+}
+
+interface StreamToolExecutor {
+  execute: (chunk: StreamToolChunk, abortSignal?: AbortSignal) => Promise<boolean>;
+}
+
+interface StreamToolDescriptor {
+  name: string;
+  executor: () => StreamToolExecutor;
+  [key: string]: unknown;
+}
+
+interface AiExtensionHandle {
+  store?: {
+    subscribe?: (
+      listener: (snapshot: {
+        currentVal?: { aiMenuState?: string };
+      }) => void,
+    ) => (() => void) | undefined;
+    state?: { aiMenuState?: string };
+  };
+}
+
+function createAiActivityTracker() {
+  let active = false;
+  return {
+    isActive: (): boolean => active,
+    setActive: (next: boolean): void => {
+      active = next;
+    },
+  };
+}
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null;
 }
 
 /**
@@ -59,27 +110,37 @@ interface SummaryEditorProps {
  * "unexpected, openEnd > 0 and size > 1, this should have been split into two steps".
  * Giải pháp: đợi từng operation "add" nhận đủ nội dung (!chunk.isPossiblyPartial) rồi chèn 1 lần qua insertBlocks.
  */
-const createSafeHtmlStreamToolsProvider = () => {
-  const baseProvider = aiDocumentFormats.html.getStreamToolsProvider();
+const createSafeHtmlStreamToolsProvider = (): StreamToolsProviderParam => {
+  const baseProvider = aiDocumentFormats.html.getStreamToolsProvider() as unknown as {
+    getStreamTools: (
+      editor: unknown,
+      selectionInfo?: unknown,
+      onBlockUpdate?: (blockId: string) => void,
+    ) => StreamToolDescriptor[];
+  };
+
   return {
     getStreamTools: (
-      editor: any,
-      selectionInfo?: any,
-      onBlockUpdate?: (blockId: string) => void
+      editor: unknown,
+      selectionInfo?: unknown,
+      onBlockUpdate?: (blockId: string) => void,
     ) => {
       const tools = baseProvider.getStreamTools(
         editor,
         selectionInfo,
-        onBlockUpdate
+        onBlockUpdate,
       );
-      return tools.map((tool: any) => {
+      return tools.map((tool) => {
         if (tool.name === "add") {
           return {
             ...tool,
             executor: () => {
               const baseExecutor = tool.executor();
               return {
-                execute: async (chunk: any, abortSignal?: AbortSignal) => {
+                execute: async (
+                  chunk: StreamToolChunk,
+                  abortSignal?: AbortSignal,
+                ) => {
                   if (chunk.operation?.type !== "add") {
                     return false;
                   }
@@ -91,7 +152,7 @@ const createSafeHtmlStreamToolsProvider = () => {
                       ...chunk,
                       isUpdateToPreviousOperation: false,
                     },
-                    abortSignal
+                    abortSignal,
                   );
                 },
               };
@@ -101,7 +162,7 @@ const createSafeHtmlStreamToolsProvider = () => {
         return tool;
       });
     },
-  };
+  } as unknown as StreamToolsProviderParam;
 };
 
 // Formatting toolbar with the `AIToolbarButton` added
@@ -114,22 +175,30 @@ const FormattingToolbarWithAI = () => (
 );
 
 // Slash menu items with AI, Math, and Diagram options combined by group to prevent duplicate category keys
-const getSlashMenuItemsWithAI = (editor: any) =>
+const getSlashMenuItemsWithAI = (
+  editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
+) =>
   combineByGroup(
     getDefaultReactSlashMenuItems(editor),
-    getMathSlashMenuItems(editor),
-    getDiagramSlashMenuItems(editor),
-    getAISlashMenuItems(editor)
+    getMathSlashMenuItems(
+      editor as unknown as Parameters<typeof getMathSlashMenuItems>[0],
+    ),
+    getDiagramSlashMenuItems(
+      editor as unknown as Parameters<typeof getDiagramSlashMenuItems>[0],
+    ),
+    getAISlashMenuItems(
+      editor as unknown as Parameters<typeof getAISlashMenuItems>[0],
+    ),
   );
 
 /**
  * Chuẩn hóa phần tử inline content (text hoặc link) để bảo đảm tuân thủ nghiêm ngặt ProseMirror Schema
  */
-function sanitizeInline(item: any): any {
+function sanitizeInline(item: unknown): JsonRecord {
   if (typeof item === "string") {
     return { type: "text", text: item, styles: {} };
   }
-  if (!item || typeof item !== "object") {
+  if (!isJsonRecord(item)) {
     return { type: "text", text: "", styles: {} };
   }
 
@@ -137,12 +206,15 @@ function sanitizeInline(item: any): any {
   if (item.type === "math") {
     return {
       type: "math",
-      content: typeof item.content === "string" ? item.content : String(item.text || ""),
+      content:
+        typeof item.content === "string"
+          ? item.content
+          : String(item.text || ""),
     };
   }
 
   if (item.type === "link") {
-    let content: any[] = [];
+    let content: JsonRecord[] = [];
     if (Array.isArray(item.content)) {
       content = item.content.map(sanitizeInline);
     } else if (typeof item.content === "string") {
@@ -157,7 +229,7 @@ function sanitizeInline(item: any): any {
     };
   }
 
-  let styles = typeof item.styles === "object" && item.styles ? { ...item.styles } : {};
+  let styles: JsonRecord = isJsonRecord(item.styles) ? { ...item.styles } : {};
   // QUY TAC BAT BUOC CUA PROSEMIRROR / BLOCKNOTE:
   // Mark 'code' co cau hinh excludes: "_" (loai tru moi dinh dang khac).
   // Neu co ca 'code' lan 'bold'/'italic'/'strike'..., ProseMirror se qu?ng RangeError lam sap trang.
@@ -178,11 +250,11 @@ function sanitizeInline(item: any): any {
  * - Object { type: "tableCell", props, content } (dạng editor.document của BlockNote khi autosave)
  * Tránh làm mất nội dung ô khi nạp lại tài liệu.
  */
-function sanitizeTableCell(cell: any): any {
+function sanitizeTableCell(cell: unknown): JsonRecord | JsonRecord[] {
   if (Array.isArray(cell)) {
     return cell.map(sanitizeInline);
   }
-  if (cell && typeof cell === "object" && cell.type === "tableCell") {
+  if (isJsonRecord(cell) && cell.type === "tableCell") {
     const inner = Array.isArray(cell.content)
       ? cell.content.map(sanitizeInline)
       : typeof cell.content === "string"
@@ -190,7 +262,7 @@ function sanitizeTableCell(cell: any): any {
         : [];
     return {
       type: "tableCell",
-      props: typeof cell.props === "object" && cell.props ? { ...cell.props } : {},
+      props: isJsonRecord(cell.props) ? { ...cell.props } : {},
       content: inner,
     };
   }
@@ -222,24 +294,24 @@ const VALID_DEFAULT_BLOCKS = [
 /**
  * De quy chuan hoa tung block va con chau cua no de ngan chan moi loi initialContent
  */
-function sanitizeBlock(block: any): PartialBlock | null {
-  if (!block || typeof block !== "object") {
+function sanitizeBlock(block: unknown): PartialBlock | null {
+  if (!isJsonRecord(block)) {
     return null;
   }
 
   let type = typeof block.type === "string" ? block.type : "paragraph";
-  const id = typeof block.id === "string" && block.id.trim() ? block.id : undefined;
-  const props = typeof block.props === "object" && block.props ? { ...block.props } : {};
+  const id =
+    typeof block.id === "string" && block.id.trim() ? block.id : undefined;
+  const props = isJsonRecord(block.props) ? { ...block.props } : {};
 
   if (!VALID_DEFAULT_BLOCKS.includes(type)) {
     type = "paragraph";
   }
 
-  let content: any = undefined;
+  let content: unknown = undefined;
   if (type === "table") {
     if (
-      block.content &&
-      typeof block.content === "object" &&
+      isJsonRecord(block.content) &&
       Array.isArray(block.content.rows) &&
       block.content.rows.length > 0
     ) {
@@ -254,10 +326,11 @@ function sanitizeBlock(block: any): PartialBlock | null {
         ...(typeof block.content.headerCols === "number"
           ? { headerCols: block.content.headerCols }
           : {}),
-        rows: block.content.rows.map((row: any) => ({
-          cells: Array.isArray(row?.cells)
-            ? row.cells.map(sanitizeTableCell)
-            : [],
+        rows: block.content.rows.map((row: unknown) => ({
+          cells:
+            isJsonRecord(row) && Array.isArray(row.cells)
+              ? row.cells.map(sanitizeTableCell)
+              : [],
         })),
       };
     } else {
@@ -291,20 +364,19 @@ function sanitizeBlock(block: any): PartialBlock | null {
 
   return {
     ...(id ? { id } : {}),
-    type: type as any,
+    type,
     props,
     content,
     children,
-  };
+  } as PartialBlock;
 }
 
-export function sanitizeBlockNoteBlocks(blocks: any[]): PartialBlock[] {
+export function sanitizeBlockNoteBlocks(blocks: unknown[]): PartialBlock[] {
   if (!Array.isArray(blocks)) return [];
   return blocks.map(sanitizeBlock).filter(Boolean) as PartialBlock[];
 }
 
-
-// Schema m? r?ng h? tr? ??y ?? Math, Diagram, CodeBlock Syntax Highlighting
+// Schema mở rộng hỗ trợ đầy đủ Math, Diagram, CodeBlock Syntax Highlighting
 const summaryEditorSchema = BlockNoteSchema.create().extend({
   blockSpecs: {
     codeBlock: createCodeBlockSpec(codeBlockOptions),
@@ -316,6 +388,8 @@ const summaryEditorSchema = BlockNoteSchema.create().extend({
   },
 });
 
+type SummaryPartialBlock = typeof summaryEditorSchema.PartialBlock;
+
 function InnerBlockNoteEditor({
   summaryId,
   initialContent,
@@ -323,8 +397,8 @@ function InnerBlockNoteEditor({
   editable = true,
   zoomPercent = 100,
 }: SummaryEditorProps) {
-  // Ref đánh dấu AI đang hoạt động (gồm cả Stream và giai đoạn chờ Review Accept/Reject)
-  const isAiActiveRef = useRef<boolean>(false);
+  // Theo dõi AI đang hoạt động (gồm cả Stream và giai đoạn chờ Review Accept/Reject)
+  const [aiActivity] = useState(createAiActivityTracker);
 
   // Giữ onChange mới nhất trong ref để các useEffect không bị hủy/đăng ký lại mỗi lần render
   const onChangeRef = useRef(onChange);
@@ -333,18 +407,26 @@ function InnerBlockNoteEditor({
   }, [onChange]);
 
   // Chuẩn bị initial content an toàn cho BlockNote
-  const validInitialBlocks = React.useMemo<any>(() => {
-    if (Array.isArray(initialContent) && initialContent.length > 0) {
-      try {
-        const sanitized = sanitizeBlockNoteBlocks(initialContent);
-        return sanitized.length > 0 ? sanitized : undefined;
-      } catch (err) {
-        console.error("[SummaryEditor] Lỗi khi làm sạch initialContent:", err);
-        return undefined;
+  const validInitialBlocks = React.useMemo<SummaryPartialBlock[] | undefined>(
+    () => {
+      if (Array.isArray(initialContent) && initialContent.length > 0) {
+        try {
+          const sanitized = sanitizeBlockNoteBlocks(initialContent);
+          return sanitized.length > 0
+            ? (sanitized as unknown as SummaryPartialBlock[])
+            : undefined;
+        } catch (err) {
+          console.error(
+            "[SummaryEditor] Lỗi khi làm sạch initialContent:",
+            err,
+          );
+          return undefined;
+        }
       }
-    }
-    return undefined;
-  }, [initialContent]);
+      return undefined;
+    },
+    [initialContent],
+  );
 
   // Create the BlockNote editor with the AI extension
   const editor = useCreateBlockNote({
@@ -358,19 +440,19 @@ function InnerBlockNoteEditor({
     extensions: [
       syntaxHighlighter,
       AIExtension({
-        streamToolsProvider: createSafeHtmlStreamToolsProvider() as any,
+        streamToolsProvider: createSafeHtmlStreamToolsProvider(),
         transport: new DefaultChatTransport({
           // URL to your backend API, see example source in `packages/xl-ai-server/src/routes/regular.ts`
           api: `/api/summaries/${summaryId}/ai-actions`,
           fetch: async (input, init) => {
-            isAiActiveRef.current = true;
+            aiActivity.setActive(true);
             try {
               const response = await fetch(input, init);
 
               if (!response.ok) {
-                isAiActiveRef.current = false;
+                aiActivity.setActive(false);
                 const errorBody = await response.clone().text();
-                console.error('[BlockNote AI client] Request failed', {
+                console.error("[BlockNote AI client] Request failed", {
                   status: response.status,
                   statusText: response.statusText,
                   body: errorBody,
@@ -379,12 +461,12 @@ function InnerBlockNoteEditor({
 
               return response;
             } catch (err) {
-              isAiActiveRef.current = false;
+              aiActivity.setActive(false);
               throw err;
             }
           },
         }),
-      }),
+      }) as unknown as BlockNoteExtensionFactory,
     ],
     // Nạp dữ liệu khởi tạo 1 lần duy nhất từ DB khi editor được mount
     initialContent: validInitialBlocks,
@@ -393,13 +475,17 @@ function InnerBlockNoteEditor({
   // Theo dõi chính xác vòng đời của AI Menu / Suggestions từ BlockNote Extension Store
   useEffect(() => {
     if (!editor) return;
-    const aiExt = (editor as any).getExtension?.("ai");
+    const editorWithExt = editor as unknown as {
+      getExtension?: (name: string) => AiExtensionHandle | undefined;
+    };
+    const aiExt = editorWithExt.getExtension?.("ai");
     if (!aiExt?.store?.subscribe) return;
 
-    const unsubscribe = aiExt.store.subscribe((val: any) => {
-      const currentState = val?.currentVal?.aiMenuState ?? aiExt.store.state?.aiMenuState;
+    const unsubscribe = aiExt.store.subscribe((val) => {
+      const currentState =
+        val?.currentVal?.aiMenuState ?? aiExt.store?.state?.aiMenuState;
       const isClosed = currentState === "closed";
-      isAiActiveRef.current = !isClosed;
+      aiActivity.setActive(!isClosed);
 
       // Khi người dùng bấm Accept hoặc Reject => Menu đóng => Auto-Save lưu nội dung chính thức
       if (isClosed && editor.document) {
@@ -410,7 +496,7 @@ function InnerBlockNoteEditor({
     return () => {
       unsubscribe?.();
     };
-  }, [editor]);
+  }, [aiActivity, editor]);
 
   // Lắng nghe thay đổi nội dung từ editor (Auto-Save 1 chiều từ Editor -> DB)
   useEffect(() => {
@@ -419,7 +505,7 @@ function InnerBlockNoteEditor({
     const unsubscribe = editor.onChange(() => {
       // Khi AI đang hoạt động (Stream hoặc đang hiển thị Suggestions gạch ngang chờ duyệt):
       // Tuyệt đối không phát onChange để tránh Auto-Save lưu nháp dở dang và làm mất gạch ngang
-      if (isAiActiveRef.current) {
+      if (aiActivity.isActive()) {
         return;
       }
 
@@ -433,7 +519,7 @@ function InnerBlockNoteEditor({
         unsubscribe();
       }
     };
-  }, [editor]);
+  }, [aiActivity, editor]);
 
   return (
     <div className="w-full flex-1 bg-white dark:bg-[#12151C] min-h-[450px] p-4 sm:p-6 lg:p-8 overflow-y-auto">
@@ -470,7 +556,14 @@ function InnerBlockNoteEditor({
           <SuggestionMenuController
             triggerCharacter="/"
             getItems={async (query) =>
-              filterSuggestionItems(getSlashMenuItemsWithAI(editor as any), query)
+              filterSuggestionItems(
+                getSlashMenuItemsWithAI(
+                  editor as unknown as Parameters<
+                    typeof getDefaultReactSlashMenuItems
+                  >[0],
+                ),
+                query,
+              )
             }
           />
         </BlockNoteView>

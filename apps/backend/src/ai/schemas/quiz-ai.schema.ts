@@ -8,6 +8,11 @@
  *  3) toQuizQuestionInserts: chuyển sang dòng DB (gán id đáp án, xáo vị trí, đổi văn bản → HTML cho TipTap).
  */
 import { z } from 'zod';
+import {
+    BLOOM_LEVELS,
+    normalizeBloomLevel,
+    type BloomLevel,
+} from '../../common/types/bloom.types.js';
 import type { SourceReferenceItem } from '../../common/types/source-ref.types.js';
 import { resolveSourceRefs } from '../utils/chunk-context.helper.js';
 
@@ -44,6 +49,12 @@ const sourceChunkIndex = z
         'Số nguyên N chính xác từ tiêu đề [CHUNK #N ...] của đoạn văn trong <document> làm căn cứ trực tiếp cho câu hỏi này.'
     );
 
+const bloomLevel = z
+    .enum(BLOOM_LEVELS)
+    .describe(
+        "Cấp độ nhận thức theo Thang Bloom của câu hỏi: 'remember' (Nhớ khái niệm/thuật ngữ), 'understand' (Hiểu/giải thích/phân biệt), 'apply' (Vận dụng vào tình huống/bài tập), 'analyze' (Phân tích/so sánh/đánh giá)."
+    );
+
 /** Trắc nghiệm 1 đáp án. Đáp án đúng và phương án sai tách riêng → không thể có 0 hoặc 2 đáp án đúng; server tự xáo vị trí. */
 const SingleChoiceQuestion = z
     .strictObject({
@@ -56,6 +67,7 @@ const SingleChoiceQuestion = z
                 "Đúng 3 phương án SAI nhưng hợp lý (dựa trên lỗi hiểu nhầm phổ biến), độ dài tương đương đáp án đúng. Cấm 'Tất cả đều đúng/sai'."
             ),
         explanation,
+        bloomLevel,
         sourceChunkIndex,
     })
     .describe('Trắc nghiệm chọn 1 đáp án đúng');
@@ -76,6 +88,7 @@ const MultipleChoiceQuestion = z
                 "2–3 phương án SAI nhưng hợp lý. Cấm 'Tất cả đều đúng/sai'."
             ),
         explanation,
+        bloomLevel,
         sourceChunkIndex,
     })
     .describe(
@@ -95,6 +108,7 @@ const TrueFalseQuestion = z
             .boolean()
             .describe('true nếu mệnh đề đúng, false nếu sai.'),
         explanation,
+        bloomLevel,
         sourceChunkIndex,
     })
     .describe('Câu Đúng / Sai');
@@ -111,6 +125,7 @@ const ShortAnswerQuestion = z
                     "Gồm viết tắt/viết đầy đủ, có/không dấu gạch nối nếu phù hợp. Không chứa ký tự '|'."
             ),
         explanation,
+        bloomLevel,
         sourceChunkIndex,
     })
     .describe('Điền từ ngắn, chỉ có MỘT đáp án duy nhất, không mơ hồ');
@@ -132,6 +147,7 @@ const EssayQuestion = z
                     "(vd 'Nêu đúng khái niệm X', 'Giải thích được vì sao Y'). Không trùng ý nhau."
             ),
         explanation,
+        bloomLevel,
         sourceChunkIndex,
     })
     .describe('Câu tự luận ngắn, có rubric chấm điểm');
@@ -151,6 +167,7 @@ export type GeneratedQuestion =
           correctAnswer: string;
           distractors: string[];
           explanation: string;
+          bloomLevel: BloomLevel;
           sourceChunkIndex: number;
       }
     | {
@@ -159,6 +176,7 @@ export type GeneratedQuestion =
           correctAnswers: string[];
           distractors: string[];
           explanation: string;
+          bloomLevel: BloomLevel;
           sourceChunkIndex: number;
       }
     | {
@@ -166,6 +184,7 @@ export type GeneratedQuestion =
           text: string;
           correctAnswer: boolean;
           explanation: string;
+          bloomLevel: BloomLevel;
           sourceChunkIndex: number;
       }
     | {
@@ -173,6 +192,7 @@ export type GeneratedQuestion =
           text: string;
           acceptedAnswers: string[];
           explanation: string;
+          bloomLevel: BloomLevel;
           sourceChunkIndex: number;
       }
     | {
@@ -181,6 +201,7 @@ export type GeneratedQuestion =
           sampleAnswer: string;
           gradingCriteria: string[];
           explanation: string;
+          bloomLevel: BloomLevel;
           sourceChunkIndex: number;
       };
 
@@ -351,6 +372,7 @@ export interface QuizQuestionInsert {
     sample_answer?: string; // short_answer: "a|b"; essay: HTML
     grading_criteria: string[];
     explanation: string; // HTML
+    bloom_level: BloomLevel;
     source_refs?: SourceReferenceItem[];
 }
 
@@ -423,6 +445,8 @@ export function toQuizQuestionInserts(
 
     return questions.map((q, i): QuizQuestionInsert => {
         const sourceRefs = resolveSourceRefs(q.sourceChunkIndex, sourceChunkMap);
+        const resolvedBloom =
+            normalizeBloomLevel(q.bloomLevel, q.type) ?? 'understand';
         const base = {
             quiz_id: quizId,
             question_type: q.type,
@@ -431,6 +455,7 @@ export function toQuizQuestionInserts(
             points: pts[q.type],
             explanation: textToHtml(q.explanation),
             grading_criteria: [] as string[],
+            bloom_level: resolvedBloom,
             ...(sourceRefs.length > 0 ? { source_refs: sourceRefs } : {}),
         };
 

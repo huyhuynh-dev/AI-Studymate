@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EvaluationStatusEnum } from '../generated/prisma/client.js';
 import { AiService } from './ai.service.js';
+import { quizGeneratePrompt } from './prompts/templates/quiz.prompt.js';
 import {
     QuizAiService,
     buildQuizSystemPrompt,
@@ -50,6 +51,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                 questions: [
                     {
                         type: 'true_false',
+                        bloomLevel: 'remember',
                         text: 'Spaced repetition giúp ghi nhớ dài hạn tốt hơn học dồn.',
                         correctAnswer: true,
                         explanation: 'Vì khoảng cách ôn tập tăng dần giúp củng cố trí nhớ.',
@@ -63,6 +65,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                 questions: [
                     {
                         type: 'essay',
+                        bloomLevel: 'analyze',
                         text: 'Giải thích cơ chế của Spaced Repetition.',
                         sampleAnswer: 'Bài viết mẫu dài trên 40 ký tự giải thích rõ ràng cơ chế.',
                         gradingCriteria: ['Nêu khái niệm', 'Nêu ví dụ'],
@@ -82,6 +85,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                 // Hợp lệ: single_choice
                 {
                     type: 'single_choice',
+                    bloomLevel: 'remember',
                     text: 'Đường cong nào mô tả tốc độ quên theo thời gian?',
                     correctAnswer: 'Đường cong Ebbinghaus',
                     distractors: [
@@ -96,6 +100,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                 // Bị loại: dùng "Tất cả các đáp án trên"
                 {
                     type: 'single_choice',
+                    bloomLevel: 'understand',
                     text: 'Phương pháp nào dưới đây giúp học tập hiệu quả?',
                     correctAnswer: 'Active Recall',
                     distractors: [
@@ -109,6 +114,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                 // Bị loại: câu true_false viết dạng câu hỏi có dấu ?
                 {
                     type: 'true_false',
+                    bloomLevel: 'remember',
                     text: 'Học dồn có tốt hơn học giãn cách không?',
                     correctAnswer: false,
                     explanation: 'Học giãn cách tốt hơn cho trí nhớ dài hạn.',
@@ -117,6 +123,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                 // Bị loại: short_answer chứa ký tự '|'
                 {
                     type: 'short_answer',
+                    bloomLevel: 'remember',
                     text: 'Thuật toán lập lịch của Anki tên là gì?',
                     acceptedAnswers: ['SM-2|SM2'],
                     explanation: 'Thuật toán SM-2 ra đời năm 1987.',
@@ -125,6 +132,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                 // Hợp lệ: essay
                 {
                     type: 'essay',
+                    bloomLevel: 'analyze',
                     text: 'Giải thích cách kết hợp **Active Recall** và **Spaced Repetition**.',
                     sampleAnswer:
                         'Active Recall buộc não tự truy xuất thông tin thay vì đọc thụ động.\nKhi kết hợp với Spaced Repetition, việc truy xuất diễn ra theo khoảng cách tăng dần.',
@@ -172,6 +180,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                 [
                     {
                         type: 'single_choice',
+                        bloomLevel: 'understand',
                         text: 'Câu hỏi **trắc nghiệm**?',
                         correctAnswer: 'Đáp án đúng',
                         distractors: ['Sai 1', 'Sai 2', 'Sai 3'],
@@ -180,6 +189,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                     },
                     {
                         type: 'true_false',
+                        bloomLevel: 'remember',
                         text: 'Mệnh đề khẳng định đúng.',
                         correctAnswer: true,
                         explanation: 'Giải thích câu 2.',
@@ -187,6 +197,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                     },
                     {
                         type: 'short_answer',
+                        bloomLevel: 'apply',
                         text: 'Điền tên thuật toán của Anki.',
                         acceptedAnswers: ['SM-2', 'SM2'],
                         explanation: 'Giải thích câu 3.',
@@ -197,6 +208,9 @@ describe('QuizAiService & QuizAiSchema', () => {
             );
 
             expect(inserts).toHaveLength(3);
+            expect(inserts[0].bloom_level).toBe('understand');
+            expect(inserts[1].bloom_level).toBe('remember');
+            expect(inserts[2].bloom_level).toBe('apply');
             expect(inserts[0].source_refs).toEqual([sourceChunkMap.get(1)]);
             expect(inserts[2].source_refs).toBeUndefined();
             expect(inserts[0].options).toHaveLength(4);
@@ -220,6 +234,7 @@ describe('QuizAiService & QuizAiSchema', () => {
                     questions: [
                         {
                             type: 'single_choice',
+                            bloomLevel: 'remember',
                             text: 'Ai là người phát hiện đường cong quên lãng?',
                             correctAnswer: 'Hermann Ebbinghaus',
                             distractors: [
@@ -380,6 +395,68 @@ describe('QuizAiService & QuizAiSchema', () => {
 
             expect(res.evaluationStatus).toBe(EvaluationStatusEnum.partial);
             expect(res.pointsEarned).toBeGreaterThan(0);
+        });
+    });
+
+    describe('Bloom Taxonomy & Targeted Remediation Prompts', () => {
+        it('renders Bloom quota plan and remediation XML rules when provided', () => {
+            const system = buildQuizSystemPrompt({
+                types: ['single_choice', 'essay'],
+                count: 5,
+                difficulty: 'applied',
+                bloomQuota: { remember: 1, understand: 1, apply: 2, analyze: 1 },
+                remediationFocus: {
+                    weakTopics: ['Binary Search'],
+                    missingPoints: ['Điều kiện dừng vòng lặp'],
+                    priorFailedQuestions: ['Điều kiện dừng của Binary Search là gì?'],
+                },
+            });
+
+            expect(system).toContain('<bloom_taxonomy_plan>');
+            expect(system).toContain('- apply: 2 question(s)');
+            expect(system).toContain('<remediation_rules>');
+            expect(system).toContain('Rephrase & Scenario Shift');
+
+            const user = quizGeneratePrompt.renderUser?.({
+                context: '[CHUNK #1]\nBinary Search',
+                count: 5,
+                types: ['single_choice'],
+                difficulty: 'applied',
+                remediationFocus: {
+                    weakTopics: ['Binary Search'],
+                    missingPoints: ['Điều kiện dừng vòng lặp'],
+                    priorFailedQuestions: ['Điều kiện dừng của Binary Search là gì?'],
+                },
+            });
+            expect(user).toContain('<remediation_focus>');
+            expect(user).toContain('Binary Search');
+            expect(user).toContain('<prior_failed_questions');
+        });
+
+        it('toQuizQuestionInserts maps valid bloomLevel and falls back safely when unknown or missing', () => {
+            const inserts = toQuizQuestionInserts([
+                {
+                    type: 'single_choice',
+                    text: 'Độ phức tạp Binary Search?',
+                    correctAnswer: 'O(log n)',
+                    distractors: ['O(n)', 'O(n^2)', 'O(1)'],
+                    explanation: 'Chia đôi mảng ở mỗi bước.',
+                    bloomLevel: 'APPLY' as unknown as 'apply',
+                    sourceChunkIndex: 1,
+                },
+                {
+                    type: 'essay',
+                    text: 'Phân tích thuật toán tìm kiếm.',
+                    sampleAnswer: 'Đoạn văn mẫu phân tích chi tiết.',
+                    gradingCriteria: ['Nêu độ phức tạp'],
+                    explanation: 'Dựa trên số phép so sánh.',
+                    bloomLevel: undefined as unknown as 'understand',
+                    sourceChunkIndex: 1,
+                },
+            ]);
+
+            expect(inserts[0].bloom_level).toBe('apply');
+            expect(inserts[1].bloom_level).toBe('analyze');
         });
     });
 });

@@ -158,6 +158,21 @@ export function createMockQuizApi(conversationId = "demo"): QuizApi {
       await wait(900);
       return clone(generate(cid, "Đề nhanh từ bộ thẻ", o.questionCount, o.types, { source: "flashcard", sourceDeckId: o.deckId, sourceDeckName: "Bộ thẻ đã chọn" }));
     },
+    async getWeakAreasSummary() {
+      await wait(120);
+      return {
+        hasWeakAreas: true,
+        weakChunkCount: 3,
+        incorrectQuizCount: 2,
+        leechCardCount: 1,
+        topWeakTopics: ["Spaced Repetition", "Active Recall"],
+        topMissingPoints: ["Cơ chế giãn cách ôn tập Ebbinghaus"],
+      };
+    },
+    async generateTargetedQuiz(cid, o) {
+      await wait(1800);
+      return clone(generate(cid, "Đề ôn tập bù lỗ hổng (AI)", o.questionCount, o.types, { source: "ai" }));
+    },
     async startAttempt(quizId, config) {
       await wait(150);
       const quiz = findQuiz(quizId);

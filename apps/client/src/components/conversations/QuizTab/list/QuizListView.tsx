@@ -1,16 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Layers, PenLine, Plus, Search, Sparkles, TriangleAlert } from "lucide-react";
-import type { Quiz, QuizAttempt, QuizSource } from "../types";
+import { Layers, PenLine, Plus, Search, Sparkles, Target, TriangleAlert } from "lucide-react";
+import type { Quiz, QuizAttempt, QuizCreateMode, WeakAreasSummary } from "../types";
 import { Button, Menu } from "../ui/primitives";
 import { QuizCard } from "./QuizCard";
 import { QuizEmptyState } from "./QuizEmptyState";
 
-export function QuizListView({ quizzes, attempts, loading, error, onRetry, hasDocuments, hasDecks, onUploadDocument, onCreate, onOpen, onStart, onEdit, onDelete }: {
-  quizzes: Quiz[]; attempts: Record<string, QuizAttempt[]>; loading: boolean; error: string | null; onRetry: () => void;
+export function QuizListView({ quizzes, attempts, weakSummary, loading, error, onRetry, hasDocuments, hasDecks, onUploadDocument, onCreate, onOpen, onStart, onEdit, onDelete }: {
+  quizzes: Quiz[]; attempts: Record<string, QuizAttempt[]>; weakSummary?: WeakAreasSummary | null; loading: boolean; error: string | null; onRetry: () => void;
   hasDocuments: boolean; hasDecks: boolean; onUploadDocument?: () => void;
-  onCreate: (s: QuizSource) => void; onOpen: (q: Quiz) => void; onStart: (q: Quiz) => void; onEdit: (q: Quiz) => void; onDelete: (q: Quiz) => void;
+  onCreate: (s: QuizCreateMode) => void; onOpen: (q: Quiz) => void; onStart: (q: Quiz) => void; onEdit: (q: Quiz) => void; onDelete: (q: Quiz) => void;
 }) {
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
@@ -61,12 +61,41 @@ export function QuizListView({ quizzes, attempts, loading, error, onRetry, hasDo
             button={(p) => <Button variant="primary" icon={<Plus className="h-4 w-4" />} {...p}>Tạo đề mới</Button>}
             items={[
               { key: "ai", label: "Từ tài liệu bằng AI", description: "AI đọc tài liệu và soạn đề cho bạn", icon: <Sparkles className="h-4 w-4 text-[var(--qz-ai)]" />, onSelect: () => onCreate("ai") },
+              {
+                key: "targeted",
+                label: "Ôn tập bù lỗ hổng",
+                description: weakSummary?.hasWeakAreas ? `${weakSummary.weakChunkCount} vùng yếu từ lỗi sai & thẻ khó` : "AI tạo đề xoáy sâu vào phần hay sai",
+                icon: <Target className="h-4 w-4 text-[var(--qz-danger)]" />,
+                onSelect: () => onCreate("targeted"),
+              },
               { key: "deck", label: "Từ bộ Flashcard", description: "Tạo nhanh, không tốn lượt AI", icon: <Layers className="h-4 w-4 text-primary" />, onSelect: () => onCreate("flashcard") },
               { key: "manual", label: "Tự soạn đề", description: "Tự viết từng câu hỏi", icon: <PenLine className="h-4 w-4" />, onSelect: () => onCreate("manual") },
             ]}
           />
         </div>
       </div>
+
+      {weakSummary?.hasWeakAreas && (
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-[var(--border-outline)] bg-[var(--qz-ai-soft)] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--qz-elevated)] text-[var(--qz-danger)]">
+              <Target className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-[14px] font-semibold text-foreground">
+                Phát hiện {weakSummary.weakChunkCount} vùng kiến thức cần củng cố
+              </p>
+              <p className="text-[12.5px] text-[var(--on-surface-variant)]">
+                {weakSummary.incorrectQuizCount} câu kiểm tra chưa đúng · {weakSummary.leechCardCount} thẻ Flashcard khó nhớ
+                {weakSummary.topWeakTopics.length > 0 ? ` · Trọng tâm: ${weakSummary.topWeakTopics.slice(0, 2).join(", ")}` : ""}
+              </p>
+            </div>
+          </div>
+          <Button variant="tinted" size="sm" className="shrink-0" icon={<Sparkles className="h-3.5 w-3.5" />} onClick={() => onCreate("targeted")}>
+            Tạo đề đặc trị
+          </Button>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <p className="mt-16 text-center text-[15px] text-[var(--on-surface-variant)]">Không có đề nào khớp “{query}”.</p>
