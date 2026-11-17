@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard.js';
+import { RequestUserContextInterceptor } from './common/context/request-user-context.interceptor.js';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -24,6 +25,7 @@ import { QuizModule } from './quiz/quiz.module.js';
 import { SearchModule } from './search/search.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { RagBenchmarkModule } from './rag-benchmark/rag-benchmark.module.js';
+import { AdminModule } from './admin/admin.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -64,6 +66,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     SearchModule,
     AnalyticsModule,
     RagBenchmarkModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [
@@ -71,6 +74,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestUserContextInterceptor,
     },
   ],
 })

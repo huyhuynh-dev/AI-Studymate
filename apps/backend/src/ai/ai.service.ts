@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   embedMany,
   generateText,
@@ -16,6 +16,13 @@ import {
   type FeatureOutputMap,
   type StructuredFeatureKey,
 } from './schemas/index.js';
+import {
+  AiTelemetryService,
+  estimateTokensFromChars,
+  extractNormalizedUsage,
+  resolveModelName,
+  type RawAiUsageLike,
+} from './telemetry/ai-telemetry.service.js';
 
 export type RerankDocumentInput = NonNullable<
   Parameters<typeof rerank>[0]['documents']
@@ -35,7 +42,12 @@ export class AiService {
   constructor(
     private readonly aiModelFactory: AiModelFactory,
     private readonly promptRegistry: PromptRegistryService,
+    @Optional() private readonly aiTelemetry?: AiTelemetryService,
   ) {}
+
+  getTelemetryService(): AiTelemetryService | undefined {
+    return this.aiTelemetry;
+  }
 
   /**
    * Chuẩn bị đầy đủ Model, Config và Prompt đã render cho 1 tính năng
@@ -114,27 +126,63 @@ export class AiService {
     const targetSchemaDesc =
       options?.schemaDescription ?? preparedObj.schemaDescription;
 
-    const result = await generateText({
-      model: preparedObj.model,
-      output: Output.object({
-        schema: targetSchema,
-        ...(targetSchemaName ? { name: targetSchemaName } : {}),
-        ...(targetSchemaDesc ? { description: targetSchemaDesc } : {}),
-      }),
-      ...(options?.messages
-        ? { messages: options.messages }
-        : { prompt: preparedObj.prompt }),
-      system: preparedObj.system,
-      temperature: options?.temperature ?? preparedObj.temperature,
-      maxRetries: options?.maxRetries ?? preparedObj.maxRetries,
-      ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {}),
-    });
+    const startedAt = Date.now();
+    const profile = FEATURE_MAP[feature].profile;
+    const modelName = options?.modelName ?? resolveModelName(preparedObj.model, profile);
 
-    return {
-      object: result.output as [TOutput] extends [never]
-        ? FeatureOutputMap[K]
-        : TOutput,
-    };
+    try {
+      const result = await generateText({
+        model: preparedObj.model,
+        output: Output.object({
+          schema: targetSchema,
+          ...(targetSchemaName ? { name: targetSchemaName } : {}),
+          ...(targetSchemaDesc ? { description: targetSchemaDesc } : {}),
+        }),
+        ...(options?.messages
+          ? { messages: options.messages }
+          : { prompt: preparedObj.prompt }),
+        system: preparedObj.system,
+        temperature: options?.temperature ?? preparedObj.temperature,
+        maxRetries: options?.maxRetries ?? preparedObj.maxRetries,
+        ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {}),
+      });
+
+      const usage = extractNormalizedUsage(
+        result.usage as RawAiUsageLike | undefined,
+        preparedObj.system.length + preparedObj.prompt.length,
+        JSON.stringify(result.output ?? '').length,
+      );
+      this.aiTelemetry?.recordUsage({
+        featureKey: feature,
+        profile,
+        modelName,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        totalTokens: usage.totalTokens,
+        latencyMs: Date.now() - startedAt,
+        status: 'success',
+      });
+
+      return {
+        object: result.output as [TOutput] extends [never]
+          ? FeatureOutputMap[K]
+          : TOutput,
+      };
+    } catch (error: unknown) {
+      this.aiTelemetry?.recordUsage({
+        featureKey: feature,
+        profile,
+        modelName,
+        promptTokens: estimateTokensFromChars(
+          preparedObj.system.length + preparedObj.prompt.length,
+        ),
+        completionTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 
   /**
@@ -149,26 +197,100 @@ export class AiService {
     },
   ) {
     const prepared = this.prepare(feature, payload, options?.modelName);
+    const startedAt = Date.now();
+    const profile = FEATURE_MAP[feature].profile;
+    const modelName = options?.modelName ?? resolveModelName(prepared.model, profile);
 
-    return generateText({
-      model: prepared.model,
-      prompt: prepared.prompt,
-      system: prepared.system,
-      temperature: options?.temperature ?? prepared.temperature,
-      providerOptions: prepared.providerOptions as any,
-    });
+    try {
+      const result = await generateText({
+        model: prepared.model,
+        prompt: prepared.prompt,
+        system: prepared.system,
+        temperature: options?.temperature ?? prepared.temperature,
+        providerOptions: prepared.providerOptions as any,
+      });
+
+      const usage = extractNormalizedUsage(
+        result.usage as RawAiUsageLike | undefined,
+        prepared.system.length + prepared.prompt.length,
+        result.text?.length ?? 0,
+      );
+      this.aiTelemetry?.recordUsage({
+        featureKey: feature,
+        profile,
+        modelName,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        totalTokens: usage.totalTokens,
+        latencyMs: Date.now() - startedAt,
+        status: 'success',
+      });
+
+      return result;
+    } catch (error: unknown) {
+      this.aiTelemetry?.recordUsage({
+        featureKey: feature,
+        profile,
+        modelName,
+        promptTokens: estimateTokensFromChars(
+          prepared.system.length + prepared.prompt.length,
+        ),
+        completionTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 
-  embedMany(values: string[]) {
-    return embedMany({
-      model: this.aiModelFactory.getEmbeddingModel(),
-      values,
-      providerOptions: {
-        google: {
-          outputDimensionality: 768,
+  async embedMany(values: string[]) {
+    const startedAt = Date.now();
+    const model = this.aiModelFactory.getEmbeddingModel();
+    const modelName = resolveModelName(model, 'nomic-embed-text-v2-moe');
+    const totalChars = values.reduce((acc, v) => acc + v.length, 0);
+
+    try {
+      const result = await embedMany({
+        model,
+        values,
+        providerOptions: {
+          google: {
+            outputDimensionality: 768,
+          },
         },
-      },
-    });
+      });
+
+      const usage = extractNormalizedUsage(
+        result.usage as RawAiUsageLike | undefined,
+        totalChars,
+        0,
+      );
+      this.aiTelemetry?.recordUsage({
+        featureKey: 'DOCUMENT_EMBEDDING',
+        profile: 'EMBEDDING',
+        modelName,
+        promptTokens: usage.promptTokens,
+        completionTokens: 0,
+        totalTokens: usage.promptTokens,
+        latencyMs: Date.now() - startedAt,
+        status: 'success',
+      });
+
+      return result;
+    } catch (error: unknown) {
+      this.aiTelemetry?.recordUsage({
+        featureKey: 'DOCUMENT_EMBEDDING',
+        profile: 'EMBEDDING',
+        modelName,
+        promptTokens: estimateTokensFromChars(totalChars),
+        completionTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 
   /**
@@ -179,18 +301,55 @@ export class AiService {
   ) {
     const config = FEATURE_MAP.DOCUMENT_RERANK;
     const model = this.aiModelFactory.getRerankingModel();
+    const startedAt = Date.now();
+    const modelName = resolveModelName(model, 'bge-reranker-v2-m3');
+    const estimatedInputChars =
+      params.query.length +
+      params.documents.reduce(
+        (acc, doc) =>
+          acc + (typeof doc === 'string' ? doc.length : JSON.stringify(doc).length),
+        0,
+      );
 
-    return rerank({
-      model,
-      query: params.query,
-      documents: params.documents,
-      ...(params.topN !== undefined ? { topN: params.topN } : {}),
-      maxRetries: config.maxRetries ?? 1,
-      abortSignal: params.abortSignal,
-      ...(config.providerOptions
-        ? { providerOptions: config.providerOptions as any }
-        : {}),
-    });
+    try {
+      const result = await rerank({
+        model,
+        query: params.query,
+        documents: params.documents,
+        ...(params.topN !== undefined ? { topN: params.topN } : {}),
+        maxRetries: config.maxRetries ?? 1,
+        abortSignal: params.abortSignal,
+        ...(config.providerOptions
+          ? { providerOptions: config.providerOptions as any }
+          : {}),
+      });
+
+      const promptTokens = estimateTokensFromChars(estimatedInputChars);
+      this.aiTelemetry?.recordUsage({
+        featureKey: 'DOCUMENT_RERANK',
+        profile: 'RERANK',
+        modelName,
+        promptTokens,
+        completionTokens: 0,
+        totalTokens: promptTokens,
+        latencyMs: Date.now() - startedAt,
+        status: 'success',
+      });
+
+      return result;
+    } catch (error: unknown) {
+      this.aiTelemetry?.recordUsage({
+        featureKey: 'DOCUMENT_RERANK',
+        profile: 'RERANK',
+        modelName,
+        promptTokens: estimateTokensFromChars(estimatedInputChars),
+        completionTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 
   generateText(

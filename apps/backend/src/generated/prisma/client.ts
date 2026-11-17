@@ -121,3 +121,8 @@ export type Message = Prisma.MessageModel
  * 
  */
 export type Summary = Prisma.SummaryModel
+/**
+ * Model AiUsageLog
+ * 
+ */
+export type AiUsageLog = Prisma.AiUsageLogModel

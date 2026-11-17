@@ -253,6 +253,7 @@ export type UserWhereInput = {
   flashcard_reviews?: Prisma.FlashcardReviewListRelationFilter
   quizzes?: Prisma.QuizListRelationFilter
   quiz_attempts?: Prisma.QuizAttemptListRelationFilter
+  ai_usage_logs?: Prisma.AiUsageLogListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -276,6 +277,7 @@ export type UserOrderByWithRelationInput = {
   flashcard_reviews?: Prisma.FlashcardReviewOrderByRelationAggregateInput
   quizzes?: Prisma.QuizOrderByRelationAggregateInput
   quiz_attempts?: Prisma.QuizAttemptOrderByRelationAggregateInput
+  ai_usage_logs?: Prisma.AiUsageLogOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -302,6 +304,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   flashcard_reviews?: Prisma.FlashcardReviewListRelationFilter
   quizzes?: Prisma.QuizListRelationFilter
   quiz_attempts?: Prisma.QuizAttemptListRelationFilter
+  ai_usage_logs?: Prisma.AiUsageLogListRelationFilter
 }, "id" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -363,6 +366,7 @@ export type UserCreateInput = {
   flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -386,6 +390,7 @@ export type UserUncheckedCreateInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -409,6 +414,7 @@ export type UserUpdateInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -432,6 +438,7 @@ export type UserUncheckedUpdateInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -533,6 +540,11 @@ export type UserMinOrderByAggregateInput = {
 export type UserScalarRelationFilter = {
   is?: Prisma.UserWhereInput
   isNot?: Prisma.UserWhereInput
+}
+
+export type UserNullableScalarRelationFilter = {
+  is?: Prisma.UserWhereInput | null
+  isNot?: Prisma.UserWhereInput | null
 }
 
 export type StringFieldUpdateOperationsInput = {
@@ -649,6 +661,22 @@ export type UserUpdateOneRequiredWithoutDocumentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutDocumentsInput, Prisma.UserUpdateWithoutDocumentsInput>, Prisma.UserUncheckedUpdateWithoutDocumentsInput>
 }
 
+export type UserCreateNestedOneWithoutAi_usage_logsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAi_usage_logsInput, Prisma.UserUncheckedCreateWithoutAi_usage_logsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAi_usage_logsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutAi_usage_logsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAi_usage_logsInput, Prisma.UserUncheckedCreateWithoutAi_usage_logsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAi_usage_logsInput
+  upsert?: Prisma.UserUpsertWithoutAi_usage_logsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAi_usage_logsInput, Prisma.UserUpdateWithoutAi_usage_logsInput>, Prisma.UserUncheckedUpdateWithoutAi_usage_logsInput>
+}
+
 export type UserCreateWithoutSubjectsInput = {
   id?: string
   email: string
@@ -669,6 +697,7 @@ export type UserCreateWithoutSubjectsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSubjectsInput = {
@@ -691,6 +720,7 @@ export type UserUncheckedCreateWithoutSubjectsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSubjectsInput = {
@@ -729,6 +759,7 @@ export type UserUpdateWithoutSubjectsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSubjectsInput = {
@@ -751,6 +782,7 @@ export type UserUncheckedUpdateWithoutSubjectsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutConversationsInput = {
@@ -773,6 +805,7 @@ export type UserCreateWithoutConversationsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutConversationsInput = {
@@ -795,6 +828,7 @@ export type UserUncheckedCreateWithoutConversationsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutConversationsInput = {
@@ -833,6 +867,7 @@ export type UserUpdateWithoutConversationsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutConversationsInput = {
@@ -855,6 +890,7 @@ export type UserUncheckedUpdateWithoutConversationsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutFlashcard_decksInput = {
@@ -877,6 +913,7 @@ export type UserCreateWithoutFlashcard_decksInput = {
   flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFlashcard_decksInput = {
@@ -899,6 +936,7 @@ export type UserUncheckedCreateWithoutFlashcard_decksInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFlashcard_decksInput = {
@@ -937,6 +975,7 @@ export type UserUpdateWithoutFlashcard_decksInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFlashcard_decksInput = {
@@ -959,6 +998,7 @@ export type UserUncheckedUpdateWithoutFlashcard_decksInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutFlashcard_reviewsInput = {
@@ -981,6 +1021,7 @@ export type UserCreateWithoutFlashcard_reviewsInput = {
   flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFlashcard_reviewsInput = {
@@ -1003,6 +1044,7 @@ export type UserUncheckedCreateWithoutFlashcard_reviewsInput = {
   flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFlashcard_reviewsInput = {
@@ -1041,6 +1083,7 @@ export type UserUpdateWithoutFlashcard_reviewsInput = {
   flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFlashcard_reviewsInput = {
@@ -1063,6 +1106,7 @@ export type UserUncheckedUpdateWithoutFlashcard_reviewsInput = {
   flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutQuizzesInput = {
@@ -1085,6 +1129,7 @@ export type UserCreateWithoutQuizzesInput = {
   flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
   flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutQuizzesInput = {
@@ -1107,6 +1152,7 @@ export type UserUncheckedCreateWithoutQuizzesInput = {
   flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutQuizzesInput = {
@@ -1145,6 +1191,7 @@ export type UserUpdateWithoutQuizzesInput = {
   flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
   flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutQuizzesInput = {
@@ -1167,6 +1214,7 @@ export type UserUncheckedUpdateWithoutQuizzesInput = {
   flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutQuiz_attemptsInput = {
@@ -1189,6 +1237,7 @@ export type UserCreateWithoutQuiz_attemptsInput = {
   flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
   flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutQuiz_attemptsInput = {
@@ -1211,6 +1260,7 @@ export type UserUncheckedCreateWithoutQuiz_attemptsInput = {
   flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutQuiz_attemptsInput = {
@@ -1249,6 +1299,7 @@ export type UserUpdateWithoutQuiz_attemptsInput = {
   flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
   flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutQuiz_attemptsInput = {
@@ -1271,6 +1322,7 @@ export type UserUncheckedUpdateWithoutQuiz_attemptsInput = {
   flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutDocumentsInput = {
@@ -1293,6 +1345,7 @@ export type UserCreateWithoutDocumentsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutDocumentsInput = {
@@ -1315,6 +1368,7 @@ export type UserUncheckedCreateWithoutDocumentsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutDocumentsInput = {
@@ -1353,6 +1407,7 @@ export type UserUpdateWithoutDocumentsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutDocumentsInput = {
@@ -1375,6 +1430,115 @@ export type UserUncheckedUpdateWithoutDocumentsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutAi_usage_logsInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutAi_usage_logsInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutAi_usage_logsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAi_usage_logsInput, Prisma.UserUncheckedCreateWithoutAi_usage_logsInput>
+}
+
+export type UserUpsertWithoutAi_usage_logsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAi_usage_logsInput, Prisma.UserUncheckedUpdateWithoutAi_usage_logsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAi_usage_logsInput, Prisma.UserUncheckedCreateWithoutAi_usage_logsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAi_usage_logsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAi_usage_logsInput, Prisma.UserUncheckedUpdateWithoutAi_usage_logsInput>
+}
+
+export type UserUpdateWithoutAi_usage_logsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAi_usage_logsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -1390,6 +1554,7 @@ export type UserCountOutputType = {
   flashcard_reviews: number
   quizzes: number
   quiz_attempts: number
+  ai_usage_logs: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1400,6 +1565,7 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   flashcard_reviews?: boolean | UserCountOutputTypeCountFlashcard_reviewsArgs
   quizzes?: boolean | UserCountOutputTypeCountQuizzesArgs
   quiz_attempts?: boolean | UserCountOutputTypeCountQuiz_attemptsArgs
+  ai_usage_logs?: boolean | UserCountOutputTypeCountAi_usage_logsArgs
 }
 
 /**
@@ -1461,6 +1627,13 @@ export type UserCountOutputTypeCountQuiz_attemptsArgs<ExtArgs extends runtime.Ty
   where?: Prisma.QuizAttemptWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAi_usage_logsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AiUsageLogWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1483,6 +1656,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   flashcard_reviews?: boolean | Prisma.User$flashcard_reviewsArgs<ExtArgs>
   quizzes?: boolean | Prisma.User$quizzesArgs<ExtArgs>
   quiz_attempts?: boolean | Prisma.User$quiz_attemptsArgs<ExtArgs>
+  ai_usage_logs?: boolean | Prisma.User$ai_usage_logsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -1543,6 +1717,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   flashcard_reviews?: boolean | Prisma.User$flashcard_reviewsArgs<ExtArgs>
   quizzes?: boolean | Prisma.User$quizzesArgs<ExtArgs>
   quiz_attempts?: boolean | Prisma.User$quiz_attemptsArgs<ExtArgs>
+  ai_usage_logs?: boolean | Prisma.User$ai_usage_logsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -1558,6 +1733,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     flashcard_reviews: Prisma.$FlashcardReviewPayload<ExtArgs>[]
     quizzes: Prisma.$QuizPayload<ExtArgs>[]
     quiz_attempts: Prisma.$QuizAttemptPayload<ExtArgs>[]
+    ai_usage_logs: Prisma.$AiUsageLogPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1974,6 +2150,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   flashcard_reviews<T extends Prisma.User$flashcard_reviewsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$flashcard_reviewsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FlashcardReviewPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   quizzes<T extends Prisma.User$quizzesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$quizzesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$QuizPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   quiz_attempts<T extends Prisma.User$quiz_attemptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$quiz_attemptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$QuizAttemptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  ai_usage_logs<T extends Prisma.User$ai_usage_logsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ai_usage_logsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AiUsageLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2574,6 +2751,30 @@ export type User$quiz_attemptsArgs<ExtArgs extends runtime.Types.Extensions.Inte
   take?: number
   skip?: number
   distinct?: Prisma.QuizAttemptScalarFieldEnum | Prisma.QuizAttemptScalarFieldEnum[]
+}
+
+/**
+ * User.ai_usage_logs
+ */
+export type User$ai_usage_logsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AiUsageLog
+   */
+  select?: Prisma.AiUsageLogSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AiUsageLog
+   */
+  omit?: Prisma.AiUsageLogOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AiUsageLogInclude<ExtArgs> | null
+  where?: Prisma.AiUsageLogWhereInput
+  orderBy?: Prisma.AiUsageLogOrderByWithRelationInput | Prisma.AiUsageLogOrderByWithRelationInput[]
+  cursor?: Prisma.AiUsageLogWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AiUsageLogScalarFieldEnum | Prisma.AiUsageLogScalarFieldEnum[]
 }
 
 /**

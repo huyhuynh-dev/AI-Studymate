@@ -66,7 +66,8 @@ export const ModelName = {
   DocumentAsset: 'DocumentAsset',
   ChatSession: 'ChatSession',
   Message: 'Message',
-  Summary: 'Summary'
+  Summary: 'Summary',
+  AiUsageLog: 'AiUsageLog'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -344,6 +345,25 @@ export const SummaryScalarFieldEnum = {
 } as const
 
 export type SummaryScalarFieldEnum = (typeof SummaryScalarFieldEnum)[keyof typeof SummaryScalarFieldEnum]
+
+
+export const AiUsageLogScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  feature_key: 'feature_key',
+  profile: 'profile',
+  model_name: 'model_name',
+  prompt_tokens: 'prompt_tokens',
+  completion_tokens: 'completion_tokens',
+  total_tokens: 'total_tokens',
+  estimated_cost_usd: 'estimated_cost_usd',
+  latency_ms: 'latency_ms',
+  status: 'status',
+  error_message: 'error_message',
+  created_at: 'created_at'
+} as const
+
+export type AiUsageLogScalarFieldEnum = (typeof AiUsageLogScalarFieldEnum)[keyof typeof AiUsageLogScalarFieldEnum]
 
 
 export const SortOrder = {

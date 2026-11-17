@@ -90,6 +90,7 @@ model User {
   flashcard_reviews FlashcardReview[]
   quizzes           Quiz[]
   quiz_attempts     QuizAttempt[]
+  ai_usage_logs     AiUsageLog[]
 
   @@map("users")
 }
@@ -409,4 +410,27 @@ model Summary {
   @@index([conversation_id])
   @@index([document_id])
   @@map("summaries")
+}
+
+model AiUsageLog {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String?  @db.Uuid
+  feature_key        String   @db.VarChar(60)
+  profile            String   @db.VarChar(30)
+  model_name         String   @db.VarChar(120)
+  prompt_tokens      Int      @default(0)
+  completion_tokens  Int      @default(0)
+  total_tokens       Int      @default(0)
+  estimated_cost_usd Float    @default(0) @db.DoublePrecision
+  latency_ms         Int      @default(0)
+  status             String   @default("success") @db.VarChar(20)
+  error_message      String?  @db.Text
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([created_at(sort: Desc)], map: "idx_ai_usage_logs_created_at")
+  @@index([feature_key, created_at(sort: Desc)], map: "idx_ai_usage_logs_feature_date")
+  @@index([user_id, created_at(sort: Desc)], map: "idx_ai_usage_logs_user_date")
+  @@map("ai_usage_logs")
 }

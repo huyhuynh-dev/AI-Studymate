@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
 import { Job, Worker } from 'bullmq';
 import { Prisma } from '../../generated/prisma/client.js';
+import { RequestContextStore } from '../../common/context/request-context.js';
 import type { Document, DocumentAsset } from '../../generated/prisma/client.js';
 import { StorageService } from '../../storage/storage.service.js';
 import { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.service.js';
@@ -156,6 +157,17 @@ export class DocumentIngestionProcessor
     }
 
     this.activeDocumentIds.add(documentId);
+    return RequestContextStore.runWithUserContext(doc.user_id, async () => {
+      await this.executeIngestionPipeline(job, doc, fileName);
+    });
+  }
+
+  private async executeIngestionPipeline(
+    job: Job<DocumentJobData>,
+    doc: NonNullable<Awaited<ReturnType<DocumentsRepoService['findRawDocumentById']>>>,
+    fileName?: string,
+  ): Promise<void> {
+    const { documentId, mimeType, storageKey } = job.data;
     const effectiveFileName = fileName || doc.file_name || 'document';
     this.logger.log(
       `Bắt đầu pipeline xử lý tài liệu [${documentId}] (MIME: ${mimeType}, File: ${effectiveFileName})`,
