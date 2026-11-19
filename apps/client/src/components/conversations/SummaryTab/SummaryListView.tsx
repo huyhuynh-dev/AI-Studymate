@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from "react";
 import {
-  Sparkles,
   Plus,
   Search,
   Clock,
@@ -15,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { SummaryItem } from "@/types";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import DeleteSummaryModal from "./DeleteSummaryModal";
 
 interface SummaryListViewProps {
@@ -218,7 +218,7 @@ export default function SummaryListView({
                     {/* Top row: Icon + Menu 3 chấm */}
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-[14px] bg-indigo-50 dark:bg-indigo-950/50 text-[#4F46E5] dark:text-[#818CF8] transition-colors group-hover:bg-[#4F46E5] group-hover:text-white">
-                        <Sparkles className="h-4.5 w-4.5" />
+                        <StudyMateAiIcon variant="simple" className="h-4.5 w-4.5" />
                       </div>
 
                       {/* Dropdown Menu CRUD */}

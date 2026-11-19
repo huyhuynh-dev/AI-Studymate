@@ -1,4 +1,5 @@
-import { Sparkles, Zap } from "lucide-react";
+import { Zap } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { GLASS, SQUIRCLE } from "../ui";
 
 /** Cụm thẻ chồng nghiêng + nhãn "SRS x3" + biểu tượng AI chuẩn Apple HIG */
@@ -24,9 +25,10 @@ export function DeckStackIllustration() {
       <span className="tabular-nums absolute -top-1 right-0 inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-300 shadow-2xs">
         <Zap className="h-3 w-3 fill-current" /> SRS x3
       </span>
-      <span className="absolute -bottom-1 left-2 flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-tr from-[#6366F1] to-[#7C3AED] text-white shadow-md shadow-indigo-500/25">
-        <Sparkles className="h-4.5 w-4.5 fill-white" />
-      </span>
+      <StudyMateAiIcon
+        variant="full"
+        className="absolute -bottom-1 left-2 h-9 w-9 drop-shadow-md"
+      />
     </div>
   );
 }

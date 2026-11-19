@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Brain } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 
 export default function SummarySkeleton() {
   return (
@@ -12,13 +12,10 @@ export default function SummarySkeleton() {
           {/* Outer Pulsing Glow */}
           <div className="absolute -inset-2 rounded-3xl bg-gradient-to-r from-indigo-500/30 to-purple-600/30 blur-lg animate-pulse" />
 
-          {/* Squircle Badge */}
-          <div className="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-[22px] bg-gradient-to-tr from-[#4F46E5] to-[#7C3AED] shadow-lg shadow-indigo-500/25 border border-white/20">
-            <Brain className="h-8 w-8 sm:h-9 sm:w-9 text-white animate-bounce" />
-            <div className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white dark:bg-[#161922] shadow-xs border border-black/[0.06] dark:border-white/[0.1]">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 fill-indigo-600 dark:fill-indigo-400 animate-spin" />
-            </div>
-          </div>
+          <StudyMateAiIcon
+            variant="full"
+            className="relative h-16 w-16 sm:h-20 sm:w-20 animate-pulse"
+          />
         </div>
 
         <h3 className="text-base sm:text-lg font-bold tracking-tight text-neutral-900 dark:text-neutral-100">

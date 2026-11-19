@@ -1,6 +1,7 @@
 "use client";
 
-import { Layers, ListChecks, Plus, Sparkles, Upload } from "lucide-react";
+import { Layers, ListChecks, Plus, Upload } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import type { QuizSource } from "../types";
 import { Button } from "../ui/primitives";
 
@@ -32,7 +33,7 @@ export function QuizEmptyState({ onCreate, hasDocuments = true, hasDecks = false
             Tải lên tài liệu
           </Button>
         ) : (
-          <Button variant="primary" size="lg" className="rounded-full!" icon={<Sparkles className="h-4 w-4" />} onClick={() => onCreate("ai")}>
+          <Button variant="primary" size="lg" className="rounded-full!" icon={<StudyMateAiIcon variant="simple" className="h-4 w-4" />} onClick={() => onCreate("ai")}>
             Tạo đề bằng AI
           </Button>
         )}

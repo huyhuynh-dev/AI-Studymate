@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import {
   X,
-  Sparkles,
   Files,
   FileText,
   Scissors,
@@ -13,6 +12,7 @@ import {
   ListOrdered,
   ChevronDown,
 } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import {
   DocumentItem,
   SummaryScope,
@@ -85,9 +85,7 @@ export default function SummaryConfigModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] px-6 py-4.5 bg-neutral-50/50 dark:bg-white/[0.02]">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-tr from-[#4F46E5] to-[#7C3AED] text-white shadow-md shadow-indigo-500/20">
-              <Sparkles className="h-5 w-5" />
-            </div>
+            <StudyMateAiIcon variant="full" className="h-10 w-10 shrink-0" />
             <div>
               <h2 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-neutral-100 leading-tight">
                 Thiết lập Tóm tắt Tài liệu AI
@@ -398,7 +396,7 @@ export default function SummaryConfigModal({
             disabled={isSubmitting}
             className="inline-flex items-center gap-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] px-5 py-2 text-xs sm:text-sm font-semibold text-white shadow-md shadow-indigo-500/25 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
           >
-            <Sparkles className="h-4 w-4" />
+            <StudyMateAiIcon variant="simple" className="h-4 w-4" />
             <span>{isSubmitting ? "Đang chuẩn bị..." : "Bắt đầu tóm tắt"}</span>
           </button>
         </div>

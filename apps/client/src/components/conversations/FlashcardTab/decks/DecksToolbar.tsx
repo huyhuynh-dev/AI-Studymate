@@ -1,4 +1,5 @@
-import { Plus, Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { Button, cx, FONT_HEADING, SearchInput } from "../ui";
 
 interface Props {
@@ -23,7 +24,7 @@ export function DecksToolbar({ count, query, onQuery, onCreateAi, onCreate }: Pr
 
       <div className="flex flex-wrap items-center gap-2.5">
         <SearchInput className="w-48 sm:w-56" value={query} onChange={onQuery} placeholder="Tìm bộ thẻ…" />
-        <Button icon={<Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />} onClick={onCreateAi}>
+        <Button icon={<StudyMateAiIcon variant="simple" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />} onClick={onCreateAi}>
           <span className="hidden sm:inline">Tạo bằng AI</span>
           <span className="sm:hidden">AI</span>
         </Button>

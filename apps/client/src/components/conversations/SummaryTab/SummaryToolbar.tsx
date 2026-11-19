@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Check,
   Loader2,
-  Sparkles,
   MoreVertical,
   Trash2,
   Edit2,
@@ -21,6 +20,7 @@ import {
 } from "lucide-react";
 import { SummaryItem } from "@/types";
 import { AutoSaveStatus } from "@/hooks/useSummaries";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import DeleteSummaryModal from "./DeleteSummaryModal";
 
 interface SummaryToolbarProps {
@@ -135,7 +135,10 @@ export default function SummaryToolbar({
             title="Nhấn để đổi bản tóm tắt khác"
             className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.03] px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold font-heading text-neutral-800 dark:text-neutral-200 shadow-2xs hover:bg-black/[0.05] dark:hover:bg-white/[0.06] hover:border-indigo-300 dark:hover:border-indigo-700 active:scale-98 transition-all cursor-pointer max-w-[150px] xs:max-w-[190px] sm:max-w-[260px] md:max-w-[320px]"
           >
-            <Sparkles className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
+            <StudyMateAiIcon
+              variant="simple"
+              className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400"
+            />
             <span className="truncate">
               {activeSummary ? activeSummary.title : "Chọn bản tóm tắt"}
             </span>

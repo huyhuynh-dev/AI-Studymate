@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, FolderPlus, BookOpen, Brain, Sparkles } from "lucide-react";
+import { Plus, FolderPlus, BookOpen, Brain } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { useRouter } from "next/navigation";
 import { useSubjects } from "@/hooks/useSubjects";
 import CreateWorkspaceModal from "./CreateWorkspaceModal";
@@ -96,7 +97,7 @@ export default function WelcomeComponent({
             <span>Flashcard thông minh</span>
           </span>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F8F9FF] dark:bg-white/[0.04] border border-[#E5EEFF] dark:border-white/[0.08] text-[11px] font-medium text-[#464555] dark:text-[#9DA3AF]">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" strokeWidth={1.8} />
+            <StudyMateAiIcon variant="simple" className="h-3.5 w-3.5 text-amber-500" />
             <span>Trợ lý AI hỏi đáp</span>
           </span>
         </div>

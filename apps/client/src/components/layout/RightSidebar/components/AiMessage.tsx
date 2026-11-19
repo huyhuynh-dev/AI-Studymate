@@ -5,7 +5,6 @@ import {
   AlertCircle,
   ArrowUpRight,
   BookOpen,
-  Bot,
   Brain,
   CheckCircle2,
   ChevronDown,
@@ -19,8 +18,8 @@ import {
   Loader2,
   Search,
   Send,
-  Sparkles,
 } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { ASSISTANT_NAME } from "../constants";
 import type { ChatMessage } from "../types";
 import { MarkdownRenderer } from "./MarkdownRenderer";
@@ -418,9 +417,7 @@ export const AiMessage = React.memo(function AiMessage({
     <div className="space-y-2 select-text">
       {/* Tên trợ lý */}
       <div className="flex items-center gap-2 select-none">
-        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#EEF2FF] dark:bg-[#4F46E5]/20 text-[#4F46E5] dark:text-[#818CF8] shadow-2xs">
-          <Bot className="h-3.5 w-3.5 stroke-[2]" />
-        </span>
+        <StudyMateAiIcon variant="full" className="h-6 w-6 shrink-0" />
         <span className="text-xs font-bold text-[#0B1C30] dark:text-[#EFF0F6]">
           {ASSISTANT_NAME}
         </span>
@@ -1283,7 +1280,7 @@ export const AiMessage = React.memo(function AiMessage({
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#4F46E5] text-white shadow-xs transition-transform group-hover:scale-105">
-                        <Sparkles className="h-4 w-4" />
+                        <StudyMateAiIcon variant="simple" className="h-4.5 w-4.5" />
                       </span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">

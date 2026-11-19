@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import {
-  Sparkles,
   BookOpen,
   FileUp,
   AlertCircle,
   X,
 } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { DocumentItem, CreateSummaryRequest } from "@/types";
 import { useSummaries } from "@/hooks/useSummaries";
 import { useFocusMode } from "@/components/layout";
@@ -355,7 +355,7 @@ export default function SummaryTab({
           disabled={!hasReadyDocuments}
           className="mt-6 inline-flex h-10 items-center gap-2 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] px-5 text-[13px] font-semibold text-white shadow-xs shadow-indigo-500/20 transition-all duration-200 active:scale-[0.97] cursor-pointer disabled:pointer-events-none disabled:opacity-40"
         >
-          <Sparkles className="h-4 w-4" />
+          <StudyMateAiIcon variant="simple" className="h-4 w-4" />
           <span>Tạo bản tóm tắt</span>
         </button>
 

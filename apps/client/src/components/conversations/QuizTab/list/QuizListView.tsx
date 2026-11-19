@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Layers, PenLine, Plus, Search, Sparkles, Target, TriangleAlert } from "lucide-react";
+import { Layers, PenLine, Plus, Search, Target, TriangleAlert } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import type { Quiz, QuizAttempt, QuizCreateMode, WeakAreasSummary } from "../types";
 import { Button, Menu } from "../ui/primitives";
 import { QuizCard } from "./QuizCard";
@@ -60,7 +61,7 @@ export function QuizListView({ quizzes, attempts, weakSummary, loading, error, o
             width={280}
             button={(p) => <Button variant="primary" icon={<Plus className="h-4 w-4" />} {...p}>Tạo đề mới</Button>}
             items={[
-              { key: "ai", label: "Từ tài liệu bằng AI", description: "AI đọc tài liệu và soạn đề cho bạn", icon: <Sparkles className="h-4 w-4 text-[var(--qz-ai)]" />, onSelect: () => onCreate("ai") },
+              { key: "ai", label: "Từ tài liệu bằng AI", description: "AI đọc tài liệu và soạn đề cho bạn", icon: <StudyMateAiIcon variant="simple" className="h-4 w-4 text-[var(--qz-ai)]" />, onSelect: () => onCreate("ai") },
               {
                 key: "targeted",
                 label: "Ôn tập bù lỗ hổng",
@@ -91,7 +92,7 @@ export function QuizListView({ quizzes, attempts, weakSummary, loading, error, o
               </p>
             </div>
           </div>
-          <Button variant="tinted" size="sm" className="shrink-0" icon={<Sparkles className="h-3.5 w-3.5" />} onClick={() => onCreate("targeted")}>
+          <Button variant="tinted" size="sm" className="shrink-0" icon={<StudyMateAiIcon variant="simple" className="h-3.5 w-3.5" />} onClick={() => onCreate("targeted")}>
             Tạo đề đặc trị
           </Button>
         </div>
