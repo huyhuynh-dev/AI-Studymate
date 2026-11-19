@@ -1275,7 +1275,7 @@ export const AiMessage = React.memo(function AiMessage({
                     key={index}
                     type="button"
                     onClick={handleBadgeClick}
-                    title={`Nhấn để mở "${summaryTitle}" trong Tab Tóm tắt`}
+                    title={`Nhấn để mở "${summaryTitle}" trong Tab Ghi chú`}
                     className="group my-2 flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/40 bg-gradient-to-r from-[#EEF2FF] via-white to-[#EEF2FF] dark:from-[#4F46E5]/20 dark:via-[#161922] dark:to-[#4F46E5]/10 p-3.5 text-left shadow-xs transition-all hover:border-[#4F46E5] hover:shadow-md active:scale-[0.99]"
                   >
                     <div className="flex min-w-0 items-center gap-3">

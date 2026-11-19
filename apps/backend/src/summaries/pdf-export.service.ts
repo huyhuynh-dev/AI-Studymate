@@ -322,9 +322,9 @@ export class PdfExportService {
 <body>
   <div class="header-card">
     <div>
-      <span class="brand-tag">✨ AI StudyMate • Tóm tắt Thông minh</span>
+      <span class="brand-tag">✨ AI StudyMate • Ghi chú Học tập</span>
       <h1 class="doc-title">${this.escapeHtml(title)}</h1>
-      <div class="meta-info">Xuất bản: ${dateStr} • Được tạo tự động bởi AI StudyMate</div>
+      <div class="meta-info">Xuất bản: ${dateStr} • Xuất từ AI StudyMate</div>
     </div>
   </div>
 
@@ -334,7 +334,7 @@ export class PdfExportService {
 
   <div class="footer">
     <span>AI StudyMate Platform</span>
-    <span>Trang tài liệu học tập tóm tắt</span>
+    <span>Trang ghi chú học tập</span>
   </div>
 </body>
 </html>`;

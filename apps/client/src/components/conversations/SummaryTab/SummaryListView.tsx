@@ -10,70 +10,41 @@ import {
   Trash2,
   FileDown,
   ArrowRight,
-  BookOpen,
+  NotebookPen,
+  Loader2,
   X,
 } from "lucide-react";
-import { SummaryItem } from "@/types";
+import type { SummaryItem } from "@/types";
 import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import DeleteSummaryModal from "./DeleteSummaryModal";
+import { extractNotePreviewText, getNoteDisplayTitle } from "./noteHelpers";
 
 interface SummaryListViewProps {
   summaries: SummaryItem[];
   onSelectSummary: (summaryId: string) => void;
-  onCreateNew: () => void;
+  onCreateManual: () => void;
+  onCreateAi: () => void;
   onRenameSummary: (summaryId: string, newTitle: string) => void;
   onDeleteSummary: (summaryId: string) => void;
   onExportPdf?: (summaryId: string) => void;
+  isCreatingNote?: boolean;
   isExportingPdf?: boolean;
-}
-
-/**
- * Trích xuất đoạn text ngắn từ BlockNote JSON để làm preview
- */
-function extractPreviewText(contentJson: unknown[]): string {
-  if (!Array.isArray(contentJson) || contentJson.length === 0) {
-    return "Bản tóm tắt học tập được xây dựng bởi AI StudyMate.";
-  }
-
-  const parts: string[] = [];
-
-  for (const block of contentJson) {
-    if (!block || typeof block !== "object") continue;
-    const b = block as Record<string, unknown>;
-
-    if (Array.isArray(b.content)) {
-      for (const item of b.content) {
-        if (typeof item === "string" && item.trim()) {
-          parts.push(item.trim());
-        } else if (item && typeof item === "object") {
-          const textObj = item as Record<string, unknown>;
-          if (typeof textObj.text === "string" && textObj.text.trim()) {
-            parts.push(textObj.text.trim());
-          }
-        }
-      }
-    } else if (typeof b.content === "string" && b.content.trim()) {
-      parts.push(b.content.trim());
-    }
-
-    if (parts.join(" ").length >= 160) {
-      break;
-    }
-  }
-
-  const fullText = parts.join(" ").trim();
-  if (!fullText) return "Bản tóm tắt học tập được xây dựng bởi AI StudyMate.";
-  return fullText.length > 160 ? `${fullText.slice(0, 157)}...` : fullText;
+  hasDocuments?: boolean;
+  hasReadyDocuments?: boolean;
 }
 
 export default function SummaryListView({
   summaries,
   onSelectSummary,
-  onCreateNew,
+  onCreateManual,
+  onCreateAi,
   onRenameSummary,
   onDeleteSummary,
   onExportPdf,
-  isExportingPdf,
+  isCreatingNote = false,
+  isExportingPdf = false,
+  hasDocuments = false,
+  hasReadyDocuments = false,
 }: SummaryListViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -85,18 +56,22 @@ export default function SummaryListView({
   // Modal delete state
   const [deleteTarget, setDeleteTarget] = useState<SummaryItem | null>(null);
 
-  // Lọc summaries theo từ khóa tìm kiếm
+  // Lọc ghi chú theo tiêu đề hoặc nội dung trích xuất
   const filteredSummaries = useMemo(() => {
-    if (!searchQuery.trim()) return summaries;
     const query = searchQuery.toLowerCase().trim();
-    return summaries.filter((s) => s.title.toLowerCase().includes(query));
+    if (!query) return summaries;
+    return summaries.filter((item) => {
+      const displayTitle = getNoteDisplayTitle(item.title).toLowerCase();
+      const previewText = extractNotePreviewText(item.contentJson).toLowerCase();
+      return displayTitle.includes(query) || previewText.includes(query);
+    });
   }, [summaries, searchQuery]);
 
-  const handleOpenRename = (s: SummaryItem, e: React.MouseEvent) => {
+  const handleOpenRename = (item: SummaryItem, e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveMenuId(null);
-    setRenameTarget(s);
-    setRenameTitle(s.title);
+    setRenameTarget(item);
+    setRenameTitle(item.title);
   };
 
   const handleSaveRename = (e: React.FormEvent) => {
@@ -107,10 +82,10 @@ export default function SummaryListView({
     setRenameTarget(null);
   };
 
-  const handleOpenDelete = (s: SummaryItem, e: React.MouseEvent) => {
+  const handleOpenDelete = (item: SummaryItem, e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveMenuId(null);
-    setDeleteTarget(s);
+    setDeleteTarget(item);
   };
 
   const handleConfirmDelete = () => {
@@ -120,36 +95,42 @@ export default function SummaryListView({
     }
   };
 
+  const aiButtonTooltip = !hasDocuments
+    ? "Cần tải tài liệu lên trước để AI tóm tắt"
+    : !hasReadyDocuments
+      ? "Đang chờ tài liệu hoàn tất trích xuất văn bản"
+      : "Tạo bản tóm tắt tự động từ tài liệu bằng AI";
+
   return (
     <div className="flex w-full flex-1 flex-col overflow-hidden select-none">
       {/* Header Bar của Danh sách */}
-      <div className="flex flex-col gap-3.5 border-b border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 px-4 sm:px-6 py-4 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3.5 border-b border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 px-4 sm:px-6 py-4 backdrop-blur-md lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-indigo-50 dark:bg-indigo-950/50 text-[#4F46E5] dark:text-[#818CF8] shadow-2xs">
-            <BookOpen className="h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-indigo-50 dark:bg-indigo-950/50 text-[#4F46E5] dark:text-[#818CF8] shadow-2xs shrink-0">
+            <NotebookPen className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-bold text-neutral-900 dark:text-neutral-100">
-                Danh sách bản Tóm tắt AI
+                Ghi chú
               </h2>
               <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/40 tabular-nums">
                 {summaries.length}
               </span>
             </div>
             <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
-              Quản lý và tra cứu các bản tóm tắt học tập trong cuộc trò chuyện này
+              Tạo trang ghi chú tự do hoặc tổng hợp kiến thức từ tài liệu với AI
             </p>
           </div>
         </div>
 
-        {/* Thanh tìm kiếm Spotlight & Nút Tạo mới */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
-          <div className="relative flex-1 sm:w-64">
+        {/* Thanh tìm kiếm Spotlight & Nút Hành động */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          <div className="relative flex-1 min-w-[160px] sm:w-56 sm:flex-none">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
             <input
               type="text"
-              placeholder="Tìm kiếm tóm tắt..."
+              placeholder="Tìm kiếm ghi chú..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-xl border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.04] py-1.5 sm:py-2 pl-9 pr-8 text-xs text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400 outline-hidden transition-all focus:border-indigo-500 focus:bg-white dark:focus:bg-[#1A1E29] focus:ring-2 focus:ring-indigo-500/20"
@@ -158,7 +139,7 @@ export default function SummaryListView({
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 cursor-pointer"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -167,17 +148,37 @@ export default function SummaryListView({
 
           <button
             type="button"
-            onClick={onCreateNew}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white shadow-xs active:scale-95 transition-all cursor-pointer shrink-0"
+            onClick={onCreateAi}
+            disabled={!hasReadyDocuments}
+            title={aiButtonTooltip}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-[#1A1E29] hover:bg-indigo-50/70 dark:hover:bg-indigo-950/30 hover:border-indigo-300 dark:hover:border-indigo-700 px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-neutral-700 dark:text-neutral-200 shadow-2xs active:scale-95 transition-all cursor-pointer shrink-0 disabled:opacity-45 disabled:pointer-events-none"
           >
-            <Plus className="h-4 w-4" />
-            <span className="hidden xs:inline">Tạo tóm tắt mới</span>
+            <StudyMateAiIcon
+              variant="simple"
+              className="h-4 w-4 text-[#4F46E5] dark:text-[#818CF8]"
+            />
+            <span className="hidden sm:inline">Tóm tắt AI</span>
+            <span className="sm:hidden">AI</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onCreateManual}
+            disabled={isCreatingNote}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white shadow-xs active:scale-95 transition-all cursor-pointer shrink-0 disabled:opacity-60 disabled:pointer-events-none"
+          >
+            {isCreatingNote ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            <span className="hidden xs:inline">Tạo ghi chú mới</span>
             <span className="xs:hidden">Tạo mới</span>
           </button>
         </div>
       </div>
 
-      {/* Grid Danh sách các bản tóm tắt */}
+      {/* Grid Danh sách các trang ghi chú */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-black/[0.01] dark:bg-transparent">
         {filteredSummaries.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center rounded-[20px] border border-dashed border-black/[0.1] dark:border-white/[0.1] bg-white/50 dark:bg-[#161922]/50 p-8 text-center">
@@ -185,12 +186,12 @@ export default function SummaryListView({
               <Search className="h-6 w-6" />
             </div>
             <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-              Không tìm thấy bản tóm tắt nào
+              Không tìm thấy ghi chú nào
             </h4>
             <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500 max-w-sm">
               {searchQuery
-                ? `Không có tóm tắt nào khớp với từ khóa "${searchQuery}". Hãy thử tìm kiếm với từ khóa khác.`
-                : "Chưa có bản tóm tắt nào được tạo trong cuộc trò chuyện này."}
+                ? `Không có ghi chú nào khớp với từ khóa "${searchQuery}". Hãy thử tìm kiếm với từ khóa khác.`
+                : "Chưa có ghi chú nào được tạo trong cuộc trò chuyện này."}
             </p>
             {searchQuery && (
               <button
@@ -204,28 +205,29 @@ export default function SummaryListView({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredSummaries.map((s) => {
-              const preview = extractPreviewText(s.content_json);
-              const isMenuOpen = activeMenuId === s.id;
+            {filteredSummaries.map((item) => {
+              const displayTitle = getNoteDisplayTitle(item.title);
+              const preview = extractNotePreviewText(item.contentJson);
+              const isMenuOpen = activeMenuId === item.id;
 
               return (
                 <div
-                  key={s.id}
-                  onClick={() => onSelectSummary(s.id)}
+                  key={item.id}
+                  onClick={() => onSelectSummary(item.id)}
                   className="group relative flex flex-col justify-between rounded-[20px] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#161922] p-5 shadow-xs hover:border-indigo-300 dark:hover:border-indigo-500/40 hover:shadow-md transition-all duration-200 cursor-pointer"
                 >
                   <div>
                     {/* Top row: Icon + Menu 3 chấm */}
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-[14px] bg-indigo-50 dark:bg-indigo-950/50 text-[#4F46E5] dark:text-[#818CF8] transition-colors group-hover:bg-[#4F46E5] group-hover:text-white">
-                        <StudyMateAiIcon variant="simple" className="h-4.5 w-4.5" />
+                        <NotebookPen className="h-4.5 w-4.5" />
                       </div>
 
                       {/* Dropdown Menu CRUD */}
                       <div className="relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
-                          onClick={() => setActiveMenuId(isMenuOpen ? null : s.id)}
+                          onClick={() => setActiveMenuId(isMenuOpen ? null : item.id)}
                           title="Tùy chọn"
                           className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer"
                         >
@@ -239,11 +241,11 @@ export default function SummaryListView({
                           >
                             <button
                               type="button"
-                              onClick={(e) => handleOpenRename(s, e)}
+                              onClick={(e) => handleOpenRename(item, e)}
                               className="flex items-center gap-2 w-full rounded-xl px-3 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                             >
                               <Edit2 className="h-3.5 w-3.5 text-neutral-400" />
-                              <span>Đổi tên tóm tắt</span>
+                              <span>Đổi tên ghi chú</span>
                             </button>
 
                             {onExportPdf && (
@@ -252,7 +254,7 @@ export default function SummaryListView({
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setActiveMenuId(null);
-                                  onExportPdf(s.id);
+                                  onExportPdf(item.id);
                                 }}
                                 disabled={isExportingPdf}
                                 className="flex items-center gap-2 w-full rounded-xl px-3 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer disabled:opacity-50"
@@ -266,11 +268,11 @@ export default function SummaryListView({
 
                             <button
                               type="button"
-                              onClick={(e) => handleOpenDelete(s, e)}
+                              onClick={(e) => handleOpenDelete(item, e)}
                               className="flex items-center gap-2 w-full rounded-xl px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
-                              <span>Xóa tóm tắt</span>
+                              <span>Xóa ghi chú</span>
                             </button>
                           </div>
                         )}
@@ -279,7 +281,7 @@ export default function SummaryListView({
 
                     {/* Title */}
                     <h3 className="text-sm sm:text-[15px] font-bold text-neutral-900 dark:text-neutral-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
-                      {s.title}
+                      {displayTitle}
                     </h3>
 
                     {/* Preview snippet */}
@@ -288,12 +290,12 @@ export default function SummaryListView({
                     </p>
                   </div>
 
-                  {/* Card Footer: Ngày tạo + Nút mở */}
+                  {/* Card Footer: Cập nhật gần nhất + Nút mở */}
                   <div className="mt-4 flex items-center justify-between border-t border-black/[0.05] dark:border-white/[0.06] pt-3 text-[11px] text-neutral-400 dark:text-neutral-500">
                     <div className="flex items-center gap-1.5 tabular-nums">
                       <Clock className="h-3.5 w-3.5" />
                       <span>
-                        {new Date(s.created_at).toLocaleDateString("vi-VN", {
+                        {new Date(item.updatedAt).toLocaleDateString("vi-VN", {
                           hour: "2-digit",
                           minute: "2-digit",
                           day: "2-digit",
@@ -303,7 +305,7 @@ export default function SummaryListView({
                     </div>
 
                     <div className="flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400 opacity-90 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
-                      <span>Xem chi tiết</span>
+                      <span>Mở ghi chú</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </div>
                   </div>
@@ -323,7 +325,7 @@ export default function SummaryListView({
           >
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
-                Đổi tên bản tóm tắt
+                Đổi tên ghi chú
               </h4>
               <button
                 type="button"
@@ -338,7 +340,7 @@ export default function SummaryListView({
               value={renameTitle}
               onChange={(e) => setRenameTitle(e.target.value)}
               className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-[#1A1E29] p-2.5 text-xs sm:text-sm text-neutral-800 dark:text-neutral-100 outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="Nhập tên tóm tắt..."
+              placeholder="Nhập tiêu đề ghi chú..."
               autoFocus
             />
             <div className="flex justify-end gap-2 pt-1">
@@ -363,8 +365,8 @@ export default function SummaryListView({
 
       {/* Modal Delete */}
       <DeleteSummaryModal
-        isOpen={!!deleteTarget}
-        summaryTitle={deleteTarget?.title}
+        isOpen={Boolean(deleteTarget)}
+        summaryTitle={deleteTarget ? getNoteDisplayTitle(deleteTarget.title) : undefined}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
       />

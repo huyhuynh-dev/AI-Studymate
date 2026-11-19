@@ -15,7 +15,7 @@ export class SummariesRepoService {
     async getSummariesByConversationId(conversationId: string): Promise<Summary[]> {
         return await this.prisma.summary.findMany({
             where: { conversation_id: conversationId },
-            orderBy: { created_at: 'desc' },
+            orderBy: [{ updated_at: 'desc' }, { created_at: 'desc' }],
         });
     }
 

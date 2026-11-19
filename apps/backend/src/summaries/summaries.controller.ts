@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { SummariesService } from './summaries.service.js';
 import { BlocknoteService } from '../ai/blocknote.service.js';
 import { CreateSummaryDto } from './dto/create-summary.dto.js';
+import { CreateManualNoteDto } from './dto/create-manual-note.dto.js';
 import { UpdateSummaryDto } from './dto/update-summary.dto.js';
 import { RefineSummaryDto } from './dto/refine-summary.dto.js';
 import { BlocknoteAiDto } from '../ai/dto/blocknote-ai.dto.js';
@@ -52,6 +53,18 @@ export class SummariesController {
         @Body() dto: CreateSummaryDto,
     ) {
         return this.summariesService.createSummary(this.getUserId(req), conversationId, dto);
+    }
+
+    /**
+     * Tạo trang ghi chú thủ công mới (trống hoặc có nội dung ban đầu)
+     */
+    @Post('conversations/:conversationId/summaries/manual')
+    async createManualNote(
+        @Req() req: Request,
+        @Param('conversationId', new ParseUUIDPipe()) conversationId: string,
+        @Body() dto: CreateManualNoteDto,
+    ) {
+        return this.summariesService.createManualNote(this.getUserId(req), conversationId, dto);
     }
 
     /**

@@ -46,11 +46,17 @@ import {
 } from "@blocknote/xl-ai";
 import { en } from "@blocknote/core/locales";
 import { en as aiEn } from "@blocknote/xl-ai/locales";
+import { UNTITLED_NOTE_LABEL } from "./noteHelpers";
 
 interface SummaryEditorProps {
   summaryId: string;
+  title: string;
+  titleSyncKey?: number;
+  autoFocusTitle?: boolean;
   initialContent: unknown[];
   onChange: (blocks: unknown[]) => void;
+  onTitleChange: (title: string) => void;
+  onTitleBlur?: () => void;
   editable?: boolean;
   zoomPercent?: number;
 }
@@ -390,10 +396,73 @@ const summaryEditorSchema = BlockNoteSchema.create().extend({
 
 type SummaryPartialBlock = typeof summaryEditorSchema.PartialBlock;
 
+interface NoteTitleInputProps {
+  initialTitle: string;
+  autoFocus?: boolean;
+  editable: boolean;
+  onChange: (nextTitle: string) => void;
+  onBlur?: () => void;
+  onEnterPress?: () => void;
+}
+
+function NoteTitleInput({
+  initialTitle,
+  autoFocus = false,
+  editable,
+  onChange,
+  onBlur,
+  onEnterPress,
+}: NoteTitleInputProps) {
+  const [value, setValue] = useState(initialTitle);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocus && editable) {
+      inputRef.current?.focus();
+    }
+  }, [autoFocus, editable]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = e.target.value;
+    setValue(next);
+    onChange(next);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === "ArrowDown") {
+      e.preventDefault();
+      onEnterPress?.();
+    }
+  };
+
+  return (
+    <div className="px-[54px] pt-2 pb-3 mb-1">
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        readOnly={!editable}
+        maxLength={255}
+        placeholder={UNTITLED_NOTE_LABEL}
+        aria-label="Tiêu đề ghi chú"
+        onChange={handleChange}
+        onBlur={onBlur}
+        onKeyDown={handleKeyDown}
+        className="w-full bg-transparent border-0 outline-hidden font-heading text-2xl sm:text-[30px] font-bold tracking-[-0.025em] text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-300 dark:placeholder:text-neutral-600"
+      />
+    </div>
+  );
+}
+
 function InnerBlockNoteEditor({
   summaryId,
+  title,
+  titleSyncKey = 0,
+  autoFocusTitle = false,
   initialContent,
   onChange,
+  onTitleChange,
+  onTitleBlur,
   editable = true,
   zoomPercent = 100,
 }: SummaryEditorProps) {
@@ -406,8 +475,8 @@ function InnerBlockNoteEditor({
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  // Chuẩn bị initial content an toàn cho BlockNote
-  const validInitialBlocks = React.useMemo<SummaryPartialBlock[] | undefined>(
+  // Chuẩn bị initial content an toàn cho BlockNote (khởi tạo 1 lần duy nhất khi mount)
+  const [validInitialBlocks] = useState<SummaryPartialBlock[] | undefined>(
     () => {
       if (Array.isArray(initialContent) && initialContent.length > 0) {
         try {
@@ -425,7 +494,6 @@ function InnerBlockNoteEditor({
       }
       return undefined;
     },
-    [initialContent],
   );
 
   // Create the BlockNote editor with the AI extension
@@ -433,6 +501,12 @@ function InnerBlockNoteEditor({
     schema: summaryEditorSchema,
     dictionary: {
       ...en,
+      placeholders: {
+        ...en.placeholders,
+        default: "Nhập nội dung hoặc gõ '/' để mở menu lệnh…",
+        emptyDocument:
+          "Bắt đầu viết ghi chú hoặc gõ '/' để chèn khối, công thức, sơ đồ, AI…",
+      },
       ai: aiEn,
       math: mathLocales.en,
       diagram: diagramLocales.en,
@@ -530,6 +604,16 @@ function InnerBlockNoteEditor({
           fontSize: `${(zoomPercent / 100) * 16}px`,
         }}
       >
+        <NoteTitleInput
+          key={`${summaryId}-${titleSyncKey}`}
+          initialTitle={title}
+          autoFocus={autoFocusTitle}
+          editable={editable}
+          onChange={onTitleChange}
+          onBlur={onTitleBlur}
+          onEnterPress={() => editor.focus()}
+        />
+
         <BlockNoteView
           editor={editor}
           editable={editable}

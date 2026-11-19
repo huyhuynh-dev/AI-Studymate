@@ -171,5 +171,130 @@ describe('SummariesService', () => {
       expect(pdfExportService.renderHtmlToPdf).toHaveBeenCalled();
       expect(storageService.uploadObjectBuffer).toHaveBeenCalled();
     });
+
+    it('nên xử lý an toàn khi xuất PDF cho ghi chú chưa có tiêu đề', async () => {
+      const userId = '11111111-1111-1111-1111-111111111111';
+      const summaryId = 'note-untitled';
+      const conversationId = 'conv-1';
+
+      summariesRepo.getSummaryById.mockResolvedValue({
+        id: summaryId,
+        conversation_id: conversationId,
+        title: '   ',
+        content_json: [{ type: 'paragraph', content: [{ type: 'text', text: 'Nội dung ghi chú' }] }],
+        pdf_storage_key: null,
+      });
+      conversationsRepo.getConversationById.mockResolvedValue({ id: conversationId, user_id: userId });
+      pdfExportService.convertBlockNoteToHtml.mockReturnValue('<html></html>');
+      pdfExportService.renderHtmlToPdf.mockResolvedValue(Buffer.from('PDF content'));
+      storageService.uploadObjectBuffer.mockResolvedValue(undefined);
+      summariesRepo.updateSummary.mockResolvedValue({});
+      storageService.getSignedUrlForDownload.mockResolvedValue('https://r2.download.url/note.pdf');
+
+      const result = await service.exportPdf(userId, summaryId);
+
+      expect(result.downloadUrl).toBe('https://r2.download.url/note.pdf');
+      expect(pdfExportService.convertBlockNoteToHtml).toHaveBeenCalledWith(
+        'Ghi chú chưa có tiêu đề',
+        expect.any(Array),
+      );
+      expect(storageService.getSignedUrlForDownload).toHaveBeenCalledWith(
+        expect.stringContaining('Ghi-chu-hoc-tap'),
+        'Ghi-chu-hoc-tap.pdf',
+      );
+    });
+  });
+
+  describe('createManualNote', () => {
+    const userId = '11111111-1111-1111-1111-111111111111';
+    const conversationId = '22222222-2222-2222-2222-222222222222';
+
+    it('nên tạo trang ghi chú trống mà không cần tài liệu hoặc gọi AI', async () => {
+      conversationsRepo.getConversationById.mockResolvedValue({ id: conversationId, user_id: userId });
+      summariesRepo.createSummary.mockResolvedValue({
+        id: 'note-1',
+        conversation_id: conversationId,
+        document_id: null,
+        title: '',
+        content_json: [],
+      });
+
+      const result = await service.createManualNote(userId, conversationId, {});
+
+      expect(result.id).toBe('note-1');
+      expect(aiService.generateSummary).not.toHaveBeenCalled();
+      expect(documentsRepo.getAllDocumentsByConversationId).not.toHaveBeenCalled();
+      expect(summariesRepo.createSummary).toHaveBeenCalledWith({
+        conversation_id: conversationId,
+        document_id: null,
+        title: '',
+        content_json: [],
+      });
+    });
+
+    it('nên trim tiêu đề và lưu content_json khi người dùng truyền dữ liệu khởi tạo', async () => {
+      const blocks = [{ type: 'paragraph', content: [{ type: 'text', text: 'Ý tưởng bài học' }] }];
+      conversationsRepo.getConversationById.mockResolvedValue({ id: conversationId, user_id: userId });
+      summariesRepo.createSummary.mockResolvedValue({
+        id: 'note-2',
+        conversation_id: conversationId,
+        document_id: null,
+        title: 'Ghi chú chương 1',
+        content_json: blocks,
+      });
+
+      const result = await service.createManualNote(userId, conversationId, {
+        title: '  Ghi chú chương 1  ',
+        content_json: blocks,
+      });
+
+      expect(result.title).toBe('Ghi chú chương 1');
+      expect(summariesRepo.createSummary).toHaveBeenCalledWith({
+        conversation_id: conversationId,
+        document_id: null,
+        title: 'Ghi chú chương 1',
+        content_json: blocks,
+      });
+    });
+
+    it('nên báo NotFoundException khi cuộc trò chuyện không tồn tại hoặc sai chủ sở hữu', async () => {
+      conversationsRepo.getConversationById.mockResolvedValue(null);
+
+      await expect(
+        service.createManualNote(userId, conversationId, { title: 'Test' }),
+      ).rejects.toThrow('Không tìm thấy cuộc trò chuyện');
+      expect(summariesRepo.createSummary).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateSummary', () => {
+    it('nên vô hiệu hóa cache pdf_storage_key khi chỉ cập nhật tiêu đề ghi chú', async () => {
+      const userId = '11111111-1111-1111-1111-111111111111';
+      const summaryId = 'note-1';
+      const conversationId = 'conv-1';
+
+      summariesRepo.getSummaryById.mockResolvedValue({
+        id: summaryId,
+        conversation_id: conversationId,
+        title: 'Tiêu đề cũ',
+        content_json: [],
+        pdf_storage_key: 'old-key.pdf',
+      });
+      conversationsRepo.getConversationById.mockResolvedValue({ id: conversationId, user_id: userId });
+      summariesRepo.updateSummary.mockResolvedValue({
+        id: summaryId,
+        conversation_id: conversationId,
+        title: 'Tiêu đề mới',
+        content_json: [],
+        pdf_storage_key: null,
+      });
+
+      await service.updateSummary(userId, summaryId, { title: '  Tiêu đề mới  ' });
+
+      expect(summariesRepo.updateSummary).toHaveBeenCalledWith(summaryId, {
+        title: 'Tiêu đề mới',
+        pdf_storage_key: null,
+      });
+    });
   });
 });

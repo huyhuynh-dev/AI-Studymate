@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 interface SummaryTtsPlayerProps {
-  blocks: any[];
+  blocks: unknown[];
   title?: string;
   isOpen: boolean;
   onClose: () => void;
@@ -182,44 +182,63 @@ export default function SummaryTtsPlayer({
     const parts: string[] = [];
     if (title) parts.push(title);
 
-    const extractBlockText = (b: any) => {
-      if (!b) return;
+    const extractInlineText = (item: unknown): string => {
+      if (typeof item === "string") return item;
+      if (!item || typeof item !== "object") return "";
+      const record = item as Record<string, unknown>;
+      if (record.type === "link") {
+        return typeof record.content === "string" ? record.content : "";
+      }
+      return typeof record.text === "string" ? record.text : "";
+    };
 
-      if (b.type === "table" && (b.content?.rows || b.rows)) {
-        const rows = b.content?.rows || b.rows;
+    const extractCellText = (cell: unknown): string => {
+      if (typeof cell === "string") return cell.trim();
+      if (Array.isArray(cell)) {
+        return cell.map(extractInlineText).join("").trim();
+      }
+      if (cell && typeof cell === "object") {
+        const cellRecord = cell as Record<string, unknown>;
+        if (Array.isArray(cellRecord.content)) {
+          return cellRecord.content.map(extractInlineText).join("").trim();
+        }
+      }
+      return "";
+    };
+
+    const extractBlockText = (block: unknown) => {
+      if (!block || typeof block !== "object") return;
+      const b = block as Record<string, unknown>;
+      const contentRecord =
+        b.content && typeof b.content === "object" && !Array.isArray(b.content)
+          ? (b.content as Record<string, unknown>)
+          : null;
+      const propsRecord =
+        b.props && typeof b.props === "object"
+          ? (b.props as Record<string, unknown>)
+          : null;
+
+      if (b.type === "table" && (contentRecord?.rows || b.rows)) {
+        const rows = contentRecord?.rows || b.rows;
         if (Array.isArray(rows)) {
-          rows.forEach((row: any) => {
-            if (Array.isArray(row?.cells)) {
-              row.cells.forEach((cell: any) => {
-                if (Array.isArray(cell)) {
-                  const cellText = cell
-                    .map((c: any) => c.text || c || "")
-                    .join("")
-                    .trim();
-                  if (cellText) parts.push(cellText);
-                } else if (typeof cell === "string" && cell.trim()) {
-                  parts.push(cell.trim());
-                }
+          rows.forEach((row) => {
+            if (!row || typeof row !== "object") return;
+            const cells = (row as Record<string, unknown>).cells;
+            if (Array.isArray(cells)) {
+              cells.forEach((cell) => {
+                const cellText = extractCellText(cell);
+                if (cellText) parts.push(cellText);
               });
             }
           });
         }
       } else if (Array.isArray(b.content)) {
-        const text = b.content
-          .map((c: any) => {
-            if (typeof c === "string") return c;
-            if (c?.type === "link") {
-              return typeof c.content === "string" ? c.content : "";
-            }
-            return c?.text || "";
-          })
-          .join("")
-          .trim();
+        const text = b.content.map(extractInlineText).join("").trim();
         if (text) parts.push(text);
       } else if (typeof b.content === "string" && b.content.trim()) {
         parts.push(b.content.trim());
-      } else if (b.props?.caption) {
-        parts.push(b.props.caption);
+      } else if (typeof propsRecord?.caption === "string" && propsRecord.caption.trim()) {
+        parts.push(propsRecord.caption.trim());
       }
 
       if (Array.isArray(b.children)) {
@@ -422,7 +441,7 @@ export default function SummaryTtsPlayer({
       <div
         className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 sm:gap-2.5 rounded-full bg-white/90 dark:bg-[#1A1E29]/95 px-3 sm:px-3.5 py-2 text-neutral-800 dark:text-neutral-100 shadow-2xl shadow-indigo-950/20 border border-black/[0.08] dark:border-white/[0.12] backdrop-blur-xl select-none animate-in fade-in zoom-in-95 slide-in-from-bottom-3 duration-200"
         role="region"
-        aria-label="Trình đọc văn bản tóm tắt"
+        aria-label="Trình đọc nội dung ghi chú"
       >
         {/* Animated Waveform / Icon Loa */}
         <div className="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shrink-0">
@@ -451,7 +470,7 @@ export default function SummaryTtsPlayer({
           <button
             type="button"
             onClick={handlePlay}
-            title={isPaused ? "Tiếp tục đọc" : "Bắt đầu đọc tóm tắt"}
+            title={isPaused ? "Tiếp tục đọc" : "Bắt đầu đọc ghi chú"}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4F46E5] hover:bg-[#4338CA] text-white shadow-xs active:scale-95 transition-all cursor-pointer"
           >
             <Play className="h-4 w-4 fill-white translate-x-0.5" />

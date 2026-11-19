@@ -4,6 +4,7 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
+import type { Prisma } from '../generated/prisma/client.js';
 import { SummariesRepoService } from '../repo/summaries-repo/summaries-repo.service.js';
 import { ConversationsRepoService } from '../repo/conversations-repo/conversations-repo.service.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
@@ -11,6 +12,7 @@ import { SummaryService } from '../ai/summary.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { PdfExportService } from './pdf-export.service.js';
 import { CreateSummaryDto, SummaryScope } from './dto/create-summary.dto.js';
+import { CreateManualNoteDto } from './dto/create-manual-note.dto.js';
 import { UpdateSummaryDto } from './dto/update-summary.dto.js';
 import { RefineSummaryDto } from './dto/refine-summary.dto.js';
 
@@ -175,6 +177,27 @@ export class SummariesService {
     }
 
     /**
+     * Tạo trang ghi chú thủ công mới cho cuộc trò chuyện (không cần tài liệu / AI)
+     */
+    async createManualNote(
+        userId: string,
+        conversationId: string,
+        dto: CreateManualNoteDto,
+    ) {
+        await this.verifyConversation(conversationId, userId);
+
+        const title = (dto.title ?? '').trim();
+        const contentJson = Array.isArray(dto.content_json) ? dto.content_json : [];
+
+        return this.summariesRepo.createSummary({
+            conversation_id: conversationId,
+            document_id: null,
+            title,
+            content_json: contentJson as Prisma.InputJsonValue,
+        });
+    }
+
+    /**
      * Lấy danh sách tóm tắt của một cuộc trò chuyện
      */
     async getSummariesByConversation(userId: string, conversationId: string) {
@@ -190,17 +213,18 @@ export class SummariesService {
     }
 
     /**
-     * Lưu chỉnh sửa tóm tắt (Auto-save)
+     * Lưu chỉnh sửa tóm tắt / ghi chú (Auto-save)
      */
     async updateSummary(userId: string, summaryId: string, dto: UpdateSummaryDto) {
         await this.verifySummary(summaryId, userId);
 
-        const updateData: any = {};
+        const updateData: Prisma.SummaryUpdateInput = {};
         if (dto.title !== undefined) {
             updateData.title = dto.title.trim();
+            updateData.pdf_storage_key = null;
         }
         if (dto.content_json !== undefined) {
-            updateData.content_json = dto.content_json;
+            updateData.content_json = dto.content_json as Prisma.InputJsonValue;
             // Xóa pdf_storage_key cũ vì nội dung đã thay đổi
             updateData.pdf_storage_key = null;
         }
@@ -235,6 +259,11 @@ export class SummariesService {
      */
     async exportPdf(userId: string, summaryId: string): Promise<{ downloadUrl: string }> {
         const summary = await this.verifySummary(summaryId, userId);
+        const trimmedTitle = summary.title.trim();
+        const displayTitle = trimmedTitle || 'Ghi chú chưa có tiêu đề';
+        const safeBaseName =
+            this.sanitizeFileName(trimmedTitle || 'Ghi-chu-hoc-tap') || 'Ghi-chu-hoc-tap';
+        const downloadFileName = `${safeBaseName}.pdf`;
 
         // Nếu đã có PDF được sinh trước đó và file tồn tại trên R2
         if (summary.pdf_storage_key) {
@@ -242,7 +271,7 @@ export class SummariesService {
             if (head.exists) {
                 const downloadUrl = await this.storageService.getSignedUrlForDownload(
                     summary.pdf_storage_key,
-                    `${this.sanitizeFileName(summary.title)}.pdf`,
+                    downloadFileName,
                 );
                 return { downloadUrl };
             }
@@ -250,10 +279,10 @@ export class SummariesService {
 
         // Sinh mới file PDF
         const blocks = summary.content_json as any[];
-        const html = this.pdfExportService.convertBlockNoteToHtml(summary.title, blocks);
+        const html = this.pdfExportService.convertBlockNoteToHtml(displayTitle, blocks);
         const pdfBuffer = await this.pdfExportService.renderHtmlToPdf(html);
 
-        const safeTitle = this.sanitizeFileName(summary.title).slice(0, 50);
+        const safeTitle = safeBaseName.slice(0, 50);
         const storageKey = `users/${userId}/conversations/${summary.conversation_id}/summaries/${summary.id}-${safeTitle}.pdf`;
 
         await this.storageService.uploadObjectBuffer(storageKey, pdfBuffer, 'application/pdf');
@@ -264,7 +293,7 @@ export class SummariesService {
 
         const downloadUrl = await this.storageService.getSignedUrlForDownload(
             storageKey,
-            `${this.sanitizeFileName(summary.title)}.pdf`,
+            downloadFileName,
         );
 
         return { downloadUrl };
