@@ -67,15 +67,23 @@ export const EFFORT_LEVELS: EffortOption[] = [
 export const STARTER_PROMPTS: {
   icon: LucideIcon;
   label: string;
-  prompt?: string;
+  prompt: string;
 }[] = [
   {
     icon: BookOpen,
     label: "Tóm tắt tài liệu",
     prompt: "Hãy tóm tắt tài liệu có trong phiên học hiện tại",
   },
-  { icon: Layers, label: "Tạo Flashcard" },
-  { icon: HelpCircle, label: "Tạo Quiz" },
+  {
+    icon: Layers,
+    label: "Tạo Flashcard",
+    prompt: "Hãy tạo bộ Flashcard từ tài liệu có trong phiên học hiện tại",
+  },
+  {
+    icon: HelpCircle,
+    label: "Tạo Quiz",
+    prompt: "Hãy tạo bài kiểm tra Quiz từ tài liệu có trong phiên học hiện tại",
+  },
 ];
 
 // ─────────────────────────────────────────────
