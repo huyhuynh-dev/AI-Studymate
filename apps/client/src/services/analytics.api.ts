@@ -205,6 +205,7 @@ function normalizeTocSection(raw: unknown): TocMasterySection {
     leechCount: asNumber(s.leechCount),
     missingPoints: asStringArray(s.missingPoints),
     chunkIds: asStringArray(s.chunkIds),
+    bboxes: asArray(s.bboxes),
   };
 }
 

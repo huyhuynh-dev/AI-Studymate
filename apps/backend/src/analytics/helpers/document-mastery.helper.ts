@@ -26,6 +26,7 @@ export interface NormalizedTocSeed {
   level: number;
   startPage: number | null;
   endPage: number | null;
+  bbox?: Record<string, unknown> | null;
 }
 
 interface SectionAccumulator {
@@ -40,6 +41,7 @@ interface SectionAccumulator {
   cardMastered: number;
   leechCount: number;
   missingPoints: Map<string, string>;
+  bboxes: unknown[];
 }
 
 export function classifyMasteryStatus(score: number | null): MasteryStatus {
@@ -53,6 +55,7 @@ function readRawTocArray(docMetadata: unknown): Array<{
   text: string;
   level: number;
   pageNo: number | null;
+  bbox: Record<string, unknown> | null;
 }> {
   if (!docMetadata || typeof docMetadata !== 'object' || Array.isArray(docMetadata)) {
     return [];
@@ -60,7 +63,12 @@ function readRawTocArray(docMetadata: unknown): Array<{
   const rawToc = (docMetadata as Record<string, unknown>).toc;
   if (!Array.isArray(rawToc)) return [];
 
-  const parsed: Array<{ text: string; level: number; pageNo: number | null }> = [];
+  const parsed: Array<{
+    text: string;
+    level: number;
+    pageNo: number | null;
+    bbox: Record<string, unknown> | null;
+  }> = [];
   for (const entry of rawToc) {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
     const item = entry as Record<string, unknown>;
@@ -76,16 +84,34 @@ function readRawTocArray(docMetadata: unknown): Array<{
       typeof rawPage === 'number' && Number.isFinite(rawPage) && rawPage > 0
         ? Math.floor(rawPage)
         : null;
+    const rawBbox = item.bbox;
+    const bbox =
+      rawBbox && typeof rawBbox === 'object' && !Array.isArray(rawBbox)
+        ? (rawBbox as Record<string, unknown>)
+        : null;
 
-    parsed.push({ text, level, pageNo });
+    parsed.push({ text, level, pageNo, bbox });
   }
   return parsed;
 }
 
 function buildFallbackTocFromChunks(
   chunks: AnalyticsChunkIndexRow[],
-): Array<{ text: string; level: number; pageNo: number | null }> {
-  const seen = new Map<string, { text: string; level: number; pageNo: number | null }>();
+): Array<{
+  text: string;
+  level: number;
+  pageNo: number | null;
+  bbox: Record<string, unknown> | null;
+}> {
+  const seen = new Map<
+    string,
+    {
+      text: string;
+      level: number;
+      pageNo: number | null;
+      bbox: Record<string, unknown> | null;
+    }
+  >();
 
   for (const chunk of chunks) {
     const primaryHeading = chunk.headings[0]?.trim();
@@ -98,7 +124,12 @@ function buildFallbackTocFromChunks(
 
     const existing = seen.get(key);
     if (!existing) {
-      seen.set(key, { text: primaryHeading, level: 1, pageNo: minPage });
+      seen.set(key, {
+        text: primaryHeading,
+        level: 1,
+        pageNo: minPage,
+        bbox: null,
+      });
     } else if (
       minPage !== null &&
       (existing.pageNo === null || minPage < existing.pageNo)
@@ -116,8 +147,44 @@ export function extractTocItems(
   chunkIndexRows: AnalyticsChunkIndexRow[],
 ): NormalizedTocSeed[] {
   const rawList = readRawTocArray(docMetadata);
-  const items =
+  const rawItems =
     rawList.length > 0 ? rawList : buildFallbackTocFromChunks(chunkIndexRows);
+
+  // Map mỗi heading key -> trang nhỏ nhất tìm thấy trong chunks (hỗ trợ trường hợp TOC fallback markdown gán page_no = 1)
+  const headingMinPageMap = new Map<string, number>();
+  let hasChunkAbovePageOne = false;
+  for (const chunk of chunkIndexRows) {
+    if (chunk.pageNumbers.length === 0) continue;
+    const minPage = Math.min(...chunk.pageNumbers);
+    if (minPage > 1) hasChunkAbovePageOne = true;
+    for (const heading of chunk.headings) {
+      const key = normalizeHeadingKey(heading);
+      if (!key) continue;
+      const existing = headingMinPageMap.get(key);
+      if (existing === undefined || minPage < existing) {
+        headingMinPageMap.set(key, minPage);
+      }
+    }
+  }
+
+  const allRawArePageOneOrNull =
+    rawList.length > 0 &&
+    hasChunkAbovePageOne &&
+    rawList.every((r) => r.pageNo === null || r.pageNo === 1);
+
+  const items = rawItems.map((item) => {
+    const key = normalizeHeadingKey(item.text);
+    const chunkPage = key ? headingMinPageMap.get(key) : undefined;
+    const resolvedPageNo =
+      item.pageNo === null || (allRawArePageOneOrNull && chunkPage !== undefined)
+        ? (chunkPage ?? item.pageNo)
+        : item.pageNo;
+
+    return {
+      ...item,
+      pageNo: resolvedPageNo,
+    };
+  });
 
   return items.map((item, idx) => {
     let endPage: number | null = item.pageNo;
@@ -146,6 +213,7 @@ export function extractTocItems(
       level: item.level,
       startPage: item.pageNo,
       endPage,
+      bbox: item.bbox,
     };
   });
 }
@@ -254,6 +322,82 @@ function computeSingleFlashcardScore(card: AnalyticsFlashcardRow): number | null
   return Math.max(25, Math.min(100, Math.round(raw)));
 }
 
+function hasValidBoxCoords(rawItem: unknown): boolean {
+  if (!rawItem || typeof rawItem !== 'object' || Array.isArray(rawItem)) {
+    return false;
+  }
+  const obj = rawItem as Record<string, unknown>;
+  if (obj.bbox && typeof obj.bbox === 'object' && !Array.isArray(obj.bbox)) {
+    const inner = obj.bbox as Record<string, unknown>;
+    return (
+      typeof inner.l === 'number' &&
+      typeof inner.t === 'number' &&
+      typeof inner.r === 'number' &&
+      typeof inner.b === 'number'
+    );
+  }
+  return (
+    typeof obj.l === 'number' &&
+    typeof obj.t === 'number' &&
+    typeof obj.r === 'number' &&
+    typeof obj.b === 'number'
+  );
+}
+
+function extractValidChunkBboxes(
+  chunk: AnalyticsChunkIndexRow | undefined,
+  targetPage: number | null,
+): unknown[] {
+  if (!chunk || !Array.isArray(chunk.bboxes) || chunk.bboxes.length === 0) {
+    return [];
+  }
+  const valid = chunk.bboxes.filter(hasValidBoxCoords);
+  if (valid.length === 0) return [];
+  if (targetPage === null) return valid;
+
+  const onPage = valid.filter((item) => {
+    const pageNo = (item as Record<string, unknown>).page_no;
+    return typeof pageNo !== 'number' || pageNo === targetPage;
+  });
+  return onPage.length > 0 ? onPage : valid;
+}
+
+function resolveSectionBboxes(
+  seed: NormalizedTocSeed,
+  directChunkIds: Set<string>,
+  chunksById: Map<string, AnalyticsChunkIndexRow>,
+  chunksInOrder: AnalyticsChunkIndexRow[],
+): unknown[] {
+  if (seed.bbox) {
+    return [
+      {
+        page_no: seed.startPage ?? 1,
+        label: 'section_header',
+        bbox: seed.bbox,
+      },
+    ];
+  }
+
+  for (const cid of directChunkIds) {
+    const chunk = chunksById.get(cid);
+    const boxes = extractValidChunkBboxes(chunk, seed.startPage);
+    if (boxes.length > 0) return boxes;
+  }
+
+  if (seed.normalizedKey) {
+    for (const chunk of chunksInOrder) {
+      const matchesAncestor = chunk.headings.some(
+        (h) => normalizeHeadingKey(h) === seed.normalizedKey,
+      );
+      if (!matchesAncestor) continue;
+      const boxes = extractValidChunkBboxes(chunk, seed.startPage);
+      if (boxes.length > 0) return boxes;
+    }
+  }
+
+  return [];
+}
+
 function finalizeSection(acc: SectionAccumulator): TocMasterySection {
   const quizScore =
     acc.quizTotal > 0 && acc.quizMaxPoints > 0
@@ -291,6 +435,7 @@ function finalizeSection(acc: SectionAccumulator): TocMasterySection {
     leechCount: acc.leechCount,
     missingPoints: Array.from(acc.missingPoints.values()),
     chunkIds: Array.from(acc.chunkIds),
+    bboxes: acc.bboxes,
   };
 }
 
@@ -313,20 +458,25 @@ export function computeDocumentMastery(input: {
     seeds,
     input.chunks,
   );
+  const chunksById = new Map(input.chunks.map((c) => [c.id, c] as const));
 
-  const accumulators: SectionAccumulator[] = seeds.map((seed) => ({
-    seed,
-    chunkIds: sectionChunkIds.get(seed.index) ?? new Set<string>(),
-    quizCorrect: 0,
-    quizTotal: 0,
-    quizEarnedPoints: 0,
-    quizMaxPoints: 0,
-    cardIds: new Set<string>(),
-    reviewedCardScores: [],
-    cardMastered: 0,
-    leechCount: 0,
-    missingPoints: new Map<string, string>(),
-  }));
+  const accumulators: SectionAccumulator[] = seeds.map((seed) => {
+    const directChunkIds = sectionChunkIds.get(seed.index) ?? new Set<string>();
+    return {
+      seed,
+      chunkIds: directChunkIds,
+      quizCorrect: 0,
+      quizTotal: 0,
+      quizEarnedPoints: 0,
+      quizMaxPoints: 0,
+      cardIds: new Set<string>(),
+      reviewedCardScores: [],
+      cardMastered: 0,
+      leechCount: 0,
+      missingPoints: new Map<string, string>(),
+      bboxes: resolveSectionBboxes(seed, directChunkIds, chunksById, input.chunks),
+    };
+  });
 
   const resolveSectionIndices = (rawRefs: unknown): number[] => {
     const refs = parseSourceRefs(rawRefs).filter(

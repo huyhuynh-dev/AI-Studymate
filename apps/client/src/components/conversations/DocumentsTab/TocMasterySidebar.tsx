@@ -19,7 +19,7 @@ import {
 
 export interface TocMasterySidebarProps {
   documentId: string;
-  onJumpToPage: (pageNumber: number) => void;
+  onJumpToPage: (pageNumber: number, bboxes?: unknown[]) => void;
   onCreateTargetedQuiz?: (opts: {
     chunkIds: string[];
     sectionTitle: string;
@@ -209,9 +209,10 @@ export default function TocMasterySidebar({
                     <div
                       role={canJump ? 'button' : undefined}
                       tabIndex={canJump ? 0 : undefined}
-                      onClick={() => {
+                      onClick={(e) => {
                         if (canJump && section.startPage) {
-                          onJumpToPage(section.startPage);
+                          e.stopPropagation();
+                          onJumpToPage(section.startPage, section.bboxes);
                         }
                       }}
                       onKeyDown={(e) => {
@@ -221,7 +222,8 @@ export default function TocMasterySidebar({
                           (e.key === 'Enter' || e.key === ' ')
                         ) {
                           e.preventDefault();
-                          onJumpToPage(section.startPage);
+                          e.stopPropagation();
+                          onJumpToPage(section.startPage, section.bboxes);
                         }
                       }}
                       className={`group relative flex flex-col gap-1.5 rounded-xl border border-black/[0.05] dark:border-white/[0.08] bg-white dark:bg-[#181C26] p-2.5 pl-3.5 transition-all duration-200 ${

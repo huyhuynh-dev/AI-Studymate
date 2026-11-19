@@ -738,7 +738,7 @@ function PdfCitationManager({
 
     triggerScroll();
     // Dự phòng khi scroller vừa mount chưa kịp tính layout hoặc virtualItems
-    const retryTimer = setTimeout(triggerScroll, 100);
+    const retryTimer = setTimeout(triggerScroll, 80);
 
     // Thiết lập vùng tô sáng để CitationHighlightLayer hiển thị và thực hiện Bước 2
     if (bboxes.length > 0) {
@@ -748,6 +748,8 @@ function PdfCitationManager({
         bboxes,
         createdAt: Date.now(),
       });
+    } else {
+      clearHighlight();
     }
 
     // Consume activeTarget sau khi đã xử lý để tránh lặp lại khi chuyển Tab
@@ -761,6 +763,7 @@ function PdfCitationManager({
     backendDocumentId,
     scroll,
     setHighlight,
+    clearHighlight,
     consumeActiveTarget,
   ]);
 
@@ -832,8 +835,8 @@ function CitationHighlightLayer({
       }
     };
 
-    // Chờ 60-100ms để trang hoàn tất paint và layout trong viewport của EmbedPDF
-    const timer = setTimeout(scrollToHighlight, 80);
+    // Chờ trang hoàn tất paint/layout và sau retryTimer (80ms) của Bước 1 để không bị ghi đè cuộn
+    const timer = setTimeout(scrollToHighlight, 160);
 
     return () => clearTimeout(timer);
   }, [isCurrentPage, activeHighlight]);
@@ -894,16 +897,27 @@ function PdfTocSidebarBridge({
   onClose: () => void;
 }) {
   const { provides: scroll } = useScroll(documentId);
+  const { navigateToDocumentCitation } = useCitationNavigation();
 
   const handleJumpToPage = useCallback(
-    (pageNumber: number) => {
-      try {
-        scroll?.scrollToPage({ pageNumber, behavior: "smooth" });
-      } catch (err) {
-        console.warn("[PdfTocSidebarBridge] scrollToPage warning:", err);
+    (pageNumber: number, bboxes?: unknown[]) => {
+      const validBboxes =
+        Array.isArray(bboxes) && bboxes.length > 0 ? bboxes : undefined;
+      navigateToDocumentCitation({
+        documentId: backendDocumentId,
+        pageNo: pageNumber,
+        bboxes: validBboxes,
+      });
+
+      if (!validBboxes) {
+        try {
+          scroll?.scrollToPage({ pageNumber, behavior: "smooth" });
+        } catch (err) {
+          console.warn("[PdfTocSidebarBridge] scrollToPage warning:", err);
+        }
       }
     },
-    [scroll]
+    [backendDocumentId, navigateToDocumentCitation, scroll]
   );
 
   return (

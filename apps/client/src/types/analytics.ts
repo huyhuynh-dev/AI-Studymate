@@ -96,6 +96,7 @@ export interface TocMasterySection {
   leechCount: number;
   missingPoints: string[];
   chunkIds: string[];
+  bboxes?: unknown[];
 }
 
 export interface DocumentMasteryResponse {

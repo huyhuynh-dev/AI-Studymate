@@ -100,6 +100,7 @@ export interface AnalyticsChunkIndexRow {
   chunkIndex: number;
   headings: string[];
   pageNumbers: number[];
+  bboxes?: unknown;
 }
 
 @Injectable()
@@ -466,6 +467,7 @@ export class AnalyticsRepoService {
         chunk_index: true,
         headings: true,
         page_numbers: true,
+        bboxes: true,
       },
       orderBy: { chunk_index: 'asc' },
     });
@@ -476,6 +478,7 @@ export class AnalyticsRepoService {
       chunkIndex: chunk.chunk_index,
       headings: chunk.headings,
       pageNumbers: chunk.page_numbers,
+      ...(chunk.bboxes !== undefined ? { bboxes: chunk.bboxes } : {}),
     }));
   }
 }
