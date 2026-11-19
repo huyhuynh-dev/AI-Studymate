@@ -60,10 +60,10 @@ export default function ProgressTrendSection({
       {/* Header + Bộ lọc thời gian nhất quán cho cả khối */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg sm:text-[20px] font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-[1.2]">
+          <h2 className="text-lg sm:text-[20px] font-bold font-heading tracking-tight text-neutral-900 dark:text-[#EFF0F6] leading-[1.2]">
             Tiến bộ của bạn
           </h2>
-          <p className="mt-1 text-xs sm:text-[13px] text-neutral-500 dark:text-neutral-400">
+          <p className="mt-1 text-xs sm:text-[13px] text-neutral-500 dark:text-[#9DA3AF]">
             Thời gian học trong {windowDays} ngày qua và mức tăng điểm khi làm lại bài kiểm tra.
           </p>
         </div>
@@ -80,10 +80,10 @@ export default function ProgressTrendSection({
                 key={days}
                 type="button"
                 onClick={() => onWindowDaysChange(days)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold tabular-nums transition-all cursor-pointer ${
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold tabular-nums transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer ${
                   active
-                    ? 'bg-white dark:bg-[#232836] text-neutral-900 dark:text-white shadow-2xs'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                    ? 'bg-white dark:bg-[#242938] text-[#4F46E5] dark:text-[#818CF8] shadow-2xs'
+                    : 'text-neutral-500 dark:text-[#9DA3AF] hover:text-neutral-800 dark:hover:text-[#EFF0F6]'
                 }`}
               >
                 {days} ngày
@@ -95,14 +95,14 @@ export default function ProgressTrendSection({
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         {/* Trái: Phút học & Tỉ lệ nhớ trong khoảng thời gian đã chọn */}
-        <div className="lg:col-span-7 flex flex-col justify-between gap-3 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/70 dark:bg-[#161A23] p-4">
+        <div className="lg:col-span-7 flex flex-col justify-between gap-3 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/70 dark:bg-white/[0.035] p-4">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+            <span className="font-semibold text-neutral-800 dark:text-[#EFF0F6]">
               Tổng cộng: {formatMinutes(progress.totalMinutesInWindow)}
             </span>
             {activeBucket && (
-              <span className="tabular-nums text-neutral-600 dark:text-neutral-300">
-                Mốc {activeBucket.label}: <strong>{formatMinutes(activeBucket.minutesStudied)}</strong>
+              <span className="tabular-nums text-neutral-600 dark:text-[#9DA3AF]">
+                Mốc {activeBucket.label}: <strong className="text-neutral-900 dark:text-[#EFF0F6]">{formatMinutes(activeBucket.minutesStudied)}</strong>
                 {activeBucket.retentionRate !== null
                   ? ` · Nhớ đúng ${activeBucket.retentionRate}%`
                   : ''}
@@ -111,7 +111,7 @@ export default function ProgressTrendSection({
           </div>
 
           {buckets.length === 0 ? (
-            <div className="py-10 text-center text-xs text-neutral-500 dark:text-neutral-400">
+            <div className="py-10 text-center text-xs text-neutral-500 dark:text-[#9DA3AF]">
               Chưa có hoạt động học trong {windowDays} ngày qua.
             </div>
           ) : (
@@ -136,7 +136,7 @@ export default function ProgressTrendSection({
                           strokeLinejoin="round"
                           vectorEffect="non-scaling-stroke"
                           points={retentionPolyline}
-                          className="text-emerald-500/80 dark:text-[#30D158]/80"
+                          className="text-emerald-500/80 dark:text-emerald-400/85"
                         />
                       </svg>
                     )}
@@ -144,7 +144,7 @@ export default function ProgressTrendSection({
                       <span
                         key={i}
                         style={{ left: `${pt.x}%`, top: `${pt.y}%` }}
-                        className="absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-emerald-600 dark:border-[#30D158] bg-white dark:bg-[#161A23]"
+                        className="absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-emerald-600 dark:border-emerald-400 bg-white dark:bg-[#161922]"
                       />
                     ))}
                   </div>
@@ -169,9 +169,9 @@ export default function ProgressTrendSection({
                         type="button"
                         onClick={() => setSelectedIdx(idx)}
                         onMouseEnter={() => setSelectedIdx(idx)}
-                        className="group flex h-full flex-col items-center justify-end gap-1.5 rounded-xl py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] cursor-pointer"
+                        className="group flex h-full flex-col items-center justify-end gap-1.5 rounded-xl py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
                       >
-                        <span className="text-[10.5px] font-semibold tabular-nums text-neutral-500 dark:text-neutral-400">
+                        <span className="text-[10.5px] font-semibold tabular-nums text-neutral-500 dark:text-[#9DA3AF]">
                           {bucket.minutesStudied > 0 ? `${bucket.minutesStudied}p` : '0'}
                         </span>
 
@@ -181,8 +181,8 @@ export default function ProgressTrendSection({
                               bucket.minutesStudied === 0
                                 ? 'h-1 bg-neutral-300/70 dark:bg-white/[0.08]'
                                 : isSelected
-                                  ? 'bg-[#4F46E5] dark:bg-[#0A84FF]'
-                                  : 'bg-indigo-400/80 dark:bg-[#0A84FF]/55 group-hover:bg-[#4F46E5] dark:group-hover:bg-[#0A84FF]'
+                                  ? 'bg-[#4F46E5] dark:bg-[#6366F1]'
+                                  : 'bg-indigo-400/80 dark:bg-indigo-500/40 group-hover:bg-[#4F46E5] dark:group-hover:bg-[#6366F1]'
                             }`}
                             style={
                               bucket.minutesStudied > 0
@@ -195,8 +195,8 @@ export default function ProgressTrendSection({
                         <span
                           className={`w-full truncate text-center text-[10.5px] font-medium tabular-nums ${
                             isSelected
-                              ? 'font-semibold text-neutral-900 dark:text-white'
-                              : 'text-neutral-500 dark:text-neutral-400'
+                              ? 'font-semibold text-neutral-900 dark:text-[#EFF0F6]'
+                              : 'text-neutral-500 dark:text-[#9DA3AF]'
                           }`}
                         >
                           {bucket.label}
@@ -207,13 +207,13 @@ export default function ProgressTrendSection({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-4 text-[11px] text-neutral-500 dark:text-neutral-400">
+              <div className="flex flex-wrap items-center gap-4 text-[11px] text-neutral-500 dark:text-[#9DA3AF]">
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-xs bg-[#4F46E5] dark:bg-[#0A84FF]" />
+                  <span className="h-2.5 w-2.5 rounded-xs bg-[#4F46E5] dark:bg-[#6366F1]" />
                   <span>Phút học (cột)</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="h-0.5 w-3.5 rounded-full bg-emerald-500 dark:bg-[#30D158]" />
+                  <span className="h-0.5 w-3.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                   <span>Tỉ lệ nhớ đúng (đường)</span>
                 </span>
               </div>
@@ -222,17 +222,17 @@ export default function ProgressTrendSection({
         </div>
 
         {/* Phải: Tiến bộ khi làm lại cùng một bài kiểm tra */}
-        <div className="lg:col-span-5 flex flex-col justify-between gap-3 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/70 dark:bg-[#161A23] p-4">
+        <div className="lg:col-span-5 flex flex-col justify-between gap-3 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/70 dark:bg-white/[0.035] p-4">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-[#EFF0F6]">
                 Tiến bộ khi làm lại kiểm tra
               </h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="text-xs text-neutral-500 dark:text-[#9DA3AF]">
                 So sánh lần đầu và lần gần nhất trên cùng một đề.
               </p>
             </div>
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-[#30D158]/15 dark:text-[#30D158]">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/[0.14] dark:text-emerald-400">
               <TrendingUp className="h-4 w-4" />
             </span>
           </div>
@@ -244,21 +244,21 @@ export default function ProgressTrendSection({
                 return (
                   <div
                     key={item.quizId}
-                    className="flex items-center justify-between gap-3 rounded-xl bg-white dark:bg-[#1C212E] border border-black/[0.04] dark:border-white/[0.06] px-3 py-2.5 text-xs"
+                    className="flex items-center justify-between gap-3 rounded-xl bg-white dark:bg-[#1D212B]/90 border border-black/[0.04] dark:border-white/[0.06] px-3 py-2.5 text-xs"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-neutral-800 dark:text-neutral-100">
+                      <p className="truncate font-semibold text-neutral-800 dark:text-[#EFF0F6]">
                         {item.quizTitle}
                       </p>
-                      <p className="text-[11px] text-neutral-500 dark:text-neutral-400 tabular-nums">
+                      <p className="text-[11px] text-neutral-500 dark:text-[#9DA3AF] tabular-nums">
                         {item.attemptsCount} lượt · {item.firstScorePct}% → {item.latestScorePct}%
                       </p>
                     </div>
                     <span
                       className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
                         isUp
-                          ? 'bg-emerald-500/12 text-emerald-700 dark:bg-[#30D158]/15 dark:text-[#30D158]'
-                          : 'bg-neutral-100 text-neutral-600 dark:bg-white/[0.06] dark:text-neutral-300'
+                          ? 'bg-emerald-500/12 text-emerald-700 dark:bg-emerald-500/[0.14] dark:text-emerald-400'
+                          : 'bg-neutral-100 text-neutral-600 dark:bg-white/[0.06] dark:text-[#9DA3AF]'
                       }`}
                     >
                       {isUp ? `▲ +${Math.round(item.gainPct)}%` : `${Math.round(item.gainPct)}%`}
@@ -269,7 +269,7 @@ export default function ProgressTrendSection({
             </div>
           ) : quizPerformance.recentScores.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-[11.5px] text-neutral-500 dark:text-neutral-400">
+              <p className="text-[11.5px] text-neutral-500 dark:text-[#9DA3AF]">
                 Điểm gần đây (làm lại cùng một đề để đo mức tiến bộ thật):
               </p>
               {quizPerformance.recentScores
@@ -278,19 +278,19 @@ export default function ProgressTrendSection({
                 .map((s) => (
                   <div
                     key={s.attemptId}
-                    className="flex items-center justify-between gap-3 rounded-xl bg-white dark:bg-[#1C212E] border border-black/[0.04] dark:border-white/[0.06] px-3 py-2 text-xs"
+                    className="flex items-center justify-between gap-3 rounded-xl bg-white dark:bg-[#1D212B]/90 border border-black/[0.04] dark:border-white/[0.06] px-3 py-2 text-xs"
                   >
                     <span className="truncate font-medium text-neutral-700 dark:text-neutral-300">
                       {s.quizTitle}
                     </span>
-                    <span className="shrink-0 font-bold tabular-nums text-neutral-900 dark:text-white">
+                    <span className="shrink-0 font-bold tabular-nums text-neutral-900 dark:text-[#EFF0F6]">
                       {formatPercent(s.scorePct)}
                     </span>
                   </div>
                 ))}
             </div>
           ) : (
-            <div className="flex flex-1 items-center justify-center py-6 text-center text-xs text-neutral-500 dark:text-neutral-400">
+            <div className="flex flex-1 items-center justify-center py-6 text-center text-xs text-neutral-500 dark:text-[#9DA3AF]">
               Chưa có bài kiểm tra nào được nộp.
             </div>
           )}

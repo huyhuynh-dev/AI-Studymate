@@ -34,35 +34,35 @@ export const MASTERY_STATUS_META: Record<MasteryStatus, MasteryStatusVisual> = {
   weak: {
     label: 'Nên ôn lại',
     shortLabel: 'Cần ôn',
-    dotClass: 'bg-[#FF453A]',
-    barClass: 'bg-[#FF453A]',
-    stripClass: 'bg-[#FF453A]',
+    dotClass: 'bg-rose-500 dark:bg-rose-400',
+    barClass: 'bg-rose-500 dark:bg-rose-400',
+    stripClass: 'bg-rose-500 dark:bg-rose-400',
     badgeClass:
-      'bg-rose-500/10 text-rose-700 border-rose-500/20 dark:bg-[#FF453A]/15 dark:text-[#FF6961] dark:border-[#FF453A]/25',
+      'bg-rose-500/10 text-rose-700 border-rose-500/20 dark:bg-rose-500/[0.14] dark:text-rose-400 dark:border-rose-500/25',
     tileClass:
-      'bg-rose-400/80 hover:bg-rose-500 dark:bg-[#FF453A]/75 dark:hover:bg-[#FF453A]',
+      'bg-rose-400/80 hover:bg-rose-500 dark:bg-rose-500/70 dark:hover:bg-rose-400',
   },
   developing: {
     label: 'Đang củng cố',
     shortLabel: 'Trung bình',
-    dotClass: 'bg-amber-500',
-    barClass: 'bg-amber-500',
-    stripClass: 'bg-amber-500',
+    dotClass: 'bg-amber-500 dark:bg-amber-400',
+    barClass: 'bg-amber-500 dark:bg-amber-400',
+    stripClass: 'bg-amber-500 dark:bg-amber-400',
     badgeClass:
-      'bg-amber-500/10 text-amber-700 border-amber-500/20 dark:bg-amber-400/15 dark:text-amber-300 dark:border-amber-400/25',
+      'bg-amber-500/10 text-amber-700 border-amber-500/20 dark:bg-amber-500/[0.14] dark:text-amber-300 dark:border-amber-400/25',
     tileClass:
-      'bg-amber-400/85 hover:bg-amber-500 dark:bg-amber-400/75 dark:hover:bg-amber-400',
+      'bg-amber-400/85 hover:bg-amber-500 dark:bg-amber-400/70 dark:hover:bg-amber-400',
   },
   mastered: {
     label: 'Đã vững',
     shortLabel: 'Vững',
-    dotClass: 'bg-[#30D158]',
-    barClass: 'bg-[#30D158]',
-    stripClass: 'bg-[#30D158]',
+    dotClass: 'bg-emerald-500 dark:bg-emerald-400',
+    barClass: 'bg-emerald-500 dark:bg-emerald-400',
+    stripClass: 'bg-emerald-500 dark:bg-emerald-400',
     badgeClass:
-      'bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:bg-[#30D158]/15 dark:text-[#30D158] dark:border-[#30D158]/25',
+      'bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:bg-emerald-500/[0.14] dark:text-emerald-400 dark:border-emerald-500/25',
     tileClass:
-      'bg-emerald-500/85 hover:bg-emerald-500 dark:bg-[#30D158]/80 dark:hover:bg-[#30D158]',
+      'bg-emerald-500/85 hover:bg-emerald-500 dark:bg-emerald-500/75 dark:hover:bg-emerald-400',
   },
 };
 
@@ -73,22 +73,22 @@ export const METRIC_LABEL_META: Record<
   good: {
     label: 'Tốt',
     badgeClass:
-      'bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:bg-[#30D158]/15 dark:text-[#30D158] dark:border-[#30D158]/25',
+      'bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:bg-emerald-500/[0.14] dark:text-emerald-400 dark:border-emerald-500/25',
   },
   ok: {
     label: 'Ổn',
     badgeClass:
-      'bg-indigo-500/10 text-[#4F46E5] border-indigo-500/20 dark:bg-[#0A84FF]/15 dark:text-[#60A5FA] dark:border-[#0A84FF]/25',
+      'bg-indigo-500/10 text-[#4F46E5] border-indigo-500/20 dark:bg-indigo-500/[0.14] dark:text-[#818CF8] dark:border-indigo-400/25',
   },
   needs_work: {
     label: 'Cần cải thiện',
     badgeClass:
-      'bg-amber-500/10 text-amber-700 border-amber-500/20 dark:bg-amber-400/15 dark:text-[#FFD60A] dark:border-amber-400/25',
+      'bg-amber-500/10 text-amber-700 border-amber-500/20 dark:bg-amber-500/[0.14] dark:text-amber-300 dark:border-amber-400/25',
   },
   insufficient_data: {
     label: 'Chưa đủ dữ liệu',
     badgeClass:
-      'bg-neutral-100 text-neutral-600 border-neutral-200/80 dark:bg-white/[0.06] dark:text-neutral-300 dark:border-white/[0.08]',
+      'bg-neutral-100 text-neutral-600 border-neutral-200/80 dark:bg-white/[0.06] dark:text-[#9DA3AF] dark:border-white/[0.08]',
   },
 };
 
@@ -104,17 +104,17 @@ export const BLOOM_META_LABELS: Record<
   understand: {
     label: 'Hiểu',
     short: 'Hiểu',
-    barClass: 'bg-[#0066FF] dark:bg-[#0A84FF]',
+    barClass: 'bg-[#4F46E5] dark:bg-[#6366F1]',
   },
   apply: {
     label: 'Vận dụng',
     short: 'Vận dụng',
-    barClass: 'bg-amber-500 dark:bg-[#FFD60A]',
+    barClass: 'bg-amber-500 dark:bg-amber-400',
   },
   analyze: {
     label: 'Phân tích',
     short: 'Phân tích',
-    barClass: 'bg-indigo-600 dark:bg-[#818CF8]',
+    barClass: 'bg-[#571AC0] dark:bg-[#8B5CF6]',
   },
 };
 

@@ -54,22 +54,22 @@ export default function AdvancedAnalyticsSection({
       key: 'mature',
       label: 'Đã thuộc (≥ 3 tuần)',
       count: deckComposition.matureCount,
-      barClass: 'bg-emerald-500 dark:bg-[#30D158]',
-      dotClass: 'bg-emerald-500 dark:bg-[#30D158]',
+      barClass: 'bg-emerald-500 dark:bg-emerald-400',
+      dotClass: 'bg-emerald-500 dark:bg-emerald-400',
     },
     {
       key: 'young',
       label: 'Còn non (< 3 tuần)',
       count: deckComposition.youngCount,
-      barClass: 'bg-[#4F46E5] dark:bg-[#0A84FF]',
-      dotClass: 'bg-[#4F46E5] dark:bg-[#0A84FF]',
+      barClass: 'bg-[#4F46E5] dark:bg-[#6366F1]',
+      dotClass: 'bg-[#4F46E5] dark:bg-[#6366F1]',
     },
     {
       key: 'learning',
       label: 'Đang học',
       count: deckComposition.learningCount,
-      barClass: 'bg-amber-500 dark:bg-[#FFD60A]',
-      dotClass: 'bg-amber-500 dark:bg-[#FFD60A]',
+      barClass: 'bg-amber-500 dark:bg-amber-400',
+      dotClass: 'bg-amber-500 dark:bg-amber-400',
     },
     {
       key: 'new',
@@ -81,10 +81,10 @@ export default function AdvancedAnalyticsSection({
   ];
 
   const ratingRows = [
-    { key: 'again', label: 'Quên', count: ratingDistribution.again, barClass: 'bg-rose-400 dark:bg-[#FF6961]' },
-    { key: 'hard', label: 'Khó', count: ratingDistribution.hard, barClass: 'bg-amber-400 dark:bg-[#FFD60A]' },
-    { key: 'good', label: 'Tốt', count: ratingDistribution.good, barClass: 'bg-[#4F46E5] dark:bg-[#0A84FF]' },
-    { key: 'easy', label: 'Dễ', count: ratingDistribution.easy, barClass: 'bg-emerald-500 dark:bg-[#30D158]' },
+    { key: 'again', label: 'Quên', count: ratingDistribution.again, barClass: 'bg-rose-400 dark:bg-rose-400' },
+    { key: 'hard', label: 'Khó', count: ratingDistribution.hard, barClass: 'bg-amber-400 dark:bg-amber-400' },
+    { key: 'good', label: 'Tốt', count: ratingDistribution.good, barClass: 'bg-[#4F46E5] dark:bg-[#6366F1]' },
+    { key: 'easy', label: 'Dễ', count: ratingDistribution.easy, barClass: 'bg-emerald-500 dark:bg-emerald-400' },
   ];
 
   return (
@@ -94,17 +94,17 @@ export default function AdvancedAnalyticsSection({
         <BentoCard className="p-5 sm:p-6 lg:col-span-6 space-y-4">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="text-base sm:text-lg font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-[1.2]">
+              <h3 className="text-base sm:text-lg font-bold font-heading tracking-tight text-neutral-900 dark:text-[#EFF0F6] leading-[1.2]">
                 Phân bố kho thẻ ({totalCards} thẻ)
               </h3>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="mt-1 text-xs text-neutral-500 dark:text-[#9DA3AF]">
                 Bức tranh tổng thể lượng kiến thức đã thuộc vững so với thẻ mới.
               </p>
             </div>
           </div>
 
           {totalCards === 0 ? (
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 py-4">
+            <p className="text-xs text-neutral-500 dark:text-[#9DA3AF] py-4">
               Chưa có thẻ ghi nhớ nào trong phạm vi này.
             </p>
           ) : (
@@ -128,13 +128,13 @@ export default function AdvancedAnalyticsSection({
                 {deckSegments.map((seg) => (
                   <div
                     key={seg.key}
-                    className="flex items-center justify-between rounded-xl bg-neutral-50/80 dark:bg-[#161A23] px-3 py-2"
+                    className="flex items-center justify-between rounded-xl border border-black/[0.04] dark:border-white/[0.06] bg-neutral-50/80 dark:bg-white/[0.035] px-3 py-2"
                   >
-                    <span className="inline-flex items-center gap-2 text-neutral-600 dark:text-neutral-300">
+                    <span className="inline-flex items-center gap-2 text-neutral-600 dark:text-[#9DA3AF]">
                       <span className={`h-2.5 w-2.5 rounded-full ${seg.dotClass}`} />
                       <span>{seg.label}</span>
                     </span>
-                    <span className="font-bold text-neutral-900 dark:text-white">
+                    <span className="font-bold text-neutral-900 dark:text-[#EFF0F6]">
                       {seg.count}
                     </span>
                   </div>
@@ -148,10 +148,10 @@ export default function AdvancedAnalyticsSection({
         <BentoCard className="p-5 sm:p-6 lg:col-span-6 space-y-4">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="text-base sm:text-lg font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-[1.2]">
+              <h3 className="text-base sm:text-lg font-bold font-heading tracking-tight text-neutral-900 dark:text-[#EFF0F6] leading-[1.2]">
                 Phân bố đánh giá khi ôn thẻ
               </h3>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="mt-1 text-xs text-neutral-500 dark:text-[#9DA3AF]">
                 {ratingDistribution.total < MIN_RATING_DIST_SAMPLE
                   ? `Cần ≥ ${MIN_RATING_DIST_SAMPLE} lượt ôn để ổn định (hiện có ${ratingDistribution.total} lượt).`
                   : `Tổng cộng ${ratingDistribution.total} lượt ôn trong kỳ đã chọn.`}
@@ -160,7 +160,7 @@ export default function AdvancedAnalyticsSection({
           </div>
 
           {ratingDistribution.total === 0 ? (
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 py-4">
+            <p className="text-xs text-neutral-500 dark:text-[#9DA3AF] py-4">
               Chưa có lượt ôn thẻ nào trong khoảng thời gian này.
             </p>
           ) : (
@@ -177,10 +177,10 @@ export default function AdvancedAnalyticsSection({
                 return (
                   <div key={row.key} className="space-y-1 text-xs">
                     <div className="flex items-center justify-between tabular-nums">
-                      <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                      <span className="font-medium text-neutral-700 dark:text-[#9DA3AF]">
                         {row.label}
                       </span>
-                      <span className="font-semibold text-neutral-900 dark:text-white">
+                      <span className="font-semibold text-neutral-900 dark:text-[#EFF0F6]">
                         {row.count} ({pct}%)
                       </span>
                     </div>
@@ -197,10 +197,10 @@ export default function AdvancedAnalyticsSection({
           )}
 
           {advanced.flaggedCorrectCount >= 5 && (
-            <div className="flex items-center gap-2 rounded-xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-[#161A23] px-3 py-2 text-xs text-neutral-600 dark:text-neutral-300">
-              <HelpCircle className="h-4 w-4 shrink-0 text-amber-500" />
+            <div className="flex items-center gap-2 rounded-xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-white/[0.035] px-3 py-2 text-xs text-neutral-600 dark:text-[#9DA3AF]">
+              <HelpCircle className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
               <span>
-                Có <strong>{advanced.flaggedCorrectCount} câu</strong> bạn đánh dấu &ldquo;chưa chắc&rdquo; nhưng trả lời đúng — hãy ôn lại thêm 1 lần cho thật vững.
+                Có <strong className="text-neutral-900 dark:text-[#EFF0F6]">{advanced.flaggedCorrectCount} câu</strong> bạn đánh dấu &ldquo;chưa chắc&rdquo; nhưng trả lời đúng — hãy ôn lại thêm 1 lần cho thật vững.
               </span>
             </div>
           )}
@@ -212,22 +212,22 @@ export default function AdvancedAnalyticsSection({
         <BentoCard className="p-5 sm:p-6 lg:col-span-7 space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-base sm:text-lg font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-[1.2]">
+              <h3 className="text-base sm:text-lg font-bold font-heading tracking-tight text-neutral-900 dark:text-[#EFF0F6] leading-[1.2]">
                 Kiểu câu hỏi bạn làm tốt / chưa tốt
               </h3>
-              <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
+              <p className="mt-1 text-xs text-neutral-600 dark:text-[#9DA3AF] leading-relaxed">
                 {bloomSentence}
               </p>
             </div>
             {bloomMastery.untaggedCount > 0 && (
-              <span className="shrink-0 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium tabular-nums text-neutral-500 dark:text-neutral-400">
+              <span className="shrink-0 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium tabular-nums text-neutral-500 dark:text-[#9DA3AF]">
                 {bloomMastery.untaggedCount} câu cũ chưa phân loại
               </span>
             )}
           </div>
 
           {!hasBloomData ? (
-            <div className="rounded-2xl border border-dashed border-black/[0.08] dark:border-white/[0.1] bg-neutral-50/70 dark:bg-[#161A23] px-5 py-8 text-center text-xs text-neutral-500 dark:text-neutral-400">
+            <div className="rounded-2xl border border-dashed border-black/[0.08] dark:border-white/[0.1] bg-neutral-50/70 dark:bg-white/[0.03] px-5 py-8 text-center text-xs text-neutral-500 dark:text-[#9DA3AF]">
               Hoàn thành bài kiểm tra có phân loại mức tư duy để xem chi tiết tại đây.
             </div>
           ) : (
@@ -243,18 +243,18 @@ export default function AdvancedAnalyticsSection({
                     className={`space-y-1.5 ${isLowSample ? 'opacity-65' : ''}`}
                   >
                     <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                      <span className="font-semibold text-neutral-800 dark:text-[#EFF0F6]">
                         {meta.label}
                       </span>
                       <div className="flex items-center gap-2 tabular-nums">
-                        <span className="text-neutral-500 dark:text-neutral-400">
+                        <span className="text-neutral-500 dark:text-[#9DA3AF]">
                           {item.totalAnswered > 0
                             ? isLowSample
                               ? `Ít dữ liệu (${item.totalAnswered}/${MIN_BLOOM_SAMPLE} câu)`
                               : `${item.correctCount} đúng / ${item.totalAnswered} câu`
                             : 'Chưa có câu hỏi'}
                         </span>
-                        <span className="min-w-[40px] text-right font-bold text-neutral-900 dark:text-white">
+                        <span className="min-w-[40px] text-right font-bold text-neutral-900 dark:text-[#EFF0F6]">
                           {formatPercent(item.accuracyRate)}
                         </span>
                       </div>
@@ -288,16 +288,16 @@ export default function AdvancedAnalyticsSection({
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <BentoCard className="p-5 sm:p-6 space-y-3">
             <div>
-              <h3 className="text-base sm:text-lg font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-[1.2]">
+              <h3 className="text-base sm:text-lg font-bold font-heading tracking-tight text-neutral-900 dark:text-[#EFF0F6] leading-[1.2]">
                 Thẻ hay quên ({leechCards.length})
               </h3>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="mt-1 text-xs text-neutral-500 dark:text-[#9DA3AF]">
                 Gợi ý: đọc lại đoạn gốc trong tài liệu hoặc tách thẻ thành ý ngắn hơn để dễ nhớ.
               </p>
             </div>
 
             {leechCards.length === 0 ? (
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 py-3">
+              <p className="text-xs text-neutral-500 dark:text-[#9DA3AF] py-3">
                 Chưa ghi nhận thẻ nào bị quên nhiều lần.
               </p>
             ) : (
@@ -307,15 +307,15 @@ export default function AdvancedAnalyticsSection({
                   return (
                     <div
                       key={card.id}
-                      className="flex flex-col gap-2.5 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-[#161A23] p-3.5"
+                      className="flex flex-col gap-2.5 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-white/[0.035] p-3.5"
                     >
-                      <p className="text-xs sm:text-[13px] font-semibold text-neutral-900 dark:text-white leading-snug line-clamp-2">
+                      <p className="text-xs sm:text-[13px] font-semibold text-neutral-900 dark:text-[#EFF0F6] leading-snug line-clamp-2">
                         {card.frontText}
                       </p>
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+                        <span className="text-xs tabular-nums text-neutral-500 dark:text-[#9DA3AF]">
                           {card.deckName} ·{' '}
-                          <strong className="text-amber-700 dark:text-[#FFD60A]">
+                          <strong className="text-amber-700 dark:text-amber-400">
                             Quên {card.againCount} lần
                           </strong>
                         </span>
@@ -324,7 +324,7 @@ export default function AdvancedAnalyticsSection({
                             <button
                               type="button"
                               onClick={() => onJumpToSource(firstRef, card.conversationId)}
-                              className="inline-flex h-8 items-center gap-1 rounded-lg border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] px-2.5 text-[11px] font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-white/[0.1] cursor-pointer"
+                              className="inline-flex h-8 items-center gap-1 rounded-lg border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] px-2.5 text-[11px] font-semibold text-neutral-700 dark:text-[#EFF0F6] hover:bg-neutral-100 dark:hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
                             >
                               <span>Xem nguồn</span>
                               <ArrowUpRight className="h-3 w-3" />
@@ -334,7 +334,7 @@ export default function AdvancedAnalyticsSection({
                             <button
                               type="button"
                               onClick={() => onOpenDeck(card.deckId, card.conversationId)}
-                              className="inline-flex h-8 items-center gap-1 rounded-lg bg-indigo-500/10 dark:bg-[#0A84FF]/15 px-2.5 text-[11px] font-semibold text-[#4F46E5] dark:text-[#60A5FA] hover:bg-indigo-500/20 cursor-pointer"
+                              className="inline-flex h-8 items-center gap-1 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/[0.14] border border-transparent dark:border-indigo-400/20 px-2.5 text-[11px] font-semibold text-[#4F46E5] dark:text-[#818CF8] hover:bg-indigo-500/20 dark:hover:bg-indigo-500/[0.22] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
                             >
                               <Layers className="h-3 w-3" />
                               <span>Mở bộ thẻ</span>
@@ -351,16 +351,16 @@ export default function AdvancedAnalyticsSection({
 
           <BentoCard className="p-5 sm:p-6 space-y-3">
             <div>
-              <h3 className="text-base sm:text-lg font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-[1.2]">
+              <h3 className="text-base sm:text-lg font-bold font-heading tracking-tight text-neutral-900 dark:text-[#EFF0F6] leading-[1.2]">
                 Ý quan trọng hay bỏ sót khi viết ({missingPointsClusters.length})
               </h3>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="mt-1 text-xs text-neutral-500 dark:text-[#9DA3AF]">
                 Tổng hợp từ phần chấm bài tự luận để bạn chú ý diễn đạt đủ ý hơn.
               </p>
             </div>
 
             {missingPointsClusters.length === 0 ? (
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 py-3">
+              <p className="text-xs text-neutral-500 dark:text-[#9DA3AF] py-3">
                 Chưa ghi nhận ý tự luận nào bị bỏ sót.
               </p>
             ) : (
@@ -370,11 +370,11 @@ export default function AdvancedAnalyticsSection({
                   return (
                     <div
                       key={`${cluster.point}-${idx}`}
-                      className="flex items-start justify-between gap-3 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-[#161A23] p-3.5"
+                      className="flex items-start justify-between gap-3 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-white/[0.035] p-3.5"
                     >
                       <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                          <span className="rounded-full bg-amber-500/12 dark:bg-amber-400/15 px-2 py-0.5 font-semibold tabular-nums text-amber-800 dark:text-amber-200">
+                          <span className="rounded-full bg-amber-500/12 dark:bg-amber-500/[0.14] px-2 py-0.5 font-semibold tabular-nums text-amber-800 dark:text-amber-300">
                             Thiếu {cluster.frequency} lần
                           </span>
                           {cluster.bloomLevels.map((lvl) => (
@@ -386,7 +386,7 @@ export default function AdvancedAnalyticsSection({
                             </span>
                           ))}
                         </div>
-                        <p className="text-xs sm:text-[13px] font-semibold text-neutral-900 dark:text-white leading-snug">
+                        <p className="text-xs sm:text-[13px] font-semibold text-neutral-900 dark:text-[#EFF0F6] leading-snug">
                           {cluster.point}
                         </p>
                       </div>
@@ -395,7 +395,7 @@ export default function AdvancedAnalyticsSection({
                         <button
                           type="button"
                           onClick={() => onJumpToSource(firstRef)}
-                          className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] px-2.5 text-[11px] font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-white/[0.1] cursor-pointer"
+                          className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] px-2.5 text-[11px] font-semibold text-neutral-700 dark:text-[#EFF0F6] hover:bg-neutral-100 dark:hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
                         >
                           <span>Nguồn</span>
                           <ArrowUpRight className="h-3 w-3" />

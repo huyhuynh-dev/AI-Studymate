@@ -43,15 +43,15 @@ export default function KnowledgeMapSection({
         <BentoCard className="p-5 sm:p-6 space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-lg sm:text-[20px] font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-[1.2]">
+              <h2 className="text-lg sm:text-[20px] font-bold font-heading tracking-tight text-neutral-900 dark:text-[#EFF0F6] leading-[1.2]">
                 Bản đồ kiến thức
               </h2>
-              <p className="mt-1 text-xs sm:text-[13px] text-neutral-500 dark:text-neutral-400">
+              <p className="mt-1 text-xs sm:text-[13px] text-neutral-500 dark:text-[#9DA3AF]">
                 Mỗi ô là một mục trong tài liệu. Bấm vào ô màu để mở đúng trang cần xem lại.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-neutral-600 dark:text-neutral-400">
+            <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-neutral-600 dark:text-[#9DA3AF]">
               {(['mastered', 'developing', 'weak', 'unstudied'] as const).map(
                 (st) => (
                   <span key={st} className="inline-flex items-center gap-1.5">
@@ -74,7 +74,7 @@ export default function KnowledgeMapSection({
               return (
                 <div
                   key={doc.documentId}
-                  className="flex flex-col justify-between gap-3 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-[#161A23] p-4"
+                  className="flex flex-col justify-between gap-3 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-white/[0.035] p-4"
                 >
                   <button
                     type="button"
@@ -86,17 +86,17 @@ export default function KnowledgeMapSection({
                         doc.conversationId
                       )
                     }
-                    className="group flex items-start justify-between gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] rounded-lg cursor-pointer"
+                    className="group flex items-start justify-between gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-[#4F46E5] dark:bg-[#0A84FF]/15 dark:text-[#60A5FA]">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-[#4F46E5] dark:bg-indigo-500/[0.14] dark:text-[#818CF8]">
                         <FileText className="h-4.5 w-4.5" />
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-neutral-900 dark:text-white group-hover:text-[#4F46E5] dark:group-hover:text-[#60A5FA] transition-colors">
+                        <p className="truncate text-sm font-semibold text-neutral-900 dark:text-[#EFF0F6] group-hover:text-[#4F46E5] dark:group-hover:text-[#818CF8] transition-colors">
                           {doc.fileName}
                         </p>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 tabular-nums">
+                        <p className="text-xs text-neutral-500 dark:text-[#9DA3AF] tabular-nums">
                           {doc.studiedSectionsCount}/{doc.totalSections} mục đã học
                           {doc.weakSectionsCount > 0
                             ? ` · ${doc.weakSectionsCount} mục cần ôn`
@@ -139,7 +139,7 @@ export default function KnowledgeMapSection({
                                 doc.conversationId
                               )
                             }
-                            className={`h-4 min-w-[20px] flex-1 max-w-[36px] rounded-[5px] transition-transform duration-150 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] cursor-pointer ${tileMeta.tileClass}`}
+                            className={`h-4 min-w-[20px] flex-1 max-w-[36px] rounded-[5px] transition-transform duration-150 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer ${tileMeta.tileClass}`}
                           />
                         );
                       })}
@@ -163,10 +163,10 @@ export default function KnowledgeMapSection({
       {conversationSummaries.length > 0 && (
         <BentoCard className="p-5 sm:p-6 space-y-4">
           <div>
-            <h2 className="text-lg sm:text-[20px] font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-[1.2]">
+            <h2 className="text-lg sm:text-[20px] font-bold font-heading tracking-tight text-neutral-900 dark:text-[#EFF0F6] leading-[1.2]">
               Các phiên học ({conversationSummaries.length})
             </h2>
-            <p className="mt-1 text-xs sm:text-[13px] text-neutral-500 dark:text-neutral-400">
+            <p className="mt-1 text-xs sm:text-[13px] text-neutral-500 dark:text-[#9DA3AF]">
               Ưu tiên xếp các phiên học có mục cần ôn hoặc thẻ đến hạn lên đầu.
             </p>
           </div>
@@ -177,26 +177,26 @@ export default function KnowledgeMapSection({
                 key={conv.conversationId}
                 type="button"
                 onClick={() => onOpenConversation?.(conv.conversationId)}
-                className="group flex w-full flex-col gap-2 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-[#161A23] px-4 py-3.5 text-left hover:border-indigo-500/30 hover:bg-white dark:hover:bg-[#1C212E] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] transition-all sm:flex-row sm:items-center sm:justify-between cursor-pointer"
+                className="group flex w-full flex-col gap-2 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-white/[0.035] px-4 py-3.5 text-left hover:border-indigo-500/30 dark:hover:border-indigo-400/30 hover:bg-white dark:hover:bg-[#1D212B] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-all sm:flex-row sm:items-center sm:justify-between cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-[#4F46E5] dark:text-[#60A5FA]">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-[#4F46E5] dark:bg-indigo-500/[0.14] dark:text-[#818CF8]">
                     <MessageSquare className="h-4 w-4" />
                   </span>
-                  <span className="truncate text-sm font-semibold text-neutral-900 dark:text-white">
+                  <span className="truncate text-sm font-semibold text-neutral-900 dark:text-[#EFF0F6]">
                     {conv.title}
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 text-xs tabular-nums text-neutral-600 dark:text-neutral-300">
+                <div className="flex flex-wrap items-center gap-3 text-xs tabular-nums text-neutral-600 dark:text-[#9DA3AF]">
                   <span>Thẻ cần ôn: {conv.dueNowCount}/{conv.totalCards}</span>
                   <span>Kiểm tra: {formatPercent(conv.avgQuizScorePct)}</span>
                   {conv.weakSectionsCount > 0 && (
-                    <span className="rounded-full bg-amber-500/12 dark:bg-amber-400/15 px-2.5 py-0.5 font-semibold text-amber-800 dark:text-amber-200">
+                    <span className="rounded-full bg-amber-500/12 dark:bg-amber-500/[0.14] px-2.5 py-0.5 font-semibold text-amber-800 dark:text-amber-300">
                       {conv.weakSectionsCount} mục cần ôn
                     </span>
                   )}
-                  <ArrowUpRight className="h-4 w-4 text-neutral-400 group-hover:text-[#4F46E5] dark:group-hover:text-[#60A5FA] transition-colors" />
+                  <ArrowUpRight className="h-4 w-4 text-neutral-400 group-hover:text-[#4F46E5] dark:group-hover:text-[#818CF8] transition-colors" />
                 </div>
               </button>
             ))}

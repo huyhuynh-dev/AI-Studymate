@@ -77,7 +77,7 @@ export default function TocMasterySidebar({
             type="button"
             onClick={() => void refresh()}
             title="Làm mới dữ liệu độ thuộc"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.08] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 dark:text-[#9DA3AF] hover:bg-neutral-100 dark:hover:bg-white/[0.08] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
@@ -85,7 +85,7 @@ export default function TocMasterySidebar({
             type="button"
             onClick={onClose}
             aria-label="Đóng mục lục"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.08] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 dark:text-[#9DA3AF] hover:bg-neutral-100 dark:hover:bg-white/[0.08] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -132,12 +132,12 @@ export default function TocMasterySidebar({
         <>
           {/* Summary Card */}
           <div className="border-b border-black/[0.06] dark:border-white/[0.08] p-3 space-y-2.5">
-            <div className="rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/90 dark:bg-[#181C26] p-3">
+            <div className="rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/90 dark:bg-[#161922] p-3">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                <span className="text-xs font-medium text-neutral-500 dark:text-[#9DA3AF]">
                   Mức độ nắm vững tổng thể
                 </span>
-                <span className="text-lg font-bold font-heading tabular-nums tracking-tight text-neutral-900 dark:text-white">
+                <span className="text-lg font-bold font-heading tabular-nums tracking-tight text-neutral-900 dark:text-[#EFF0F6]">
                   {formatPercent(mastery.overallMasteryScore)}
                 </span>
               </div>
@@ -152,13 +152,13 @@ export default function TocMasterySidebar({
                 />
               </div>
               <div className="mt-2.5 grid grid-cols-3 gap-1.5 text-center text-[11px] font-medium tabular-nums">
-                <div className="rounded-lg bg-rose-500/10 dark:bg-[#FF453A]/15 py-1 text-rose-700 dark:text-[#FF6961]">
+                <div className="rounded-lg bg-rose-500/10 dark:bg-rose-500/[0.14] py-1 text-rose-700 dark:text-rose-400">
                   Yếu: {mastery.weakSectionsCount}
                 </div>
-                <div className="rounded-lg bg-amber-500/10 dark:bg-amber-400/15 py-1 text-amber-700 dark:text-amber-300">
+                <div className="rounded-lg bg-amber-500/10 dark:bg-amber-500/[0.14] py-1 text-amber-700 dark:text-amber-300">
                   Củng cố: {mastery.developingSectionsCount}
                 </div>
-                <div className="rounded-lg bg-emerald-500/10 dark:bg-[#30D158]/15 py-1 text-emerald-700 dark:text-[#30D158]">
+                <div className="rounded-lg bg-emerald-500/10 dark:bg-emerald-500/[0.14] py-1 text-emerald-700 dark:text-emerald-400">
                   Vững: {mastery.masteredSectionsCount}
                 </div>
               </div>
@@ -169,10 +169,10 @@ export default function TocMasterySidebar({
               <button
                 type="button"
                 onClick={() => setFilterMode('all')}
-                className={`rounded-lg py-1.5 text-xs font-semibold transition-all cursor-pointer tabular-nums ${
+                className={`rounded-lg py-1.5 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer tabular-nums ${
                   filterMode === 'all'
-                    ? 'bg-white dark:bg-[#232836] text-neutral-900 dark:text-white shadow-2xs'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                    ? 'bg-white dark:bg-[#242938] text-[#4F46E5] dark:text-[#818CF8] shadow-2xs'
+                    : 'text-neutral-500 dark:text-[#9DA3AF] hover:text-neutral-800 dark:hover:text-[#EFF0F6]'
                 }`}
               >
                 Tất cả ({mastery.totalSections})
@@ -180,10 +180,10 @@ export default function TocMasterySidebar({
               <button
                 type="button"
                 onClick={() => setFilterMode('weak')}
-                className={`rounded-lg py-1.5 text-xs font-semibold transition-all cursor-pointer tabular-nums ${
+                className={`rounded-lg py-1.5 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer tabular-nums ${
                   filterMode === 'weak'
-                    ? 'bg-white dark:bg-[#232836] text-neutral-900 dark:text-white shadow-2xs'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                    ? 'bg-white dark:bg-[#242938] text-[#4F46E5] dark:text-[#818CF8] shadow-2xs'
+                    : 'text-neutral-500 dark:text-[#9DA3AF] hover:text-neutral-800 dark:hover:text-[#EFF0F6]'
                 }`}
               >
                 Cần ôn ({mastery.weakSectionsCount + mastery.developingSectionsCount})
@@ -194,7 +194,7 @@ export default function TocMasterySidebar({
           {/* Sections Tree */}
           <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
             {visibleSections.length === 0 ? (
-              <p className="py-10 text-center text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="py-10 text-center text-xs text-neutral-500 dark:text-[#9DA3AF]">
                 Chưa có mục lục nào nằm trong nhóm cần củng cố.
               </p>
             ) : (
@@ -226,9 +226,9 @@ export default function TocMasterySidebar({
                           onJumpToPage(section.startPage, section.bboxes);
                         }
                       }}
-                      className={`group relative flex flex-col gap-1.5 rounded-xl border border-black/[0.05] dark:border-white/[0.08] bg-white dark:bg-[#181C26] p-2.5 pl-3.5 transition-all duration-200 ${
+                      className={`group relative flex flex-col gap-1.5 rounded-xl border border-black/[0.05] dark:border-white/[0.08] bg-white dark:bg-[#161922] p-2.5 pl-3.5 transition-all duration-200 ${
                         canJump
-                          ? 'hover:border-indigo-500/35 hover:bg-neutral-50 dark:hover:bg-[#1E2330] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]'
+                          ? 'hover:border-indigo-500/35 dark:hover:border-indigo-400/35 hover:bg-neutral-50 dark:hover:bg-[#1D212B] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary'
                           : ''
                       }`}
                     >
@@ -239,7 +239,7 @@ export default function TocMasterySidebar({
                       />
 
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-[12.5px] font-semibold leading-snug text-neutral-800 dark:text-neutral-100 line-clamp-2">
+                        <p className="text-[12.5px] font-semibold leading-snug text-neutral-800 dark:text-[#EFF0F6] line-clamp-2">
                           {section.text}
                         </p>
                         <span
@@ -251,7 +251,7 @@ export default function TocMasterySidebar({
                         </span>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-neutral-500 dark:text-neutral-400 tabular-nums">
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-neutral-500 dark:text-[#9DA3AF] tabular-nums">
                         <span>{formatPageRange(section.startPage, section.endPage)}</span>
                         {section.quizTotal > 0 && (
                           <span>
@@ -264,7 +264,7 @@ export default function TocMasterySidebar({
                           </span>
                         )}
                         {section.leechCount > 0 && (
-                          <span className="font-semibold text-rose-600 dark:text-[#FF6961]">
+                          <span className="font-semibold text-rose-600 dark:text-rose-400">
                             {section.leechCount} khó nhớ
                           </span>
                         )}
@@ -289,7 +289,7 @@ export default function TocMasterySidebar({
                                 sectionTitle: section.text,
                               });
                             }}
-                            className="mt-0.5 inline-flex h-7 w-fit items-center gap-1 rounded-lg bg-indigo-500/10 dark:bg-[#0A84FF]/15 px-2.5 text-[11px] font-semibold text-[#4F46E5] dark:text-[#60A5FA] hover:bg-indigo-500/20 dark:hover:bg-[#0A84FF]/25 active:scale-[0.98] transition-all cursor-pointer"
+                            className="mt-0.5 inline-flex h-7 w-fit items-center gap-1 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/[0.14] border border-transparent dark:border-indigo-400/20 px-2.5 text-[11px] font-semibold text-[#4F46E5] dark:text-[#818CF8] hover:bg-indigo-500/20 dark:hover:bg-indigo-500/[0.22] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] transition-all cursor-pointer"
                           >
                             <Target className="h-3 w-3" />
                             <span>Luyện mục này</span>

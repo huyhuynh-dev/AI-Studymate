@@ -25,7 +25,7 @@ const AdvancedAnalyticsSection = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-44 w-full animate-pulse rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#12151C]" />
+      <div className="h-44 w-full animate-pulse motion-reduce:animate-none rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#161922]" />
     ),
   }
 );
@@ -127,14 +127,14 @@ export default function AnalyticsDashboardView({
       {/* Header tối giản, thân thiện */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[22px] sm:text-2xl font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-[1.2]">
+          <h1 className="text-[22px] sm:text-2xl font-bold font-heading tracking-tight text-neutral-900 dark:text-[#EFF0F6] leading-[1.2]">
             {isSubjectMode
               ? `Tổng quan môn: ${subjData?.subjectName ?? ''}`
               : firstName
                 ? `Xin chào, ${firstName}`
                 : 'Tiến độ học tập'}
           </h1>
-          <p className="mt-1 text-xs sm:text-[13px] text-neutral-500 dark:text-neutral-400">
+          <p className="mt-1 text-xs sm:text-[13px] text-neutral-500 dark:text-[#9DA3AF]">
             Cập nhật theo hoạt động ôn thẻ và làm bài kiểm tra của bạn.
           </p>
         </div>
@@ -145,7 +145,7 @@ export default function AnalyticsDashboardView({
           disabled={isValidating}
           title="Cập nhật số liệu mới nhất"
           aria-label="Cập nhật số liệu mới nhất"
-          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-white/[0.1] active:scale-[0.98] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] transition-all cursor-pointer"
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-600 dark:text-[#EFF0F6] hover:bg-neutral-50 dark:hover:bg-white/[0.1] active:scale-[0.98] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-all cursor-pointer"
         >
           <RefreshCw
             className={`h-3.5 w-3.5 ${isValidating ? 'animate-spin motion-reduce:animate-none' : ''}`}
@@ -213,20 +213,20 @@ export default function AnalyticsDashboardView({
               type="button"
               aria-expanded={advancedOpen}
               onClick={() => setAdvancedOpen((prev) => !prev)}
-              className="flex w-full items-center justify-between rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C] px-5 py-3.5 text-left hover:bg-neutral-50 dark:hover:bg-[#181C26] active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] transition-all cursor-pointer"
+              className="flex w-full items-center justify-between rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#161922] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] px-5 py-3.5 text-left hover:bg-neutral-50 dark:hover:bg-[#1D212B] active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-all cursor-pointer"
             >
               <div>
-                <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
+                <span className="text-sm font-semibold text-neutral-800 dark:text-[#EFF0F6]">
                   Chi tiết nâng cao
                 </span>
-                <span className="ml-2 hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
+                <span className="ml-2 hidden sm:inline text-xs text-neutral-500 dark:text-[#9DA3AF]">
                   Kho thẻ · Phân bố đánh giá · Kiểu câu hỏi · Lịch ôn tuần tới · Thẻ hay quên
                 </span>
               </div>
               {advancedOpen ? (
-                <ChevronUp className="h-4 w-4 shrink-0 text-neutral-500" />
+                <ChevronUp className="h-4 w-4 shrink-0 text-neutral-500 dark:text-[#9DA3AF]" />
               ) : (
-                <ChevronDown className="h-4 w-4 shrink-0 text-neutral-500" />
+                <ChevronDown className="h-4 w-4 shrink-0 text-neutral-500 dark:text-[#9DA3AF]" />
               )}
             </button>
 
