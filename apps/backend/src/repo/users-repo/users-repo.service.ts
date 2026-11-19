@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma, User } from '../../generated/prisma/client.js';
+import { collectNoteMediaKeysFromBlocks } from '../../summaries/note-media.constants.js';
 
 export interface UserProfileStats {
     subjects_count: number;
@@ -113,7 +114,7 @@ export class UsersRepoService {
     }
 
     async collectUserStorageKeys(userId: string): Promise<string[]> {
-        const [userRow, docs] = await Promise.all([
+        const [userRow, docs, summaries] = await Promise.all([
             this.prisma.user.findUnique({
                 where: { id: userId },
                 select: { avatar_url: true },
@@ -121,6 +122,10 @@ export class UsersRepoService {
             this.prisma.document.findMany({
                 where: { user_id: userId },
                 select: { storage_key: true, docling_json_key: true },
+            }),
+            this.prisma.summary.findMany({
+                where: { conversation: { user_id: userId } },
+                select: { pdf_storage_key: true, content_json: true },
             }),
         ]);
 
@@ -134,6 +139,18 @@ export class UsersRepoService {
             }
             if (doc.docling_json_key) {
                 keys.add(doc.docling_json_key);
+            }
+        }
+        const userMediaPrefix = `users/${userId}/`;
+        for (const summary of summaries) {
+            if (summary.pdf_storage_key) {
+                keys.add(summary.pdf_storage_key);
+            }
+            for (const mediaKey of collectNoteMediaKeysFromBlocks(
+                summary.content_json,
+                userMediaPrefix,
+            )) {
+                keys.add(mediaKey);
             }
         }
         return Array.from(keys);

@@ -37,6 +37,7 @@ describe('SummariesService', () => {
     storageService = {
       headObject: vi.fn(),
       uploadObjectBuffer: vi.fn(),
+      getSignedUrlForUpload: vi.fn(),
       getSignedUrlForDownload: vi.fn(),
       deleteObject: vi.fn(),
     };
@@ -295,6 +296,189 @@ describe('SummariesService', () => {
         title: 'Tiêu đề mới',
         pdf_storage_key: null,
       });
+    });
+  });
+
+  describe('Note Media (R2 Embed & Upload)', () => {
+    const userId = '11111111-1111-1111-1111-111111111111';
+    const conversationId = '22222222-2222-2222-2222-222222222222';
+    const summaryId = '33333333-3333-3333-3333-333333333333';
+
+    beforeEach(() => {
+      summariesRepo.getSummaryById.mockResolvedValue({
+        id: summaryId,
+        conversation_id: conversationId,
+        title: 'Ghi chú đa phương tiện',
+        content_json: [],
+        pdf_storage_key: null,
+      });
+      conversationsRepo.getConversationById.mockResolvedValue({
+        id: conversationId,
+        user_id: userId,
+      });
+    });
+
+    it('initNoteMediaUpload nên cấp Presigned PUT URL và r2:// URI hợp lệ cho image/video/audio/file', async () => {
+      storageService.getSignedUrlForUpload.mockResolvedValue('https://r2.upload.url/put');
+
+      const res = await service.initNoteMediaUpload(userId, summaryId, {
+        fileName: 'so-do-bai-hoc.png',
+        fileSize: 2 * 1024 * 1024,
+        mimeType: 'image/png',
+        mediaKind: 'image',
+      });
+
+      expect(res.uploadUrl).toBe('https://r2.upload.url/put');
+      expect(res.storageKey).toMatch(
+        new RegExp(`^users/${userId}/conversations/${conversationId}/summaries/${summaryId}/media/`),
+      );
+      expect(res.mediaUri).toBe(`r2://${res.storageKey}`);
+      expect(storageService.getSignedUrlForUpload).toHaveBeenCalledWith(
+        res.storageKey,
+        'image/png',
+        900,
+      );
+    });
+
+    it('initNoteMediaUpload nên chặn định dạng nguy hiểm (html, svg) và file vượt dung lượng', async () => {
+      await expect(
+        service.initNoteMediaUpload(userId, summaryId, {
+          fileName: 'payload.svg',
+          fileSize: 1024,
+          mimeType: 'image/svg+xml',
+          mediaKind: 'image',
+        }),
+      ).rejects.toThrow('bị chặn');
+
+      await expect(
+        service.initNoteMediaUpload(userId, summaryId, {
+          fileName: 'big-photo.png',
+          fileSize: 12 * 1024 * 1024,
+          mimeType: 'image/png',
+          mediaKind: 'image',
+        }),
+      ).rejects.toThrow('10 MB');
+    });
+
+    it('completeNoteMediaUpload nên xác nhận R2, trả mediaUri + resolvedUrl và chặn storageKey sai prefix', async () => {
+      const validKey = `users/${userId}/conversations/${conversationId}/summaries/${summaryId}/media/uuid-photo.png`;
+      storageService.headObject.mockResolvedValue({
+        exists: true,
+        contentLength: 512000,
+        contentType: 'image/png',
+      });
+      storageService.getSignedUrlForDownload.mockResolvedValue('https://r2.get.url/photo.png');
+
+      const ok = await service.completeNoteMediaUpload(userId, summaryId, {
+        storageKey: validKey,
+        fileName: 'photo.png',
+        mediaKind: 'image',
+      });
+
+      expect(ok.mediaUri).toBe(`r2://${validKey}`);
+      expect(ok.resolvedUrl).toBe('https://r2.get.url/photo.png');
+
+      await expect(
+        service.completeNoteMediaUpload(userId, summaryId, {
+          storageKey: `users/other-user/conversations/${conversationId}/summaries/${summaryId}/media/x.png`,
+          fileName: 'x.png',
+        }),
+      ).rejects.toThrow('Không có quyền xác nhận');
+    });
+
+    it('completeNoteMediaUpload nên xóa tệp trên R2 nếu dung lượng thực tế vượt giới hạn', async () => {
+      const validKey = `users/${userId}/conversations/${conversationId}/summaries/${summaryId}/media/uuid-big.png`;
+      storageService.headObject.mockResolvedValue({
+        exists: true,
+        contentLength: 15 * 1024 * 1024,
+        contentType: 'image/png',
+      });
+      storageService.deleteObject.mockResolvedValue(undefined);
+
+      await expect(
+        service.completeNoteMediaUpload(userId, summaryId, {
+          storageKey: validKey,
+          fileName: 'big.png',
+          mediaKind: 'image',
+        }),
+      ).rejects.toThrow('10 MB');
+
+      expect(storageService.deleteObject).toHaveBeenCalledWith(validKey);
+    });
+
+    it('resolveNoteMediaUrls nên ký URL hàng loạt cho tệp thuộc user và bỏ qua URI của user khác', async () => {
+      const ownedKey = `users/${userId}/conversations/${conversationId}/summaries/${summaryId}/media/11111111-1111-1111-1111-111111111111-demo.mp4`;
+      const foreignKey = `users/99999999-9999-9999-9999-999999999999/conversations/${conversationId}/summaries/${summaryId}/media/22222222-2222-2222-2222-222222222222-secret.png`;
+
+      storageService.getSignedUrlForDownload.mockResolvedValue('https://r2.get.url/demo.mp4');
+
+      const res = await service.resolveNoteMediaUrls(userId, summaryId, {
+        mediaUris: [`r2://${ownedKey}`, `r2://${foreignKey}`],
+      });
+
+      expect(res.urls[`r2://${ownedKey}`]).toBe('https://r2.get.url/demo.mp4');
+      expect(res.urls[`r2://${foreignKey}`]).toBeUndefined();
+      expect(storageService.getSignedUrlForDownload).toHaveBeenCalledTimes(1);
+    });
+
+    it('deleteSummary nên xóa pdf_storage_key và media thuộc ghi chú này nhưng giữ media copy từ ghi chú khác', async () => {
+      const ownMediaKey = `users/${userId}/conversations/${conversationId}/summaries/${summaryId}/media/a.png`;
+      const otherNoteKey = `users/${userId}/conversations/${conversationId}/summaries/44444444-4444-4444-4444-444444444444/media/b.png`;
+
+      summariesRepo.getSummaryById.mockResolvedValue({
+        id: summaryId,
+        conversation_id: conversationId,
+        title: 'Note xóa',
+        pdf_storage_key: 'pdf-key.pdf',
+        content_json: [
+          { type: 'image', props: { url: `r2://${ownMediaKey}` } },
+          { type: 'image', props: { url: `r2://${otherNoteKey}` } },
+        ],
+      });
+      storageService.deleteObject.mockResolvedValue(undefined);
+      summariesRepo.deleteSummary.mockResolvedValue({});
+
+      await service.deleteSummary(userId, summaryId);
+
+      expect(storageService.deleteObject).toHaveBeenCalledWith(ownMediaKey);
+      expect(storageService.deleteObject).toHaveBeenCalledWith('pdf-key.pdf');
+      expect(storageService.deleteObject).not.toHaveBeenCalledWith(otherNoteKey);
+      expect(summariesRepo.deleteSummary).toHaveBeenCalledWith(summaryId);
+    });
+
+    it('exportPdf nên resolve ảnh r2:// sang Presigned URL trước khi render HTML', async () => {
+      const ownMediaKey = `users/${userId}/conversations/${conversationId}/summaries/${summaryId}/media/a.png`;
+      summariesRepo.getSummaryById.mockResolvedValue({
+        id: summaryId,
+        conversation_id: conversationId,
+        title: 'Note có ảnh',
+        pdf_storage_key: null,
+        content_json: [
+          { type: 'image', props: { url: `r2://${ownMediaKey}`, caption: 'Hình 1' } },
+        ],
+      });
+      storageService.getSignedUrlForDownload
+        .mockResolvedValueOnce('https://r2.temp/a.png')
+        .mockResolvedValueOnce('https://r2.download/note.pdf');
+      pdfExportService.convertBlockNoteToHtml.mockReturnValue('<html></html>');
+      pdfExportService.renderHtmlToPdf.mockResolvedValue(Buffer.from('pdf'));
+      storageService.uploadObjectBuffer.mockResolvedValue(undefined);
+      summariesRepo.updateSummary.mockResolvedValue({});
+
+      const result = await service.exportPdf(userId, summaryId);
+
+      expect(result.downloadUrl).toBe('https://r2.download/note.pdf');
+      expect(pdfExportService.convertBlockNoteToHtml).toHaveBeenCalledWith(
+        'Note có ảnh',
+        [
+          expect.objectContaining({
+            type: 'image',
+            props: expect.objectContaining({
+              url: 'https://r2.temp/a.png',
+            }),
+          }),
+        ],
+      );
     });
   });
 });

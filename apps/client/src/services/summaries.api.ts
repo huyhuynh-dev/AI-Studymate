@@ -1,8 +1,14 @@
+import axios from 'axios';
 import { axiosClient } from '@/lib/axios.client';
 import type {
+  CompleteNoteMediaUploadRequest,
+  CompleteNoteMediaUploadResponse,
   CreateManualNoteRequest,
   CreateSummaryRequest,
+  InitNoteMediaUploadRequest,
+  InitNoteMediaUploadResponse,
   RefineSummaryRequest,
+  ResolveNoteMediaUrlsResponse,
   SummaryDocumentRef,
   SummaryItem,
   UpdateSummaryRequest,
@@ -144,6 +150,83 @@ export const summariesApi = {
   ): Promise<{ success: boolean; message: string }> => {
     const res = await axiosClient.delete<{ success: boolean; message: string }>(
       `/summaries/${summaryId}`,
+    );
+    return res.data;
+  },
+
+  initMediaUpload: async (
+    summaryId: string,
+    data: InitNoteMediaUploadRequest,
+  ): Promise<InitNoteMediaUploadResponse> => {
+    const payload: {
+      fileName: string;
+      fileSize: number;
+      mimeType: string;
+      mediaKind?: InitNoteMediaUploadRequest['mediaKind'];
+    } = {
+      fileName: data.fileName,
+      fileSize: data.fileSize,
+      mimeType: data.mimeType,
+    };
+    if (data.mediaKind !== undefined) {
+      payload.mediaKind = data.mediaKind;
+    }
+
+    const res = await axiosClient.post<InitNoteMediaUploadResponse>(
+      `/summaries/${summaryId}/media/init-upload`,
+      payload,
+    );
+    return res.data;
+  },
+
+  uploadMediaToR2: async (
+    uploadUrl: string,
+    file: File,
+    contentType: string,
+  ): Promise<void> => {
+    await axios.put(uploadUrl, file, {
+      headers: {
+        'Content-Type': contentType || file.type || 'application/octet-stream',
+      },
+    });
+  },
+
+  completeMediaUpload: async (
+    summaryId: string,
+    data: CompleteNoteMediaUploadRequest,
+  ): Promise<CompleteNoteMediaUploadResponse> => {
+    const payload: {
+      storageKey: string;
+      fileName: string;
+      mediaKind?: CompleteNoteMediaUploadRequest['mediaKind'];
+    } = {
+      storageKey: data.storageKey,
+      fileName: data.fileName,
+    };
+    if (data.mediaKind !== undefined) {
+      payload.mediaKind = data.mediaKind;
+    }
+
+    const res = await axiosClient.post<CompleteNoteMediaUploadResponse>(
+      `/summaries/${summaryId}/media/complete-upload`,
+      payload,
+    );
+    return res.data;
+  },
+
+  resolveMediaUrls: async (
+    summaryId: string,
+    mediaUris: string[],
+    download?: boolean,
+  ): Promise<ResolveNoteMediaUrlsResponse> => {
+    const payload: { mediaUris: string[]; download?: boolean } = { mediaUris };
+    if (download !== undefined) {
+      payload.download = download;
+    }
+
+    const res = await axiosClient.post<ResolveNoteMediaUrlsResponse>(
+      `/summaries/${summaryId}/media/resolve-urls`,
+      payload,
     );
     return res.data;
   },

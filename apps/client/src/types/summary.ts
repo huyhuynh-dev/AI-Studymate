@@ -60,3 +60,38 @@ export interface UpdateSummaryRequest {
 export interface RefineSummaryRequest {
   instruction: string;
 }
+
+export type NoteMediaKind = 'image' | 'video' | 'audio' | 'file';
+
+export interface InitNoteMediaUploadRequest {
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  mediaKind?: NoteMediaKind;
+}
+
+export interface InitNoteMediaUploadResponse {
+  uploadUrl: string;
+  storageKey: string;
+  mediaUri: string;
+  mimeType: string;
+  mediaKind: NoteMediaKind;
+}
+
+export interface CompleteNoteMediaUploadRequest {
+  storageKey: string;
+  fileName: string;
+  mediaKind?: NoteMediaKind;
+}
+
+export interface CompleteNoteMediaUploadResponse {
+  mediaUri: string;
+  resolvedUrl: string;
+  fileSize: number;
+  mimeType: string;
+}
+
+export interface ResolveNoteMediaUrlsResponse {
+  urls: Record<string, string>;
+  expiresIn: number;
+}

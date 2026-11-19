@@ -24,6 +24,11 @@ import { CreateSummaryDto } from './dto/create-summary.dto.js';
 import { CreateManualNoteDto } from './dto/create-manual-note.dto.js';
 import { UpdateSummaryDto } from './dto/update-summary.dto.js';
 import { RefineSummaryDto } from './dto/refine-summary.dto.js';
+import {
+    CompleteNoteMediaUploadDto,
+    InitNoteMediaUploadDto,
+    ResolveNoteMediaUrlsDto,
+} from './dto/note-media.dto.js';
 import { BlocknoteAiDto } from '../ai/dto/blocknote-ai.dto.js';
 
 @Controller()
@@ -168,6 +173,42 @@ export class SummariesController {
             );
             throw error;
         }
+    }
+
+    /**
+     * Khởi tạo Presigned PUT URL để upload media (Image / Video / Audio / File) vào ghi chú
+     */
+    @Post('summaries/:id/media/init-upload')
+    async initNoteMediaUpload(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string,
+        @Body() dto: InitNoteMediaUploadDto,
+    ) {
+        return this.summariesService.initNoteMediaUpload(this.getUserId(req), id, dto);
+    }
+
+    /**
+     * Xác nhận tệp media đã upload lên Cloudflare R2 và cấp URL hiển thị tức thì
+     */
+    @Post('summaries/:id/media/complete-upload')
+    async completeNoteMediaUpload(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string,
+        @Body() dto: CompleteNoteMediaUploadDto,
+    ) {
+        return this.summariesService.completeNoteMediaUpload(this.getUserId(req), id, dto);
+    }
+
+    /**
+     * Cấp hàng loạt Presigned GET URL cho các media URI (r2://...) trong ghi chú
+     */
+    @Post('summaries/:id/media/resolve-urls')
+    async resolveNoteMediaUrls(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string,
+        @Body() dto: ResolveNoteMediaUrlsDto,
+    ) {
+        return this.summariesService.resolveNoteMediaUrls(this.getUserId(req), id, dto);
     }
 
     /**

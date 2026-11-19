@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { filterSuggestionItems } from "@blocknote/core/extensions";
 import type { PartialBlock } from "@blocknote/core";
 import {
+  FilePanelController,
   FormattingToolbar,
   FormattingToolbarController,
   SuggestionMenuController,
@@ -47,6 +48,15 @@ import {
 import { en } from "@blocknote/core/locales";
 import { en as aiEn } from "@blocknote/xl-ai/locales";
 import { UNTITLED_NOTE_LABEL } from "./noteHelpers";
+import {
+  NoteMediaCallbackContext,
+  NoteMediaFilePanel,
+} from "./NoteMediaFilePanel";
+import {
+  createBatchedMediaUrlResolver,
+  isSafeStoredMediaUrl,
+  uploadNoteMediaFile,
+} from "./noteMediaUtils";
 
 interface SummaryEditorProps {
   summaryId: string;
@@ -57,6 +67,7 @@ interface SummaryEditorProps {
   onChange: (blocks: unknown[]) => void;
   onTitleChange: (title: string) => void;
   onTitleBlur?: () => void;
+  onMediaCommitted?: () => void;
   editable?: boolean;
   zoomPercent?: number;
 }
@@ -344,7 +355,21 @@ function sanitizeBlock(block: unknown): PartialBlock | null {
       type = "paragraph";
       content = [sanitizeInline("")];
     }
-  } else if (["image", "video", "audio", "file", "divider"].includes(type)) {
+  } else if (["image", "video", "audio", "file"].includes(type)) {
+    content = undefined;
+    if (typeof props.url === "string" && props.url.trim() !== "") {
+      if (!isSafeStoredMediaUrl(props.url)) {
+        props.url = "";
+      }
+    }
+    if (
+      "previewWidth" in props &&
+      (typeof props.previewWidth !== "number" ||
+        !Number.isFinite(props.previewWidth))
+    ) {
+      delete props.previewWidth;
+    }
+  } else if (type === "divider") {
     content = undefined;
   } else if (["codeBlock", "mathBlock", "diagram"].includes(type)) {
     if (typeof block.content === "string") {
@@ -463,17 +488,35 @@ function InnerBlockNoteEditor({
   onChange,
   onTitleChange,
   onTitleBlur,
+  onMediaCommitted,
   editable = true,
   zoomPercent = 100,
 }: SummaryEditorProps) {
   // Theo dõi AI đang hoạt động (gồm cả Stream và giai đoạn chờ Review Accept/Reject)
   const [aiActivity] = useState(createAiActivityTracker);
 
-  // Giữ onChange mới nhất trong ref để các useEffect không bị hủy/đăng ký lại mỗi lần render
+  // Giữ callback mới nhất trong ref để các handler/useEffect không bị hủy/đăng ký lại mỗi lần render
   const onChangeRef = useRef(onChange);
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  const onMediaCommittedRef = useRef(onMediaCommitted);
+  useEffect(() => {
+    onMediaCommittedRef.current = onMediaCommitted;
+  }, [onMediaCommitted]);
+
+  const handleMediaCommitted = useCallback(() => {
+    onMediaCommittedRef.current?.();
+  }, []);
+
+  const editorBlockTypeLookupRef = useRef<
+    ((blockId: string) => string | undefined) | null
+  >(null);
+
+  const [resolveMediaUrl] = useState(() =>
+    createBatchedMediaUrlResolver(summaryId),
+  );
 
   // Chuẩn bị initial content an toàn cho BlockNote (khởi tạo 1 lần duy nhất khi mount)
   const [validInitialBlocks] = useState<SummaryPartialBlock[] | undefined>(
@@ -496,7 +539,7 @@ function InnerBlockNoteEditor({
     },
   );
 
-  // Create the BlockNote editor with the AI extension
+  // Create the BlockNote editor with the AI extension and R2 media upload/resolve handlers
   const editor = useCreateBlockNote({
     schema: summaryEditorSchema,
     dictionary: {
@@ -507,10 +550,48 @@ function InnerBlockNoteEditor({
         emptyDocument:
           "Bắt đầu viết ghi chú hoặc gõ '/' để chèn khối, công thức, sơ đồ, AI…",
       },
+      file_panel: {
+        upload: {
+          title: "Tải lên",
+          file_placeholder: {
+            image: "Chọn ảnh (tối đa 10 MB)",
+            video: "Chọn video (tối đa 50 MB)",
+            audio: "Chọn âm thanh (tối đa 25 MB)",
+            file: "Chọn tệp đính kèm (tối đa 25 MB)",
+          } as Record<string, string>,
+          upload_error: "Tải tệp lên thất bại. Vui lòng thử lại.",
+        },
+        embed: {
+          title: "Nhúng URL",
+          embed_button: {
+            image: "Nhúng hình ảnh",
+            video: "Nhúng video",
+            audio: "Nhúng âm thanh",
+            file: "Nhúng tệp",
+          } as Record<string, string>,
+          url_placeholder: "Nhập đường dẫn https://...",
+        },
+      },
       ai: aiEn,
       math: mathLocales.en,
       diagram: diagramLocales.en,
     },
+    uploadFile: async (file: File, blockId?: string) => {
+      const blockType = blockId
+        ? editorBlockTypeLookupRef.current?.(blockId)
+        : undefined;
+      const expectedKind =
+        blockType === "image" ||
+        blockType === "video" ||
+        blockType === "audio" ||
+        blockType === "file"
+          ? blockType
+          : undefined;
+      const mediaUri = await uploadNoteMediaFile(summaryId, file, expectedKind);
+      setTimeout(() => onMediaCommittedRef.current?.(), 150);
+      return mediaUri;
+    },
+    resolveFileUrl: resolveMediaUrl,
     extensions: [
       syntaxHighlighter,
       AIExtension({
@@ -545,6 +626,14 @@ function InnerBlockNoteEditor({
     // Nạp dữ liệu khởi tạo 1 lần duy nhất từ DB khi editor được mount
     initialContent: validInitialBlocks,
   });
+
+  useEffect(() => {
+    editorBlockTypeLookupRef.current = (blockId: string) =>
+      editor.getBlock(blockId)?.type;
+    return () => {
+      editorBlockTypeLookupRef.current = null;
+    };
+  }, [editor]);
 
   // Theo dõi chính xác vòng đời của AI Menu / Suggestions từ BlockNote Extension Store
   useEffect(() => {
@@ -619,11 +708,17 @@ function InnerBlockNoteEditor({
           editable={editable}
           formattingToolbar={false}
           slashMenu={false}
+          filePanel={false}
           theme="light"
           className="prose prose-indigo max-w-none focus:outline-hidden"
         >
           {/* Add the AI Command menu to the editor */}
           <AIMenuController />
+
+          {/* Custom FilePanel supporting R2 uploads and validated external embed URLs */}
+          <NoteMediaCallbackContext.Provider value={handleMediaCommitted}>
+            <FilePanelController filePanel={NoteMediaFilePanel} />
+          </NoteMediaCallbackContext.Provider>
 
           {/* We disabled the default formatting toolbar with `formattingToolbar=false`
         and replace it for one with an "AI button" (defined below).

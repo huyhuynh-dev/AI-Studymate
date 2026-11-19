@@ -290,6 +290,7 @@ export default function SummaryTab({
                 autoSaveNote(activeSummary.id, { title: nextTitle })
               }
               onTitleBlur={() => void flushPendingSave()}
+              onMediaCommitted={() => void flushPendingSave()}
               zoomPercent={zoomPercent}
             />
           </div>
