@@ -83,9 +83,6 @@ export const DEFAULT_TABS_CONFIG: TabConfig<TabKey>[] = [
     label: "Tóm tắt",
     shortLabel: "Tóm tắt",
     icon: StudyMateAiSimpleIcon,
-    badge: (
-      <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
-    ),
     tooltip: "Bản tóm tắt bài giảng AI",
   },
   {

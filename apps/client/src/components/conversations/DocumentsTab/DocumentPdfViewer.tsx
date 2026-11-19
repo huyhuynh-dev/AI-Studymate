@@ -92,6 +92,10 @@ export interface DocumentPdfViewerProps {
     chunkIds: string[];
     sectionTitle: string;
   }) => void;
+  /** Chế độ đọc gọn nhẹ khi mượn chỗ RightSidebar để đối chiếu nguồn nhanh */
+  compactReaderMode?: boolean;
+  isExternalFullscreen?: boolean;
+  onToggleExternalFullscreen?: () => void;
   className?: string;
 }
 
@@ -102,6 +106,9 @@ interface PdfToolbarProps {
   onClose: () => void;
   isTocOpen: boolean;
   onToggleToc: () => void;
+  compactReaderMode?: boolean;
+  isExternalFullscreen?: boolean;
+  onToggleExternalFullscreen?: () => void;
 }
 
 /**
@@ -116,6 +123,9 @@ function PdfToolbar({
   onClose,
   isTocOpen,
   onToggleToc,
+  compactReaderMode = false,
+  isExternalFullscreen = false,
+  onToggleExternalFullscreen,
 }: PdfToolbarProps) {
   const { mastery } = useDocumentMastery(backendDocumentId, true);
   const { provides: zoom, state: zoomState } = useZoom(documentId);
@@ -125,6 +135,10 @@ function PdfToolbar({
   const { provides: selectionCapability } = useSelectionCapability();
   const { provides: historyCapability } = useHistoryCapability();
   const { isFocusMode, toggleFocusMode, setFocusMode } = useFocusMode();
+  const effectiveFullscreen = compactReaderMode ? isExternalFullscreen : isFocusMode;
+  const handleToggleFullscreen = compactReaderMode
+    ? onToggleExternalFullscreen
+    : toggleFocusMode;
 
   const [hasSelection, setHasSelection] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -179,7 +193,7 @@ function PdfToolbar({
         metrics.clientWidth > 0 &&
         metrics.clientHeight > 0
       ) {
-        zoom.requestZoom(1);
+        zoom.requestZoom(compactReaderMode ? ZoomMode.FitWidth : 1);
         initialZoomAppliedRef.current = true;
       }
     };
@@ -190,7 +204,7 @@ function PdfToolbar({
         initializeZoom();
       }
     });
-  }, [documentId, viewport, zoom]);
+  }, [documentId, viewport, zoom, compactReaderMode]);
 
   const handleCopySelection = useCallback(() => {
     if (!selectionCapability || !hasSelection) return;
@@ -298,7 +312,7 @@ function PdfToolbar({
         if (activeToolId !== null) {
           e.stopPropagation();
           annotationApi?.setActiveTool(null);
-        } else if (isFocusMode) {
+        } else if (!compactReaderMode && isFocusMode) {
           e.stopPropagation();
           setFocusMode(false);
         }
@@ -312,6 +326,7 @@ function PdfToolbar({
     hasSelectedAnnotation,
     activeToolId,
     isFocusMode,
+    compactReaderMode,
     handleSaveToR2,
     handleCopySelection,
     handleDeleteSelectedAnnotation,
@@ -358,19 +373,23 @@ function PdfToolbar({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/[0.06] dark:border-white/[0.08] bg-white/90 dark:bg-[#12151C]/90 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-2.5 shadow-2xs shrink-0 z-10 transition-colors">
-      {/* Cụm Trái: Nút Quay lại Apple Pill + Tên tài liệu */}
-      <div className="flex items-center gap-2 min-w-0">
+      {/* Cụm Trái: Nút Đóng nguồn / Quay lại Apple Pill + Tên tài liệu */}
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <button
           type="button"
           onClick={onClose}
-          title="Quay lại danh sách tài liệu"
+          title={compactReaderMode ? "Đóng trình xem nguồn và quay lại Trợ lý AI" : "Quay lại danh sách tài liệu"}
           className="inline-flex h-8 items-center gap-1.5 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-700 dark:text-neutral-200 shadow-2xs transition-all hover:bg-neutral-50 dark:hover:bg-white/[0.1] hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
         >
           <ChevronLeft className="h-4 w-4" />
-          <span>Quay lại</span>
+          <span>{compactReaderMode ? "Đóng nguồn" : "Quay lại"}</span>
         </button>
 
-        <div className="hidden xl:flex items-center gap-1.5 min-w-0 max-w-[200px] rounded-full bg-neutral-100/80 dark:bg-white/[0.06] px-2.5 py-1 border border-black/[0.04] dark:border-white/[0.06]">
+        <div
+          className={`${
+            compactReaderMode ? "flex max-w-[180px]" : "hidden xl:flex max-w-[200px]"
+          } items-center gap-1.5 min-w-0 rounded-full bg-neutral-100/80 dark:bg-white/[0.06] px-2.5 py-1 border border-black/[0.04] dark:border-white/[0.06]`}
+        >
           <span className="rounded-[4px] bg-rose-500/10 border border-rose-500/20 px-1 py-0.2 text-[9px] font-black text-rose-600 dark:text-rose-400 shrink-0">
             PDF
           </span>
@@ -383,7 +402,8 @@ function PdfToolbar({
         </div>
       </div>
 
-      {/* Cụm Giữa: Chế độ Con trỏ, Sao chép & Công cụ Highlight / Ghi chú */}
+      {/* Cụm Giữa: Chế độ Con trỏ, Sao chép & Công cụ Highlight / Ghi chú (ẩn trong compactReaderMode) */}
+      {!compactReaderMode && (
       <div className="flex items-center gap-1">
         {/* Nút Con trỏ */}
         <button
@@ -553,6 +573,7 @@ function PdfToolbar({
           )}
         </button>
       </div>
+      )}
 
       {/* Cụm Phải: Segmented Zoom Pill & Nút Focus Mode */}
       <div className="flex items-center gap-1.5">
@@ -619,27 +640,29 @@ function PdfToolbar({
           )}
         </button>
 
-        {/* Nút Chế độ tập trung (Focus Mode) */}
-        <button
-          type="button"
-          onClick={toggleFocusMode}
-          title={
-            isFocusMode
-              ? "Thoát Chế độ tập trung (Esc)"
-              : "Chế độ tập trung — Ẩn thanh điều hướng & mở rộng tối đa vùng đọc PDF"
-          }
-          className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all active:scale-95 cursor-pointer ${
-            isFocusMode
-              ? "border-indigo-600 bg-[#4F46E5] text-white shadow-xs hover:bg-[#4338CA]"
-              : "border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 shadow-2xs hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400"
-          }`}
-        >
-          {isFocusMode ? (
-            <Minimize2 className="h-4 w-4" />
-          ) : (
-            <Maximize2 className="h-4 w-4" />
-          )}
-        </button>
+        {/* Nút Chế độ tập trung / Toàn màn hình */}
+        {handleToggleFullscreen && (
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            title={
+              effectiveFullscreen
+                ? "Thu nhỏ về mặc định (Esc)"
+                : "Phóng to toàn màn hình"
+            }
+            className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all active:scale-95 cursor-pointer ${
+              effectiveFullscreen
+                ? "border-indigo-600 bg-[#4F46E5] text-white shadow-xs hover:bg-[#4338CA]"
+                : "border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 shadow-2xs hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400"
+            }`}
+          >
+            {effectiveFullscreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -936,6 +959,9 @@ export default function DocumentPdfViewer({
   document,
   onClose,
   onCreateTargetedQuiz,
+  compactReaderMode = false,
+  isExternalFullscreen = false,
+  onToggleExternalFullscreen,
   className = "",
 }: DocumentPdfViewerProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -944,6 +970,10 @@ export default function DocumentPdfViewer({
   const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
 
   const { isFocusMode, toggleFocusMode } = useFocusMode();
+  const effectiveFullscreen = compactReaderMode ? isExternalFullscreen : isFocusMode;
+  const handleToggleFullscreen = compactReaderMode
+    ? onToggleExternalFullscreen
+    : toggleFocusMode;
   const { engine, isLoading: isEngineLoading, error: engineError } = usePdfiumEngine();
 
   const fetchPdfViewUrl = useCallback(async () => {
@@ -1028,10 +1058,12 @@ export default function DocumentPdfViewer({
 
   return (
     <div
-      className={`flex w-full flex-col overflow-hidden rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100 dark:bg-[#0B0D12] transition-all duration-300 ease-in-out ${
-        isFocusMode
-          ? "h-screen flex-1 rounded-none border-none"
-          : "h-[calc(100vh-185px)] min-h-[580px] flex-1"
+      className={`flex w-full flex-col overflow-hidden bg-neutral-100 dark:bg-[#0B0D12] transition-all duration-300 ease-in-out ${
+        compactReaderMode
+          ? "h-full flex-1 rounded-none border-none"
+          : effectiveFullscreen
+            ? "h-screen flex-1 rounded-none border-none"
+            : "h-[calc(100vh-185px)] min-h-[580px] flex-1 rounded-[24px] border border-black/[0.06] dark:border-white/[0.08]"
       } ${className}`}
     >
       {/* Thanh Header phụ trợ khi đang tải hoặc gặp lỗi (trước khi PdfToolbar được mount) */}
@@ -1044,25 +1076,27 @@ export default function DocumentPdfViewer({
               className="inline-flex h-8 items-center gap-1.5 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-700 dark:text-neutral-200 shadow-2xs transition-all hover:bg-neutral-50 dark:hover:bg-white/[0.1] hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0"
             >
               <ChevronLeft className="h-4 w-4" />
-              <span>Quay lại</span>
+              <span>{compactReaderMode ? "Đóng nguồn" : "Quay lại"}</span>
             </button>
             <span className="truncate text-xs font-semibold text-neutral-800 dark:text-neutral-200">
               {document.file_name}
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={toggleFocusMode}
-            title={isFocusMode ? "Thoát Chế độ tập trung (Esc)" : "Chế độ tập trung"}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-white/[0.1] cursor-pointer"
-          >
-            {isFocusMode ? (
-              <Minimize2 className="h-4 w-4" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
-          </button>
+          {handleToggleFullscreen && (
+            <button
+              type="button"
+              onClick={handleToggleFullscreen}
+              title={effectiveFullscreen ? "Thu nhỏ về mặc định (Esc)" : "Chế độ tập trung"}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-white/[0.1] cursor-pointer"
+            >
+              {effectiveFullscreen ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+            </button>
+          )}
         </div>
       )}
 
@@ -1157,6 +1191,9 @@ export default function DocumentPdfViewer({
                           onClose={onClose}
                           isTocOpen={isTocOpen}
                           onToggleToc={() => setIsTocOpen((prev) => !prev)}
+                          compactReaderMode={compactReaderMode}
+                          isExternalFullscreen={isExternalFullscreen}
+                          onToggleExternalFullscreen={onToggleExternalFullscreen}
                         />
 
                         {/* Không gian đọc PDF kèm Ngăn Mục lục Heatmap có thể thu gọn */}

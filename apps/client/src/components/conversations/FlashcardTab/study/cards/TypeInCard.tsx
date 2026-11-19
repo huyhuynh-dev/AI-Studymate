@@ -106,7 +106,7 @@ export function TypeInCard({ card, revealed, value, onChange, onSubmit }: Props)
           </div>
         )}
         {revealed && (
-          <SourceReferenceButton sourceRefs={card.sourceRefs} variant="inline" align="center" className="mt-5" />
+          <SourceReferenceButton sourceRefs={card.sourceRefs} variant="card" className="mt-5 text-left" />
         )}
       </div>
     </CardShell>

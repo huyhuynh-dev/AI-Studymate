@@ -103,10 +103,10 @@ export default function DocumentsTab({
   const { setIsViewingDocument, setFocusMode } = useFocusMode();
   const { activeTarget, consumeActiveTarget } = useCitationNavigation();
 
-  // Tự động mở tài liệu tương ứng khi người dùng click vào trích dẫn từ Chatbox / Flashcard / Quiz
+  // Tự động mở tài liệu tương ứng khi người dùng click vào trích dẫn từ Chatbox (bỏ qua nếu mở ở cột phải)
   useEffect(() => {
     const targetDocId = activeTarget?.documentId;
-    if (!targetDocId) return;
+    if (!targetDocId || activeTarget?.mode === "side-panel") return;
 
     let cancelled = false;
     void Promise.resolve().then(() => {

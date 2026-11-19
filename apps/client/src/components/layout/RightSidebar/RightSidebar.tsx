@@ -2,12 +2,14 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
+import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useDocuments } from "@/hooks/useDocuments";
 import { chatSessionsApi } from "@/services/chatSessions.api";
@@ -16,7 +18,33 @@ import { ChatComposer } from "./components/ChatComposer";
 import { ChatHeader } from "./components/ChatHeader";
 import { EmptyState } from "./components/EmptyState";
 import { MessageList } from "./components/MessageList";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, FileText, Loader2 } from "lucide-react";
+
+const SidePanelPdfViewer = dynamic(
+  () => import("@/components/conversations/DocumentsTab/DocumentPdfViewer"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2.5 bg-neutral-50/80 dark:bg-[#0F1218] text-neutral-500 dark:text-neutral-400">
+        <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5] dark:text-[#818CF8]" />
+        <span className="text-xs font-medium">Đang mở trình xem PDF…</span>
+      </div>
+    ),
+  }
+);
+
+const SidePanelImageViewer = dynamic(
+  () => import("@/components/conversations/DocumentsTab/DocumentImageViewer"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2.5 bg-neutral-50/80 dark:bg-[#0F1218] text-neutral-500 dark:text-neutral-400">
+        <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5] dark:text-[#818CF8]" />
+        <span className="text-xs font-medium">Đang tải hình ảnh nguồn…</span>
+      </div>
+    ),
+  }
+);
 import {
   ATTACHMENT_PROCESSING_TIMEOUT_MS,
   DEFAULT_EFFORT,
@@ -123,15 +151,40 @@ export default function RightSidebar({
     timestamp: number;
   } | null>(null);
 
-  // ── Resizable & Fullscreen states ──
+  // ── Resizable, Fullscreen & Side-panel Source Reader states ──
+  const { sidePanelTarget, closeSidePanelCitation } = useCitationNavigation();
   const [sidebarWidth, setSidebarWidth] = useState<number>(384);
+  const sidebarWidthRef = useRef<number>(384);
+  sidebarWidthRef.current = sidebarWidth;
+  const prePdfWidthRef = useRef<number | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
 
+  const isSidePanelOpen = Boolean(sidePanelTarget);
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Tự động nới rộng cột phải (~480–540px) khi mở xem nguồn PDF và trả về độ rộng cũ khi đóng
+  useEffect(() => {
+    if (sidePanelTarget) {
+      if (prePdfWidthRef.current === null) {
+        prePdfWidthRef.current = sidebarWidthRef.current;
+      }
+      const targetWidth =
+        typeof window !== "undefined"
+          ? Math.min(Math.max(480, Math.floor(window.innerWidth * 0.44)), 540)
+          : 500;
+      if (sidebarWidthRef.current < targetWidth) {
+        setSidebarWidth(targetWidth);
+      }
+    } else if (prePdfWidthRef.current !== null) {
+      setSidebarWidth(prePdfWidthRef.current);
+      prePdfWidthRef.current = null;
+    }
+  }, [sidePanelTarget]);
 
   // Xử lý bắt đầu kéo chuột dãn chiều rộng
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -166,19 +219,24 @@ export default function RightSidebar({
     };
   }, [isDragging]);
 
-  // Hỗ trợ phím ESC để thoát nhanh toàn màn hình
+  // Hỗ trợ phím ESC để thoát nhanh toàn màn hình hoặc đóng trình xem nguồn bên phải
   useEffect(() => {
-    if (!isFullscreen) return;
+    if (!isFullscreen && !isSidePanelOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key !== "Escape") return;
+      if (isFullscreen) {
         setIsFullscreen(false);
+        return;
+      }
+      if (isSidePanelOpen) {
+        closeSidePanelCitation();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFullscreen]);
+  }, [isFullscreen, isSidePanelOpen, closeSidePanelCitation]);
 
   // Đảm bảo chiều rộng không vượt quá 60% khi resize cửa sổ
   useEffect(() => {
@@ -218,6 +276,11 @@ export default function RightSidebar({
     refresh: refreshSessions,
   } = useChatSessions(conversationId);
   const { documents, uploadFile } = useDocuments(conversationId);
+
+  const sidePanelDocument = useMemo(() => {
+    if (!sidePanelTarget?.documentId) return null;
+    return documents.find((d) => d.id === sidePanelTarget.documentId) ?? null;
+  }, [documents, sidePanelTarget?.documentId]);
 
   // ── Attachments ──
   const {
@@ -857,93 +920,166 @@ export default function RightSidebar({
         accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.txt"
       />
 
-      <ChatHeader
-        title={headerTitle}
-        sessions={sessions}
-        isLoading={isLoading}
-        activeChatId={activeChatId}
-        onSelectChat={handleSelectChat}
-        onRenameChat={handleRenameChat}
-        onDeleteChat={handleDeleteChat}
-        onNewChat={handleNewChat}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
-        onClose={() => {
-          if (isFullscreen) {
-            setIsFullscreen(false);
-          }
-          onToggleCollapse?.();
-        }}
-      />
-
-      <div
-        className={`flex flex-1 flex-col min-h-0 overflow-hidden ${
-          isFullscreen ? "max-w-4xl mx-auto w-full px-4" : "w-full"
-        } [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden`}
-      >
-        {chatState === "empty" ? (
-          <EmptyState onPromptSelect={(prompt) => void sendMessage(prompt)} />
-        ) : (
-          <MessageList
-            messages={messages as unknown as ChatMessage[]}
-            isLoading={isSending}
-            suggestions={suggestions}
-            isLoadingSuggestions={isLoadingSuggestions}
-            onSelectSuggestion={(selectedSuggestion) =>
-              void sendMessage(selectedSuggestion)
-            }
-            onAddToolOutput={addToolOutput as any}
-            onOpenSummary={handleOpenSummary}
-            onOpenFlashcardDeck={handleOpenFlashcardDeck}
-            onOpenQuiz={handleOpenQuiz}
-          />
-        )}
-
-        {/* Banner hiển thị khi có tệp đang tải lên hoặc xử lý ngầm và người dùng đã bấm gửi */}
-        {pendingSubmission && (
-          <div className="mx-4 mb-1.5 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/90 dark:bg-amber-950/30 px-3.5 py-2.5 shadow-xs animate-in fade-in slide-in-from-bottom-2 duration-200 select-none">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 truncate">
-                  Đang phân tích {pendingSubmission.attachedFiles.map((f) => f.name).join(", ")}…
+      {/* Trình xem nguồn PDF / Ảnh tạm thời (mượn chỗ RightSidebar) */}
+      {isSidePanelOpen && (
+        <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
+          {sidePanelDocument?.mime_type === "application/pdf" ? (
+            <SidePanelPdfViewer
+              key={sidePanelDocument.id}
+              document={sidePanelDocument}
+              compactReaderMode
+              isExternalFullscreen={isFullscreen}
+              onToggleExternalFullscreen={() => setIsFullscreen((prev) => !prev)}
+              onClose={() => {
+                if (isFullscreen) {
+                  setIsFullscreen(false);
+                }
+                closeSidePanelCitation();
+              }}
+            />
+          ) : sidePanelDocument?.mime_type.startsWith("image/") ? (
+            <SidePanelImageViewer
+              documents={[sidePanelDocument]}
+              initialDocumentId={sidePanelDocument.id}
+              onClose={() => {
+                if (isFullscreen) {
+                  setIsFullscreen(false);
+                }
+                closeSidePanelCitation();
+              }}
+              className="h-full flex-1 rounded-none border-none"
+            />
+          ) : (
+            <div className="flex flex-1 flex-col">
+              <div className="flex h-12 shrink-0 items-center justify-between border-b border-[#E5EEFF] dark:border-white/[0.08] px-3">
+                <button
+                  type="button"
+                  onClick={closeSidePanelCitation}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  <span>Đóng nguồn</span>
+                </button>
+                <span className="truncate text-xs font-medium text-neutral-500 dark:text-neutral-400 max-w-[220px]">
+                  {sidePanelTarget?.fileName || "Tài liệu nguồn"}
+                </span>
+              </div>
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF2FF] dark:bg-white/[0.06] text-[#4F46E5] dark:text-[#818CF8]">
+                  <FileText className="h-6 w-6" aria-hidden="true" />
+                </div>
+                <p className="text-sm font-semibold text-[#0B1C30] dark:text-white">
+                  {sidePanelDocument
+                    ? "Định dạng tài liệu này chưa hỗ trợ xem trực tiếp"
+                    : "Không tìm thấy tài liệu nguồn trong phiên học hiện tại"}
                 </p>
-                <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
-                  Câu hỏi sẽ tự động được gửi khi tài liệu sẵn sàng tra cứu.
-                </p>
+                {sidePanelTarget?.rawContent && (
+                  <div className="max-h-64 w-full overflow-y-auto rounded-2xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.04] p-3.5 text-left text-xs leading-relaxed text-[#464555] dark:text-neutral-300 select-text">
+                    &ldquo;{sidePanelTarget.rawContent}&rdquo;
+                  </div>
+                )}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleCancelPendingSubmission}
-              className="shrink-0 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-colors cursor-pointer"
-            >
-              Hủy
-            </button>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        <ChatComposer
-          value={inputValue}
-          onChange={setInputValue}
-          onSend={() => void sendMessage(inputValue)}
-          disabled={isSending}
-          placeholder={
-            chatState === "empty"
-              ? "Hỏi AI bất cứ điều gì về tài liệu…\nGõ @ để gắn tài liệu"
-              : "Hỏi tiếp về đoạn chat này…\nGõ @ để gắn tài liệu"
-          }
-          attachedFiles={attachedFiles}
-          onRemoveFile={removeFile}
-          onSelectLocalFile={openLocalPicker}
-          onPasteFiles={uploadLocalFiles}
-          availableDocs={documents}
-          onSelectWorkspaceDoc={addWorkspaceDoc}
-          modelConfig={modelConfig}
-          onModelConfigChange={updateModelConfig}
-          contextLabel={shortContext}
-          contextTitle={contextTitle}
+      {/* Giao diện Chatbox AI được giữ mounted để bảo toàn hoàn toàn state khi đóng nguồn */}
+      <div
+        className={
+          isSidePanelOpen
+            ? "hidden"
+            : "flex flex-1 flex-col min-h-0 overflow-hidden"
+        }
+      >
+        <ChatHeader
+          title={headerTitle}
+          sessions={sessions}
+          isLoading={isLoading}
+          activeChatId={activeChatId}
+          onSelectChat={handleSelectChat}
+          onRenameChat={handleRenameChat}
+          onDeleteChat={handleDeleteChat}
+          onNewChat={handleNewChat}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+          onClose={() => {
+            if (isFullscreen) {
+              setIsFullscreen(false);
+            }
+            onToggleCollapse?.();
+          }}
         />
+
+        <div
+          className={`flex flex-1 flex-col min-h-0 overflow-hidden ${
+            isFullscreen ? "max-w-4xl mx-auto w-full px-4" : "w-full"
+          } [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden`}
+        >
+          {chatState === "empty" ? (
+            <EmptyState onPromptSelect={(prompt) => void sendMessage(prompt)} />
+          ) : (
+            <MessageList
+              messages={messages as unknown as ChatMessage[]}
+              isLoading={isSending}
+              suggestions={suggestions}
+              isLoadingSuggestions={isLoadingSuggestions}
+              onSelectSuggestion={(selectedSuggestion) =>
+                void sendMessage(selectedSuggestion)
+              }
+              onAddToolOutput={addToolOutput as any}
+              onOpenSummary={handleOpenSummary}
+              onOpenFlashcardDeck={handleOpenFlashcardDeck}
+              onOpenQuiz={handleOpenQuiz}
+            />
+          )}
+
+          {/* Banner hiển thị khi có tệp đang tải lên hoặc xử lý ngầm và người dùng đã bấm gửi */}
+          {pendingSubmission && (
+            <div className="mx-4 mb-1.5 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/90 dark:bg-amber-950/30 px-3.5 py-2.5 shadow-xs animate-in fade-in slide-in-from-bottom-2 duration-200 select-none">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 truncate">
+                    Đang phân tích {pendingSubmission.attachedFiles.map((f) => f.name).join(", ")}…
+                  </p>
+                  <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
+                    Câu hỏi sẽ tự động được gửi khi tài liệu sẵn sàng tra cứu.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelPendingSubmission}
+                className="shrink-0 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-colors cursor-pointer"
+              >
+                Hủy
+              </button>
+            </div>
+          )}
+
+          <ChatComposer
+            value={inputValue}
+            onChange={setInputValue}
+            onSend={() => void sendMessage(inputValue)}
+            disabled={isSending}
+            placeholder={
+              chatState === "empty"
+                ? "Hỏi AI bất cứ điều gì về tài liệu…\nGõ @ để gắn tài liệu"
+                : "Hỏi tiếp về đoạn chat này…\nGõ @ để gắn tài liệu"
+            }
+            attachedFiles={attachedFiles}
+            onRemoveFile={removeFile}
+            onSelectLocalFile={openLocalPicker}
+            onPasteFiles={uploadLocalFiles}
+            availableDocs={documents}
+            onSelectWorkspaceDoc={addWorkspaceDoc}
+            modelConfig={modelConfig}
+            onModelConfigChange={updateModelConfig}
+            contextLabel={shortContext}
+            contextTitle={contextTitle}
+          />
+        </div>
       </div>
     </aside>
   );

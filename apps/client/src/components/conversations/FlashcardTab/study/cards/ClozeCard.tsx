@@ -24,7 +24,7 @@ export function ClozeCard({ card, revealed, onReveal }: { card: Flashcard; revea
         </div>
       </Collapse>
       <Collapse open={revealed && Boolean(card.sourceRefs?.length)} className="w-full">
-        <SourceReferenceButton sourceRefs={card.sourceRefs} variant="inline" align="center" className="mt-5" />
+        <SourceReferenceButton sourceRefs={card.sourceRefs} variant="card" className="mt-5 text-left" />
       </Collapse>
       <Collapse open={!revealed}>
         <p className="mt-8 text-xs font-medium text-neutral-400 dark:text-neutral-500">

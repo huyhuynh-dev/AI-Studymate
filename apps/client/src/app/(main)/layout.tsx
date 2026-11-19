@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { LeftSidebar, RightSidebar, FocusModeProvider, useFocusMode } from "@/components/layout";
-import { CitationNavigationProvider } from "@/contexts/CitationNavigationContext";
+import { CitationNavigationProvider, useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -19,6 +19,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         isRightSidebarCollapsed,
         setIsRightSidebarCollapsed,
     } = useFocusMode();
+    const { sidePanelTarget, closeSidePanelCitation } = useCitationNavigation();
     const pathname = usePathname();
 
     // Trích xuất subjectId từ URL: /home/{subjectId}/...
@@ -37,14 +38,17 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         return segments[0] === "home" && segments.length >= 3;
     }, [pathname]);
 
-    // Thoát Focus Mode khi chuyển route
+    // Thoát Focus Mode & đóng trình xem nguồn bên phải khi chuyển route
     useEffect(() => {
         setFocusMode(false);
         setIsViewingDocument(false);
-    }, [pathname, setFocusMode, setIsViewingDocument]);
+        closeSidePanelCitation();
+    }, [pathname, setFocusMode, setIsViewingDocument, closeSidePanelCitation]);
 
     const effectiveLeftCollapsed = isLeftCollapsed || isFocusMode;
-    const effectiveRightCollapsed = isRightSidebarCollapsed || !showRightSidebar || isFocusMode;
+    const effectiveRightCollapsed = sidePanelTarget
+        ? !showRightSidebar
+        : isRightSidebarCollapsed || !showRightSidebar || isFocusMode;
 
     return (
         <div className="flex h-screen w-full flex-col overflow-hidden bg-[#F8F9FF] dark:bg-[#090B10] select-none text-[#0B1C30] dark:text-[#EFF0F6]">

@@ -52,7 +52,12 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     isRightSidebarCollapsed,
     toggleRightSidebar,
   } = useFocusMode();
-  const { activeTarget, navigateToDocumentCitation } = useCitationNavigation();
+  const {
+    activeTarget,
+    navigateToDocumentCitation,
+    openSidePanelCitation,
+    closeSidePanelCitation,
+  } = useCitationNavigation();
 
   const {
     analytics: conversationAnalytics,
@@ -95,9 +100,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     };
   }, []);
 
-  // Tự động chuyển sang Tab "Tài liệu" khi người dùng bấm vào một Badge trích dẫn tài liệu từ Chatbox
+  // Tự động chuyển sang Tab "Tài liệu" khi người dùng bấm vào một Badge trích dẫn từ Chatbox (bỏ qua nếu mở ở cột phải)
   useEffect(() => {
-    if (!activeTarget?.documentId) return;
+    if (!activeTarget?.documentId || activeTarget.mode === "side-panel") return;
     let cancelled = false;
     void Promise.resolve().then(() => {
       if (!cancelled) {
@@ -224,6 +229,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
   const handleTabChange = (tab: TabKey) => {
     setActiveTab(tab);
+    if (tab === "documents") {
+      closeSidePanelCitation();
+    }
     if (tab !== "documents" && tab !== "summary") {
       setFocusMode(false);
     }
@@ -233,12 +241,12 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   };
 
   const handleJumpToSourceRef = (ref: SourceReference) => {
-    setFocusMode(false);
-    navigateToDocumentCitation({
+    openSidePanelCitation({
       documentId: ref.documentId,
       fileName: ref.fileName,
       pageNo: ref.pageNumbers[0] ?? 1,
       bboxes: ref.bboxes,
+      rawContent: ref.snippet,
     });
   };
 

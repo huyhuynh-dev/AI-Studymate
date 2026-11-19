@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import {
   AlertCircle,
+  ArrowUpRight,
   BookOpen,
   FileText,
   Layers,
@@ -240,10 +241,11 @@ export default function KnowledgeGapPanel({
                       <button
                         type="button"
                         onClick={() => onJumpToSource(firstRef)}
-                        className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-white/[0.1] active:scale-[0.98] transition-all cursor-pointer"
+                        title={`Xem nguồn: ${firstRef.fileName} (Trang ${firstRef.pageNumbers[0] ?? 1})`}
+                        className="group inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-indigo-500/25 bg-white dark:bg-white/[0.06] px-3.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 active:scale-[0.98] transition-colors cursor-pointer"
                       >
-                        <BookOpen className="h-3.5 w-3.5" />
-                        <span>Xem nguồn Tr. {firstRef.pageNumbers[0] ?? 1}</span>
+                        <span>Xem nguồn</span>
+                        <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
                       </button>
                     )}
                   </div>
@@ -288,10 +290,11 @@ export default function KnowledgeGapPanel({
                           onClick={() =>
                             onJumpToSource(firstRef, card.conversationId)
                           }
-                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-white/[0.1] active:scale-[0.98] transition-all cursor-pointer"
+                          title={`Xem nguồn: ${firstRef.fileName} (Trang ${firstRef.pageNumbers[0] ?? 1})`}
+                          className="group inline-flex h-9 items-center gap-1.5 rounded-full border border-indigo-500/25 bg-white dark:bg-white/[0.06] px-3.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 active:scale-[0.98] transition-colors cursor-pointer"
                         >
-                          <BookOpen className="h-3.5 w-3.5" />
-                          <span>Trang {firstRef.pageNumbers[0] ?? 1}</span>
+                          <span>Xem nguồn</span>
+                          <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
                         </button>
                       )}
                       {onOpenDeck && (
