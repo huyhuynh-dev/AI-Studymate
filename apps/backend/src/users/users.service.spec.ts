@@ -176,6 +176,43 @@ describe('UsersService', () => {
       expect(storageMock.deleteObject).toHaveBeenCalledWith(oldKey);
       expect(updated.avatar_storage_key).toBe(newKey);
     });
+
+    it('nên cho phép cập nhật riêng dailyGoalMinutes mà không cần name hoặc avatarStorageKey', async () => {
+      repoMock.findUserById.mockResolvedValueOnce({
+        id: userId,
+        avatar_url: null,
+      });
+      repoMock.getUserProfileWithStats.mockResolvedValueOnce({
+        id: userId,
+        email: 'student@example.com',
+        name: 'Sinh Viên Test',
+        avatar_url: null,
+        role: 'user',
+        is_active: true,
+        is_verified: true,
+        daily_goal_minutes: 30,
+        provider: 'local',
+        has_password: true,
+        created_at: now,
+        updated_at: now,
+        stats: {
+          subjects_count: 1,
+          conversations_count: 1,
+          documents_count: 1,
+          flashcard_decks_count: 0,
+          quizzes_count: 0,
+        },
+      });
+
+      const updated = await service.updateProfile(userId, {
+        dailyGoalMinutes: 30,
+      });
+
+      expect(repoMock.updateUser).toHaveBeenCalledWith(userId, {
+        daily_goal_minutes: 30,
+      });
+      expect(updated.daily_goal_minutes).toBe(30);
+    });
   });
 
   describe('changePassword', () => {

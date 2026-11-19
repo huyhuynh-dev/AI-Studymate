@@ -18,8 +18,11 @@ import DeleteConversationModal from "./DeleteConversationModal";
 import ConversationContextMenu, { ContextMenuPosition } from "./ConversationContextMenu";
 import AnalyticsDashboardView from "@/components/analytics/AnalyticsDashboardView";
 import { useConversations } from "@/hooks/useConversations";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useSubjectAnalytics } from "@/hooks/useLearningAnalytics";
+import { extractApiErrorMessage } from "@/services/subjects.api";
+import { extractUserApiError } from "@/services/users.api";
 import type { SourceReference, StudyRecommendation } from "@/types";
 import { useRouter } from "next/navigation";
 
@@ -59,8 +62,9 @@ export default function ConversationsListView({
 }: ConversationsListViewProps) {
   const router = useRouter();
 
-  // Lấy thông tin môn học từ hook useSubjects
-  const { subjects } = useSubjects();
+  // Lấy thông tin người dùng & môn học
+  const { user, updateProfile } = useCurrentUser();
+  const { subjects, updateSubject } = useSubjects();
   const currentSubject = subjects.find((s) => s.id === subjectId);
   const displayTitle = externalTitle || currentSubject?.name || "Không gian học tập";
   const subjectColor = currentSubject?.color || "#4F46E5";
@@ -125,12 +129,53 @@ export default function ConversationsListView({
   };
 
   const handleJumpFromSubject = (
-    _ref: SourceReference,
+    ref: SourceReference,
     targetConversationId?: string
   ) => {
     const convId = targetConversationId || conversations[0]?.id;
     if (subjectId && convId) {
-      router.push(`/home/${subjectId}/${convId}?tab=documents`);
+      const docParam = ref.documentId
+        ? `&docId=${encodeURIComponent(ref.documentId)}`
+        : "";
+      const pageParam = ref.pageNumbers?.[0]
+        ? `&page=${ref.pageNumbers[0]}`
+        : "";
+      router.push(`/home/${subjectId}/${convId}?tab=documents${docParam}${pageParam}`);
+    }
+  };
+
+  const [subjectGoalError, setSubjectGoalError] = useState<string | null>(null);
+
+  const handleUpdateSubjectDailyGoal = async (minutes: number) => {
+    setSubjectGoalError(null);
+    try {
+      await updateProfile({ dailyGoalMinutes: minutes });
+      await refreshSubjectAnalytics();
+    } catch (error) {
+      setSubjectGoalError(
+        extractUserApiError(error, "Không thể cập nhật mục tiêu học hằng ngày")
+      );
+      throw error;
+    }
+  };
+
+  const handleUpdateSubjectExamGoal = async (input: {
+    examDate: string | null;
+    targetScore?: number | null;
+  }) => {
+    if (!subjectId) return;
+    setSubjectGoalError(null);
+    try {
+      await updateSubject(subjectId, {
+        examDate: input.examDate,
+        targetScore: input.targetScore ?? null,
+      });
+      await refreshSubjectAnalytics();
+    } catch (error) {
+      setSubjectGoalError(
+        extractApiErrorMessage(error, "Không thể cập nhật ngày thi cho môn học")
+      );
+      throw error;
     }
   };
 
@@ -371,35 +416,78 @@ export default function ConversationsListView({
       )}
 
       {viewMode === "analytics" ? (
-        <AnalyticsDashboardView
-          mode="subject"
-          data={subjectAnalytics}
-          isLoading={isSubjectAnalyticsLoading}
-          isValidating={isSubjectAnalyticsValidating}
-          errorMessage={subjectAnalyticsError}
-          windowDays={analyticsWindowDays}
-          onWindowDaysChange={setAnalyticsWindowDays}
-          onRetry={() => void refreshSubjectAnalytics()}
-          onExecuteAction={handleSubjectAction}
-          onJumpToSource={handleJumpFromSubject}
-          onCreateTargetedQuiz={({ conversationId: cid }) => {
-            if (subjectId && cid) {
-              router.push(`/home/${subjectId}/${cid}?tab=quiz`);
-            }
-          }}
-          onOpenDeck={(deckId, cid) => {
-            if (subjectId && cid) {
-              router.push(
-                `/home/${subjectId}/${cid}?tab=flashcard&deckId=${encodeURIComponent(deckId)}`
-              );
-            }
-          }}
-          onOpenConversation={(cid) => {
-            if (subjectId && cid) {
-              router.push(`/home/${subjectId}/${cid}`);
-            }
-          }}
-        />
+        <div className="space-y-4">
+          {subjectGoalError && (
+            <div
+              role="alert"
+              className="mx-auto max-w-[1200px] rounded-2xl border border-rose-500/20 bg-rose-50/80 dark:bg-[#FF453A]/10 px-4 py-2.5 text-xs font-medium text-rose-700 dark:text-[#FF6961]"
+            >
+              {subjectGoalError}
+            </div>
+          )}
+          <AnalyticsDashboardView
+            mode="subject"
+            data={subjectAnalytics}
+            isLoading={isSubjectAnalyticsLoading}
+            isValidating={isSubjectAnalyticsValidating}
+            errorMessage={subjectAnalyticsError}
+            windowDays={analyticsWindowDays}
+            onWindowDaysChange={setAnalyticsWindowDays}
+            onRetry={() => void refreshSubjectAnalytics()}
+            onExecuteAction={handleSubjectAction}
+            onJumpToSource={handleJumpFromSubject}
+            onCreateTargetedQuiz={({ conversationId: cid }) => {
+              if (subjectId && cid) {
+                router.push(`/home/${subjectId}/${cid}?tab=quiz`);
+              }
+            }}
+            onOpenDeck={(deckId, cid) => {
+              if (subjectId && cid) {
+                router.push(
+                  `/home/${subjectId}/${cid}?tab=flashcard&deckId=${encodeURIComponent(deckId)}`
+                );
+              }
+            }}
+            onOpenDocument={(docId, _fileName, pageNo = 1, convId) => {
+              const cid = convId || conversations[0]?.id;
+              if (subjectId && cid) {
+                router.push(
+                  `/home/${subjectId}/${cid}?tab=documents&docId=${encodeURIComponent(docId)}&page=${pageNo}`
+                );
+              }
+            }}
+            onOpenConversation={(cid) => {
+              if (subjectId && cid) {
+                router.push(`/home/${subjectId}/${cid}`);
+              }
+            }}
+            userName={user?.name}
+            onUpdateDailyGoal={handleUpdateSubjectDailyGoal}
+            onUpdateExamGoal={handleUpdateSubjectExamGoal}
+            onGoToFlashcards={() => {
+              const firstCid = conversations[0]?.id;
+              if (subjectId && firstCid) {
+                router.push(`/home/${subjectId}/${firstCid}?tab=flashcard`);
+              } else {
+                handleOpenCreateModal();
+              }
+            }}
+            onGoToQuiz={() => {
+              const firstCid = conversations[0]?.id;
+              if (subjectId && firstCid) {
+                router.push(`/home/${subjectId}/${firstCid}?tab=quiz`);
+              } else {
+                handleOpenCreateModal();
+              }
+            }}
+            onGoToDocuments={() => {
+              const firstCid = conversations[0]?.id;
+              if (subjectId && firstCid) {
+                router.push(`/home/${subjectId}/${firstCid}?tab=documents`);
+              }
+            }}
+          />
+        </div>
       ) : (
       /* ── Conversations List Rows ── */
       <div className="flex flex-col gap-3">

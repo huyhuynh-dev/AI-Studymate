@@ -31,6 +31,7 @@ export interface UserProfileResponse {
   role: string;
   is_active: boolean;
   is_verified: boolean;
+  daily_goal_minutes: number;
   provider: string | null;
   has_password: boolean;
   created_at: Date;
@@ -116,6 +117,7 @@ export class UsersService {
       role: record.role,
       is_active: record.is_active,
       is_verified: record.is_verified,
+      daily_goal_minutes: record.daily_goal_minutes ?? 15,
       provider: record.provider,
       has_password: record.has_password,
       created_at: record.created_at,
@@ -162,7 +164,11 @@ export class UsersService {
     userId: string,
     dto: UpdateProfileDto,
   ): Promise<UserProfileResponse> {
-    if (dto.name === undefined && dto.avatarStorageKey === undefined) {
+    if (
+      dto.name === undefined &&
+      dto.avatarStorageKey === undefined &&
+      dto.dailyGoalMinutes === undefined
+    ) {
       throw new BadRequestException('Vui lòng cung cấp thông tin cần cập nhật');
     }
 
@@ -175,6 +181,10 @@ export class UsersService {
 
     if (dto.name !== undefined) {
       updateData.name = dto.name.trim();
+    }
+
+    if (dto.dailyGoalMinutes !== undefined) {
+      updateData.daily_goal_minutes = dto.dailyGoalMinutes;
     }
 
     let previousAvatarKeyToDelete: string | null = null;

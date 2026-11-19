@@ -20,8 +20,18 @@ export type UserModel = runtime.Types.Result.DefaultSelection<Prisma.$UserPayloa
 
 export type AggregateUser = {
   _count: UserCountAggregateOutputType | null
+  _avg: UserAvgAggregateOutputType | null
+  _sum: UserSumAggregateOutputType | null
   _min: UserMinAggregateOutputType | null
   _max: UserMaxAggregateOutputType | null
+}
+
+export type UserAvgAggregateOutputType = {
+  daily_goal_minutes: number | null
+}
+
+export type UserSumAggregateOutputType = {
+  daily_goal_minutes: number | null
 }
 
 export type UserMinAggregateOutputType = {
@@ -33,6 +43,7 @@ export type UserMinAggregateOutputType = {
   role: string | null
   is_active: boolean | null
   is_verified: boolean | null
+  daily_goal_minutes: number | null
   created_at: Date | null
   updated_at: Date | null
   provider: string | null
@@ -49,6 +60,7 @@ export type UserMaxAggregateOutputType = {
   role: string | null
   is_active: boolean | null
   is_verified: boolean | null
+  daily_goal_minutes: number | null
   created_at: Date | null
   updated_at: Date | null
   provider: string | null
@@ -65,6 +77,7 @@ export type UserCountAggregateOutputType = {
   role: number
   is_active: number
   is_verified: number
+  daily_goal_minutes: number
   created_at: number
   updated_at: number
   provider: number
@@ -73,6 +86,14 @@ export type UserCountAggregateOutputType = {
   _all: number
 }
 
+
+export type UserAvgAggregateInputType = {
+  daily_goal_minutes?: true
+}
+
+export type UserSumAggregateInputType = {
+  daily_goal_minutes?: true
+}
 
 export type UserMinAggregateInputType = {
   id?: true
@@ -83,6 +104,7 @@ export type UserMinAggregateInputType = {
   role?: true
   is_active?: true
   is_verified?: true
+  daily_goal_minutes?: true
   created_at?: true
   updated_at?: true
   provider?: true
@@ -99,6 +121,7 @@ export type UserMaxAggregateInputType = {
   role?: true
   is_active?: true
   is_verified?: true
+  daily_goal_minutes?: true
   created_at?: true
   updated_at?: true
   provider?: true
@@ -115,6 +138,7 @@ export type UserCountAggregateInputType = {
   role?: true
   is_active?: true
   is_verified?: true
+  daily_goal_minutes?: true
   created_at?: true
   updated_at?: true
   provider?: true
@@ -161,6 +185,18 @@ export type UserAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: UserAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: UserSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: UserMinAggregateInputType
@@ -191,6 +227,8 @@ export type UserGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   take?: number
   skip?: number
   _count?: UserCountAggregateInputType | true
+  _avg?: UserAvgAggregateInputType
+  _sum?: UserSumAggregateInputType
   _min?: UserMinAggregateInputType
   _max?: UserMaxAggregateInputType
 }
@@ -204,12 +242,15 @@ export type UserGroupByOutputType = {
   role: string
   is_active: boolean
   is_verified: boolean
+  daily_goal_minutes: number
   created_at: Date
   updated_at: Date
   provider: string | null
   provider_id: string | null
   refresh_token: string | null
   _count: UserCountAggregateOutputType | null
+  _avg: UserAvgAggregateOutputType | null
+  _sum: UserSumAggregateOutputType | null
   _min: UserMinAggregateOutputType | null
   _max: UserMaxAggregateOutputType | null
 }
@@ -241,6 +282,7 @@ export type UserWhereInput = {
   role?: Prisma.StringFilter<"User"> | string
   is_active?: Prisma.BoolFilter<"User"> | boolean
   is_verified?: Prisma.BoolFilter<"User"> | boolean
+  daily_goal_minutes?: Prisma.IntFilter<"User"> | number
   created_at?: Prisma.DateTimeFilter<"User"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"User"> | Date | string
   provider?: Prisma.StringNullableFilter<"User"> | string | null
@@ -265,6 +307,7 @@ export type UserOrderByWithRelationInput = {
   role?: Prisma.SortOrder
   is_active?: Prisma.SortOrder
   is_verified?: Prisma.SortOrder
+  daily_goal_minutes?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   provider?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -292,6 +335,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   role?: Prisma.StringFilter<"User"> | string
   is_active?: Prisma.BoolFilter<"User"> | boolean
   is_verified?: Prisma.BoolFilter<"User"> | boolean
+  daily_goal_minutes?: Prisma.IntFilter<"User"> | number
   created_at?: Prisma.DateTimeFilter<"User"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"User"> | Date | string
   provider?: Prisma.StringNullableFilter<"User"> | string | null
@@ -316,14 +360,17 @@ export type UserOrderByWithAggregationInput = {
   role?: Prisma.SortOrder
   is_active?: Prisma.SortOrder
   is_verified?: Prisma.SortOrder
+  daily_goal_minutes?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   provider?: Prisma.SortOrderInput | Prisma.SortOrder
   provider_id?: Prisma.SortOrderInput | Prisma.SortOrder
   refresh_token?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
+  _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
   _min?: Prisma.UserMinOrderByAggregateInput
+  _sum?: Prisma.UserSumOrderByAggregateInput
 }
 
 export type UserScalarWhereWithAggregatesInput = {
@@ -338,6 +385,7 @@ export type UserScalarWhereWithAggregatesInput = {
   role?: Prisma.StringWithAggregatesFilter<"User"> | string
   is_active?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
   is_verified?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
+  daily_goal_minutes?: Prisma.IntWithAggregatesFilter<"User"> | number
   created_at?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updated_at?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   provider?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
@@ -354,6 +402,7 @@ export type UserCreateInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -378,6 +427,7 @@ export type UserUncheckedCreateInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -402,6 +452,7 @@ export type UserUpdateInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -426,6 +477,7 @@ export type UserUncheckedUpdateInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -450,6 +502,7 @@ export type UserCreateManyInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -466,6 +519,7 @@ export type UserUpdateManyMutationInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -482,6 +536,7 @@ export type UserUncheckedUpdateManyInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -498,11 +553,16 @@ export type UserCountOrderByAggregateInput = {
   role?: Prisma.SortOrder
   is_active?: Prisma.SortOrder
   is_verified?: Prisma.SortOrder
+  daily_goal_minutes?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   provider?: Prisma.SortOrder
   provider_id?: Prisma.SortOrder
   refresh_token?: Prisma.SortOrder
+}
+
+export type UserAvgOrderByAggregateInput = {
+  daily_goal_minutes?: Prisma.SortOrder
 }
 
 export type UserMaxOrderByAggregateInput = {
@@ -514,6 +574,7 @@ export type UserMaxOrderByAggregateInput = {
   role?: Prisma.SortOrder
   is_active?: Prisma.SortOrder
   is_verified?: Prisma.SortOrder
+  daily_goal_minutes?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   provider?: Prisma.SortOrder
@@ -530,11 +591,16 @@ export type UserMinOrderByAggregateInput = {
   role?: Prisma.SortOrder
   is_active?: Prisma.SortOrder
   is_verified?: Prisma.SortOrder
+  daily_goal_minutes?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   provider?: Prisma.SortOrder
   provider_id?: Prisma.SortOrder
   refresh_token?: Prisma.SortOrder
+}
+
+export type UserSumOrderByAggregateInput = {
+  daily_goal_minutes?: Prisma.SortOrder
 }
 
 export type UserScalarRelationFilter = {
@@ -557,6 +623,14 @@ export type NullableStringFieldUpdateOperationsInput = {
 
 export type BoolFieldUpdateOperationsInput = {
   set?: boolean
+}
+
+export type IntFieldUpdateOperationsInput = {
+  set?: number
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
 }
 
 export type DateTimeFieldUpdateOperationsInput = {
@@ -686,6 +760,7 @@ export type UserCreateWithoutSubjectsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -709,6 +784,7 @@ export type UserUncheckedCreateWithoutSubjectsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -748,6 +824,7 @@ export type UserUpdateWithoutSubjectsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -771,6 +848,7 @@ export type UserUncheckedUpdateWithoutSubjectsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -794,6 +872,7 @@ export type UserCreateWithoutConversationsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -817,6 +896,7 @@ export type UserUncheckedCreateWithoutConversationsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -856,6 +936,7 @@ export type UserUpdateWithoutConversationsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -879,6 +960,7 @@ export type UserUncheckedUpdateWithoutConversationsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -902,6 +984,7 @@ export type UserCreateWithoutFlashcard_decksInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -925,6 +1008,7 @@ export type UserUncheckedCreateWithoutFlashcard_decksInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -964,6 +1048,7 @@ export type UserUpdateWithoutFlashcard_decksInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -987,6 +1072,7 @@ export type UserUncheckedUpdateWithoutFlashcard_decksInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1010,6 +1096,7 @@ export type UserCreateWithoutFlashcard_reviewsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -1033,6 +1120,7 @@ export type UserUncheckedCreateWithoutFlashcard_reviewsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -1072,6 +1160,7 @@ export type UserUpdateWithoutFlashcard_reviewsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1095,6 +1184,7 @@ export type UserUncheckedUpdateWithoutFlashcard_reviewsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1118,6 +1208,7 @@ export type UserCreateWithoutQuizzesInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -1141,6 +1232,7 @@ export type UserUncheckedCreateWithoutQuizzesInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -1180,6 +1272,7 @@ export type UserUpdateWithoutQuizzesInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1203,6 +1296,7 @@ export type UserUncheckedUpdateWithoutQuizzesInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1226,6 +1320,7 @@ export type UserCreateWithoutQuiz_attemptsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -1249,6 +1344,7 @@ export type UserUncheckedCreateWithoutQuiz_attemptsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -1288,6 +1384,7 @@ export type UserUpdateWithoutQuiz_attemptsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1311,6 +1408,7 @@ export type UserUncheckedUpdateWithoutQuiz_attemptsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1334,6 +1432,7 @@ export type UserCreateWithoutDocumentsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -1357,6 +1456,7 @@ export type UserUncheckedCreateWithoutDocumentsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -1396,6 +1496,7 @@ export type UserUpdateWithoutDocumentsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1419,6 +1520,7 @@ export type UserUncheckedUpdateWithoutDocumentsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1442,6 +1544,7 @@ export type UserCreateWithoutAi_usage_logsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -1465,6 +1568,7 @@ export type UserUncheckedCreateWithoutAi_usage_logsInput = {
   role?: string
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: number
   created_at?: Date | string
   updated_at?: Date | string
   provider?: string | null
@@ -1504,6 +1608,7 @@ export type UserUpdateWithoutAi_usage_logsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1527,6 +1632,7 @@ export type UserUncheckedUpdateWithoutAi_usage_logsInput = {
   role?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1644,6 +1750,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   role?: boolean
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: boolean
   created_at?: boolean
   updated_at?: boolean
   provider?: boolean
@@ -1669,6 +1776,7 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   role?: boolean
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: boolean
   created_at?: boolean
   updated_at?: boolean
   provider?: boolean
@@ -1685,6 +1793,7 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   role?: boolean
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: boolean
   created_at?: boolean
   updated_at?: boolean
   provider?: boolean
@@ -1701,6 +1810,7 @@ export type UserSelectScalar = {
   role?: boolean
   is_active?: boolean
   is_verified?: boolean
+  daily_goal_minutes?: boolean
   created_at?: boolean
   updated_at?: boolean
   provider?: boolean
@@ -1708,7 +1818,7 @@ export type UserSelectScalar = {
   refresh_token?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "password_hash" | "name" | "avatar_url" | "role" | "is_active" | "is_verified" | "created_at" | "updated_at" | "provider" | "provider_id" | "refresh_token", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "password_hash" | "name" | "avatar_url" | "role" | "is_active" | "is_verified" | "daily_goal_minutes" | "created_at" | "updated_at" | "provider" | "provider_id" | "refresh_token", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   subjects?: boolean | Prisma.User$subjectsArgs<ExtArgs>
   conversations?: boolean | Prisma.User$conversationsArgs<ExtArgs>
@@ -1744,6 +1854,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     role: string
     is_active: boolean
     is_verified: boolean
+    daily_goal_minutes: number
     created_at: Date
     updated_at: Date
     provider: string | null
@@ -2188,6 +2299,7 @@ export interface UserFieldRefs {
   readonly role: Prisma.FieldRef<"User", 'String'>
   readonly is_active: Prisma.FieldRef<"User", 'Boolean'>
   readonly is_verified: Prisma.FieldRef<"User", 'Boolean'>
+  readonly daily_goal_minutes: Prisma.FieldRef<"User", 'Int'>
   readonly created_at: Prisma.FieldRef<"User", 'DateTime'>
   readonly updated_at: Prisma.FieldRef<"User", 'DateTime'>
   readonly provider: Prisma.FieldRef<"User", 'String'>

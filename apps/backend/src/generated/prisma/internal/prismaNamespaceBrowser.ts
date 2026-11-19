@@ -95,6 +95,7 @@ export const UserScalarFieldEnum = {
   role: 'role',
   is_active: 'is_active',
   is_verified: 'is_verified',
+  daily_goal_minutes: 'daily_goal_minutes',
   created_at: 'created_at',
   updated_at: 'updated_at',
   provider: 'provider',
@@ -110,6 +111,8 @@ export const SubjectScalarFieldEnum = {
   user_id: 'user_id',
   name: 'name',
   color: 'color',
+  exam_date: 'exam_date',
+  target_score: 'target_score',
   created_at: 'created_at',
   updated_at: 'updated_at'
 } as const

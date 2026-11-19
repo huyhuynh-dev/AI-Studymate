@@ -52,4 +52,30 @@ describe('SubjectsService', () => {
       );
     });
   });
+
+  describe('updateSubject', () => {
+    it('should forward examDate and targetScore updates to repository', async () => {
+      const updated = {
+        id: 'uuid-1',
+        name: 'AI Study',
+        color: '#ffffff',
+        exam_date: new Date('2026-12-10T00:00:00.000Z'),
+        target_score: 90,
+      };
+      repo.updateSubject?.mockResolvedValue(updated);
+
+      const result = await service.updateSubject(
+        'uuid-1',
+        { examDate: '2026-12-10', targetScore: 90 },
+        'user-1'
+      );
+
+      expect(repo.updateSubject).toHaveBeenCalledWith(
+        'uuid-1',
+        { examDate: '2026-12-10', targetScore: 90 },
+        'user-1'
+      );
+      expect(result).toEqual(updated);
+    });
+  });
 });

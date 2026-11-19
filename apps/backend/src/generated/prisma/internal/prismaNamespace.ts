@@ -1739,6 +1739,7 @@ export const UserScalarFieldEnum = {
   role: 'role',
   is_active: 'is_active',
   is_verified: 'is_verified',
+  daily_goal_minutes: 'daily_goal_minutes',
   created_at: 'created_at',
   updated_at: 'updated_at',
   provider: 'provider',
@@ -1754,6 +1755,8 @@ export const SubjectScalarFieldEnum = {
   user_id: 'user_id',
   name: 'name',
   color: 'color',
+  exam_date: 'exam_date',
+  target_score: 'target_score',
   created_at: 'created_at',
   updated_at: 'updated_at'
 } as const
@@ -2086,6 +2089,20 @@ export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel,
 
 
 /**
+ * Reference to a field of type 'Int'
+ */
+export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+    
+
+
+/**
+ * Reference to a field of type 'Int[]'
+ */
+export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
  * Reference to a field of type 'DateTime'
  */
 export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
@@ -2138,20 +2155,6 @@ export type EnumCardStateEnumFieldRefInput<$PrismaModel> = FieldRefInputType<$Pr
  * Reference to a field of type 'CardStateEnum[]'
  */
 export type ListEnumCardStateEnumFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CardStateEnum[]'>
-    
-
-
-/**
- * Reference to a field of type 'Int'
- */
-export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
-    
-
-
-/**
- * Reference to a field of type 'Int[]'
- */
-export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
     
 
 

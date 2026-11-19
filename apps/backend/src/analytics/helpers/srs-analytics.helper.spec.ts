@@ -5,10 +5,16 @@ import type {
   AnalyticsReviewLogRow,
 } from '../../repo/analytics-repo/analytics-repo.service.js';
 import {
+  computeDeckComposition,
   computeLocalDateKey,
+  computeOverdueCount,
+  computeProgressBuckets,
+  computeRatingDistribution,
   computeRetentionAndTiming,
   computeSrsOverviewStats,
+  computeStudyMinutesByDate,
   computeStudyStreak,
+  computeTrueRetentionWithDelta,
   computeWorkloadForecast7Days,
   extractLeechCards,
 } from './srs-analytics.helper.js';
@@ -272,6 +278,83 @@ describe('srs-analytics.helper', () => {
       expect(forecast[0].dueCount).toBe(2);
       expect(forecast[0].estimatedMinutes).toBe(1);
       expect(forecast.reduce((s, d) => s + d.dueCount, 0)).toBe(3);
+    });
+  });
+
+  describe('Phase 2 enhanced SRS metrics (true retention, anti-gaming, deck composition, buckets)', () => {
+    const now = new Date('2026-11-19T10:00:00.000Z');
+
+    it('returns insufficient_data when review sample < 20 and computes deltaVsPrev when both windows >= 20', () => {
+      const smallLogs: AnalyticsReviewLogRow[] = Array.from({ length: 5 }, (_, i) => ({
+        flashcardId: `c-${i}`,
+        rating: 3,
+        stateBefore: CardStateEnum.review,
+        timeTakenMs: 5000,
+        reviewedAt: new Date(now.getTime() - i * 3600_000),
+      }));
+      const smallRes = computeTrueRetentionWithDelta(smallLogs, 30, now);
+      expect(smallRes.label).toBe('insufficient_data');
+      expect(smallRes.value).toBeNull();
+      expect(smallRes.sampleSize).toBe(5);
+
+      const curLogs: AnalyticsReviewLogRow[] = Array.from({ length: 20 }, (_, i) => ({
+        flashcardId: `cur-${i}`,
+        rating: i < 18 ? 3 : 1, // 90%
+        stateBefore: CardStateEnum.review,
+        timeTakenMs: 4000,
+        reviewedAt: new Date(now.getTime() - (i + 1) * 3600_000),
+      }));
+      const prevLogs: AnalyticsReviewLogRow[] = Array.from({ length: 20 }, (_, i) => ({
+        flashcardId: `prev-${i}`,
+        rating: i < 16 ? 3 : 1, // 80%
+        stateBefore: CardStateEnum.review,
+        timeTakenMs: 4000,
+        reviewedAt: new Date(now.getTime() - 35 * 86_400_000 - i * 3600_000),
+      }));
+      const fullRes = computeTrueRetentionWithDelta([...curLogs, ...prevLogs], 30, now);
+      expect(fullRes.label).toBe('good');
+      expect(fullRes.value).toBe(90);
+      expect(fullRes.deltaVsPrev).toBe(10);
+    });
+
+    it('caps study time at 60s, ignores < 300ms gaming, and splits young vs mature cards (>= 21d)', () => {
+      const reviews: AnalyticsReviewLogRow[] = [
+        { flashcardId: '1', rating: 3, stateBefore: CardStateEnum.review, timeTakenMs: 150, reviewedAt: now },
+        { flashcardId: '2', rating: 3, stateBefore: CardStateEnum.review, timeTakenMs: 180_000, reviewedAt: now },
+      ];
+      const minsMap = computeStudyMinutesByDate(reviews, [], 420);
+      const todayKey = computeLocalDateKey(now, 420);
+      expect(minsMap.get(todayKey)).toBe(1);
+
+      const comp = computeDeckComposition([
+        {
+          id: '1', deckId: 'd', deckName: 'D', conversationId: 'c', frontText: 'a',
+          state: CardStateEnum.new, interval: 0, easeFactor: 2.5, dueDate: now, lastReviewedAt: null, sourceRefs: null, againCount: 0,
+        },
+        {
+          id: '2', deckId: 'd', deckName: 'D', conversationId: 'c', frontText: 'b',
+          state: CardStateEnum.review, interval: 10, easeFactor: 2.5, dueDate: now, lastReviewedAt: now, sourceRefs: null, againCount: 0,
+        },
+        {
+          id: '3', deckId: 'd', deckName: 'D', conversationId: 'c', frontText: 'c',
+          state: CardStateEnum.review, interval: 25, easeFactor: 2.5, dueDate: new Date('2026-11-01T00:00:00Z'), lastReviewedAt: now, sourceRefs: null, againCount: 0,
+        },
+      ]);
+      expect(comp).toEqual({ newCount: 1, learningCount: 0, youngCount: 1, matureCount: 1 });
+      expect(computeOverdueCount([
+        {
+          id: '3', deckId: 'd', deckName: 'D', conversationId: 'c', frontText: 'c',
+          state: CardStateEnum.review, interval: 25, easeFactor: 2.5, dueDate: new Date('2026-11-01T00:00:00Z'), lastReviewedAt: now, sourceRefs: null, againCount: 0,
+        },
+      ], now, 420)).toBe(1);
+
+      const dist = computeRatingDistribution(reviews, 30, now);
+      expect(dist).toEqual({ again: 0, hard: 0, good: 2, easy: 0, total: 2 });
+
+      const buckets7 = computeProgressBuckets(reviews, [], 7, now, 420);
+      const buckets90 = computeProgressBuckets(reviews, [], 90, now, 420);
+      expect(buckets7.buckets).toHaveLength(7);
+      expect(buckets90.buckets.length).toBeLessThanOrEqual(7);
     });
   });
 });

@@ -14,8 +14,11 @@ import { useSubjects } from "@/hooks/useSubjects";
 import { useConversations } from "@/hooks/useConversations";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useDecks } from "@/hooks/useDecks";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useConversationAnalytics } from "@/hooks/useLearningAnalytics";
 import { quizApi } from "@/services/quiz.api";
+import { extractApiErrorMessage } from "@/services/subjects.api";
+import { extractUserApiError } from "@/services/users.api";
 import type { SourceReference, StudyRecommendation } from "@/types";
 
 interface ConversationPageProps {
@@ -71,13 +74,15 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     analyticsWindowDays
   );
 
-  // Đọc tham số điều hướng ban đầu từ Subject Analytics (?tab=analytics|flashcard|quiz)
+  // Đọc tham số điều hướng ban đầu từ Subject Analytics (?tab=analytics|flashcard|quiz|documents&docId=&page=)
   useEffect(() => {
     if (typeof window === "undefined") return;
     let cancelled = false;
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get("tab");
     const deckIdParam = params.get("deckId");
+    const docIdParam = params.get("docId");
+    const pageParam = Number(params.get("page") ?? "1");
 
     void Promise.resolve().then(() => {
       if (cancelled) return;
@@ -93,12 +98,18 @@ export default function ConversationPage({ params }: ConversationPageProps) {
       if (tabParam === "flashcard" && deckIdParam) {
         setFlashcardOpenRequest({ deckId: deckIdParam, nonce: Date.now() });
       }
+      if (docIdParam) {
+        navigateToDocumentCitation({
+          documentId: docIdParam,
+          pageNo: Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1,
+        });
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [navigateToDocumentCitation]);
 
   // Tự động chuyển sang Tab "Tài liệu" khi người dùng bấm vào một Badge trích dẫn từ Chatbox (bỏ qua nếu mở ở cột phải)
   useEffect(() => {
@@ -188,8 +199,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     };
   }, [setFocusMode]);
 
-  // Lấy dữ liệu môn học và danh sách cuộc hội thoại thực tế
-  const { subjects } = useSubjects();
+  // Lấy dữ liệu người dùng, môn học và danh sách cuộc hội thoại thực tế
+  const { user, updateProfile } = useCurrentUser();
+  const { subjects, updateSubject } = useSubjects();
   const { conversations } = useConversations(subjectId);
 
   // Hook quản lý danh sách và tiến trình tải lên tài liệu
@@ -252,14 +264,49 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
   const handleOpenDocumentFromAnalytics = (
     documentId: string,
-    fileName: string
+    fileName: string,
+    pageNo = 1
   ) => {
     setFocusMode(false);
     navigateToDocumentCitation({
       documentId,
       fileName,
-      pageNo: 1,
+      pageNo: pageNo > 0 ? pageNo : 1,
     });
+  };
+
+  const [goalActionFeedback, setGoalActionFeedback] = useState<string | null>(null);
+
+  const handleUpdateDailyGoal = async (minutes: number) => {
+    setGoalActionFeedback(null);
+    try {
+      await updateProfile({ dailyGoalMinutes: minutes });
+      await refreshConversationAnalytics();
+    } catch (error) {
+      setGoalActionFeedback(
+        extractUserApiError(error, "Không thể cập nhật mục tiêu học hằng ngày")
+      );
+      throw error;
+    }
+  };
+
+  const handleUpdateExamGoal = async (input: {
+    examDate: string | null;
+    targetScore?: number | null;
+  }) => {
+    setGoalActionFeedback(null);
+    try {
+      await updateSubject(subjectId, {
+        examDate: input.examDate,
+        targetScore: input.targetScore ?? null,
+      });
+      await refreshConversationAnalytics();
+    } catch (error) {
+      setGoalActionFeedback(
+        extractApiErrorMessage(error, "Không thể cập nhật ngày thi cho môn học")
+      );
+      throw error;
+    }
   };
 
   const handleTriggerTargetedQuiz = (opts: {
@@ -439,31 +486,56 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           )}
 
           {activeTab === "analytics" && (
-            <AnalyticsDashboardView
-              mode="conversation"
-              data={conversationAnalytics}
-              isLoading={isAnalyticsLoading}
-              isValidating={isAnalyticsValidating}
-              errorMessage={analyticsError}
-              windowDays={analyticsWindowDays}
-              onWindowDaysChange={setAnalyticsWindowDays}
-              onRetry={() => void refreshConversationAnalytics()}
-              onExecuteAction={handleExecuteStudyAction}
-              onJumpToSource={handleJumpToSourceRef}
-              onCreateTargetedQuiz={(opts) =>
-                handleTriggerTargetedQuiz({
-                  chunkIds: opts.chunkIds,
-                  sectionTitle: opts.sectionTitle,
-                  bloomPreset: "exam_prep",
-                })
-              }
-              onOpenDeck={(deckId) => {
-                setFocusMode(false);
-                setFlashcardOpenRequest({ deckId, nonce: Date.now() });
-                setActiveTab("flashcard");
-              }}
-              onOpenDocument={handleOpenDocumentFromAnalytics}
-            />
+            <div className="space-y-4">
+              {goalActionFeedback && (
+                <div
+                  role="alert"
+                  className="mx-auto max-w-[1200px] rounded-2xl border border-rose-500/20 bg-rose-50/80 dark:bg-[#FF453A]/10 px-4 py-2.5 text-xs font-medium text-rose-700 dark:text-[#FF6961]"
+                >
+                  {goalActionFeedback}
+                </div>
+              )}
+              <AnalyticsDashboardView
+                mode="conversation"
+                data={conversationAnalytics}
+                isLoading={isAnalyticsLoading}
+                isValidating={isAnalyticsValidating}
+                errorMessage={analyticsError}
+                windowDays={analyticsWindowDays}
+                onWindowDaysChange={setAnalyticsWindowDays}
+                onRetry={() => void refreshConversationAnalytics()}
+                onExecuteAction={handleExecuteStudyAction}
+                onJumpToSource={handleJumpToSourceRef}
+                onCreateTargetedQuiz={(opts) =>
+                  handleTriggerTargetedQuiz({
+                    chunkIds: opts.chunkIds,
+                    sectionTitle: opts.sectionTitle,
+                    bloomPreset: "exam_prep",
+                  })
+                }
+                onOpenDeck={(deckId) => {
+                  setFocusMode(false);
+                  setFlashcardOpenRequest({ deckId, nonce: Date.now() });
+                  setActiveTab("flashcard");
+                }}
+                onOpenDocument={handleOpenDocumentFromAnalytics}
+                userName={user?.name}
+                onUpdateDailyGoal={handleUpdateDailyGoal}
+                onUpdateExamGoal={handleUpdateExamGoal}
+                onGoToFlashcards={() => {
+                  setFocusMode(false);
+                  setActiveTab("flashcard");
+                }}
+                onGoToQuiz={() => {
+                  setFocusMode(false);
+                  setActiveTab("quiz");
+                }}
+                onGoToDocuments={() => {
+                  setFocusMode(false);
+                  setActiveTab("documents");
+                }}
+              />
+            </div>
           )}
         </div>
       </main>

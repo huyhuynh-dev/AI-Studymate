@@ -13,6 +13,8 @@ export class SubjectsRepoService {
                 id: true,
                 name: true,
                 color: true,
+                exam_date: true,
+                target_score: true,
                 created_at: true,
                 updated_at: true,
             },
@@ -31,6 +33,8 @@ export class SubjectsRepoService {
                 id: true,
                 name: true,
                 color: true,
+                exam_date: true,
+                target_score: true,
                 created_at: true,
                 updated_at: true,
             },
@@ -47,6 +51,8 @@ export class SubjectsRepoService {
                 id: true,
                 name: true,
                 color: true,
+                exam_date: true,
+                target_score: true,
                 created_at: true,
                 updated_at: true,
             },
@@ -55,7 +61,7 @@ export class SubjectsRepoService {
 
     async updateSubject(
         subjectId: string,
-        data: { name?: string; color?: string },
+        data: { name?: string; color?: string; examDate?: string | null; targetScore?: number | null },
         userId: string
     ): Promise<any> {
         try {
@@ -66,6 +72,13 @@ export class SubjectsRepoService {
             if (data.color !== undefined) {
                 updatePayload.color = data.color;
             }
+            if (data.examDate !== undefined) {
+                updatePayload.exam_date =
+                    data.examDate === null ? null : new Date(`${data.examDate}T00:00:00.000Z`);
+            }
+            if (data.targetScore !== undefined) {
+                updatePayload.target_score = data.targetScore;
+            }
 
             return await this.prisma.subject.update({
                 where: { id: subjectId, user_id: userId },
@@ -74,6 +87,8 @@ export class SubjectsRepoService {
                     id: true,
                     name: true,
                     color: true,
+                    exam_date: true,
+                    target_score: true,
                     created_at: true,
                     updated_at: true,
                 },

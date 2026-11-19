@@ -20,8 +20,18 @@ export type SubjectModel = runtime.Types.Result.DefaultSelection<Prisma.$Subject
 
 export type AggregateSubject = {
   _count: SubjectCountAggregateOutputType | null
+  _avg: SubjectAvgAggregateOutputType | null
+  _sum: SubjectSumAggregateOutputType | null
   _min: SubjectMinAggregateOutputType | null
   _max: SubjectMaxAggregateOutputType | null
+}
+
+export type SubjectAvgAggregateOutputType = {
+  target_score: number | null
+}
+
+export type SubjectSumAggregateOutputType = {
+  target_score: number | null
 }
 
 export type SubjectMinAggregateOutputType = {
@@ -29,6 +39,8 @@ export type SubjectMinAggregateOutputType = {
   user_id: string | null
   name: string | null
   color: string | null
+  exam_date: Date | null
+  target_score: number | null
   created_at: Date | null
   updated_at: Date | null
 }
@@ -38,6 +50,8 @@ export type SubjectMaxAggregateOutputType = {
   user_id: string | null
   name: string | null
   color: string | null
+  exam_date: Date | null
+  target_score: number | null
   created_at: Date | null
   updated_at: Date | null
 }
@@ -47,17 +61,29 @@ export type SubjectCountAggregateOutputType = {
   user_id: number
   name: number
   color: number
+  exam_date: number
+  target_score: number
   created_at: number
   updated_at: number
   _all: number
 }
 
 
+export type SubjectAvgAggregateInputType = {
+  target_score?: true
+}
+
+export type SubjectSumAggregateInputType = {
+  target_score?: true
+}
+
 export type SubjectMinAggregateInputType = {
   id?: true
   user_id?: true
   name?: true
   color?: true
+  exam_date?: true
+  target_score?: true
   created_at?: true
   updated_at?: true
 }
@@ -67,6 +93,8 @@ export type SubjectMaxAggregateInputType = {
   user_id?: true
   name?: true
   color?: true
+  exam_date?: true
+  target_score?: true
   created_at?: true
   updated_at?: true
 }
@@ -76,6 +104,8 @@ export type SubjectCountAggregateInputType = {
   user_id?: true
   name?: true
   color?: true
+  exam_date?: true
+  target_score?: true
   created_at?: true
   updated_at?: true
   _all?: true
@@ -119,6 +149,18 @@ export type SubjectAggregateArgs<ExtArgs extends runtime.Types.Extensions.Intern
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: SubjectAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: SubjectSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: SubjectMinAggregateInputType
@@ -149,6 +191,8 @@ export type SubjectGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
   take?: number
   skip?: number
   _count?: SubjectCountAggregateInputType | true
+  _avg?: SubjectAvgAggregateInputType
+  _sum?: SubjectSumAggregateInputType
   _min?: SubjectMinAggregateInputType
   _max?: SubjectMaxAggregateInputType
 }
@@ -158,9 +202,13 @@ export type SubjectGroupByOutputType = {
   user_id: string
   name: string
   color: string | null
+  exam_date: Date | null
+  target_score: number | null
   created_at: Date
   updated_at: Date
   _count: SubjectCountAggregateOutputType | null
+  _avg: SubjectAvgAggregateOutputType | null
+  _sum: SubjectSumAggregateOutputType | null
   _min: SubjectMinAggregateOutputType | null
   _max: SubjectMaxAggregateOutputType | null
 }
@@ -188,6 +236,8 @@ export type SubjectWhereInput = {
   user_id?: Prisma.UuidFilter<"Subject"> | string
   name?: Prisma.StringFilter<"Subject"> | string
   color?: Prisma.StringNullableFilter<"Subject"> | string | null
+  exam_date?: Prisma.DateTimeNullableFilter<"Subject"> | Date | string | null
+  target_score?: Prisma.IntNullableFilter<"Subject"> | number | null
   created_at?: Prisma.DateTimeFilter<"Subject"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"Subject"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -199,6 +249,8 @@ export type SubjectOrderByWithRelationInput = {
   user_id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   color?: Prisma.SortOrderInput | Prisma.SortOrder
+  exam_date?: Prisma.SortOrderInput | Prisma.SortOrder
+  target_score?: Prisma.SortOrderInput | Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
@@ -213,6 +265,8 @@ export type SubjectWhereUniqueInput = Prisma.AtLeast<{
   user_id?: Prisma.UuidFilter<"Subject"> | string
   name?: Prisma.StringFilter<"Subject"> | string
   color?: Prisma.StringNullableFilter<"Subject"> | string | null
+  exam_date?: Prisma.DateTimeNullableFilter<"Subject"> | Date | string | null
+  target_score?: Prisma.IntNullableFilter<"Subject"> | number | null
   created_at?: Prisma.DateTimeFilter<"Subject"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"Subject"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -224,11 +278,15 @@ export type SubjectOrderByWithAggregationInput = {
   user_id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   color?: Prisma.SortOrderInput | Prisma.SortOrder
+  exam_date?: Prisma.SortOrderInput | Prisma.SortOrder
+  target_score?: Prisma.SortOrderInput | Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
   _count?: Prisma.SubjectCountOrderByAggregateInput
+  _avg?: Prisma.SubjectAvgOrderByAggregateInput
   _max?: Prisma.SubjectMaxOrderByAggregateInput
   _min?: Prisma.SubjectMinOrderByAggregateInput
+  _sum?: Prisma.SubjectSumOrderByAggregateInput
 }
 
 export type SubjectScalarWhereWithAggregatesInput = {
@@ -239,6 +297,8 @@ export type SubjectScalarWhereWithAggregatesInput = {
   user_id?: Prisma.UuidWithAggregatesFilter<"Subject"> | string
   name?: Prisma.StringWithAggregatesFilter<"Subject"> | string
   color?: Prisma.StringNullableWithAggregatesFilter<"Subject"> | string | null
+  exam_date?: Prisma.DateTimeNullableWithAggregatesFilter<"Subject"> | Date | string | null
+  target_score?: Prisma.IntNullableWithAggregatesFilter<"Subject"> | number | null
   created_at?: Prisma.DateTimeWithAggregatesFilter<"Subject"> | Date | string
   updated_at?: Prisma.DateTimeWithAggregatesFilter<"Subject"> | Date | string
 }
@@ -247,6 +307,8 @@ export type SubjectCreateInput = {
   id?: string
   name: string
   color?: string | null
+  exam_date?: Date | string | null
+  target_score?: number | null
   created_at?: Date | string
   updated_at?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSubjectsInput
@@ -258,6 +320,8 @@ export type SubjectUncheckedCreateInput = {
   user_id: string
   name: string
   color?: string | null
+  exam_date?: Date | string | null
+  target_score?: number | null
   created_at?: Date | string
   updated_at?: Date | string
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutSubjectInput
@@ -267,6 +331,8 @@ export type SubjectUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  exam_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  target_score?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSubjectsNestedInput
@@ -278,6 +344,8 @@ export type SubjectUncheckedUpdateInput = {
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  exam_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  target_score?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutSubjectNestedInput
@@ -288,6 +356,8 @@ export type SubjectCreateManyInput = {
   user_id: string
   name: string
   color?: string | null
+  exam_date?: Date | string | null
+  target_score?: number | null
   created_at?: Date | string
   updated_at?: Date | string
 }
@@ -296,6 +366,8 @@ export type SubjectUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  exam_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  target_score?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -305,6 +377,8 @@ export type SubjectUncheckedUpdateManyInput = {
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  exam_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  target_score?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -324,8 +398,14 @@ export type SubjectCountOrderByAggregateInput = {
   user_id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   color?: Prisma.SortOrder
+  exam_date?: Prisma.SortOrder
+  target_score?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
+}
+
+export type SubjectAvgOrderByAggregateInput = {
+  target_score?: Prisma.SortOrder
 }
 
 export type SubjectMaxOrderByAggregateInput = {
@@ -333,6 +413,8 @@ export type SubjectMaxOrderByAggregateInput = {
   user_id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   color?: Prisma.SortOrder
+  exam_date?: Prisma.SortOrder
+  target_score?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
@@ -342,8 +424,14 @@ export type SubjectMinOrderByAggregateInput = {
   user_id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   color?: Prisma.SortOrder
+  exam_date?: Prisma.SortOrder
+  target_score?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
+}
+
+export type SubjectSumOrderByAggregateInput = {
+  target_score?: Prisma.SortOrder
 }
 
 export type SubjectScalarRelationFilter = {
@@ -393,6 +481,18 @@ export type SubjectUncheckedUpdateManyWithoutUserNestedInput = {
   deleteMany?: Prisma.SubjectScalarWhereInput | Prisma.SubjectScalarWhereInput[]
 }
 
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
+}
+
+export type NullableIntFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
 export type SubjectCreateNestedOneWithoutConversationsInput = {
   create?: Prisma.XOR<Prisma.SubjectCreateWithoutConversationsInput, Prisma.SubjectUncheckedCreateWithoutConversationsInput>
   connectOrCreate?: Prisma.SubjectCreateOrConnectWithoutConversationsInput
@@ -411,6 +511,8 @@ export type SubjectCreateWithoutUserInput = {
   id?: string
   name: string
   color?: string | null
+  exam_date?: Date | string | null
+  target_score?: number | null
   created_at?: Date | string
   updated_at?: Date | string
   conversations?: Prisma.ConversationCreateNestedManyWithoutSubjectInput
@@ -420,6 +522,8 @@ export type SubjectUncheckedCreateWithoutUserInput = {
   id?: string
   name: string
   color?: string | null
+  exam_date?: Date | string | null
+  target_score?: number | null
   created_at?: Date | string
   updated_at?: Date | string
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutSubjectInput
@@ -459,6 +563,8 @@ export type SubjectScalarWhereInput = {
   user_id?: Prisma.UuidFilter<"Subject"> | string
   name?: Prisma.StringFilter<"Subject"> | string
   color?: Prisma.StringNullableFilter<"Subject"> | string | null
+  exam_date?: Prisma.DateTimeNullableFilter<"Subject"> | Date | string | null
+  target_score?: Prisma.IntNullableFilter<"Subject"> | number | null
   created_at?: Prisma.DateTimeFilter<"Subject"> | Date | string
   updated_at?: Prisma.DateTimeFilter<"Subject"> | Date | string
 }
@@ -467,6 +573,8 @@ export type SubjectCreateWithoutConversationsInput = {
   id?: string
   name: string
   color?: string | null
+  exam_date?: Date | string | null
+  target_score?: number | null
   created_at?: Date | string
   updated_at?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSubjectsInput
@@ -477,6 +585,8 @@ export type SubjectUncheckedCreateWithoutConversationsInput = {
   user_id: string
   name: string
   color?: string | null
+  exam_date?: Date | string | null
+  target_score?: number | null
   created_at?: Date | string
   updated_at?: Date | string
 }
@@ -501,6 +611,8 @@ export type SubjectUpdateWithoutConversationsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  exam_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  target_score?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSubjectsNestedInput
@@ -511,6 +623,8 @@ export type SubjectUncheckedUpdateWithoutConversationsInput = {
   user_id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  exam_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  target_score?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -519,6 +633,8 @@ export type SubjectCreateManyUserInput = {
   id?: string
   name: string
   color?: string | null
+  exam_date?: Date | string | null
+  target_score?: number | null
   created_at?: Date | string
   updated_at?: Date | string
 }
@@ -527,6 +643,8 @@ export type SubjectUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  exam_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  target_score?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUpdateManyWithoutSubjectNestedInput
@@ -536,6 +654,8 @@ export type SubjectUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  exam_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  target_score?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutSubjectNestedInput
@@ -545,6 +665,8 @@ export type SubjectUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  exam_date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  target_score?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -585,6 +707,8 @@ export type SubjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   user_id?: boolean
   name?: boolean
   color?: boolean
+  exam_date?: boolean
+  target_score?: boolean
   created_at?: boolean
   updated_at?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -597,6 +721,8 @@ export type SubjectSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   user_id?: boolean
   name?: boolean
   color?: boolean
+  exam_date?: boolean
+  target_score?: boolean
   created_at?: boolean
   updated_at?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -607,6 +733,8 @@ export type SubjectSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   user_id?: boolean
   name?: boolean
   color?: boolean
+  exam_date?: boolean
+  target_score?: boolean
   created_at?: boolean
   updated_at?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -617,11 +745,13 @@ export type SubjectSelectScalar = {
   user_id?: boolean
   name?: boolean
   color?: boolean
+  exam_date?: boolean
+  target_score?: boolean
   created_at?: boolean
   updated_at?: boolean
 }
 
-export type SubjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "user_id" | "name" | "color" | "created_at" | "updated_at", ExtArgs["result"]["subject"]>
+export type SubjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "user_id" | "name" | "color" | "exam_date" | "target_score" | "created_at" | "updated_at", ExtArgs["result"]["subject"]>
 export type SubjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   conversations?: boolean | Prisma.Subject$conversationsArgs<ExtArgs>
@@ -645,6 +775,8 @@ export type $SubjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     user_id: string
     name: string
     color: string | null
+    exam_date: Date | null
+    target_score: number | null
     created_at: Date
     updated_at: Date
   }, ExtArgs["result"]["subject"]>
@@ -1076,6 +1208,8 @@ export interface SubjectFieldRefs {
   readonly user_id: Prisma.FieldRef<"Subject", 'String'>
   readonly name: Prisma.FieldRef<"Subject", 'String'>
   readonly color: Prisma.FieldRef<"Subject", 'String'>
+  readonly exam_date: Prisma.FieldRef<"Subject", 'DateTime'>
+  readonly target_score: Prisma.FieldRef<"Subject", 'Int'>
   readonly created_at: Prisma.FieldRef<"Subject", 'DateTime'>
   readonly updated_at: Prisma.FieldRef<"Subject", 'DateTime'>
 }

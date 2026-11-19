@@ -3,8 +3,11 @@ import { EvaluationStatusEnum } from '../../generated/prisma/client.js';
 import type { AnalyticsQuizAttemptRow } from '../../repo/analytics-repo/analytics-repo.service.js';
 import {
   clusterMissingPoints,
+  computeAdvancedQuizSignals,
   computeBloomMasteryBreakdown,
+  computeLatestQuizAvgPct,
   computeQuizPerformanceSummary,
+  computeQuizRetakeGains,
   deduplicateLatestQuizAnswers,
   extractWeakTopicsFromDocuments,
   generateStudyRecommendations,
@@ -418,5 +421,41 @@ describe('knowledge-gap.helper', () => {
     expect(withGap).toHaveLength(1);
     expect(withGap[0].actionType).toBe('address_bloom_gap');
     expect(withGap[0].payload.bloomPreset).toBe('exam_prep');
+  });
+
+  it('computes quizRetakeGains for repeated quizzes and latestQuizAvgPct cleanly', () => {
+    const repeated: AnalyticsQuizAttemptRow[] = [
+      {
+        id: 'a2',
+        quizId: 'quiz-a',
+        quizTitle: 'Đề Deadlock',
+        conversationId: 'conv-1',
+        score: 8,
+        maxScore: 10,
+        completedAt: new Date('2026-11-18T10:00:00Z'),
+        answers: [],
+      },
+      {
+        id: 'a1',
+        quizId: 'quiz-a',
+        quizTitle: 'Đề Deadlock',
+        conversationId: 'conv-1',
+        score: 5,
+        maxScore: 10,
+        completedAt: new Date('2026-11-16T10:00:00Z'),
+        answers: [],
+      },
+    ];
+    const gains = computeQuizRetakeGains(repeated);
+    expect(gains).toHaveLength(1);
+    expect(gains[0]).toMatchObject({
+      quizId: 'quiz-a',
+      firstScorePct: 50,
+      latestScorePct: 80,
+      gainPct: 30,
+    });
+    expect(computeLatestQuizAvgPct(repeated)).toBe(80);
+    const signals = computeAdvancedQuizSignals(attempts[0].answers);
+    expect(signals.flaggedCorrectCount).toBe(0);
   });
 });

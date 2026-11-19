@@ -13,19 +13,37 @@ import type {
 } from './analytics.types.js';
 import type { AnalyticsQueryDto } from './dto/analytics.dto.js';
 import {
+  buildAttentionItems,
+  buildCoachingInsights,
+  buildHeadlineMetrics,
+  buildTodayPlan,
+  computeExamReadiness,
+} from './helpers/coaching-insights.helper.js';
+import {
   computeDocumentMastery,
   toDocumentMasterySummary,
 } from './helpers/document-mastery.helper.js';
 import {
   clusterMissingPoints,
+  computeAdvancedQuizSignals,
   computeBloomMasteryBreakdown,
+  computeLatestQuizAvgPct,
   computeQuizPerformanceSummary,
+  computeQuizRetakeGains,
   deduplicateLatestQuizAnswers,
   extractWeakTopicsFromDocuments,
   generateStudyRecommendations,
 } from './helpers/knowledge-gap.helper.js';
 import {
+  computeDeckComposition,
+  computeLocalDateKey,
+  computeOverdueCount,
+  computeProgressBuckets,
+  computeRatingDistribution,
   computeSrsOverviewStats,
+  computeStudyMinutesByDate,
+  computeTrueRetentionWithDelta,
+  computeWeeklyHabit,
   computeWorkloadForecast7Days,
   DEFAULT_TZ_OFFSET_MINUTES,
   extractLeechCards,
@@ -57,6 +75,13 @@ export class AnalyticsService {
       userId,
       query,
       new Map([[conversationId, conv.title]]),
+      {
+        dailyGoalMinutes: conv.dailyGoalMinutes,
+        examDate: conv.examDate,
+        targetScore: conv.targetScore,
+        defaultConversationId: conversationId,
+        subjectId: conv.subjectId,
+      },
     );
 
     const recommendations = generateStudyRecommendations({
@@ -80,6 +105,9 @@ export class AnalyticsService {
       subjectName: conv.subjectName,
       generatedAt: diagnostics.now.toISOString(),
       windowDays: diagnostics.windowDays,
+      dailyGoalMinutes: conv.dailyGoalMinutes,
+      examDate: conv.examDate ? conv.examDate.toISOString().slice(0, 10) : null,
+      targetScore: conv.targetScore,
       srsOverview: diagnostics.srsOverview,
       workloadForecast7Days: diagnostics.workloadForecast7Days,
       leechCards: diagnostics.leechCards,
@@ -91,6 +119,12 @@ export class AnalyticsService {
         toDocumentMasterySummary,
       ),
       recommendations,
+      todayPlan: diagnostics.todayPlan,
+      headline: diagnostics.headline,
+      attentionItems: diagnostics.attentionItems,
+      insights: diagnostics.insights,
+      progress: diagnostics.progress,
+      advanced: diagnostics.advanced,
     };
   }
 
@@ -157,6 +191,13 @@ export class AnalyticsService {
       userId,
       query,
       titleMap,
+      {
+        dailyGoalMinutes: subject.dailyGoalMinutes,
+        examDate: subject.examDate,
+        targetScore: subject.targetScore,
+        defaultConversationId: conversationIds[0] ?? subject.id,
+        subjectId: subject.id,
+      },
     );
 
     const conversationSummaries = this.buildSubjectConversationSummaries(
@@ -169,6 +210,7 @@ export class AnalyticsService {
     );
 
     const primaryConvId =
+      diagnostics.attentionItems[0]?.conversationId ??
       diagnostics.weakTopics[0]?.conversationId ??
       conversationSummaries.find((c) => c.dueNowCount > 0)?.conversationId ??
       conversationIds[0] ??
@@ -197,6 +239,9 @@ export class AnalyticsService {
       color: subject.color,
       generatedAt: diagnostics.now.toISOString(),
       windowDays: diagnostics.windowDays,
+      dailyGoalMinutes: subject.dailyGoalMinutes,
+      examDate: subject.examDate ? subject.examDate.toISOString().slice(0, 10) : null,
+      targetScore: subject.targetScore,
       srsOverview: diagnostics.srsOverview,
       workloadForecast7Days: diagnostics.workloadForecast7Days,
       leechCards: diagnostics.leechCards,
@@ -204,8 +249,17 @@ export class AnalyticsService {
       bloomMastery: diagnostics.bloomMastery,
       missingPointsClusters: diagnostics.missingPointsClusters,
       topWeakTopics: diagnostics.weakTopics,
+      documentMasterySummaries: diagnostics.documentMasteries.map(
+        toDocumentMasterySummary,
+      ),
       conversationSummaries,
       recommendations,
+      todayPlan: diagnostics.todayPlan,
+      headline: diagnostics.headline,
+      attentionItems: diagnostics.attentionItems,
+      insights: diagnostics.insights,
+      progress: diagnostics.progress,
+      advanced: diagnostics.advanced,
     };
   }
 
@@ -214,6 +268,13 @@ export class AnalyticsService {
     userId: string,
     query: AnalyticsQueryDto,
     conversationTitleMap: Map<string, string>,
+    goalConfig: {
+      dailyGoalMinutes: number;
+      examDate: Date | null;
+      targetScore: number | null;
+      defaultConversationId: string;
+      subjectId?: string;
+    },
   ) {
     const now = new Date();
     const tzOffsetMinutes =
@@ -222,26 +283,33 @@ export class AnalyticsService {
     const sinceDate = new Date(
       now.getTime() - REVIEW_HISTORY_DAYS * MS_PER_DAY,
     );
+    const since14d = new Date(now.getTime() - 14 * MS_PER_DAY);
 
-    const [flashcards, reviews, quizAttempts, docsData] = await Promise.all([
-      this.analyticsRepo.getSrsFlashcardsByConversations(
-        conversationIds,
-        userId,
-      ),
-      this.analyticsRepo.getReviewLogsByConversations(
-        conversationIds,
-        userId,
-        sinceDate,
-      ),
-      this.analyticsRepo.getSubmittedQuizAnalyticsByConversations(
-        conversationIds,
-        userId,
-      ),
-      this.analyticsRepo.getDocumentsSummaryAndChunkIndex(
-        conversationIds,
-        userId,
-      ),
-    ]);
+    const [flashcards, reviews, quizAttempts, docsData, askedChunkCounts] =
+      await Promise.all([
+        this.analyticsRepo.getSrsFlashcardsByConversations(
+          conversationIds,
+          userId,
+        ),
+        this.analyticsRepo.getReviewLogsByConversations(
+          conversationIds,
+          userId,
+          sinceDate,
+        ),
+        this.analyticsRepo.getSubmittedQuizAnalyticsByConversations(
+          conversationIds,
+          userId,
+        ),
+        this.analyticsRepo.getDocumentsSummaryAndChunkIndex(
+          conversationIds,
+          userId,
+        ),
+        this.analyticsRepo.getFrequentlyAskedChunkCounts(
+          conversationIds,
+          userId,
+          since14d,
+        ),
+      ]);
 
     const quizSubmittedDates = quizAttempts
       .map((a) => a.completedAt)
@@ -308,6 +376,7 @@ export class AnalyticsService {
         chunks: chunksByDoc.get(doc.id) ?? [],
         latestQuizAnswers: Array.from(uniqueConvAnswers.values()),
         flashcards: cardsByConv.get(doc.conversationId) ?? [],
+        now,
       });
     });
 
@@ -318,6 +387,126 @@ export class AnalyticsService {
       })),
       8,
     );
+
+    const minutesByDate = computeStudyMinutesByDate(
+      reviews,
+      quizAttempts,
+      tzOffsetMinutes,
+    );
+    const todayKey = computeLocalDateKey(now, tzOffsetMinutes);
+    const minutesDoneToday = minutesByDate.get(todayKey) ?? 0;
+
+    const activityDates = [
+      ...reviews.map((r) => r.reviewedAt),
+      ...quizSubmittedDates,
+    ];
+    const habit = computeWeeklyHabit(
+      minutesByDate,
+      activityDates,
+      {
+        currentStreakDays: srsOverview.studyStreakDays,
+        longestStreakDays: srsOverview.longestStreakDays,
+        studiedToday: srsOverview.studiedToday,
+        activeDaysLast30: srsOverview.activeDaysLast30,
+      },
+      now,
+      tzOffsetMinutes,
+    );
+
+    const trueRetention = computeTrueRetentionWithDelta(reviews, 30, now);
+    const progressBuckets = computeProgressBuckets(
+      reviews,
+      quizAttempts,
+      windowDays,
+      now,
+      tzOffsetMinutes,
+    );
+    const quizRetakeGains = computeQuizRetakeGains(quizAttempts, 5);
+    const latestQuizAvgPct = computeLatestQuizAvgPct(quizAttempts, 5);
+    const advancedQuizSignals = computeAdvancedQuizSignals(latestQuizAnswers);
+
+    const minutesPerDayAvg14 =
+      (habit.minutesThisWeek + habit.minutesLastWeek) / 14;
+
+    const readiness = computeExamReadiness({
+      examDate: goalConfig.examDate,
+      targetScore: goalConfig.targetScore,
+      documentMasteries,
+      chunks: docsData.chunks,
+      minutesPerDayAvg: minutesPerDayAvg14,
+      now,
+      tzOffsetMinutes,
+    });
+
+    const headline = buildHeadlineMetrics({
+      documentMasteries,
+      trueRetention,
+      habit,
+      readiness,
+    });
+
+    const attentionItems = buildAttentionItems({
+      documentMasteries,
+      conversationTitleMap,
+      askedChunkCounts,
+      chunks: docsData.chunks,
+      examDate: goalConfig.examDate,
+      now,
+      tzOffsetMinutes,
+      limit: 12,
+    });
+
+    const overdueCount = computeOverdueCount(flashcards, now, tzOffsetMinutes);
+    const effectiveConvId =
+      attentionItems[0]?.conversationId ??
+      weakTopics[0]?.conversationId ??
+      goalConfig.defaultConversationId;
+
+    const todayPlan = buildTodayPlan({
+      defaultConversationId: effectiveConvId,
+      subjectId: goalConfig.subjectId,
+      srsOverview,
+      leechCards,
+      attentionItems,
+      documentMasteries,
+      minutesDoneToday,
+      dailyGoalMinutes: goalConfig.dailyGoalMinutes,
+      overdueCount,
+    });
+
+    const insights = buildCoachingInsights({
+      headline,
+      attentionItems,
+      quizRetakeGains,
+      bloomMastery,
+      matchedPointsStrengths: advancedQuizSignals.matchedPointsStrengths,
+      questionTypeGap: {
+        objectiveAvgPct: advancedQuizSignals.objectiveAvgPct,
+        essayAvgPct: advancedQuizSignals.essayAvgPct,
+      },
+      dueNowCount: srsOverview.dueNowCount,
+    });
+
+    const progress = {
+      windowDays,
+      buckets: progressBuckets.buckets,
+      totalMinutesInWindow: progressBuckets.totalMinutesInWindow,
+      avgRetentionInWindow: progressBuckets.avgRetentionInWindow,
+      retentionSampleInWindow: progressBuckets.retentionSampleInWindow,
+      quizRetakeGains,
+      latestQuizAvgPct,
+    };
+
+    const advanced = {
+      deckComposition: computeDeckComposition(flashcards),
+      ratingDistribution: computeRatingDistribution(reviews, windowDays, now),
+      flaggedCorrectCount: advancedQuizSignals.flaggedCorrectCount,
+      flaggedIncorrectCount: advancedQuizSignals.flaggedIncorrectCount,
+      questionTypeGap: {
+        objectiveAvgPct: advancedQuizSignals.objectiveAvgPct,
+        essayAvgPct: advancedQuizSignals.essayAvgPct,
+      },
+    };
 
     return {
       now,
@@ -333,6 +522,12 @@ export class AnalyticsService {
       missingPointsClusters,
       documentMasteries,
       weakTopics,
+      todayPlan,
+      headline,
+      attentionItems,
+      insights,
+      progress,
+      advanced,
     };
   }
 
@@ -366,31 +561,38 @@ export class AnalyticsService {
       );
     }
 
-    return conversations.map((conv) => {
-      const convCards = cardsByConv.get(conv.id) ?? [];
-      const convAttempts = attemptsByConv.get(conv.id) ?? [];
-      const convSrs = computeSrsOverviewStats({
-        cards: convCards,
-        reviews: [],
-        quizSubmittedDates: [],
-        windowDays: DEFAULT_RETENTION_WINDOW_DAYS,
-        now,
-        tzOffsetMinutes,
-      });
-      const convQuizPerf = computeQuizPerformanceSummary(convAttempts);
-      const convLeeches = extractLeechCards(convCards, convCards.length || 1);
+    return conversations
+      .map((conv) => {
+        const convCards = cardsByConv.get(conv.id) ?? [];
+        const convAttempts = attemptsByConv.get(conv.id) ?? [];
+        const convSrs = computeSrsOverviewStats({
+          cards: convCards,
+          reviews: [],
+          quizSubmittedDates: [],
+          windowDays: DEFAULT_RETENTION_WINDOW_DAYS,
+          now,
+          tzOffsetMinutes,
+        });
+        const convQuizPerf = computeQuizPerformanceSummary(convAttempts);
+        const convLeeches = extractLeechCards(convCards, convCards.length || 1);
 
-      return {
-        conversationId: conv.id,
-        title: conv.title,
-        updatedAt: conv.updatedAt.toISOString(),
-        totalCards: convCards.length,
-        dueNowCount: convSrs.dueNowCount,
-        leechCount: convLeeches.length,
-        quizAttemptCount: convQuizPerf.totalSubmittedAttempts,
-        avgQuizScorePct: convQuizPerf.avgScorePct,
-        weakSectionsCount: weakCountByConv.get(conv.id) ?? 0,
-      };
-    });
+        return {
+          conversationId: conv.id,
+          title: conv.title,
+          updatedAt: conv.updatedAt.toISOString(),
+          totalCards: convCards.length,
+          dueNowCount: convSrs.dueNowCount,
+          leechCount: convLeeches.length,
+          quizAttemptCount: convQuizPerf.totalSubmittedAttempts,
+          avgQuizScorePct: convQuizPerf.avgScorePct,
+          weakSectionsCount: weakCountByConv.get(conv.id) ?? 0,
+        };
+      })
+      .sort((a, b) => {
+        const urgencyA = a.weakSectionsCount * 3 + a.leechCount * 2 + a.dueNowCount;
+        const urgencyB = b.weakSectionsCount * 3 + b.leechCount * 2 + b.dueNowCount;
+        if (urgencyA !== urgencyB) return urgencyB - urgencyA;
+        return b.updatedAt.localeCompare(a.updatedAt);
+      });
   }
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import React from 'react';
-import { ArrowUpRight, MessageSquare, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
+import { ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import type {
   ConversationAnalyticsResponse,
   SourceReference,
@@ -12,16 +13,22 @@ import {
   AnalyticsEmptyState,
   AnalyticsErrorState,
   AnalyticsSkeleton,
-  BentoCard,
 } from '@/components/analytics/AnalyticsPrimitives';
-import BloomAndQuizPanel from '@/components/analytics/BloomAndQuizPanel';
-import KnowledgeGapPanel from '@/components/analytics/KnowledgeGapPanel';
-import NextBestActionsCard from '@/components/analytics/NextBestActionsCard';
-import SrsOverviewBento from '@/components/analytics/SrsOverviewBento';
-import WorkloadForecastChart from '@/components/analytics/WorkloadForecastChart';
-import { formatPercent } from '@/components/analytics/analytics-helpers';
+import TodayCoachHero from '@/components/analytics/TodayCoachHero';
+import HeadlineMetricsRow from '@/components/analytics/HeadlineMetricsRow';
+import AttentionSectionList from '@/components/analytics/AttentionSectionList';
+import ProgressTrendSection from '@/components/analytics/ProgressTrendSection';
+import KnowledgeMapSection from '@/components/analytics/KnowledgeMapSection';
 
-const WINDOW_OPTIONS = [7, 30, 90] as const;
+const AdvancedAnalyticsSection = dynamic(
+  () => import('@/components/analytics/AdvancedAnalyticsSection'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-44 w-full animate-pulse rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#12151C]" />
+    ),
+  }
+);
 
 export interface AnalyticsDashboardViewProps {
   mode: 'conversation' | 'subject';
@@ -40,8 +47,22 @@ export interface AnalyticsDashboardViewProps {
     sectionTitle: string;
   }) => void;
   onOpenDeck?: (deckId: string, conversationId: string) => void;
-  onOpenDocument?: (documentId: string, fileName: string) => void;
+  onOpenDocument?: (
+    documentId: string,
+    fileName: string,
+    pageNo?: number,
+    conversationId?: string
+  ) => void;
   onOpenConversation?: (conversationId: string) => void;
+  userName?: string | null;
+  onUpdateDailyGoal?: (minutes: number) => Promise<void>;
+  onUpdateExamGoal?: (input: {
+    examDate: string | null;
+    targetScore?: number | null;
+  }) => Promise<void>;
+  onGoToFlashcards?: () => void;
+  onGoToQuiz?: () => void;
+  onGoToDocuments?: () => void;
 }
 
 export default function AnalyticsDashboardView({
@@ -59,7 +80,15 @@ export default function AnalyticsDashboardView({
   onOpenDeck,
   onOpenDocument,
   onOpenConversation,
+  userName,
+  onUpdateDailyGoal,
+  onUpdateExamGoal,
+  onGoToFlashcards,
+  onGoToQuiz,
+  onGoToDocuments,
 }: AnalyticsDashboardViewProps) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
   if (isLoading && !data) {
     return <AnalyticsSkeleton />;
   }
@@ -72,6 +101,8 @@ export default function AnalyticsDashboardView({
     return (
       <AnalyticsEmptyState
         scopeLabel={mode === 'subject' ? 'môn học này' : 'phiên học này'}
+        onGoToFlashcards={onGoToFlashcards}
+        onGoToQuiz={onGoToQuiz}
       />
     );
   }
@@ -86,149 +117,133 @@ export default function AnalyticsDashboardView({
     data.srsOverview.totalCards > 0 ||
     data.srsOverview.totalReviewsInWindow > 0 ||
     data.quizPerformance.totalSubmittedAttempts > 0 ||
-    (convData?.documentMasterySummaries.some((d) => d.studiedSectionsCount > 0) ??
-      false);
+    data.documentMasterySummaries.some((d) => d.studiedSectionsCount > 0) ||
+    data.attentionItems.length > 0;
 
-  const weakTopics = convData?.weakTopics ?? subjData?.topWeakTopics ?? [];
+  const firstName = userName?.trim().split(/\s+/).slice(-1)[0] ?? '';
 
   return (
     <div className="mx-auto w-full max-w-[1200px] space-y-6">
-      {/* Header Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Header tối giản, thân thiện */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[22px] sm:text-2xl font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-tight">
+          <h1 className="text-[22px] sm:text-2xl font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-[1.2]">
             {isSubjectMode
-              ? `Phân tích môn: ${subjData?.subjectName}`
-              : 'Phân tích tiến độ & Lỗ hổng học tập'}
+              ? `Tổng quan môn: ${subjData?.subjectName ?? ''}`
+              : firstName
+                ? `Xin chào, ${firstName}`
+                : 'Tiến độ học tập'}
           </h1>
           <p className="mt-1 text-xs sm:text-[13px] text-neutral-500 dark:text-neutral-400">
-            Tính toán trực tiếp từ nhật ký SM-2, kết quả Quiz và Mục lục tài liệu (0% LLM).
+            Cập nhật theo hoạt động ôn thẻ và làm bài kiểm tra của bạn.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="inline-flex rounded-xl bg-neutral-100/90 dark:bg-white/[0.06] p-1 border border-black/[0.04] dark:border-white/[0.06]">
-            {WINDOW_OPTIONS.map((days) => {
-              const active = windowDays === days;
-              return (
-                <button
-                  key={days}
-                  type="button"
-                  onClick={() => onWindowDaysChange(days)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold tabular-nums transition-all cursor-pointer ${
-                    active
-                      ? 'bg-white dark:bg-[#232836] text-neutral-900 dark:text-white shadow-2xs'
-                      : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
-                  }`}
-                >
-                  {days} ngày
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            onClick={onRetry}
-            disabled={isValidating}
-            title="Cập nhật số liệu mới nhất"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-white/[0.1] active:scale-[0.98] disabled:opacity-50 transition-all cursor-pointer"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`}
-            />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={isValidating}
+          title="Cập nhật số liệu mới nhất"
+          aria-label="Cập nhật số liệu mới nhất"
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-white/[0.1] active:scale-[0.98] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] transition-all cursor-pointer"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${isValidating ? 'animate-spin motion-reduce:animate-none' : ''}`}
+          />
+          <span>Cập nhật</span>
+        </button>
       </div>
-
-      {/* KPIs */}
-      <SrsOverviewBento
-        srsOverview={data.srsOverview}
-        quizPerformance={data.quizPerformance}
-        windowDays={data.windowDays}
-      />
 
       {!hasAnyStudySignal ? (
         <AnalyticsEmptyState
           scopeLabel={isSubjectMode ? 'môn học này' : 'phiên học này'}
+          onGoToFlashcards={onGoToFlashcards}
+          onGoToQuiz={onGoToQuiz}
         />
       ) : (
         <>
-          {/* Focal Next Best Study Actions + 7-Day Forecast */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-            <div className="lg:col-span-7">
-              <NextBestActionsCard
-                recommendations={data.recommendations}
-                onExecuteAction={onExecuteAction}
-              />
-            </div>
-            <div className="lg:col-span-5">
-              <WorkloadForecastChart forecast={data.workloadForecast7Days} />
-            </div>
-          </div>
-
-          {/* Bloom Taxonomy & Quiz Score Trend */}
-          <BloomAndQuizPanel
-            bloomMastery={data.bloomMastery}
-            quizPerformance={data.quizPerformance}
+          {/* Tầng 1A: Kế hoạch hôm nay & Vòng mục tiêu */}
+          <TodayCoachHero
+            todayPlan={data.todayPlan}
+            streakDays={data.headline.habit.streakDays}
+            studiedToday={data.headline.habit.studiedToday}
+            onExecuteTask={onExecuteAction}
+            onUpdateDailyGoal={onUpdateDailyGoal}
+            onGoToDocuments={onGoToDocuments}
           />
 
-          {/* Knowledge Gap Diagnostics & Document Mastery Summaries */}
-          <KnowledgeGapPanel
-            weakTopics={weakTopics}
-            missingPointsClusters={data.missingPointsClusters}
-            leechCards={data.leechCards}
-            documentMasterySummaries={convData?.documentMasterySummaries ?? []}
+          {/* Tầng 1B: 3 Chỉ số cốt lõi & Nhận định nhanh */}
+          <HeadlineMetricsRow
+            headline={data.headline}
+            insights={data.insights}
+            examDate={data.examDate}
+            targetScore={data.targetScore}
+            onUpdateExamGoal={onUpdateExamGoal}
+          />
+
+          {/* Tầng 2A: Cần chú ý hợp nhất (Top 3 + Xem tất cả) */}
+          <AttentionSectionList
+            items={data.attentionItems}
+            onExecuteAction={onExecuteAction}
             onJumpToSource={onJumpToSource}
             onCreateTargetedQuiz={onCreateTargetedQuiz}
-            onOpenDeck={onOpenDeck}
-            onOpenDocument={onOpenDocument}
           />
 
-          {/* Subject Mode: Per-Conversation Progress Table */}
-          {subjData && subjData.conversationSummaries.length > 0 && (
-            <BentoCard className="p-5 sm:p-6 space-y-4">
+          {/* Tầng 2B: Tiến bộ của bạn (gắn bộ lọc 7/30/90 ngày nhất quán) */}
+          <ProgressTrendSection
+            progress={data.progress}
+            quizPerformance={data.quizPerformance}
+            windowDays={windowDays}
+            onWindowDaysChange={onWindowDaysChange}
+          />
+
+          {/* Tầng 2C: Bản đồ kiến thức & Các phiên học */}
+          <KnowledgeMapSection
+            documentMasterySummaries={
+              convData?.documentMasterySummaries ?? data.documentMasterySummaries
+            }
+            conversationSummaries={subjData?.conversationSummaries}
+            onOpenDocument={onOpenDocument}
+            onOpenConversation={onOpenConversation}
+          />
+
+          {/* Tầng 3: Chi tiết nâng cao (thu gọn mặc định, lazy-loaded) */}
+          <div className="pt-1">
+            <button
+              type="button"
+              aria-expanded={advancedOpen}
+              onClick={() => setAdvancedOpen((prev) => !prev)}
+              className="flex w-full items-center justify-between rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C] px-5 py-3.5 text-left hover:bg-neutral-50 dark:hover:bg-[#181C26] active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] transition-all cursor-pointer"
+            >
               <div>
-                <h2 className="text-[20px] font-bold font-heading tracking-tight text-neutral-900 dark:text-white leading-tight">
-                  Tiến độ từng phiên học ({subjData.conversationSummaries.length})
-                </h2>
-                <p className="mt-1 text-xs sm:text-[13px] text-neutral-500 dark:text-neutral-400">
-                  Nhấn vào một phiên học để đi tới tài liệu, ôn thẻ đến hạn hoặc luyện bù lỗ hổng.
-                </p>
+                <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
+                  Chi tiết nâng cao
+                </span>
+                <span className="ml-2 hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
+                  Kho thẻ · Phân bố đánh giá · Kiểu câu hỏi · Lịch ôn tuần tới · Thẻ hay quên
+                </span>
               </div>
+              {advancedOpen ? (
+                <ChevronUp className="h-4 w-4 shrink-0 text-neutral-500" />
+              ) : (
+                <ChevronDown className="h-4 w-4 shrink-0 text-neutral-500" />
+              )}
+            </button>
 
-              <div className="space-y-2">
-                {subjData.conversationSummaries.map((conv) => (
-                  <button
-                    key={conv.conversationId}
-                    type="button"
-                    onClick={() => onOpenConversation?.(conv.conversationId)}
-                    className="group flex w-full flex-col gap-2 rounded-2xl border border-black/[0.05] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-[#161A23] px-4 py-3.5 text-left hover:border-indigo-500/30 hover:bg-white dark:hover:bg-[#1C212E] active:scale-[0.99] transition-all sm:flex-row sm:items-center sm:justify-between cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-[#4F46E5] dark:text-[#60A5FA]">
-                        <MessageSquare className="h-4 w-4" />
-                      </span>
-                      <span className="truncate text-sm font-semibold text-neutral-900 dark:text-white">
-                        {conv.title}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3 text-xs tabular-nums text-neutral-600 dark:text-neutral-300">
-                      <span>Thẻ đến hạn: {conv.dueNowCount}/{conv.totalCards}</span>
-                      <span>Điểm Quiz TB: {formatPercent(conv.avgQuizScorePct)}</span>
-                      {conv.weakSectionsCount > 0 && (
-                        <span className="rounded-full bg-rose-500/10 dark:bg-[#FF453A]/15 px-2 py-0.5 font-semibold text-rose-700 dark:text-[#FF6961]">
-                          {conv.weakSectionsCount} mục yếu
-                        </span>
-                      )}
-                      <ArrowUpRight className="h-4 w-4 text-neutral-400 group-hover:text-[#4F46E5] dark:group-hover:text-[#60A5FA] transition-colors" />
-                    </div>
-                  </button>
-                ))}
+            {advancedOpen && (
+              <div className="mt-4">
+                <AdvancedAnalyticsSection
+                  advanced={data.advanced}
+                  bloomMastery={data.bloomMastery}
+                  forecast7d={data.workloadForecast7Days}
+                  leechCards={data.leechCards}
+                  missingPointsClusters={data.missingPointsClusters}
+                  onJumpToSource={onJumpToSource}
+                  onOpenDeck={onOpenDeck}
+                />
               </div>
-            </BentoCard>
-          )}
+            )}
+          </div>
         </>
       )}
     </div>

@@ -25,6 +25,7 @@ describe('AnalyticsRepoService', () => {
     };
     quizAttempt: { findMany: ReturnType<typeof vi.fn> };
     documentChunk: { findMany: ReturnType<typeof vi.fn> };
+    message: { findMany: ReturnType<typeof vi.fn> };
   };
 
   beforeEach(async () => {
@@ -36,6 +37,7 @@ describe('AnalyticsRepoService', () => {
       flashcardReview: { groupBy: vi.fn(), findMany: vi.fn() },
       quizAttempt: { findMany: vi.fn() },
       documentChunk: { findMany: vi.fn() },
+      message: { findMany: vi.fn() },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -76,11 +78,15 @@ describe('AnalyticsRepoService', () => {
     expect(
       await service.getDocumentsSummaryAndChunkIndex([], 'u1'),
     ).toEqual({ documents: [], chunks: [] });
+    expect(
+      await service.getFrequentlyAskedChunkCounts([], 'u1', new Date()),
+    ).toEqual(new Map());
 
     expect(prismaMock.flashcard.findMany).not.toHaveBeenCalled();
     expect(prismaMock.flashcardReview.findMany).not.toHaveBeenCalled();
     expect(prismaMock.quizAttempt.findMany).not.toHaveBeenCalled();
     expect(prismaMock.document.findMany).not.toHaveBeenCalled();
+    expect(prismaMock.message.findMany).not.toHaveBeenCalled();
   });
 
   it('joins grouped againCount from flashcardReview.groupBy onto each flashcard', async () => {
@@ -205,5 +211,21 @@ describe('AnalyticsRepoService', () => {
         }),
       }),
     );
+  });
+
+  it('aggregates unique chunk counts per assistant message in getFrequentlyAskedChunkCounts', async () => {
+    prismaMock.message.findMany.mockResolvedValueOnce([
+      { source_chunks: ['chk-1', 'chk-1', 'chk-2'] },
+      { source_chunks: ['chk-1'] },
+    ]);
+
+    const counts = await service.getFrequentlyAskedChunkCounts(
+      ['conv-1'],
+      'u1',
+      new Date('2026-11-05T00:00:00Z'),
+    );
+
+    expect(counts.get('chk-1')).toBe(2);
+    expect(counts.get('chk-2')).toBe(1);
   });
 });

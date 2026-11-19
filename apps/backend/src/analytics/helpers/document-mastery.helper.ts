@@ -15,6 +15,7 @@ import type {
 import type {
   DocumentMasteryResponse,
   DocumentMasterySummary,
+  MasteryConfidence,
   MasteryStatus,
   TocMasterySection,
 } from '../analytics.types.js';
@@ -302,7 +303,10 @@ export function mapChunksToTocSections(
   return { chunkToSectionIndex, sectionChunkIds };
 }
 
-function computeSingleFlashcardScore(card: AnalyticsFlashcardRow): number | null {
+function computeSingleFlashcardScore(
+  card: AnalyticsFlashcardRow,
+  now = new Date(),
+): number | null {
   if (card.state === CardStateEnum.new && card.lastReviewedAt === null) {
     return null;
   }
@@ -314,12 +318,28 @@ function computeSingleFlashcardScore(card: AnalyticsFlashcardRow): number | null
     return Math.max(20, 52 - card.againCount * 5);
   }
 
-  const raw =
+  const baseRaw =
     62 +
     Math.min(card.interval, 30) * 1.0 +
     Math.max(0, card.easeFactor - 2.1) * 18 -
     Math.min(25, card.againCount * 6);
-  return Math.max(25, Math.min(100, Math.round(raw)));
+
+  let decayFactor = 1;
+  if (card.lastReviewedAt) {
+    const daysSinceReview = Math.max(
+      0,
+      (now.getTime() - card.lastReviewedAt.getTime()) / 86_400_000,
+    );
+    const overdueDays = daysSinceReview - Math.max(card.interval, 1);
+    if (overdueDays > 1) {
+      decayFactor = Math.max(
+        0.55,
+        Math.pow(0.9, overdueDays / Math.max(card.interval, 1)),
+      );
+    }
+  }
+
+  return Math.max(25, Math.min(100, Math.round(baseRaw * decayFactor)));
 }
 
 function hasValidBoxCoords(rawItem: unknown): boolean {
@@ -419,6 +439,10 @@ function finalizeSection(acc: SectionAccumulator): TocMasterySection {
     masteryScore = Math.round(flashcardScore);
   }
 
+  const sampleSize = acc.quizTotal + reviewedCount;
+  const confidence: MasteryConfidence =
+    sampleSize < 5 ? 'low' : sampleSize < 15 ? 'medium' : 'high';
+
   return {
     index: acc.seed.index,
     text: acc.seed.text,
@@ -427,6 +451,8 @@ function finalizeSection(acc: SectionAccumulator): TocMasterySection {
     endPage: acc.seed.endPage,
     status: classifyMasteryStatus(masteryScore),
     masteryScore,
+    confidence,
+    sampleSize,
     quizCorrect: acc.quizCorrect,
     quizTotal: acc.quizTotal,
     cardTotal: acc.cardIds.size,
@@ -448,6 +474,7 @@ export function computeDocumentMastery(input: {
   chunks: AnalyticsChunkIndexRow[];
   latestQuizAnswers: AnalyticsQuizAnswerRow[];
   flashcards: AnalyticsFlashcardRow[];
+  now?: Date;
 }): DocumentMasteryResponse {
   const seeds = extractTocItems(
     input.docMetadata,
@@ -532,7 +559,7 @@ export function computeDocumentMastery(input: {
     const sectionIndices = resolveSectionIndices(card.sourceRefs);
     if (sectionIndices.length === 0) continue;
 
-    const cardScore = computeSingleFlashcardScore(card);
+    const cardScore = computeSingleFlashcardScore(card, input.now);
     const isMastered =
       card.state === CardStateEnum.review &&
       (card.interval >= 21 || card.easeFactor >= 2.2);
@@ -598,6 +625,7 @@ export function toDocumentMasterySummary(
 ): DocumentMasterySummary {
   return {
     documentId: mastery.documentId,
+    conversationId: mastery.conversationId,
     fileName: mastery.fileName,
     pageCount: mastery.pageCount,
     overallMasteryScore: mastery.overallMasteryScore,
@@ -606,5 +634,13 @@ export function toDocumentMasterySummary(
     studiedSectionsCount: mastery.studiedSectionsCount,
     weakSectionsCount: mastery.weakSectionsCount,
     masteredSectionsCount: mastery.masteredSectionsCount,
+    sectionTiles: mastery.sections.map((s) => ({
+      index: s.index,
+      text: s.text,
+      status: s.status,
+      masteryScore: s.masteryScore,
+      startPage: s.startPage,
+      confidence: s.confidence ?? 'low',
+    })),
   };
 }

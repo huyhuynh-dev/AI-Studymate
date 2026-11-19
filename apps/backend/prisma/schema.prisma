@@ -70,38 +70,41 @@ enum ChunkType {
 }
 
 model User {
-  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email             String            @unique @db.VarChar(255)
-  password_hash     String?           @db.VarChar(255)
-  name              String            @db.VarChar(255)
-  avatar_url        String?           @db.VarChar(500)
-  role              String            @default("user") @db.VarChar(20)
-  is_active         Boolean           @default(true)
-  is_verified       Boolean           @default(false)
-  created_at        DateTime          @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
-  provider          String?           @db.VarChar(20)
-  provider_id       String?           @db.VarChar(255)
-  refresh_token     String?           @db.VarChar(500)
-  subjects          Subject[]
-  conversations     Conversation[]
-  documents         Document[]
-  flashcard_decks   FlashcardDeck[]
-  flashcard_reviews FlashcardReview[]
-  quizzes           Quiz[]
-  quiz_attempts     QuizAttempt[]
-  ai_usage_logs     AiUsageLog[]
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email              String            @unique @db.VarChar(255)
+  password_hash      String?           @db.VarChar(255)
+  name               String            @db.VarChar(255)
+  avatar_url         String?           @db.VarChar(500)
+  role               String            @default("user") @db.VarChar(20)
+  is_active          Boolean           @default(true)
+  is_verified        Boolean           @default(false)
+  daily_goal_minutes Int               @default(15)
+  created_at         DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  provider           String?           @db.VarChar(20)
+  provider_id        String?           @db.VarChar(255)
+  refresh_token      String?           @db.VarChar(500)
+  subjects           Subject[]
+  conversations      Conversation[]
+  documents          Document[]
+  flashcard_decks    FlashcardDeck[]
+  flashcard_reviews  FlashcardReview[]
+  quizzes            Quiz[]
+  quiz_attempts      QuizAttempt[]
+  ai_usage_logs      AiUsageLog[]
 
   @@map("users")
 }
 
 model Subject {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    String   @db.Uuid
-  name       String   @db.VarChar(255)
-  color      String?  @db.VarChar(7)
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String    @db.Uuid
+  name         String    @db.VarChar(255)
+  color        String?   @db.VarChar(7)
+  exam_date    DateTime? @db.Date
+  target_score Int?      @db.SmallInt
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
