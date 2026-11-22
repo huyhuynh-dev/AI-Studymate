@@ -50,6 +50,16 @@ export const workspaceSyncEventSchema = z.discriminatedUnion('resource', [
     count: z.number().int().nonnegative().optional(),
     occurredAt: z.string().min(1),
   }),
+  z.object({
+    resource: z.literal('word-document'),
+    action: syncActionSchema,
+    conversationId: z.string().min(1),
+    entityId: z.string().min(1),
+    title: z.string().optional(),
+    changeMode: z.enum(['tracked', 'direct']).optional(),
+    count: z.number().int().nonnegative().optional(),
+    occurredAt: z.string().min(1),
+  }),
 ]);
 
 export type WorkspaceSyncEvent = Readonly<
@@ -189,6 +199,9 @@ export function createWorkspaceSyncHub(deps: WorkspaceSyncHubDeps) {
     },
     quiz: () => {
       // QuizTab quản lý danh sách đề qua useQuizStore subscriber chuyên biệt.
+    },
+    'word-document': () => {
+      // DocumentWordEditor quản lý working snapshot trực tiếp qua subscriber word-document.
     },
   };
 

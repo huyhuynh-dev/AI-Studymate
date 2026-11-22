@@ -11,17 +11,20 @@ import {
 } from "ai";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useAskAi } from "@/contexts/AskAiContext";
+import { useWordAgent } from "@/contexts/WordAgentContext";
 import { useFocusMode } from "@/components/layout/FocusModeContext";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useDocuments } from "@/hooks/useDocuments";
 import { formatSelectionAskPrompt } from "@/lib/ask-ai-prompt.helper";
 import { handleChatStreamDataPart } from "@/lib/workspace-sync";
 import { chatSessionsApi } from "@/services/chatSessions.api";
+import { documentsApi } from "@/services/documents.api";
 
 import { ChatComposer } from "./components/ChatComposer";
 import { ChatHeader } from "./components/ChatHeader";
 import { EmptyState } from "./components/EmptyState";
 import { MessageList } from "./components/MessageList";
+import { WordAgentContextBar } from "./components/WordAgentContextBar";
 import { ChevronLeft, FileText, Loader2 } from "lucide-react";
 import {
   EDITABLE_TEXT_EXTENSIONS_ACCEPT,
@@ -207,7 +210,44 @@ export default function RightSidebar({
   // ── Resizable, Fullscreen & Side-panel Source Reader states ──
   const { sidePanelTarget, closeSidePanelCitation } = useCitationNavigation();
   const { pendingAskRequest, consumeAskRequest, setIsAiResponding } = useAskAi();
+  const {
+    activeWordDocument,
+    activeConversationId,
+    selection: wordSelection,
+    changeMode: wordChangeMode,
+    setChangeMode: setWordChangeMode,
+    clearSelection: clearWordSelection,
+    pendingComposerPrompt,
+    consumePendingComposerPrompt,
+    exportActiveSnapshotForAgent,
+    syncAgentSnapshotFromServer,
+  } = useWordAgent();
   const { isFocusMode, setFocusMode, setIsRightSidebarCollapsed } = useFocusMode();
+
+  const isWordContextForConversation = Boolean(
+    activeWordDocument &&
+      conversationId &&
+      activeConversationId === conversationId
+  );
+
+  const activeWordContextRef = useRef<{
+    documentId: string;
+    changeMode: "tracked" | "direct";
+    selectedText?: string;
+  } | null>(null);
+  activeWordContextRef.current =
+    isWordContextForConversation && activeWordDocument
+      ? {
+          documentId: activeWordDocument.id,
+          changeMode: wordChangeMode,
+          ...(wordSelection?.text ? { selectedText: wordSelection.text } : {}),
+        }
+      : null;
+
+  const exportWordSnapshotRef = useRef(exportActiveSnapshotForAgent);
+  exportWordSnapshotRef.current = exportActiveSnapshotForAgent;
+  const syncWordSnapshotRef = useRef(syncAgentSnapshotFromServer);
+  syncWordSnapshotRef.current = syncAgentSnapshotFromServer;
   const [sidebarWidth, setSidebarWidth] = useState<number>(384);
   const sidebarWidthRef = useRef<number>(384);
   sidebarWidthRef.current = sidebarWidth;
@@ -379,6 +419,7 @@ export default function RightSidebar({
         const attachedDocumentIds = pendingAttachedDocIdsRef.current;
         pendingAttachedDocIdsRef.current = [];
         const currentConfig = modelConfigRef.current;
+        const currentWordContext = activeWordContextRef.current;
         const targetApi = `/api/proxy/chat-agent/sessions/${id}/chat`;
         console.log(
           "[RightSidebar] prepareSendMessagesRequest -> Target API:",
@@ -388,13 +429,16 @@ export default function RightSidebar({
           "AttachedDocumentIds:",
           attachedDocumentIds,
           "ModelConfig:",
-          currentConfig
+          currentConfig,
+          "WordContext:",
+          currentWordContext
         );
         return {
           api: targetApi,
           body: {
             messages,
             ...(attachedDocumentIds.length > 0 ? { attachedDocumentIds } : {}),
+            ...(currentWordContext ? { activeWordContext: currentWordContext } : {}),
             modelId: currentConfig.modelId,
             effort: currentConfig.effort,
           },
@@ -415,6 +459,31 @@ export default function RightSidebar({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onData: (dataPart) => {
       handleChatStreamDataPart(dataPart);
+      if (
+        dataPart &&
+        typeof dataPart === "object" &&
+        "type" in dataPart &&
+        dataPart.type === "data-workspace-sync" &&
+        "data" in dataPart &&
+        dataPart.data &&
+        typeof dataPart.data === "object"
+      ) {
+        const payload = dataPart.data as {
+          resource?: string;
+          entityId?: string;
+          changeMode?: "tracked" | "direct";
+          count?: number;
+        };
+        if (
+          payload.resource === "word-document" &&
+          typeof payload.entityId === "string"
+        ) {
+          void syncWordSnapshotRef.current(payload.entityId, {
+            changeMode: payload.changeMode,
+            count: payload.count,
+          });
+        }
+      }
     },
     onError: (err) => {
       console.error("[RightSidebar] useChat onError:", err);
@@ -697,6 +766,26 @@ export default function RightSidebar({
         attachedFiles: filesToSend,
       });
 
+      const wordContext = activeWordContextRef.current;
+      if (wordContext?.documentId) {
+        try {
+          const dirtyBlob = await exportWordSnapshotRef.current(
+            wordContext.documentId
+          );
+          if (dirtyBlob) {
+            await documentsApi.stageAgentWorkingSnapshot(
+              wordContext.documentId,
+              dirtyBlob
+            );
+          }
+        } catch (stageErr) {
+          console.warn(
+            "[RightSidebar] Không thể đồng bộ bản nháp Word trước khi gửi AI:",
+            stageErr
+          );
+        }
+      }
+
       console.log("[RightSidebar] Kích hoạt aiSendMessage({ text })...");
       const sendPromise = aiSendMessage({
         text,
@@ -975,6 +1064,55 @@ export default function RightSidebar({
     sendMessage,
   ]);
 
+  useEffect(() => {
+    if (!pendingComposerPrompt) return;
+
+    if (isFocusMode) {
+      setFocusMode(false);
+    }
+    if (isCollapsed) {
+      setIsRightSidebarCollapsed(false);
+    }
+    if (isSidePanelOpen) {
+      if (isFullscreen) {
+        setIsFullscreen(false);
+      }
+      closeSidePanelCitation();
+    }
+
+    if (!pendingComposerPrompt.autoSend) {
+      if (pendingComposerPrompt.prompt) {
+        setInputValue((prev) =>
+          prev.trim().length > 0 ? prev : pendingComposerPrompt.prompt
+        );
+      }
+      consumePendingComposerPrompt();
+      return;
+    }
+
+    if (isSending) {
+      return;
+    }
+
+    const promptToSend = pendingComposerPrompt.prompt;
+    consumePendingComposerPrompt();
+    if (promptToSend) {
+      void sendMessage(promptToSend);
+    }
+  }, [
+    pendingComposerPrompt,
+    isSending,
+    isFocusMode,
+    isCollapsed,
+    isSidePanelOpen,
+    isFullscreen,
+    setFocusMode,
+    setIsRightSidebarCollapsed,
+    closeSidePanelCitation,
+    consumePendingComposerPrompt,
+    sendMessage,
+  ]);
+
   // Chỉ xuất hiện ở cấp độ Conversation (khi có conversationId hợp lệ)
   if (!conversationId) {
     return null;
@@ -1242,6 +1380,16 @@ export default function RightSidebar({
                 Hủy
               </button>
             </div>
+          )}
+
+          {isWordContextForConversation && activeWordDocument && (
+            <WordAgentContextBar
+              document={activeWordDocument}
+              changeMode={wordChangeMode}
+              onChangeMode={setWordChangeMode}
+              selectedText={wordSelection?.text}
+              onClearSelection={clearWordSelection}
+            />
           )}
 
           <ChatComposer

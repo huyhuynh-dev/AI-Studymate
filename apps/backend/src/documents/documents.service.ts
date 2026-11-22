@@ -13,6 +13,7 @@ import { DocumentAssetsRepoService } from '../repo/document-assets-repo/document
 import { ConversationsRepoService } from '../repo/conversations-repo/conversations-repo.service.js';
 import { DocumentsQueueService } from './services/documents-queue.service.js';
 import { GoogleDocsImportService } from './services/google-docs-import.service.js';
+import { SuperDocRuntimeService } from './services/superdoc-runtime.service.js';
 import { InitUploadDto, MAX_FILE_SIZE_BYTES } from './dto/init-upload.dto.js';
 import { CompleteUploadDto } from './dto/complete-upload.dto.js';
 import { UpdateDocumentContentDto } from './dto/update-document-content.dto.js';
@@ -41,6 +42,7 @@ export class DocumentsService {
         private readonly conversationsRepo: ConversationsRepoService,
         private readonly documentsQueueService: DocumentsQueueService,
         @Optional() private readonly googleDocsImportService?: GoogleDocsImportService,
+        @Optional() private readonly superdocRuntimeService?: SuperDocRuntimeService,
     ) { }
 
     private sanitizeFileName(fileName: string): string {
@@ -354,6 +356,10 @@ export class DocumentsService {
             );
         }
 
+        await this.superdocRuntimeService
+            ?.clearWorkingSnapshot(userId, documentId)
+            .catch(() => undefined);
+
         if (typeof this.documentsQueueService.enqueueContentReindexJob === 'function') {
             await this.documentsQueueService.enqueueContentReindexJob(
                 {
@@ -378,6 +384,50 @@ export class DocumentsService {
         }
 
         return updatedDoc;
+    }
+
+    async stageAgentWorkingSnapshot(
+        userId: string,
+        documentId: string,
+        base64: string,
+    ) {
+        if (!this.superdocRuntimeService) {
+            throw new BadRequestException('Dịch vụ SuperDoc AI chưa sẵn sàng');
+        }
+        const cleanBase64 = base64.replace(/^data:[^;]+;base64,/, '').trim();
+        const buffer = Buffer.from(cleanBase64, 'base64');
+        if (buffer.length === 0 || buffer.length > MAX_FILE_SIZE_BYTES) {
+            throw new BadRequestException(
+                'Kích thước tệp nháp DOCX không hợp lệ hoặc vượt quá giới hạn cho phép.',
+            );
+        }
+        return this.superdocRuntimeService.stageClientWorkingSnapshot(
+            userId,
+            documentId,
+            buffer,
+        );
+    }
+
+    async getAgentWorkingSnapshot(userId: string, documentId: string) {
+        if (!this.superdocRuntimeService) {
+            throw new BadRequestException('Dịch vụ SuperDoc AI chưa sẵn sàng');
+        }
+        const snapshot = await this.superdocRuntimeService.getWorkingSnapshotBuffer(
+            userId,
+            documentId,
+        );
+        return {
+            base64: snapshot.buffer.toString('base64'),
+            fileName: snapshot.fileName,
+            mimeType: snapshot.mimeType,
+            updatedAt: snapshot.updatedAt,
+            hasUnpersistedChanges: snapshot.hasUnpersistedChanges,
+        };
+    }
+
+    async clearAgentWorkingSnapshot(userId: string, documentId: string) {
+        await this.superdocRuntimeService?.clearWorkingSnapshot(userId, documentId);
+        return { cleared: true };
     }
 
     async getDocumentContent(userId: string, documentId: string) {

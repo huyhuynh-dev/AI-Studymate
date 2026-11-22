@@ -20,6 +20,7 @@ import { CompleteUploadDto } from './dto/complete-upload.dto.js';
 import { UpdateDocumentContentDto } from './dto/update-document-content.dto.js';
 import { OverwriteVersionDto } from './dto/complete-overwrite.dto.js';
 import { ImportGoogleDocDto } from './dto/import-google-doc.dto.js';
+import { StageAgentSnapshotDto } from './dto/stage-agent-snapshot.dto.js';
 
 @Controller('documents')
 @UseGuards(JwtAuthGuard)
@@ -124,6 +125,35 @@ export class DocumentsController {
         @Body() dto?: OverwriteVersionDto
     ) {
         return this.documentsService.completeOverwrite(this.getUserId(req), id, dto);
+    }
+
+    @Put(':id/agent-snapshot')
+    async stageAgentSnapshot(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string,
+        @Body() dto: StageAgentSnapshotDto
+    ) {
+        return this.documentsService.stageAgentWorkingSnapshot(
+            this.getUserId(req),
+            id,
+            dto.base64,
+        );
+    }
+
+    @Get(':id/agent-snapshot')
+    async getAgentSnapshot(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string
+    ) {
+        return this.documentsService.getAgentWorkingSnapshot(this.getUserId(req), id);
+    }
+
+    @Delete(':id/agent-snapshot')
+    async clearAgentSnapshot(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string
+    ) {
+        return this.documentsService.clearAgentWorkingSnapshot(this.getUserId(req), id);
     }
 
     @Delete(':id')

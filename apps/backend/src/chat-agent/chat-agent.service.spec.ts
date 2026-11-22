@@ -13,6 +13,7 @@ import { FlashcardAiManageService } from '../deck-flashcard/flashcard-ai-manage.
 import { QuizService } from '../quiz/quiz.service.js';
 import { QuestionTypeEnum } from '../generated/prisma/client.js';
 import { TavilyService } from '../search/tavily.service.js';
+import { SuperDocRuntimeService } from '../documents/services/superdoc-runtime.service.js';
 
 describe('ChatAgentService', () => {
   let service: ChatAgentService;
@@ -49,6 +50,12 @@ describe('ChatAgentService', () => {
     search: ReturnType<typeof vi.fn>;
     extract: ReturnType<typeof vi.fn>;
   };
+  let superdocRuntimeMock: {
+    assertOwnedDocxDocument: ReturnType<typeof vi.fn>;
+    getToolkit: ReturnType<typeof vi.fn>;
+    validateToolCallPolicy: ReturnType<typeof vi.fn>;
+    runWithDocumentSession: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     tavilyMock = {
@@ -79,6 +86,43 @@ describe('ChatAgentService', () => {
           },
         ],
         failedResults: [],
+      }),
+    };
+    superdocRuntimeMock = {
+      assertOwnedDocxDocument: vi.fn().mockResolvedValue({
+        id: 'doc-word-1',
+        file_name: 'Bao_cao_thuc_tap.docx',
+        mime_type:
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }),
+      getToolkit: vi.fn().mockResolvedValue({
+        systemPrompt: 'SuperDoc core toolkit instructions',
+        tools: [
+          {
+            name: 'superdoc_inspect',
+            description: 'Inspect Word document snapshot',
+            inputSchema: { type: 'object', properties: {} },
+          },
+          {
+            name: 'superdoc_perform_action',
+            description: 'Perform Word document edit',
+            inputSchema: { type: 'object', properties: { action: { type: 'string' } } },
+          },
+        ],
+      }),
+      validateToolCallPolicy: vi.fn((_toolName, args, changeMode) => ({
+        allowed: true,
+        normalizedArgs: { ...args, changeMode },
+      })),
+      runWithDocumentSession: vi.fn().mockResolvedValue({
+        payload: {
+          status: 'ok',
+          intent: 'insert_paragraph',
+          changeMode: 'tracked',
+          preSnapshot: { revision: 'rev-1' },
+          postSnapshot: { revision: 'rev-2' },
+        },
+        mutated: true,
       }),
     };
     repoMock = {
@@ -203,6 +247,7 @@ describe('ChatAgentService', () => {
         { provide: QuizService, useValue: quizServiceMock },
         { provide: DocumentsRepoService, useValue: documentsRepoMock },
         { provide: TavilyService, useValue: tavilyMock },
+        { provide: SuperDocRuntimeService, useValue: superdocRuntimeMock },
       ],
     }).compile();
 
@@ -931,5 +976,143 @@ describe('ChatAgentService', () => {
       savedMsg?.parts.some((p) => p.type === WORKSPACE_SYNC_CHUNK_TYPE),
     ).toBe(false);
     expect(saveSpy.mock.calls[0]?.[2]).toEqual(['chunk-1']);
+  });
+
+  it('khi có activeWordContext nên bind SuperDoc tools và phát sự kiện workspace-sync word-document khi có mutation', async () => {
+    const syncResult = await service.handleChatStream(
+      'user-1',
+      'session-1',
+      [
+        {
+          id: 'msg-word-1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'Viết lại đoạn đang chọn hay hơn' }],
+        },
+      ],
+      undefined,
+      [],
+      {
+        activeWordContext: {
+          documentId: 'doc-word-1',
+          changeMode: 'tracked',
+          selectedText: 'Đoạn văn mẫu ban đầu',
+        },
+      },
+    );
+
+    expect(superdocRuntimeMock.assertOwnedDocxDocument).toHaveBeenCalledWith(
+      'user-1',
+      'doc-word-1',
+    );
+    expect(superdocRuntimeMock.getToolkit).toHaveBeenCalledWith('tracked');
+
+    const aiOptions = aiMock.executeChatStream.mock.calls[0]?.[3] as {
+      activeWordDocument?: {
+        documentId: string;
+        fileName: string;
+        changeMode: string;
+        selectedText?: string;
+      };
+      superdocToolkitMeta?: {
+        documentId: string;
+        fileName: string;
+      };
+      onSuperDocInspect?: (input: Record<string, unknown>) => Promise<unknown>;
+      onSuperDocPerformAction?: (
+        input: Record<string, unknown>,
+      ) => Promise<unknown>;
+    };
+
+    expect(aiOptions.activeWordDocument).toMatchObject({
+      documentId: 'doc-word-1',
+      fileName: 'Bao_cao_thuc_tap.docx',
+      changeMode: 'tracked',
+      selectedText: 'Đoạn văn mẫu ban đầu',
+    });
+    expect(aiOptions.superdocToolkitMeta).toMatchObject({
+      documentId: 'doc-word-1',
+      fileName: 'Bao_cao_thuc_tap.docx',
+    });
+
+    const syncChannel = (
+      syncResult as { workspaceSyncChannel?: WorkspaceSyncChannel }
+    ).workspaceSyncChannel!;
+    const emitted: unknown[] = [];
+    const detach = syncChannel.attach((ev) => emitted.push(ev));
+
+    await aiOptions.onSuperDocInspect?.({ countsOnly: true });
+    expect(emitted).toHaveLength(0);
+
+    await aiOptions.onSuperDocPerformAction?.({
+      action: 'insert_paragraph',
+      text: 'Đoạn mới',
+    });
+    detach();
+
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0]).toMatchObject({
+      resource: 'word-document',
+      action: 'updated',
+      conversationId: 'conv-1',
+      entityId: 'doc-word-1',
+      title: 'Bao_cao_thuc_tap.docx',
+      changeMode: 'tracked',
+      count: 1,
+    });
+  });
+
+  it('nên trả lỗi policy và không chạy session hay phát sync nếu validateToolCallPolicy từ chối', async () => {
+    superdocRuntimeMock.validateToolCallPolicy.mockReturnValueOnce({
+      allowed: false,
+      code: 'CHANGE_MODE_REQUIRED',
+      message: 'Hành động không hỗ trợ tracked changes.',
+    });
+
+    const syncResult = await service.handleChatStream(
+      'user-1',
+      'session-1',
+      [
+        {
+          id: 'msg-word-2',
+          role: 'user',
+          parts: [{ type: 'text', text: 'Chỉnh sửa tiêu đề' }],
+        },
+      ],
+      undefined,
+      [],
+      {
+        activeWordContext: {
+          documentId: 'doc-word-1',
+          changeMode: 'tracked',
+        },
+      },
+    );
+
+    const syncChannel = (
+      syncResult as { workspaceSyncChannel?: WorkspaceSyncChannel }
+    ).workspaceSyncChannel!;
+    const emitted: unknown[] = [];
+    const detach = syncChannel.attach((ev) => emitted.push(ev));
+
+    const aiOptions = aiMock.executeChatStream.mock.calls[0]?.[3] as {
+      onSuperDocPerformAction?: (
+        input: Record<string, unknown>,
+      ) => Promise<unknown>;
+    };
+
+    const result = await aiOptions.onSuperDocPerformAction?.({
+      action: 'unsupported_direct_action',
+    });
+    detach();
+
+    expect(result).toEqual({
+      status: 'failed',
+      error: {
+        code: 'CHANGE_MODE_REQUIRED',
+        message: 'Hành động không hỗ trợ tracked changes.',
+      },
+    });
+    expect(superdocRuntimeMock.runWithDocumentSession).not.toHaveBeenCalled();
+    expect(emitted).toHaveLength(0);
   });
 });

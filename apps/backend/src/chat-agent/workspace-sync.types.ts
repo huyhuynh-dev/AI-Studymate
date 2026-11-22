@@ -1,6 +1,10 @@
 export const WORKSPACE_SYNC_CHUNK_TYPE = 'data-workspace-sync' as const;
 
-export type WorkspaceSyncResource = 'summary' | 'flashcard' | 'quiz';
+export type WorkspaceSyncResource =
+  | 'summary'
+  | 'flashcard'
+  | 'quiz'
+  | 'word-document';
 
 export type WorkspaceSyncAction = 'created' | 'updated';
 
@@ -29,6 +33,16 @@ export type WorkspaceSyncEvent =
       readonly conversationId: string;
       readonly entityId: string;
       readonly title?: string;
+      readonly count?: number;
+      readonly occurredAt: string;
+    }
+  | {
+      readonly resource: 'word-document';
+      readonly action: WorkspaceSyncAction;
+      readonly conversationId: string;
+      readonly entityId: string;
+      readonly title?: string;
+      readonly changeMode?: 'tracked' | 'direct';
       readonly count?: number;
       readonly occurredAt: string;
     };

@@ -144,6 +144,7 @@ export class ChatAgentController {
         {
           modelId: data.modelId,
           effort: data.effort,
+          activeWordContext: data.activeWordContext,
         },
       );
 

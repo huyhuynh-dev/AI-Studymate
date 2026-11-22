@@ -39,6 +39,12 @@ import {
   createExtractWebPageTool,
   extractWebPageInputSchema,
 } from './definitions/web/index.js';
+import {
+  createSuperDocInspectTool,
+  superdocInspectInputSchema,
+  createSuperDocPerformActionTool,
+  superdocPerformActionInputSchema,
+} from './definitions/superdoc/index.js';
 
 export class ChatSessionToolTracker implements ToolCallTracker {
   private readonly collectedChunkIds = new Set<string>();
@@ -232,6 +238,16 @@ export class ToolRegistryService {
           'Đọc sâu và bóc tách nội dung từ 1-3 URLs qua Tavily Extract API',
         inputSchema: extractWebPageInputSchema,
       }),
+      superdoc_inspect: tool({
+        description:
+          'Đọc cấu trúc và nội dung hiện tại của tài liệu Word đang mở trong SuperDoc',
+        inputSchema: superdocInspectInputSchema,
+      }),
+      superdoc_perform_action: tool({
+        description:
+          'Thực hiện thao tác chỉnh sửa tài liệu Word đang mở trong SuperDoc',
+        inputSchema: superdocPerformActionInputSchema,
+      }),
     };
   }
 
@@ -305,6 +321,32 @@ export class ToolRegistryService {
       tools.extractWebPage = createExtractWebPageTool(
         callbacks.onExtractWebPage,
         tracker,
+      );
+    }
+
+    if (callbacks?.onSuperDocInspect) {
+      tools.superdoc_inspect = createSuperDocInspectTool(
+        callbacks.onSuperDocInspect,
+        tracker,
+        {
+          description: callbacks.superdocToolkitMeta?.inspectDescription,
+          inputSchema: callbacks.superdocToolkitMeta?.inspectInputSchema,
+          documentId: callbacks.superdocToolkitMeta?.documentId,
+          fileName: callbacks.superdocToolkitMeta?.fileName,
+        },
+      );
+    }
+
+    if (callbacks?.onSuperDocPerformAction) {
+      tools.superdoc_perform_action = createSuperDocPerformActionTool(
+        callbacks.onSuperDocPerformAction,
+        tracker,
+        {
+          description: callbacks.superdocToolkitMeta?.performActionDescription,
+          inputSchema: callbacks.superdocToolkitMeta?.performActionInputSchema,
+          documentId: callbacks.superdocToolkitMeta?.documentId,
+          fileName: callbacks.superdocToolkitMeta?.fileName,
+        },
       );
     }
 

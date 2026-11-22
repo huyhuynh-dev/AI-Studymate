@@ -31,6 +31,7 @@ export interface WordDocumentPersistenceState {
   saveDocument: () => Promise<boolean>;
   reloadDocument: () => void;
   clearSaveFeedback: () => void;
+  markDirty: () => void;
 }
 
 export function useWordDocumentPersistence({
@@ -158,12 +159,17 @@ export function useWordDocumentPersistence({
     [],
   );
 
+  const markDirty = useCallback(() => {
+    setIsDirty(true);
+  }, []);
+
   const reloadDocument = useCallback(() => {
     dirtyUnsubRef.current?.();
     dirtyUnsubRef.current = null;
     superdocRef.current = null;
+    void documentsApi.clearAgentWorkingSnapshot(document.id).catch(() => undefined);
     setReloadNonce((n) => n + 1);
-  }, []);
+  }, [document.id]);
 
   const clearSaveFeedback = useCallback(() => {
     setSaveError(null);
@@ -342,5 +348,6 @@ export function useWordDocumentPersistence({
     saveDocument,
     reloadDocument,
     clearSaveFeedback,
+    markDirty,
   };
 }

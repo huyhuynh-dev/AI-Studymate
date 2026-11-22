@@ -1,5 +1,6 @@
 import type { AvailableDocumentItem } from '../../../documents/services/retrieval.service.js';
 import type { PromptPayloadMap, PromptTemplate } from '../types.js';
+import { buildSystemPromptWithSuperDocAgent } from './superdoc-agent.prompt.js';
 
 export const CHAT_AGENT_SYSTEM_PROMPT = `<identity_and_platform>
 You are **StudyMate AI**, a personal academic tutor and study companion inside the **AI StudyMate** learning platform.
@@ -171,12 +172,19 @@ export function buildSystemPromptWithDocumentCatalog(
 }
 
 export const chatAgentPrompt: PromptTemplate<PromptPayloadMap['CHAT_AGENT']> = {
-  system: ({ baseSystemPrompt, availableDocuments, attachedDocumentIds }) =>
-    buildSystemPromptWithDocumentCatalog(
+  system: ({
+    baseSystemPrompt,
+    availableDocuments,
+    attachedDocumentIds,
+    activeWordDocument,
+  }) => {
+    const withCatalog = buildSystemPromptWithDocumentCatalog(
       baseSystemPrompt ?? CHAT_AGENT_SYSTEM_PROMPT,
       availableDocuments,
       attachedDocumentIds,
-    ),
+    );
+    return buildSystemPromptWithSuperDocAgent(withCatalog, activeWordDocument);
+  },
 };
 
 export const autoHeaderPrompt: PromptTemplate<PromptPayloadMap['AUTO_HEADER']> =

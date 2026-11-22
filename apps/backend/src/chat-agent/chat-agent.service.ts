@@ -4,6 +4,13 @@ import { ChatAgentRepoService } from '../repo/chat-agent-repo/chat-agent-repo.se
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
+import {
+  SuperDocRuntimeService,
+  asSuperDocReceipt,
+  didSuperDocReceiptMutate,
+  extractSuperDocSdkError,
+  type SuperDocAgentChangeMode,
+} from '../documents/services/superdoc-runtime.service.js';
 import { SummariesService } from '../summaries/summaries.service.js';
 import { FlashcardAiManageService } from '../deck-flashcard/flashcard-ai-manage.service.js';
 import { QuizService } from '../quiz/quiz.service.js';
@@ -78,6 +85,7 @@ export class ChatAgentService {
     @Optional() private readonly tavilyService?: TavilyService,
     @Optional() private readonly flashcardAiManageService?: FlashcardAiManageService,
     @Optional() private readonly quizService?: QuizService,
+    @Optional() private readonly superdocRuntimeService?: SuperDocRuntimeService,
   ) {}
 
   async createChatSession(
@@ -319,6 +327,11 @@ export class ChatAgentService {
     chatOptions?: {
       modelId?: string;
       effort?: string;
+      activeWordContext?: {
+        documentId: string;
+        changeMode?: 'tracked' | 'direct';
+        selectedText?: string;
+      };
     },
   ) {
     const config = resolveChatConfig(chatOptions?.modelId, chatOptions?.effort);
@@ -373,6 +386,176 @@ export class ChatAgentService {
 
     const workspaceSyncChannel = new WorkspaceSyncChannel();
 
+    let superdocBindings: {
+      activeWordDocument: {
+        documentId: string;
+        fileName: string;
+        changeMode: SuperDocAgentChangeMode;
+        selectedText?: string;
+        superdocSystemPrompt?: string;
+      };
+      superdocToolkitMeta: {
+        documentId: string;
+        fileName: string;
+        inspectDescription?: string;
+        inspectInputSchema?: Record<string, unknown>;
+        performActionDescription?: string;
+        performActionInputSchema?: Record<string, unknown>;
+      };
+      onSuperDocInspect: (input: Record<string, unknown>) => Promise<unknown>;
+      onSuperDocPerformAction: (
+        input: { action: string; changeMode?: 'tracked' | 'direct' } & Record<
+          string,
+          unknown
+        >,
+      ) => Promise<unknown>;
+    } | null = null;
+
+    if (
+      ragContext &&
+      chatOptions?.activeWordContext?.documentId &&
+      this.superdocRuntimeService
+    ) {
+      const requestedWordDocId = chatOptions.activeWordContext.documentId;
+      const changeMode: SuperDocAgentChangeMode =
+        chatOptions.activeWordContext.changeMode === 'direct'
+          ? 'direct'
+          : 'tracked';
+      const selectedText = chatOptions.activeWordContext.selectedText;
+
+      try {
+        const activeDocRecord =
+          await this.superdocRuntimeService.assertOwnedDocxDocument(
+            ragContext.userId,
+            requestedWordDocId,
+          );
+        const toolkit = await this.superdocRuntimeService.getToolkit(changeMode);
+        const runtimeTools = toolkit.tools as Array<{
+          name?: string;
+          description?: string;
+          inputSchema?: Record<string, unknown>;
+        }>;
+        const inspectDef = runtimeTools.find(
+          (t) => t.name === 'superdoc_inspect',
+        );
+        const performDef = runtimeTools.find(
+          (t) => t.name === 'superdoc_perform_action',
+        );
+
+        let mutationCount = 0;
+
+        superdocBindings = {
+          activeWordDocument: {
+            documentId: activeDocRecord.id,
+            fileName: activeDocRecord.file_name,
+            changeMode,
+            selectedText,
+            superdocSystemPrompt: toolkit.systemPrompt,
+          },
+          superdocToolkitMeta: {
+            documentId: activeDocRecord.id,
+            fileName: activeDocRecord.file_name,
+            inspectDescription: inspectDef?.description,
+            inspectInputSchema: inspectDef?.inputSchema,
+            performActionDescription: performDef?.description,
+            performActionInputSchema: performDef?.inputSchema,
+          },
+          onSuperDocInspect: async (input) => {
+            try {
+              const sessionRes =
+                await this.superdocRuntimeService!.runWithDocumentSession({
+                  userId: ragContext.userId,
+                  documentId: activeDocRecord.id,
+                  changeMode,
+                  fn: async ({ doc, toolkit: sessionToolkit }) => {
+                    const snapshot = await sessionToolkit.dispatch(
+                      doc,
+                      'superdoc_inspect',
+                      input,
+                    );
+                    return { payload: snapshot };
+                  },
+                });
+              return sessionRes.payload;
+            } catch (error) {
+              return {
+                error: extractSuperDocSdkError(error),
+              };
+            }
+          },
+          onSuperDocPerformAction: async (input) => {
+            const policy =
+              this.superdocRuntimeService!.validateToolCallPolicy(
+                'superdoc_perform_action',
+                input,
+                changeMode,
+              );
+            if (!policy.allowed) {
+              return {
+                status: 'failed',
+                error: {
+                  code: policy.code,
+                  message: policy.message,
+                },
+              };
+            }
+
+            try {
+              const sessionRes =
+                await this.superdocRuntimeService!.runWithDocumentSession({
+                  userId: ragContext.userId,
+                  documentId: activeDocRecord.id,
+                  changeMode,
+                  fn: async ({
+                    doc,
+                    toolkit: sessionToolkit,
+                    markMutated,
+                  }) => {
+                    const rawReceipt = await sessionToolkit.dispatch(
+                      doc,
+                      'superdoc_perform_action',
+                      policy.normalizedArgs,
+                    );
+                    const receipt = asSuperDocReceipt(rawReceipt);
+                    if (
+                      didSuperDocReceiptMutate(receipt, policy.normalizedArgs)
+                    ) {
+                      markMutated(receipt.postSnapshot?.revision);
+                    }
+                    return { payload: rawReceipt };
+                  },
+                });
+
+              if (sessionRes.mutated) {
+                mutationCount += 1;
+                workspaceSyncChannel.emit({
+                  resource: 'word-document',
+                  action: 'updated',
+                  conversationId: ragContext.conversationId,
+                  entityId: activeDocRecord.id,
+                  title: activeDocRecord.file_name,
+                  changeMode,
+                  count: mutationCount,
+                  occurredAt: new Date().toISOString(),
+                });
+              }
+
+              return sessionRes.payload;
+            } catch (error) {
+              return {
+                status: 'failed',
+                error: extractSuperDocSdkError(error),
+              };
+            }
+          },
+        };
+      } catch (err) {
+        console.warn(
+          `[ChatAgentService] Không thể kích hoạt SuperDoc Agent cho documentId=${requestedWordDocId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
     const streamResult = await this.chatAgentAiService.executeChatStream(
       messages,
       async ({
@@ -391,6 +574,7 @@ export class ChatAgentService {
             attachedDocumentIds: ragContext.attachedDocumentIds,
             chatConfig: config,
             ...webCallbacks,
+            ...superdocBindings,
             onSearchDocumentChunks: async (input) => {
               return this.retrievalService.searchRelevantChunks({
                 userId: ragContext.userId,
@@ -881,6 +1065,11 @@ export class ChatAgentService {
     chatOptions?: {
       modelId?: string;
       effort?: string;
+      activeWordContext?: {
+        documentId: string;
+        changeMode?: 'tracked' | 'direct';
+        selectedText?: string;
+      };
     },
   ) {
     console.log(

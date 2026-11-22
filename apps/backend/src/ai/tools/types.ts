@@ -375,6 +375,31 @@ export type CreateQuizCallback = (
   input: CreateQuizToolInput,
 ) => Promise<CreateQuizToolOutput>;
 
+// ── Tool 9 & 10: SuperDocs Word Editor Tools (core preset) ──
+export type SuperDocInspectToolInput = Record<string, unknown>;
+export type SuperDocInspectToolOutput = unknown;
+export type SuperDocInspectCallback = (
+  input: SuperDocInspectToolInput,
+) => Promise<SuperDocInspectToolOutput>;
+
+export type SuperDocPerformActionToolInput = {
+  action: string;
+  changeMode?: 'tracked' | 'direct';
+} & Record<string, unknown>;
+export type SuperDocPerformActionToolOutput = unknown;
+export type SuperDocPerformActionCallback = (
+  input: SuperDocPerformActionToolInput,
+) => Promise<SuperDocPerformActionToolOutput>;
+
+export interface SuperDocToolkitToolMeta {
+  documentId: string;
+  fileName: string;
+  inspectDescription?: string;
+  inspectInputSchema?: Record<string, unknown>;
+  performActionDescription?: string;
+  performActionInputSchema?: Record<string, unknown>;
+}
+
 // ── Tên định danh các Tool của Chat Agent ──
 export type ChatAgentToolName =
   | 'searchDocumentChunks'
@@ -386,7 +411,9 @@ export type ChatAgentToolName =
   | 'createFlashcards'
   | 'createQuiz'
   | 'searchInternet'
-  | 'extractWebPage';
+  | 'extractWebPage'
+  | 'superdoc_inspect'
+  | 'superdoc_perform_action';
 
 export interface ToolCallTracker {
   recordChunkId(chunkId: string): void;
@@ -420,4 +447,7 @@ export interface ChatSessionToolCallbacks {
   onCreateQuiz?: CreateQuizCallback;
   onSearchInternet?: SearchInternetCallback;
   onExtractWebPage?: ExtractWebPageCallback;
+  onSuperDocInspect?: SuperDocInspectCallback;
+  onSuperDocPerformAction?: SuperDocPerformActionCallback;
+  superdocToolkitMeta?: SuperDocToolkitToolMeta;
 }

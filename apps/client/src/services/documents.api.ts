@@ -310,4 +310,95 @@ export const documentsApi = {
     );
     return res.data;
   },
+
+  stageAgentWorkingSnapshot: async (
+    documentId: string,
+    blob: Blob,
+  ): Promise<StageAgentSnapshotResponse> => {
+    const base64 = await blobToBase64(blob);
+    const res = await axiosClient.put<StageAgentSnapshotResponse>(
+      `/documents/${documentId}/agent-snapshot`,
+      { base64 },
+    );
+    return res.data;
+  },
+
+  getAgentWorkingSnapshotBlob: async (
+    documentId: string,
+  ): Promise<{
+    blob: Blob;
+    fileName: string;
+    updatedAt: string;
+    hasUnpersistedChanges: boolean;
+  }> => {
+    const res = await axiosClient.get<AgentWorkingSnapshotResponse>(
+      `/documents/${documentId}/agent-snapshot`,
+    );
+    return {
+      blob: base64ToBlob(res.data.base64, res.data.mimeType),
+      fileName: res.data.fileName,
+      updatedAt: res.data.updatedAt,
+      hasUnpersistedChanges: res.data.hasUnpersistedChanges,
+    };
+  },
+
+  clearAgentWorkingSnapshot: async (
+    documentId: string,
+  ): Promise<ClearAgentSnapshotResponse> => {
+    const res = await axiosClient.delete<ClearAgentSnapshotResponse>(
+      `/documents/${documentId}/agent-snapshot`,
+    );
+    return res.data;
+  },
 };
+
+export interface StageAgentSnapshotResponse {
+  staged: true;
+  byteLength: number;
+  updatedAt: string;
+}
+
+export interface AgentWorkingSnapshotResponse {
+  base64: string;
+  fileName: string;
+  mimeType: string;
+  updatedAt: string;
+  hasUnpersistedChanges: boolean;
+}
+
+export interface ClearAgentSnapshotResponse {
+  cleared: boolean;
+}
+
+export function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result !== 'string') {
+        reject(new Error('Không thể chuyển tệp tài liệu sang dữ liệu base64'));
+        return;
+      }
+      const commaIndex = reader.result.indexOf(',');
+      resolve(
+        commaIndex >= 0 ? reader.result.slice(commaIndex + 1) : reader.result,
+      );
+    };
+    reader.onerror = () => {
+      reject(reader.error ?? new Error('Lỗi đọc dữ liệu nhị phân của tài liệu'));
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+export function base64ToBlob(
+  base64: string,
+  mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+): Blob {
+  const cleanBase64 = base64.replace(/^data:[^;]+;base64,/, '').trim();
+  const binary = atob(cleanBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mimeType });
+}

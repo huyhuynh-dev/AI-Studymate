@@ -9,9 +9,9 @@ async function bootstrap() {
     instrument: ObserveInstrument,
   });
 
-  // Mở rộng giới hạn body parser lên 10mb để hỗ trợ các phiên chat dài và dữ liệu RAG
-  app.use(json({ limit: '10mb' }));
-  app.use(urlencoded({ extended: true, limit: '10mb' }));
+  // Mở rộng giới hạn body parser lên 25mb để hỗ trợ đồng bộ bản nháp DOCX SuperDoc và dữ liệu RAG
+  app.use(json({ limit: '25mb' }));
+  app.use(urlencoded({ extended: true, limit: '25mb' }));
 
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',

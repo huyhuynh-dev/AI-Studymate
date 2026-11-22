@@ -43,7 +43,11 @@ import type {
   EditorCitationTarget,
 } from "../editor/text-anchor-resolver";
 import TocMasterySidebar from "../TocMasterySidebar";
+import { useWordAgent } from "@/contexts/WordAgentContext";
 import { WordDocumentToolbar } from "./toolbar/WordDocumentToolbar";
+import { WordAiReviewBanner } from "./review/WordAiReviewBanner";
+import { WordSelectionAiPill } from "./review/WordSelectionAiPill";
+import { WordTrackedChangePopover } from "./review/WordTrackedChangePopover";
 import { useWordDocumentPersistence } from "./useWordDocumentPersistence";
 import {
   buildCitationSearchQueries,
@@ -241,7 +245,10 @@ function DocumentWordWorkspace({
     saveDocument,
     reloadDocument,
     clearSaveFeedback,
+    markDirty,
   } = persistence;
+
+  const { registerEditor, triggerQuickPrompt } = useWordAgent();
 
   const [documentMode, setDocumentMode] = useState<DocumentMode>(() =>
     compactReaderMode ? "viewing" : "editing",
@@ -261,10 +268,15 @@ function DocumentWordWorkspace({
 
   const superdocInstanceRef = useRef<SuperDoc | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const editorOverlayRef = useRef<HTMLDivElement | null>(null);
   const mountRef = useRef<HTMLDivElement | null>(null);
   const rulerRef = useRef<HTMLDivElement | null>(null);
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const isReadyRef = useRef(false);
+  const [reviewExpandSignal, setReviewExpandSignal] = useState(0);
+
+  const isDirtyRef = useRef(isDirty);
+  isDirtyRef.current = isDirty;
 
   const initialModeRef = useRef(documentMode);
   const initialTrackedViewRef = useRef(trackedChangesView);
@@ -281,6 +293,86 @@ function DocumentWordWorkspace({
   useEffect(() => {
     attachRef.current = attachSuperDocInstance;
   }, [attachSuperDocInstance]);
+
+  useEffect(() => {
+    if (!isEditorReady || compactReaderMode) {
+      return undefined;
+    }
+
+    return registerEditor({
+      document,
+      conversationId: document.conversation_id,
+      isDirty: () => isDirtyRef.current,
+      exportWorkingBlob: async () => {
+        const instance = superdocInstanceRef.current;
+        if (!instance || !isReadyRef.current) return null;
+        const result = await instance.export({
+          exportType: ["docx"],
+          triggerDownload: false,
+          exportedName: stripExtensionForExport(document.file_name),
+          policies: {
+            trackedChanges: "review-preserving",
+            comments: "preserve",
+            contentControls: "preserve",
+          },
+        });
+        return result instanceof Blob && result.size > 0 ? result : null;
+      },
+      applyAgentSnapshotBlob: async (blob, options) => {
+        const instance = superdocInstanceRef.current;
+        if (!instance || !isReadyRef.current) return;
+        const replacement = await instance.replaceDocument(blob);
+        if (!replacement.ok) {
+          throw new Error(
+            "Không thể nạp bản chỉnh sửa DOCX mới vào trình soạn thảo SuperDoc.",
+          );
+        }
+        if (options?.changeMode !== "direct") {
+          setTrackedChangesView("markup");
+          instance.setViewingOptions({
+            comments: true,
+            trackedChanges: "markup",
+          });
+        }
+        markDirty();
+      },
+      acceptAllChanges: async () => {
+        const instance = superdocInstanceRef.current;
+        const tcHandle = instance?.ui?.trackChanges;
+        if (!tcHandle) return 0;
+        const totalBefore = tcHandle.list().length;
+        const result = await tcHandle.acceptAllAsync();
+        if (result !== false) {
+          markDirty();
+          return totalBefore;
+        }
+        return 0;
+      },
+      rejectAllChanges: async () => {
+        const instance = superdocInstanceRef.current;
+        const tcHandle = instance?.ui?.trackChanges;
+        if (!tcHandle) return 0;
+        const totalBefore = tcHandle.list().length;
+        const result = await tcHandle.rejectAllAsync();
+        if (result !== false) {
+          markDirty();
+          return totalBefore;
+        }
+        return 0;
+      },
+      openReviewPanel: () => {
+        const instance = superdocInstanceRef.current;
+        if (instance && isReadyRef.current) {
+          setTrackedChangesView("markup");
+          instance.setViewingOptions({
+            comments: true,
+            trackedChanges: "markup",
+          });
+        }
+        setReviewExpandSignal((n) => n + 1);
+      },
+    });
+  }, [compactReaderMode, document, isEditorReady, markDirty, registerEditor]);
 
   const isFullscreen =
     isExternalFullscreen !== undefined ? isExternalFullscreen : internalFullscreen;
@@ -938,6 +1030,21 @@ function DocumentWordWorkspace({
             </button>
           )}
 
+          {!compactReaderMode && (
+            <button
+              type="button"
+              onClick={() =>
+                triggerQuickPrompt({ action: "custom", autoSend: false })
+              }
+              aria-label="Mở AI Agent chỉnh sửa tài liệu Word"
+              title="Mở trợ lý AI Agent để thêm, sửa hoặc đề xuất thay đổi trực tiếp trên tài liệu"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 text-xs font-semibold text-indigo-700 dark:text-indigo-200 hover:bg-indigo-500/20 transition-colors cursor-pointer"
+            >
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              <span className="hidden lg:inline">AI Agent</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleToggleFullscreen}
@@ -960,6 +1067,13 @@ function DocumentWordWorkspace({
 
       {/* Thanh công cụ React thuần (thay thế hoàn toàn Vue toolbar mặc định của SuperDoc) */}
       {!compactReaderMode && <WordDocumentToolbar />}
+      {!compactReaderMode && (
+        <WordAiReviewBanner
+          documentId={document.id}
+          forceExpandSignal={reviewExpandSignal}
+          onDecisionSettled={markDirty}
+        />
+      )}
 
       {/* Banners phản hồi */}
       {conflictMessage && (
@@ -1119,11 +1233,16 @@ function DocumentWordWorkspace({
               <WordRulerPositioner rulerRef={rulerRef} stageRef={stageRef} />
             )}
 
-            <div
-              ref={mountRef}
-              className="studymate-superdoc-host"
-              aria-label={`Trình soạn thảo ${document.file_name}`}
-            />
+            <div ref={editorOverlayRef} className="relative w-full min-h-full">
+              <div
+                ref={mountRef}
+                className="studymate-superdoc-host"
+                aria-label={`Trình soạn thảo ${document.file_name}`}
+              />
+              {!compactReaderMode && (
+                <WordSelectionAiPill overlayContainerRef={editorOverlayRef} />
+              )}
+            </div>
 
             {!isEditorReady && (
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/95 dark:bg-[#141720]/95 text-neutral-500 dark:text-neutral-400">
@@ -1151,6 +1270,13 @@ function DocumentWordWorkspace({
           </div>
         )}
       </div>
+
+      {!compactReaderMode && (
+        <WordTrackedChangePopover
+          stageContainerRef={stageRef}
+          onDecisionSettled={markDirty}
+        />
+      )}
 
       {/* Hộp thoại xác nhận khi đóng lúc chưa lưu */}
       {showUnsavedDialog && (

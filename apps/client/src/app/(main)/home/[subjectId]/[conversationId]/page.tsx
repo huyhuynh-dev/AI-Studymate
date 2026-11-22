@@ -34,6 +34,7 @@ const SYNC_RESOURCE_TO_TAB: Record<WorkspaceSyncResource, TabKey> = {
   summary: "summary",
   flashcard: "flashcard",
   quiz: "quiz",
+  "word-document": "documents",
 };
 
 interface ConversationPageProps {
