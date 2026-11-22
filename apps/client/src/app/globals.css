@@ -641,22 +641,62 @@ html {
   }
 }
 
-/* Cô lập vùng SuperDoc khỏi CSS Dark Mode & typography toàn cục của StudyMate */
+/* Cô lập vùng SuperDoc khỏi typography toàn cục của StudyMate và hỗ trợ Stage + Sticky Ruler */
+.studymate-word-stage {
+  scrollbar-gutter: stable;
+  background-color: #eceff4;
+}
+
+@media (prefers-color-scheme: dark) {
+  .studymate-word-stage {
+    background-color: #0d1017;
+  }
+}
+
+:is(.dark, [data-theme="dark"]) .studymate-word-stage {
+  background-color: #0d1017;
+}
+
+.studymate-word-ruler-strip {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  width: 100%;
+  min-height: 26px;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+  --sd-ui-bg: #ffffff;
+  --sd-ui-ruler-bg: #ffffff;
+}
+
+.studymate-word-ruler-strip:not(:has(.ruler)):not(:has(.v2-ruler-host)) {
+  display: none;
+}
+
+.studymate-word-ruler {
+  display: flex;
+  justify-content: center;
+  min-height: 25px;
+  --sd-ui-bg: #ffffff;
+  --sd-ui-ruler-bg: #ffffff;
+}
+
+.studymate-word-ruler :is(.v2-ruler-host, .ruler) {
+  background-color: #ffffff !important;
+  color-scheme: light;
+}
+
 .studymate-superdoc-host {
-  height: 100%;
-  min-height: 0;
+  min-height: 100%;
+  width: 100%;
+  padding-top: 14px;
+  padding-bottom: 24px;
   display: flex;
   flex-direction: column;
   position: relative;
   color-scheme: light;
-}
-
-.studymate-superdoc-host .superdoc,
-.studymate-superdoc-host .superdoc-wrapper,
-.studymate-superdoc-host .superdoc-container {
-  height: 100%;
-  min-height: 0;
-  flex: 1 1 auto;
+  --sd-ui-ruler-bg: #ffffff;
 }
 
 .studymate-superdoc-host .ProseMirror h1,

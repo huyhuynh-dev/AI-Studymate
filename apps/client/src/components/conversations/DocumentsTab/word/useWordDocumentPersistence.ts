@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { SuperDocInstance } from "@superdoc/react";
+import type { SuperDoc as SuperDocInstance } from "superdoc";
 import { documentsApi, extractDocumentApiError } from "@/services/documents.api";
 import { DOCX_MIME_TYPE, stripExtensionForExport } from "./word-document.helpers";
 import type { DocumentItem, DocumentStatus } from "@/types";
