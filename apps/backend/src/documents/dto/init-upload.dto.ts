@@ -15,11 +15,27 @@ export const ALLOWED_MIME_TYPES = [
     // CSV (.csv)
     'text/csv',
     'application/csv',
-    // Markdown (.md)
+    // Markdown (.md, .markdown)
     'text/markdown',
     'text/x-markdown',
-    // Text (.txt)
+    // HTML (.html, .htm)
+    'text/html',
+    // Text & Logs (.txt, .log)
     'text/plain',
+    // Structured text / Markup (.json, .xml, .yaml, .yml, .toml)
+    'application/json',
+    'text/json',
+    'application/xml',
+    'text/xml',
+    'application/yaml',
+    'application/x-yaml',
+    'text/yaml',
+    'text/x-yaml',
+    'application/toml',
+    'text/toml',
+    'text/x-toml',
+    // Fallback cho trình duyệt gửi MIME generic (sẽ được đối chiếu theo đuôi tệp trong DocumentsService)
+    'application/octet-stream',
     // Hình ảnh (.jpg, .jpeg, .png, .webp)
     'image/jpeg',
     'image/jpg',
@@ -48,7 +64,7 @@ export class InitUploadDto {
     @IsString({ message: 'mimeType phải là chuỗi ký tự' })
     @IsIn(ALLOWED_MIME_TYPES, {
         message:
-            'Định dạng tệp không được hỗ trợ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint, CSV, Markdown, TXT, JPEG, PNG, WEBP',
+            'Định dạng tệp không được hỗ trợ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint, Markdown, HTML, TXT, LOG, JSON, XML, YAML, CSV, TOML và ảnh JPEG/PNG/WEBP',
     })
     mimeType: string;
 }

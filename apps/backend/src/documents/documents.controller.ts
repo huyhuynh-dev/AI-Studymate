@@ -6,6 +6,7 @@ import {
     Param,
     ParseUUIDPipe,
     Post,
+    Put,
     Query,
     Req,
     UnauthorizedException,
@@ -16,6 +17,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { DocumentsService } from './documents.service.js';
 import { InitUploadDto } from './dto/init-upload.dto.js';
 import { CompleteUploadDto } from './dto/complete-upload.dto.js';
+import { UpdateDocumentContentDto } from './dto/update-document-content.dto.js';
 
 @Controller('documents')
 @UseGuards(JwtAuthGuard)
@@ -60,6 +62,23 @@ export class DocumentsController {
         @Param('id', new ParseUUIDPipe()) id: string
     ) {
         return this.documentsService.getDocumentById(this.getUserId(req), id);
+    }
+
+    @Get(':id/content')
+    async getDocumentContent(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string
+    ) {
+        return this.documentsService.getDocumentContent(this.getUserId(req), id);
+    }
+
+    @Put(':id/content')
+    async updateDocumentContent(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string,
+        @Body() dto: UpdateDocumentContentDto
+    ) {
+        return this.documentsService.updateDocumentContent(this.getUserId(req), id, dto);
     }
 
     @Get(':id/download')

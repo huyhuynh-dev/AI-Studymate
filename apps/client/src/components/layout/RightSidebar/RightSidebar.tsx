@@ -20,6 +20,10 @@ import { ChatHeader } from "./components/ChatHeader";
 import { EmptyState } from "./components/EmptyState";
 import { MessageList } from "./components/MessageList";
 import { ChevronLeft, FileText, Loader2 } from "lucide-react";
+import {
+  EDITABLE_TEXT_EXTENSIONS_ACCEPT,
+  isEditableTextDocument,
+} from "@/components/conversations/DocumentsTab/editor/document-format-profiles";
 
 const SidePanelPdfViewer = dynamic(
   () => import("@/components/conversations/DocumentsTab/DocumentPdfViewer"),
@@ -42,6 +46,19 @@ const SidePanelImageViewer = dynamic(
       <div className="flex flex-1 flex-col items-center justify-center gap-2.5 bg-neutral-50/80 dark:bg-[#0F1218] text-neutral-500 dark:text-neutral-400">
         <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5] dark:text-[#818CF8]" />
         <span className="text-xs font-medium">Đang tải hình ảnh nguồn…</span>
+      </div>
+    ),
+  }
+);
+
+const SidePanelTextEditor = dynamic(
+  () => import("@/components/conversations/DocumentsTab/editor/DocumentTextEditor"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2.5 bg-neutral-50/80 dark:bg-[#0F1218] text-neutral-500 dark:text-neutral-400">
+        <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5] dark:text-[#818CF8]" />
+        <span className="text-xs font-medium">Đang mở trình đọc & soạn thảo…</span>
       </div>
     ),
   }
@@ -276,7 +293,7 @@ export default function RightSidebar({
     deleteSession,
     refresh: refreshSessions,
   } = useChatSessions(conversationId);
-  const { documents, uploadFile } = useDocuments(conversationId);
+  const { documents, uploadFile, downloadDocument, updateDocumentInCache } = useDocuments(conversationId);
 
   const sidePanelDocument = useMemo(() => {
     if (!sidePanelTarget?.documentId) return null;
@@ -921,10 +938,10 @@ export default function RightSidebar({
         tabIndex={-1}
         className="hidden"
         multiple
-        accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.txt"
+        accept={`.pdf,.png,.jpg,.jpeg,.webp,.docx,${EDITABLE_TEXT_EXTENSIONS_ACCEPT}`}
       />
 
-      {/* Trình xem nguồn PDF / Ảnh tạm thời (mượn chỗ RightSidebar) */}
+      {/* Trình xem nguồn PDF / Ảnh / Text & Markdown tạm thời (mượn chỗ RightSidebar) */}
       {isSidePanelOpen && (
         <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
           {sidePanelDocument?.mime_type === "application/pdf" ? (
@@ -934,6 +951,7 @@ export default function RightSidebar({
               compactReaderMode
               isExternalFullscreen={isFullscreen}
               onToggleExternalFullscreen={() => setIsFullscreen((prev) => !prev)}
+              onDocumentUpdated={updateDocumentInCache}
               onClose={() => {
                 if (isFullscreen) {
                   setIsFullscreen(false);
@@ -952,6 +970,23 @@ export default function RightSidebar({
                 closeSidePanelCitation();
               }}
               className="h-full flex-1 rounded-none border-none"
+            />
+          ) : sidePanelDocument && isEditableTextDocument(sidePanelDocument) ? (
+            <SidePanelTextEditor
+              key={sidePanelDocument.id}
+              document={sidePanelDocument}
+              compactReaderMode
+              isExternalFullscreen={isFullscreen}
+              onToggleExternalFullscreen={() => setIsFullscreen((prev) => !prev)}
+              onDownload={downloadDocument}
+              onDocumentUpdated={updateDocumentInCache}
+              highlightSnippet={sidePanelTarget?.rawContent}
+              onClose={() => {
+                if (isFullscreen) {
+                  setIsFullscreen(false);
+                }
+                closeSidePanelCitation();
+              }}
             />
           ) : (
             <div className="flex flex-1 flex-col">

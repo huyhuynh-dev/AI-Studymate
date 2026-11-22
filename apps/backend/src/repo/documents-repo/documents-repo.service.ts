@@ -72,6 +72,8 @@ export class DocumentsRepoService {
             mime_type: string;
             storage_key: string;
             file_name: string;
+            content_version: number;
+            indexed_version: number;
         }>
     > {
         return await this.prisma.document.findMany({
@@ -89,6 +91,8 @@ export class DocumentsRepoService {
                 mime_type: true,
                 storage_key: true,
                 file_name: true,
+                content_version: true,
+                indexed_version: true,
             },
         });
     }
@@ -158,6 +162,35 @@ export class DocumentsRepoService {
             }
             throw error;
         }
+    }
+
+    async updateDocumentWithOptimisticLock(
+        documentId: string,
+        userId: string,
+        expectedVersion: number,
+        data: Prisma.DocumentUncheckedUpdateManyInput
+    ): Promise<DocumentResponse | null> {
+        const result = await this.prisma.document.updateMany({
+            where: {
+                id: documentId,
+                user_id: userId,
+                content_version: expectedVersion,
+            },
+            data,
+        });
+
+        if (result.count === 0) {
+            return null;
+        }
+
+        const updated = await this.prisma.document.findFirst({
+            where: {
+                id: documentId,
+                user_id: userId,
+            },
+        });
+
+        return updated ? serializeDocument(updated) : null;
     }
 
     async deleteDocument(documentId: string, userId: string): Promise<DocumentResponse> {

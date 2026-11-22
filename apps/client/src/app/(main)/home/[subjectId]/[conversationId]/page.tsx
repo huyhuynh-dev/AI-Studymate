@@ -295,6 +295,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     uploadFiles,
     deleteDocument,
     downloadDocument,
+    updateDocumentInCache,
   } = useDocuments(conversationId);
 
   // Hook quản lý danh sách bộ thẻ flashcard để liên kết với QuizTab
@@ -512,6 +513,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               onUpload={uploadFiles}
               onDelete={deleteDocument}
               onDownload={downloadDocument}
+              onDocumentUpdated={updateDocumentInCache}
               onCreateTargetedQuiz={(opts) =>
                 handleTriggerTargetedQuiz({
                   chunkIds: opts.chunkIds,

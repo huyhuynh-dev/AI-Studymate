@@ -44,6 +44,7 @@ export type DocumentChunkMinAggregateOutputType = {
   chunk_index: number | null
   content: string | null
   raw_content: string | null
+  content_hash: string | null
   token_count: number | null
   chunk_type: $Enums.ChunkType | null
   has_image: boolean | null
@@ -57,6 +58,7 @@ export type DocumentChunkMaxAggregateOutputType = {
   chunk_index: number | null
   content: string | null
   raw_content: string | null
+  content_hash: string | null
   token_count: number | null
   chunk_type: $Enums.ChunkType | null
   has_image: boolean | null
@@ -70,6 +72,7 @@ export type DocumentChunkCountAggregateOutputType = {
   chunk_index: number
   content: number
   raw_content: number
+  content_hash: number
   token_count: number
   chunk_type: number
   headings: number
@@ -101,6 +104,7 @@ export type DocumentChunkMinAggregateInputType = {
   chunk_index?: true
   content?: true
   raw_content?: true
+  content_hash?: true
   token_count?: true
   chunk_type?: true
   has_image?: true
@@ -114,6 +118,7 @@ export type DocumentChunkMaxAggregateInputType = {
   chunk_index?: true
   content?: true
   raw_content?: true
+  content_hash?: true
   token_count?: true
   chunk_type?: true
   has_image?: true
@@ -127,6 +132,7 @@ export type DocumentChunkCountAggregateInputType = {
   chunk_index?: true
   content?: true
   raw_content?: true
+  content_hash?: true
   token_count?: true
   chunk_type?: true
   headings?: true
@@ -231,6 +237,7 @@ export type DocumentChunkGroupByOutputType = {
   chunk_index: number
   content: string
   raw_content: string | null
+  content_hash: string | null
   token_count: number | null
   chunk_type: $Enums.ChunkType
   headings: string[]
@@ -271,6 +278,7 @@ export type DocumentChunkWhereInput = {
   chunk_index?: Prisma.IntFilter<"DocumentChunk"> | number
   content?: Prisma.StringFilter<"DocumentChunk"> | string
   raw_content?: Prisma.StringNullableFilter<"DocumentChunk"> | string | null
+  content_hash?: Prisma.StringNullableFilter<"DocumentChunk"> | string | null
   token_count?: Prisma.IntNullableFilter<"DocumentChunk"> | number | null
   chunk_type?: Prisma.EnumChunkTypeFilter<"DocumentChunk"> | $Enums.ChunkType
   headings?: Prisma.StringNullableListFilter<"DocumentChunk">
@@ -290,6 +298,7 @@ export type DocumentChunkOrderByWithRelationInput = {
   chunk_index?: Prisma.SortOrder
   content?: Prisma.SortOrder
   raw_content?: Prisma.SortOrderInput | Prisma.SortOrder
+  content_hash?: Prisma.SortOrderInput | Prisma.SortOrder
   token_count?: Prisma.SortOrderInput | Prisma.SortOrder
   chunk_type?: Prisma.SortOrder
   headings?: Prisma.SortOrder
@@ -313,6 +322,7 @@ export type DocumentChunkWhereUniqueInput = Prisma.AtLeast<{
   chunk_index?: Prisma.IntFilter<"DocumentChunk"> | number
   content?: Prisma.StringFilter<"DocumentChunk"> | string
   raw_content?: Prisma.StringNullableFilter<"DocumentChunk"> | string | null
+  content_hash?: Prisma.StringNullableFilter<"DocumentChunk"> | string | null
   token_count?: Prisma.IntNullableFilter<"DocumentChunk"> | number | null
   chunk_type?: Prisma.EnumChunkTypeFilter<"DocumentChunk"> | $Enums.ChunkType
   headings?: Prisma.StringNullableListFilter<"DocumentChunk">
@@ -332,6 +342,7 @@ export type DocumentChunkOrderByWithAggregationInput = {
   chunk_index?: Prisma.SortOrder
   content?: Prisma.SortOrder
   raw_content?: Prisma.SortOrderInput | Prisma.SortOrder
+  content_hash?: Prisma.SortOrderInput | Prisma.SortOrder
   token_count?: Prisma.SortOrderInput | Prisma.SortOrder
   chunk_type?: Prisma.SortOrder
   headings?: Prisma.SortOrder
@@ -357,6 +368,7 @@ export type DocumentChunkScalarWhereWithAggregatesInput = {
   chunk_index?: Prisma.IntWithAggregatesFilter<"DocumentChunk"> | number
   content?: Prisma.StringWithAggregatesFilter<"DocumentChunk"> | string
   raw_content?: Prisma.StringNullableWithAggregatesFilter<"DocumentChunk"> | string | null
+  content_hash?: Prisma.StringNullableWithAggregatesFilter<"DocumentChunk"> | string | null
   token_count?: Prisma.IntNullableWithAggregatesFilter<"DocumentChunk"> | number | null
   chunk_type?: Prisma.EnumChunkTypeWithAggregatesFilter<"DocumentChunk"> | $Enums.ChunkType
   headings?: Prisma.StringNullableListFilter<"DocumentChunk">
@@ -373,6 +385,7 @@ export type DocumentChunkCreateInput = {
   chunk_index: number
   content: string
   raw_content?: string | null
+  content_hash?: string | null
   token_count?: number | null
   chunk_type?: $Enums.ChunkType
   headings?: Prisma.DocumentChunkCreateheadingsInput | string[]
@@ -392,6 +405,7 @@ export type DocumentChunkUncheckedCreateInput = {
   chunk_index: number
   content: string
   raw_content?: string | null
+  content_hash?: string | null
   token_count?: number | null
   chunk_type?: $Enums.ChunkType
   headings?: Prisma.DocumentChunkCreateheadingsInput | string[]
@@ -409,6 +423,7 @@ export type DocumentChunkUpdateInput = {
   chunk_index?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   raw_content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  content_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   chunk_type?: Prisma.EnumChunkTypeFieldUpdateOperationsInput | $Enums.ChunkType
   headings?: Prisma.DocumentChunkUpdateheadingsInput | string[]
@@ -428,6 +443,7 @@ export type DocumentChunkUncheckedUpdateInput = {
   chunk_index?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   raw_content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  content_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   chunk_type?: Prisma.EnumChunkTypeFieldUpdateOperationsInput | $Enums.ChunkType
   headings?: Prisma.DocumentChunkUpdateheadingsInput | string[]
@@ -446,6 +462,7 @@ export type DocumentChunkCreateManyInput = {
   chunk_index: number
   content: string
   raw_content?: string | null
+  content_hash?: string | null
   token_count?: number | null
   chunk_type?: $Enums.ChunkType
   headings?: Prisma.DocumentChunkCreateheadingsInput | string[]
@@ -462,6 +479,7 @@ export type DocumentChunkUpdateManyMutationInput = {
   chunk_index?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   raw_content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  content_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   chunk_type?: Prisma.EnumChunkTypeFieldUpdateOperationsInput | $Enums.ChunkType
   headings?: Prisma.DocumentChunkUpdateheadingsInput | string[]
@@ -479,6 +497,7 @@ export type DocumentChunkUncheckedUpdateManyInput = {
   chunk_index?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   raw_content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  content_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   chunk_type?: Prisma.EnumChunkTypeFieldUpdateOperationsInput | $Enums.ChunkType
   headings?: Prisma.DocumentChunkUpdateheadingsInput | string[]
@@ -527,6 +546,7 @@ export type DocumentChunkCountOrderByAggregateInput = {
   chunk_index?: Prisma.SortOrder
   content?: Prisma.SortOrder
   raw_content?: Prisma.SortOrder
+  content_hash?: Prisma.SortOrder
   token_count?: Prisma.SortOrder
   chunk_type?: Prisma.SortOrder
   headings?: Prisma.SortOrder
@@ -550,6 +570,7 @@ export type DocumentChunkMaxOrderByAggregateInput = {
   chunk_index?: Prisma.SortOrder
   content?: Prisma.SortOrder
   raw_content?: Prisma.SortOrder
+  content_hash?: Prisma.SortOrder
   token_count?: Prisma.SortOrder
   chunk_type?: Prisma.SortOrder
   has_image?: Prisma.SortOrder
@@ -563,6 +584,7 @@ export type DocumentChunkMinOrderByAggregateInput = {
   chunk_index?: Prisma.SortOrder
   content?: Prisma.SortOrder
   raw_content?: Prisma.SortOrder
+  content_hash?: Prisma.SortOrder
   token_count?: Prisma.SortOrder
   chunk_type?: Prisma.SortOrder
   has_image?: Prisma.SortOrder
@@ -666,6 +688,7 @@ export type DocumentChunkCreateWithoutDocumentInput = {
   chunk_index: number
   content: string
   raw_content?: string | null
+  content_hash?: string | null
   token_count?: number | null
   chunk_type?: $Enums.ChunkType
   headings?: Prisma.DocumentChunkCreateheadingsInput | string[]
@@ -683,6 +706,7 @@ export type DocumentChunkUncheckedCreateWithoutDocumentInput = {
   chunk_index: number
   content: string
   raw_content?: string | null
+  content_hash?: string | null
   token_count?: number | null
   chunk_type?: $Enums.ChunkType
   headings?: Prisma.DocumentChunkCreateheadingsInput | string[]
@@ -730,6 +754,7 @@ export type DocumentChunkScalarWhereInput = {
   chunk_index?: Prisma.IntFilter<"DocumentChunk"> | number
   content?: Prisma.StringFilter<"DocumentChunk"> | string
   raw_content?: Prisma.StringNullableFilter<"DocumentChunk"> | string | null
+  content_hash?: Prisma.StringNullableFilter<"DocumentChunk"> | string | null
   token_count?: Prisma.IntNullableFilter<"DocumentChunk"> | number | null
   chunk_type?: Prisma.EnumChunkTypeFilter<"DocumentChunk"> | $Enums.ChunkType
   headings?: Prisma.StringNullableListFilter<"DocumentChunk">
@@ -746,6 +771,7 @@ export type DocumentChunkCreateWithoutAssetsInput = {
   chunk_index: number
   content: string
   raw_content?: string | null
+  content_hash?: string | null
   token_count?: number | null
   chunk_type?: $Enums.ChunkType
   headings?: Prisma.DocumentChunkCreateheadingsInput | string[]
@@ -764,6 +790,7 @@ export type DocumentChunkUncheckedCreateWithoutAssetsInput = {
   chunk_index: number
   content: string
   raw_content?: string | null
+  content_hash?: string | null
   token_count?: number | null
   chunk_type?: $Enums.ChunkType
   headings?: Prisma.DocumentChunkCreateheadingsInput | string[]
@@ -796,6 +823,7 @@ export type DocumentChunkUpdateWithoutAssetsInput = {
   chunk_index?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   raw_content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  content_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   chunk_type?: Prisma.EnumChunkTypeFieldUpdateOperationsInput | $Enums.ChunkType
   headings?: Prisma.DocumentChunkUpdateheadingsInput | string[]
@@ -814,6 +842,7 @@ export type DocumentChunkUncheckedUpdateWithoutAssetsInput = {
   chunk_index?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   raw_content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  content_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   chunk_type?: Prisma.EnumChunkTypeFieldUpdateOperationsInput | $Enums.ChunkType
   headings?: Prisma.DocumentChunkUpdateheadingsInput | string[]
@@ -830,6 +859,7 @@ export type DocumentChunkCreateManyDocumentInput = {
   chunk_index: number
   content: string
   raw_content?: string | null
+  content_hash?: string | null
   token_count?: number | null
   chunk_type?: $Enums.ChunkType
   headings?: Prisma.DocumentChunkCreateheadingsInput | string[]
@@ -846,6 +876,7 @@ export type DocumentChunkUpdateWithoutDocumentInput = {
   chunk_index?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   raw_content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  content_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   chunk_type?: Prisma.EnumChunkTypeFieldUpdateOperationsInput | $Enums.ChunkType
   headings?: Prisma.DocumentChunkUpdateheadingsInput | string[]
@@ -863,6 +894,7 @@ export type DocumentChunkUncheckedUpdateWithoutDocumentInput = {
   chunk_index?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   raw_content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  content_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   chunk_type?: Prisma.EnumChunkTypeFieldUpdateOperationsInput | $Enums.ChunkType
   headings?: Prisma.DocumentChunkUpdateheadingsInput | string[]
@@ -880,6 +912,7 @@ export type DocumentChunkUncheckedUpdateManyWithoutDocumentInput = {
   chunk_index?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   raw_content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  content_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_count?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   chunk_type?: Prisma.EnumChunkTypeFieldUpdateOperationsInput | $Enums.ChunkType
   headings?: Prisma.DocumentChunkUpdateheadingsInput | string[]
@@ -928,6 +961,7 @@ export type DocumentChunkSelect<ExtArgs extends runtime.Types.Extensions.Interna
   chunk_index?: boolean
   content?: boolean
   raw_content?: boolean
+  content_hash?: boolean
   token_count?: boolean
   chunk_type?: boolean
   headings?: boolean
@@ -948,6 +982,7 @@ export type DocumentChunkSelectCreateManyAndReturn<ExtArgs extends runtime.Types
   chunk_index?: boolean
   content?: boolean
   raw_content?: boolean
+  content_hash?: boolean
   token_count?: boolean
   chunk_type?: boolean
   headings?: boolean
@@ -966,6 +1001,7 @@ export type DocumentChunkSelectUpdateManyAndReturn<ExtArgs extends runtime.Types
   chunk_index?: boolean
   content?: boolean
   raw_content?: boolean
+  content_hash?: boolean
   token_count?: boolean
   chunk_type?: boolean
   headings?: boolean
@@ -984,6 +1020,7 @@ export type DocumentChunkSelectScalar = {
   chunk_index?: boolean
   content?: boolean
   raw_content?: boolean
+  content_hash?: boolean
   token_count?: boolean
   chunk_type?: boolean
   headings?: boolean
@@ -995,7 +1032,7 @@ export type DocumentChunkSelectScalar = {
   created_at?: boolean
 }
 
-export type DocumentChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "document_id" | "chunk_index" | "content" | "raw_content" | "token_count" | "chunk_type" | "headings" | "has_image" | "has_table" | "page_numbers" | "bboxes" | "chunk_metadata" | "created_at", ExtArgs["result"]["documentChunk"]>
+export type DocumentChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "document_id" | "chunk_index" | "content" | "raw_content" | "content_hash" | "token_count" | "chunk_type" | "headings" | "has_image" | "has_table" | "page_numbers" | "bboxes" | "chunk_metadata" | "created_at", ExtArgs["result"]["documentChunk"]>
 export type DocumentChunkInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   document?: boolean | Prisma.DocumentDefaultArgs<ExtArgs>
   assets?: boolean | Prisma.DocumentChunk$assetsArgs<ExtArgs>
@@ -1020,6 +1057,7 @@ export type $DocumentChunkPayload<ExtArgs extends runtime.Types.Extensions.Inter
     chunk_index: number
     content: string
     raw_content: string | null
+    content_hash: string | null
     token_count: number | null
     chunk_type: $Enums.ChunkType
     headings: string[]
@@ -1459,6 +1497,7 @@ export interface DocumentChunkFieldRefs {
   readonly chunk_index: Prisma.FieldRef<"DocumentChunk", 'Int'>
   readonly content: Prisma.FieldRef<"DocumentChunk", 'String'>
   readonly raw_content: Prisma.FieldRef<"DocumentChunk", 'String'>
+  readonly content_hash: Prisma.FieldRef<"DocumentChunk", 'String'>
   readonly token_count: Prisma.FieldRef<"DocumentChunk", 'Int'>
   readonly chunk_type: Prisma.FieldRef<"DocumentChunk", 'ChunkType'>
   readonly headings: Prisma.FieldRef<"DocumentChunk", 'String[]'>

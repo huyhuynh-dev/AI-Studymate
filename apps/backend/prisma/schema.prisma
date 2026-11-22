@@ -308,6 +308,9 @@ model Document {
   uploaded_at      DateTime @default(now()) @db.Timestamptz(6)
   ocr_status       ProcessingStatus @default(pending)
   embed_status     ProcessingStatus @default(pending)
+  content_version  Int      @default(1)
+  indexed_version  Int      @default(0)
+  sync_error       String?  @db.Text
   created_at       DateTime @default(now()) @db.Timestamptz(6)
   updated_at       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
@@ -329,6 +332,7 @@ model DocumentChunk {
   chunk_index     Int
   content         String                      @db.Text
   raw_content     String?                     @db.Text
+  content_hash    String?                     @db.VarChar(64)
   token_count     Int?
   chunk_type      ChunkType                   @default(text)
   headings        String[]                    @default([])
@@ -345,6 +349,7 @@ model DocumentChunk {
 
   @@unique([document_id, chunk_index])
   @@index([document_id])
+  @@index([document_id, content_hash])
   @@index([page_numbers], type: Gin)
   @@map("document_chunks")
 }

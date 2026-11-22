@@ -270,6 +270,9 @@ export const DocumentScalarFieldEnum = {
   uploaded_at: 'uploaded_at',
   ocr_status: 'ocr_status',
   embed_status: 'embed_status',
+  content_version: 'content_version',
+  indexed_version: 'indexed_version',
+  sync_error: 'sync_error',
   created_at: 'created_at',
   updated_at: 'updated_at'
 } as const
@@ -283,6 +286,7 @@ export const DocumentChunkScalarFieldEnum = {
   chunk_index: 'chunk_index',
   content: 'content',
   raw_content: 'raw_content',
+  content_hash: 'content_hash',
   token_count: 'token_count',
   chunk_type: 'chunk_type',
   headings: 'headings',

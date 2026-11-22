@@ -20,6 +20,12 @@ import { useFocusMode } from "@/components/layout";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import DocumentImageViewer from "./DocumentImageViewer";
 import DocumentPdfViewer from "./DocumentPdfViewer";
+import DocumentTextEditor from "./editor/DocumentTextEditor";
+import {
+  EDITABLE_TEXT_EXTENSIONS_ACCEPT,
+  isEditableTextDocument,
+  resolveDocumentEditorProfile,
+} from "./editor/document-format-profiles";
 
 export interface DocumentsTabProps {
   documents?: DocumentItem[];
@@ -31,6 +37,7 @@ export interface DocumentsTabProps {
   onUpload?: (files: File[]) => void;
   onDelete?: (documentId: string) => void;
   onDownload?: (documentId: string, fileName: string) => void;
+  onDocumentUpdated?: (doc: DocumentItem) => void;
   onCreateTargetedQuiz?: (opts: {
     chunkIds: string[];
     sectionTitle: string;
@@ -40,7 +47,7 @@ export interface DocumentsTabProps {
 }
 
 const ACCEPTED_FILE_EXTENSIONS =
-  ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.md,.txt,.png,.jpg,.jpeg,.webp";
+  `.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,${EDITABLE_TEXT_EXTENSIONS_ACCEPT}`;
 
 function getDocumentFormatBadge(doc: DocumentItem): string {
   const mime = doc.mime_type.toLowerCase();
@@ -51,9 +58,12 @@ function getDocumentFormatBadge(doc: DocumentItem): string {
   if (doc.file_name.toLowerCase().endsWith(".xls")) return "XLS";
   if (mime.includes("presentation") || mime.includes("powerpoint") || doc.file_name.toLowerCase().endsWith(".pptx")) return "PPTX";
   if (doc.file_name.toLowerCase().endsWith(".ppt")) return "PPT";
-  if (mime.includes("csv") || doc.file_name.toLowerCase().endsWith(".csv")) return "CSV";
-  if (mime.includes("markdown") || doc.file_name.toLowerCase().endsWith(".md")) return "MD";
-  if (mime === "text/plain" || doc.file_name.toLowerCase().endsWith(".txt")) return "TXT";
+
+  const textProfile = resolveDocumentEditorProfile(doc);
+  if (textProfile.mode !== "unsupported") {
+    return textProfile.shortBadge;
+  }
+
   const ext = doc.file_name.split(".").pop()?.toUpperCase();
   return ext && ext.length <= 5 ? ext : "DOC";
 }
@@ -91,6 +101,7 @@ export default function DocumentsTab({
   onUpload,
   onDelete,
   onDownload,
+  onDocumentUpdated,
   onCreateTargetedQuiz,
   className = "",
   maxSizeMB = 50,
@@ -99,6 +110,7 @@ export default function DocumentsTab({
   const [isDragging, setIsDragging] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [viewingDocId, setViewingDocId] = useState<string | null>(null);
+  const [pendingCitationSnippet, setPendingCitationSnippet] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<"all" | "pdf" | "image">("all");
   const { setIsViewingDocument, setFocusMode } = useFocusMode();
   const { activeTarget, consumeActiveTarget } = useCitationNavigation();
@@ -114,7 +126,10 @@ export default function DocumentsTab({
       setViewingDocId(targetDocId);
 
       const matchedDoc = documents.find((d) => d.id === targetDocId);
-      if (matchedDoc && matchedDoc.mime_type !== "application/pdf") {
+      if (matchedDoc && isEditableTextDocument(matchedDoc)) {
+        setPendingCitationSnippet(activeTarget.rawContent ?? null);
+        consumeActiveTarget();
+      } else if (matchedDoc && matchedDoc.mime_type !== "application/pdf") {
         consumeActiveTarget();
       }
     });
@@ -135,7 +150,8 @@ export default function DocumentsTab({
       viewingDocId &&
         viewingDoc &&
         (viewingDoc.mime_type === "application/pdf" ||
-          viewingDoc.mime_type.startsWith("image/"))
+          viewingDoc.mime_type.startsWith("image/") ||
+          isEditableTextDocument(viewingDoc))
     );
     setIsViewingDocument(canViewInline);
     return () => {
@@ -166,8 +182,10 @@ export default function DocumentsTab({
   const handleCardClick = (doc: DocumentItem) => {
     if (
       doc.mime_type === "application/pdf" ||
-      doc.mime_type.startsWith("image/")
+      doc.mime_type.startsWith("image/") ||
+      isEditableTextDocument(doc)
     ) {
+      setPendingCitationSnippet(null);
       setViewingDocId(doc.id);
     } else {
       onDownload?.(doc.id, doc.file_name);
@@ -176,6 +194,7 @@ export default function DocumentsTab({
 
   const handleCloseViewer = () => {
     setFocusMode(false);
+    setPendingCitationSnippet(null);
     setViewingDocId(null);
   };
 
@@ -288,7 +307,7 @@ export default function DocumentsTab({
     );
   };
 
-  // 0. Trường hợp người dùng đang xem chi tiết tài liệu (Detail View: Ảnh hoặc PDF)
+  // 0. Trường hợp người dùng đang xem / chỉnh sửa chi tiết tài liệu (Ảnh, PDF, Markdown / Text / Markup)
   if (viewingDocId && viewingDoc) {
     if (viewingDoc.mime_type.startsWith("image/")) {
       return (
@@ -307,15 +326,27 @@ export default function DocumentsTab({
         <DocumentPdfViewer
           document={viewingDoc}
           onClose={handleCloseViewer}
+          onDocumentUpdated={onDocumentUpdated}
           onCreateTargetedQuiz={onCreateTargetedQuiz}
           className={className}
         />
       );
     }
 
-    // Ghi chú mở rộng: Hiện tại StudyMate hỗ trợ xem PDF và Ảnh trực tiếp.
-    // Đối với các định dạng khác như Markdown, Text thuần hoặc tài liệu Office,
-    // vị trí này được chừa sẵn để tích hợp các viewer tương ứng trong các Phase tiếp theo.
+    if (isEditableTextDocument(viewingDoc)) {
+      return (
+        <DocumentTextEditor
+          key={viewingDoc.id}
+          document={viewingDoc}
+          onClose={handleCloseViewer}
+          onDownload={onDownload}
+          onDocumentUpdated={onDocumentUpdated}
+          highlightSnippet={pendingCitationSnippet}
+          onSnippetLocated={() => setPendingCitationSnippet(null)}
+          className={className}
+        />
+      );
+    }
   }
 
   // 1. Trường hợp chưa có tài liệu nào và không có file đang upload: Empty State tối giản chuẩn Apple HIG
@@ -367,8 +398,8 @@ export default function DocumentsTab({
           Chưa có tài liệu
         </h2>
 
-        <p className="mt-2 max-w-[380px] text-center text-[14px] leading-relaxed text-neutral-500 dark:text-neutral-400">
-          Tải lên tài liệu (PDF, Word, Excel, PowerPoint, CSV, Markdown, TXT) hoặc hình ảnh bài giảng để bắt đầu học tập cùng AI.
+        <p className="mt-2 max-w-[400px] text-center text-[14px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+          Tải lên tài liệu (PDF, Word, Excel, PowerPoint, Markdown, HTML, TXT, LOG, JSON, XML, YAML, CSV, TOML) hoặc hình ảnh bài giảng để bắt đầu học tập cùng AI.
         </p>
 
         <button
@@ -591,9 +622,16 @@ export default function DocumentsTab({
         ) : (
           filteredDocuments.map((doc) => {
             const isImage = doc.mime_type.startsWith("image/");
+            const textProfile = resolveDocumentEditorProfile(doc);
+            const isEditableText = textProfile.mode !== "unsupported";
             const canPreviewInline =
-              isImage || doc.mime_type === "application/pdf";
+              isImage || doc.mime_type === "application/pdf" || isEditableText;
             const formatBadge = getDocumentFormatBadge(doc);
+            const cardBadgeClass = isImage
+              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500/15"
+              : isEditableText
+                ? textProfile.badgeToneClass
+                : "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:bg-rose-500/15";
             return (
               <div
                 key={doc.id}
@@ -603,11 +641,7 @@ export default function DocumentsTab({
                 {/* Thông tin tệp */}
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border transition-colors ${
-                      !isImage
-                        ? "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:bg-rose-500/15"
-                        : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500/15"
-                    }`}
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border transition-colors ${cardBadgeClass}`}
                   >
                     {!isImage ? (
                       <span className="text-[11px] font-black">{formatBadge}</span>
@@ -658,7 +692,9 @@ export default function DocumentsTab({
                         title={
                           doc.mime_type === "application/pdf"
                             ? "Xem tài liệu PDF"
-                            : "Xem hình ảnh"
+                            : isEditableText
+                              ? "Mở trình đọc & soạn thảo trực tiếp"
+                              : "Xem hình ảnh"
                         }
                         className="flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300 shadow-2xs transition-all hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 cursor-pointer"
                       >

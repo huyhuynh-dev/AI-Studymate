@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DocumentIngestionProcessor } from './document-ingestion.processor.js';
+import { computeChunkContentHash } from '../helpers/chunk-diff.helper.js';
 import type { ConfigService } from '@nestjs/config';
 import type { StorageService } from '../../storage/storage.service.js';
 import type { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.service.js';
@@ -28,6 +29,8 @@ describe('DocumentIngestionProcessor', () => {
     replaceChunksWithEmbeddings: ReturnType<typeof vi.fn>;
     cloneChunksFromDocument: ReturnType<typeof vi.fn>;
     findChunkRecordsByDocumentId: ReturnType<typeof vi.fn>;
+    findExistingChunksForDiff: ReturnType<typeof vi.fn>;
+    applyIncrementalChunkPlanWithEmbeddings: ReturnType<typeof vi.fn>;
   };
   let documentAssetsRepo: {
     replaceDocumentAssets: ReturnType<typeof vi.fn>;
@@ -51,6 +54,7 @@ describe('DocumentIngestionProcessor', () => {
   };
   let documentsQueueService: {
     addProcessingJob: ReturnType<typeof vi.fn>;
+    enqueueContentReindexJob: ReturnType<typeof vi.fn>;
   };
 
   const mockDocument = {
@@ -89,6 +93,8 @@ describe('DocumentIngestionProcessor', () => {
       ]),
       cloneChunksFromDocument: vi.fn().mockResolvedValue(2),
       findChunkRecordsByDocumentId: vi.fn().mockResolvedValue([]),
+      findExistingChunksForDiff: vi.fn().mockResolvedValue([]),
+      applyIncrementalChunkPlanWithEmbeddings: vi.fn().mockResolvedValue([]),
     };
     documentAssetsRepo = {
       replaceDocumentAssets: vi.fn().mockResolvedValue([
@@ -128,7 +134,8 @@ describe('DocumentIngestionProcessor', () => {
       extractTocFromMarkdown: vi.fn().mockReturnValue([]),
     };
     documentsQueueService = {
-      addProcessingJob: vi.fn(),
+      addProcessingJob: vi.fn().mockResolvedValue(undefined),
+      enqueueContentReindexJob: vi.fn().mockResolvedValue(undefined),
     };
 
     const configService = {
@@ -390,6 +397,312 @@ describe('DocumentIngestionProcessor', () => {
           vlmDescription: 'Sơ đồ gồm 2 khối kết nối bằng mũi tên.',
         }),
       ],
+    );
+  });
+
+  it('Phương án 2 (Markdown Re-index): chỉ re-embed đoạn bị sửa, bảo toàn UUID đoạn cũ và giữ nguyên ocr_status=done', async () => {
+    documentsRepo.findRawDocumentById.mockResolvedValue({
+      ...mockDocument,
+      file_name: 'study.md',
+      mime_type: 'text/markdown',
+      ocr_status: 'done',
+      embed_status: 'pending',
+      content_version: 2,
+      indexed_version: 1,
+    });
+    storageService.getObjectBuffer.mockResolvedValue(
+      Buffer.from('# Mục 1\nGiữ nguyên\n\n# Mục 2\nNội dung mới', 'utf-8'),
+    );
+    documentChunksRepo.findExistingChunksForDiff.mockResolvedValue([
+      {
+        id: 'existing-uuid-1',
+        chunkIndex: 0,
+        contentHash: computeChunkContentHash({
+          content: '# Mục 1\nGiữ nguyên',
+          headings: ['Mục 1'],
+        }),
+        content: '# Mục 1\nGiữ nguyên',
+        headings: ['Mục 1'],
+      },
+      {
+        id: 'existing-uuid-2',
+        chunkIndex: 1,
+        contentHash: computeChunkContentHash({
+          content: '# Mục 2\nNội dung cũ',
+          headings: ['Mục 2'],
+        }),
+        content: '# Mục 2\nNội dung cũ',
+        headings: ['Mục 2'],
+      },
+    ]);
+    doclingService.chunkMarkdownHybrid.mockResolvedValue([
+      {
+        index: 0,
+        pageNumbers: [1],
+        content: '# Mục 1\nGiữ nguyên',
+        rawContent: 'Giữ nguyên',
+        headings: ['Mục 1'],
+        tokenCount: 5,
+      },
+      {
+        index: 1,
+        pageNumbers: [1],
+        content: '# Mục 2\nNội dung mới',
+        rawContent: 'Nội dung mới',
+        headings: ['Mục 2'],
+        tokenCount: 6,
+      },
+    ]);
+    embeddingService.embedBatch.mockResolvedValue([
+      { index: 0, values: Array.from({ length: 768 }, () => 0.2) },
+    ]);
+    documentChunksRepo.applyIncrementalChunkPlanWithEmbeddings.mockResolvedValue([
+      {
+        id: 'existing-uuid-1',
+        chunkIndex: 0,
+        pageNumbers: [1],
+        content: '# Mục 1\nGiữ nguyên',
+        hasImage: false,
+      },
+      {
+        id: 'new-uuid-2',
+        chunkIndex: 1,
+        pageNumbers: [1],
+        content: '# Mục 2\nNội dung mới',
+        hasImage: false,
+      },
+    ]);
+
+    await invokeJob({
+      documentId: 'doc-1',
+      mimeType: 'text/markdown',
+      storageKey: 'key.md',
+      fileName: 'study.md',
+      targetVersion: 2,
+      isReindex: true,
+    });
+
+    // Không reset ocr_status trong lúc re-index (Zero-Downtime RAG Search)
+    expect(documentsRepo.updateDocumentById).not.toHaveBeenCalledWith(
+      'doc-1',
+      expect.objectContaining({ ocr_status: 'processing' }),
+    );
+    // Chỉ gọi embedBatch đúng 1 lần với duy nhất chunk đã sửa
+    expect(embeddingService.embedBatch).toHaveBeenCalledTimes(1);
+    expect(embeddingService.embedBatch).toHaveBeenCalledWith([
+      '# Mục 2\nNội dung mới',
+    ]);
+    expect(
+      documentChunksRepo.applyIncrementalChunkPlanWithEmbeddings,
+    ).toHaveBeenCalledWith(
+      'doc-1',
+      expect.objectContaining({
+        keptChunks: [
+          expect.objectContaining({ existingId: 'existing-uuid-1', chunkIndex: 0 }),
+        ],
+        toDeleteIds: ['existing-uuid-2'],
+        toInsertWithEmbeddings: [
+          expect.objectContaining({ chunkIndex: 1 }),
+        ],
+      }),
+    );
+    expect(documentsRepo.updateDocumentById).toHaveBeenLastCalledWith(
+      'doc-1',
+      expect.objectContaining({
+        embed_status: 'done',
+        indexed_version: 2,
+        sync_error: null,
+      }),
+    );
+  });
+
+  it('Phương án 2 (PDF Overwrite): không gọi Embedding API khi nội dung text PDF không đổi (chỉ highlight/annotate)', async () => {
+    documentsRepo.findRawDocumentById.mockResolvedValue({
+      ...mockDocument,
+      ocr_status: 'done',
+      embed_status: 'pending',
+      content_version: 2,
+      indexed_version: 1,
+    });
+    documentChunksRepo.findExistingChunksForDiff.mockResolvedValue([
+      {
+        id: 'pdf-chunk-uuid-1',
+        chunkIndex: 0,
+        contentHash: computeChunkContentHash({
+          content: '# Chapter 1\nSample text',
+          headings: ['Chapter 1'],
+        }),
+        content: '# Chapter 1\nSample text',
+        headings: ['Chapter 1'],
+      },
+    ]);
+    doclingService.convertDocument.mockResolvedValue({
+      mdContent: '# Chapter 1\nSample text',
+      sanitizedJsonContent: { pages: { '1': {} }, pictures: [] },
+      pageCount: 1,
+      docMetadata: {
+        toc: [{ text: 'Chapter 1', level: 1, page_no: 1 }],
+        processing_time: 1.0,
+        total_tables: 0,
+        total_pictures: 1,
+      },
+      extractedPictures: [
+        {
+          index: 0,
+          selfRef: '#/pictures/0',
+          assetType: 'chart',
+          pageNo: 1,
+          bbox: { l: 0, t: 0, r: 50, b: 50 },
+          caption: 'Figure 1',
+          vlmDescription: 'Biểu đồ',
+          mimeType: 'image/png',
+          buffer: Buffer.from('img'),
+        },
+      ],
+    });
+    doclingService.chunkFromDoclingJson.mockResolvedValue([
+      {
+        index: 0,
+        pageNumbers: [1],
+        content: '# Chapter 1\nSample text',
+        rawContent: 'Sample text',
+        tokenCount: 10,
+        headings: ['Chapter 1'],
+        chunkType: 'mixed',
+        hasImage: true,
+        hasTable: false,
+        metadata: { self_refs: ['#/pictures/0'] },
+      },
+    ]);
+    documentChunksRepo.applyIncrementalChunkPlanWithEmbeddings.mockResolvedValue([
+      {
+        id: 'pdf-chunk-uuid-1',
+        chunkIndex: 0,
+        pageNumbers: [1],
+        content: '# Chapter 1\nSample text',
+        hasImage: true,
+        metadata: { self_refs: ['#/pictures/0'] },
+      },
+    ]);
+
+    await invokeJob({
+      documentId: 'doc-1',
+      mimeType: 'application/pdf',
+      storageKey: mockDocument.storage_key,
+      fileName: 'test.pdf',
+      targetVersion: 2,
+      isReindex: true,
+    });
+
+    expect(embeddingService.embedBatch).not.toHaveBeenCalled();
+    expect(
+      documentChunksRepo.applyIncrementalChunkPlanWithEmbeddings,
+    ).toHaveBeenCalledWith(
+      'doc-1',
+      expect.objectContaining({
+        keptChunks: [
+          expect.objectContaining({ existingId: 'pdf-chunk-uuid-1' }),
+        ],
+        toInsertWithEmbeddings: [],
+        toDeleteIds: [],
+      }),
+    );
+    expect(documentAssetsRepo.linkAssetsToChunksBySelfRef).toHaveBeenCalledWith(
+      'doc-1',
+      new Map([['#/pictures/0', 'pdf-chunk-uuid-1']]),
+    );
+    expect(documentsRepo.updateDocumentById).toHaveBeenLastCalledWith(
+      'doc-1',
+      expect.objectContaining({
+        embed_status: 'done',
+        indexed_version: 2,
+      }),
+    );
+  });
+
+  it('Monotonic Version Guard: hủy commit bản lỗi thời và tự động xếp lịch re-index bản mới hơn', async () => {
+    documentsRepo.findRawDocumentById
+      .mockResolvedValueOnce({
+        ...mockDocument,
+        file_name: 'notes.md',
+        mime_type: 'text/markdown',
+        ocr_status: 'done',
+        embed_status: 'pending',
+        content_version: 2,
+        indexed_version: 1,
+      })
+      // Các lần kiểm tra tiếp theo trả về version 3 mới hơn do người dùng vừa bấm Ctrl+S lần nữa
+      .mockResolvedValue({
+        ...mockDocument,
+        file_name: 'notes.md',
+        mime_type: 'text/markdown',
+        ocr_status: 'done',
+        embed_status: 'pending',
+        content_version: 3,
+        indexed_version: 1,
+      });
+
+    storageService.getObjectBuffer.mockResolvedValue(Buffer.from('Bản v2', 'utf-8'));
+
+    await invokeJob({
+      documentId: 'doc-1',
+      mimeType: 'text/markdown',
+      storageKey: 'key.md',
+      fileName: 'notes.md',
+      targetVersion: 2,
+      isReindex: true,
+    });
+
+    expect(
+      documentChunksRepo.applyIncrementalChunkPlanWithEmbeddings,
+    ).not.toHaveBeenCalled();
+    expect(documentsQueueService.enqueueContentReindexJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: 'doc-1',
+        targetVersion: 3,
+      }),
+      { delayMs: 500 },
+    );
+  });
+
+  it('xử lý trực tiếp tệp HTML qua bước tiền xử lý sạch trước khi băm với HybridChunker', async () => {
+    documentsRepo.findRawDocumentById.mockResolvedValue({
+      ...mockDocument,
+      file_name: 'page.html',
+      mime_type: 'text/html',
+      ocr_status: 'pending',
+      embed_status: 'pending',
+      content_version: 1,
+      indexed_version: 0,
+    });
+    storageService.getObjectBuffer.mockResolvedValue(
+      Buffer.from('<h1>Xin chào</h1><script>bad()</script><p>Đoạn HTML</p>', 'utf-8'),
+    );
+    doclingService.chunkMarkdownHybrid.mockResolvedValue([
+      {
+        index: 0,
+        pageNumbers: [1],
+        content: '# Xin chào\nĐoạn HTML',
+        rawContent: 'Đoạn HTML',
+        tokenCount: 6,
+      },
+    ]);
+
+    await invokeJob({
+      documentId: 'doc-1',
+      mimeType: 'text/html',
+      storageKey: 'page.html',
+      fileName: 'page.html',
+    });
+
+    expect(doclingService.convertDocument).not.toHaveBeenCalled();
+    expect(doclingService.chunkMarkdownHybrid).toHaveBeenCalledWith(
+      expect.stringContaining('# Xin chào'),
+      'page.html',
+    );
+    expect(doclingService.chunkMarkdownHybrid).toHaveBeenCalledWith(
+      expect.not.stringContaining('bad()'),
+      'page.html',
     );
   });
 });

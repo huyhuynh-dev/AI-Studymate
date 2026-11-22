@@ -17,7 +17,19 @@ export const ALLOWED_MIME_TYPES = [
   'application/csv',
   'text/markdown',
   'text/x-markdown',
+  'text/html',
   'text/plain',
+  'application/json',
+  'text/json',
+  'application/xml',
+  'text/xml',
+  'application/yaml',
+  'application/x-yaml',
+  'text/yaml',
+  'text/x-yaml',
+  'application/toml',
+  'text/toml',
+  'text/x-toml',
   'image/jpeg',
   'image/jpg',
   'image/png',
@@ -35,7 +47,15 @@ const EXTENSION_TO_MIME_MAP: Record<string, string> = {
   csv: 'text/csv',
   md: 'text/markdown',
   markdown: 'text/markdown',
+  html: 'text/html',
+  htm: 'text/html',
   txt: 'text/plain',
+  log: 'text/plain',
+  json: 'application/json',
+  xml: 'application/xml',
+  yaml: 'application/yaml',
+  yml: 'application/yaml',
+  toml: 'application/toml',
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
@@ -46,15 +66,16 @@ const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 
 export function resolveFileMimeType(file: File): string {
   const rawType = file.type?.trim().toLowerCase() || '';
+  const ext = file.name.split('.').pop()?.trim().toLowerCase() || '';
   if (
     rawType &&
     rawType !== 'application/octet-stream' &&
+    !(rawType === 'text/plain' && ext !== 'txt' && ext !== 'log') &&
     (ALLOWED_MIME_TYPES as readonly string[]).includes(rawType)
   ) {
     return rawType;
   }
 
-  const ext = file.name.split('.').pop()?.trim().toLowerCase() || '';
   return EXTENSION_TO_MIME_MAP[ext] || rawType;
 }
 
@@ -62,7 +83,7 @@ export function useDocuments(conversationId?: string | null) {
   const [uploadQueue, setUploadQueue] = useState<Record<string, UploadProgressItem>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Kiểm tra xem có document nào đang trong tiến trình xử lý ngầm (ocr/embed) hay không
+  // Kiểm tra xem có document nào đang trong tiến trình xử lý ngầm (ocr/embed/reindex) hay không
   const shouldPoll = useCallback((docs?: DocumentItem[]) => {
     if (!docs || docs.length === 0) return false;
     return docs.some(
@@ -70,7 +91,10 @@ export function useDocuments(conversationId?: string | null) {
         d.ocr_status === 'pending' ||
         d.ocr_status === 'processing' ||
         (d.ocr_status === 'done' &&
-          (d.embed_status === 'pending' || d.embed_status === 'processing'))
+          (d.embed_status === 'pending' ||
+            d.embed_status === 'processing' ||
+            (d.embed_status !== 'failed' &&
+              (d.content_version ?? 1) > (d.indexed_version ?? 0))))
     );
   }, []);
 
@@ -99,7 +123,7 @@ export function useDocuments(conversationId?: string | null) {
     const resolvedMimeType = resolveFileMimeType(file);
     if (!(ALLOWED_MIME_TYPES as readonly string[]).includes(resolvedMimeType)) {
       throw new Error(
-        `Định dạng tệp "${file.name}" không được hỗ trợ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint, CSV, Markdown, TXT, PNG, JPG, WEBP.`
+        `Định dạng tệp "${file.name}" không được hỗ trợ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint, Markdown, HTML, TXT, LOG, JSON, XML, YAML, CSV, TOML và PNG, JPG, WEBP.`
       );
     }
 
@@ -264,6 +288,21 @@ export function useDocuments(conversationId?: string | null) {
     }
   };
 
+  const updateDocumentInCache = useCallback(
+    (updatedDoc: DocumentItem) => {
+      mutate(
+        (current) => {
+          if (!current) return [updatedDoc];
+          return current.map((doc) =>
+            doc.id === updatedDoc.id ? { ...doc, ...updatedDoc } : doc
+          );
+        },
+        { revalidate: false }
+      );
+    },
+    [mutate]
+  );
+
   return {
     documents: data || [],
     isLoading,
@@ -276,6 +315,7 @@ export function useDocuments(conversationId?: string | null) {
     uploadFiles,
     deleteDocument,
     downloadDocument,
+    updateDocumentInCache,
     refresh: mutate,
   };
 }

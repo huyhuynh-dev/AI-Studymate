@@ -77,7 +77,7 @@ import {
   ListTree,
 } from "lucide-react";
 
-import { DocumentItem } from "@/types";
+import type { DocumentItem, DocumentStatus } from "@/types";
 import { documentsApi } from "@/services/documents.api";
 import { useFocusMode } from "@/components/layout";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
@@ -88,6 +88,7 @@ import TocMasterySidebar from "./TocMasterySidebar";
 export interface DocumentPdfViewerProps {
   document: DocumentItem;
   onClose: () => void;
+  onDocumentUpdated?: (doc: DocumentItem) => void;
   onCreateTargetedQuiz?: (opts: {
     chunkIds: string[];
     sectionTitle: string;
@@ -103,6 +104,11 @@ interface PdfToolbarProps {
   documentId: string;
   backendDocumentId: string;
   fileName: string;
+  initialContentVersion: number;
+  initialIndexedVersion: number;
+  initialEmbedStatus: DocumentStatus;
+  initialSyncError?: string | null;
+  onDocumentUpdated?: (doc: DocumentItem) => void;
   onClose: () => void;
   isTocOpen: boolean;
   onToggleToc: () => void;
@@ -120,6 +126,11 @@ function PdfToolbar({
   documentId,
   backendDocumentId,
   fileName,
+  initialContentVersion,
+  initialIndexedVersion,
+  initialEmbedStatus,
+  initialSyncError = null,
+  onDocumentUpdated,
   onClose,
   isTocOpen,
   onToggleToc,
@@ -149,6 +160,10 @@ function PdfToolbar({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [docContentVersion, setDocContentVersion] = useState(initialContentVersion);
+  const [docIndexedVersion, setDocIndexedVersion] = useState(initialIndexedVersion);
+  const [docEmbedStatus, setDocEmbedStatus] = useState<DocumentStatus>(initialEmbedStatus);
+  const [docSyncError, setDocSyncError] = useState<string | null>(initialSyncError);
 
   // Suy luận trạng thái thay đổi chưa lưu từ lịch sử hoặc pending changes của Annotation
   const hasUnsavedChanges = hasUnsavedHistoryChanges || Boolean(annotationState?.hasPendingChanges);
@@ -249,8 +264,13 @@ function PdfToolbar({
       // 4. Ghi đè tệp PDF trực tiếp lên Cloudflare R2
       await documentsApi.uploadToR2(uploadUrl, updatedFile);
 
-      // 5. Đồng bộ lại dung lượng tệp mới trong cơ sở dữ liệu
-      await documentsApi.completeOverwrite(backendDocumentId);
+      // 5. Đồng bộ lại dung lượng tệp mới trong cơ sở dữ liệu (kích hoạt re-index tăng dần Phương án 2)
+      const updatedDoc = await documentsApi.completeOverwrite(backendDocumentId);
+      setDocContentVersion(updatedDoc.content_version ?? docContentVersion + 1);
+      setDocIndexedVersion(updatedDoc.indexed_version ?? docIndexedVersion);
+      setDocEmbedStatus(updatedDoc.embed_status);
+      setDocSyncError(updatedDoc.sync_error ?? null);
+      onDocumentUpdated?.(updatedDoc);
 
       setHasUnsavedHistoryChanges(false);
       setSaveSuccess(true);
@@ -265,7 +285,45 @@ function PdfToolbar({
     } finally {
       setIsSaving(false);
     }
-  }, [exportApi, isSaving, annotationApi, fileName, backendDocumentId]);
+  }, [
+    exportApi,
+    isSaving,
+    annotationApi,
+    fileName,
+    backendDocumentId,
+    docContentVersion,
+    docIndexedVersion,
+    onDocumentUpdated,
+  ]);
+
+  const isPdfAiSyncing =
+    docEmbedStatus === "pending" ||
+    docEmbedStatus === "processing" ||
+    (docEmbedStatus !== "failed" && docContentVersion > docIndexedVersion);
+
+  useEffect(() => {
+    if (!isPdfAiSyncing) return;
+    let cancelled = false;
+
+    const timer = setInterval(() => {
+      void documentsApi
+        .getById(backendDocumentId)
+        .then((latest) => {
+          if (cancelled) return;
+          setDocContentVersion(latest.content_version ?? 1);
+          setDocIndexedVersion(latest.indexed_version ?? 0);
+          setDocEmbedStatus(latest.embed_status);
+          setDocSyncError(latest.sync_error ?? null);
+          onDocumentUpdated?.(latest);
+        })
+        .catch(() => {});
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [backendDocumentId, isPdfAiSyncing, onDocumentUpdated]);
 
   const handleToggleTool = (toolId: string | null) => {
     if (!annotationApi) return;
@@ -572,6 +630,25 @@ function PdfToolbar({
             </>
           )}
         </button>
+
+        {/* Tầng 2: Chỉ báo đồng bộ AI tăng dần (Phương án 2) cho PDF Overwrite */}
+        {docEmbedStatus === "failed" ? (
+          <span
+            title={docSyncError || "Lỗi đồng bộ chỉ mục AI"}
+            className="hidden md:inline-flex h-7 items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 text-[11px] font-semibold text-orange-700 dark:text-orange-400 cursor-help"
+          >
+            <AlertCircle className="h-3 w-3" />
+            <span>Lỗi Sync AI</span>
+          </span>
+        ) : isPdfAiSyncing ? (
+          <span
+            title="Đang cập nhật chỉ mục Vector AI theo bản PDF mới nhất"
+            className="hidden md:inline-flex h-7 items-center gap-1 rounded-full border border-purple-500/25 bg-purple-500/10 px-2 text-[11px] font-semibold text-purple-700 dark:text-purple-300"
+          >
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Đang đồng bộ AI...</span>
+          </span>
+        ) : null}
       </div>
       )}
 
@@ -958,6 +1035,7 @@ function PdfTocSidebarBridge({
 export default function DocumentPdfViewer({
   document,
   onClose,
+  onDocumentUpdated,
   onCreateTargetedQuiz,
   compactReaderMode = false,
   isExternalFullscreen = false,
@@ -1188,6 +1266,11 @@ export default function DocumentPdfViewer({
                           documentId={activeDocumentId}
                           backendDocumentId={document.id}
                           fileName={document.file_name}
+                          initialContentVersion={document.content_version ?? 1}
+                          initialIndexedVersion={document.indexed_version ?? 0}
+                          initialEmbedStatus={document.embed_status}
+                          initialSyncError={document.sync_error ?? null}
+                          onDocumentUpdated={onDocumentUpdated}
                           onClose={onClose}
                           isTocOpen={isTocOpen}
                           onToggleToc={() => setIsTocOpen((prev) => !prev)}
