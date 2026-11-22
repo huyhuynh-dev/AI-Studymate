@@ -44,6 +44,12 @@ import {
   superdocInspectInputSchema,
   createSuperDocPerformActionTool,
   superdocPerformActionInputSchema,
+  createSuperDocStreamTextTool,
+  superdocStreamTextInputSchema,
+  createSuperDocApiSearchTool,
+  superdocApiSearchInputSchema,
+  createSuperDocApiCallTool,
+  superdocApiCallInputSchema,
 } from './definitions/superdoc/index.js';
 
 export class ChatSessionToolTracker implements ToolCallTracker {
@@ -248,6 +254,19 @@ export class ToolRegistryService {
           'Thực hiện thao tác chỉnh sửa tài liệu Word đang mở trong SuperDoc',
         inputSchema: superdocPerformActionInputSchema,
       }),
+      superdoc_stream_text: tool({
+        description:
+          'Ghi/dịch/sửa nội dung văn bản đoạn văn hoặc tiêu đề trực tiếp lên tài liệu Word theo luồng',
+        inputSchema: superdocStreamTextInputSchema,
+      }),
+      superdoc_api_search: tool({
+        description: 'Tra cứu các hàm và schema của Document API cấp thấp',
+        inputSchema: superdocApiSearchInputSchema,
+      }),
+      superdoc_api_call: tool({
+        description: 'Thực thi các lệnh Document API cấp thấp trên tài liệu Word',
+        inputSchema: superdocApiCallInputSchema,
+      }),
     };
   }
 
@@ -344,6 +363,43 @@ export class ToolRegistryService {
         {
           description: callbacks.superdocToolkitMeta?.performActionDescription,
           inputSchema: callbacks.superdocToolkitMeta?.performActionInputSchema,
+          documentId: callbacks.superdocToolkitMeta?.documentId,
+          fileName: callbacks.superdocToolkitMeta?.fileName,
+        },
+      );
+    }
+
+    if (callbacks?.onSuperDocStreamText) {
+      tools.superdoc_stream_text = createSuperDocStreamTextTool(
+        callbacks.onSuperDocStreamText,
+        tracker,
+        {
+          documentId: callbacks.superdocToolkitMeta?.documentId,
+          fileName: callbacks.superdocToolkitMeta?.fileName,
+        },
+      );
+    }
+
+    if (callbacks?.onSuperDocApiSearch) {
+      tools.superdoc_api_search = createSuperDocApiSearchTool(
+        callbacks.onSuperDocApiSearch,
+        tracker,
+        {
+          description: callbacks.superdocToolkitMeta?.apiSearchDescription,
+          inputSchema: callbacks.superdocToolkitMeta?.apiSearchInputSchema,
+          documentId: callbacks.superdocToolkitMeta?.documentId,
+          fileName: callbacks.superdocToolkitMeta?.fileName,
+        },
+      );
+    }
+
+    if (callbacks?.onSuperDocApiCall) {
+      tools.superdoc_api_call = createSuperDocApiCallTool(
+        callbacks.onSuperDocApiCall,
+        tracker,
+        {
+          description: callbacks.superdocToolkitMeta?.apiCallDescription,
+          inputSchema: callbacks.superdocToolkitMeta?.apiCallInputSchema,
           documentId: callbacks.superdocToolkitMeta?.documentId,
           fileName: callbacks.superdocToolkitMeta?.fileName,
         },

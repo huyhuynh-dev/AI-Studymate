@@ -44,6 +44,7 @@ export type WorkspaceSyncEvent =
       readonly title?: string;
       readonly changeMode?: 'tracked' | 'direct';
       readonly count?: number;
+      readonly requiresSnapshotReload?: boolean;
       readonly occurredAt: string;
     };
 

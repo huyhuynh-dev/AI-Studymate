@@ -1769,6 +1769,225 @@ export const AiMessage = React.memo(function AiMessage({
               }
             }
 
+            if (
+              part.type === "tool-superdoc_stream_text" ||
+              (part.type === "dynamic-tool" &&
+                part.toolName === "superdoc_stream_text")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isDone = state === "output-available";
+              const errorMessage: string | undefined =
+                part.output?.errorMessage;
+              const isError =
+                state === "output-error" ||
+                Boolean(errorMessage) ||
+                (isDone && part.output?.status === "failed");
+
+              const mode: string =
+                part.output?.mode || part.input?.mode || "replace";
+              const modeLabelMap: Record<string, string> = {
+                replace: "Thay thế đoạn văn bản",
+                before: "Chèn nội dung phía trước",
+                after: "Chèn nội dung phía sau",
+                append: "Viết thêm đoạn mới ở cuối tài liệu",
+                paragraphBefore: "Thêm đoạn văn mới phía trên",
+                paragraphAfter: "Thêm đoạn văn mới phía dưới",
+              };
+              const readableMode = modeLabelMap[mode] || "Viết nội dung mới";
+              const changeMode: string = part.output?.changeMode || "tracked";
+              const isTracked = changeMode === "tracked";
+              const docId: string | undefined = part.output?.documentId;
+              const docFileName: string =
+                part.output?.fileName || "tài liệu Word";
+
+              if (isRunning) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2.5 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF] dark:bg-[#4F46E5]/10 p-3 text-xs text-[#4F46E5] dark:text-[#818CF8]"
+                  >
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                    <div className="space-y-0.5">
+                      <div className="font-bold text-[#3525CD] dark:text-white">
+                        AI đang viết trực tiếp lên tài liệu Word…
+                      </div>
+                      <div className="text-[11px] text-[#777587] dark:text-neutral-400">
+                        {readableMode}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (isError) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/20 p-3 text-xs text-[#BA1A1A] dark:text-rose-400"
+                  >
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                      {errorMessage ||
+                        `Không thể viết nội dung (${readableMode}) trên tài liệu Word.`}
+                    </span>
+                  </div>
+                );
+              }
+
+              if (isDone) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/35 bg-gradient-to-r from-[#EEF2FF] via-white to-[#ECFDF5] dark:from-[#4F46E5]/15 dark:via-[#161922] dark:to-emerald-500/10 p-3 text-xs shadow-2xs"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-2xs">
+                        {isTracked ? (
+                          <GitPullRequest className="h-4 w-4" />
+                        ) : (
+                          <FileEdit className="h-4 w-4" />
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-white dark:bg-white/10 border border-indigo-500/20 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-200">
+                            <Sparkles className="h-2.5 w-2.5" />
+                            {isTracked
+                              ? "Đề xuất (Tracked Changes)"
+                              : "Sửa trực tiếp"}
+                          </span>
+                          <span className="truncate text-[11px] font-medium text-[#777587] dark:text-neutral-400">
+                            {docFileName}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 truncate font-semibold text-[#0B1C30] dark:text-white">
+                          {readableMode}
+                        </div>
+                      </div>
+                    </div>
+
+                    {docId && (
+                      <button
+                        type="button"
+                        onClick={() => focusDocumentReviewBanner(docId)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.1] px-2.5 py-1.5 text-[11.5px] font-semibold text-[#4F46E5] dark:text-[#818CF8] hover:bg-[#4F46E5] hover:text-white transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>Xem & Duyệt trên tài liệu</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              }
+            }
+
+            if (
+              part.type === "tool-superdoc_api_search" ||
+              (part.type === "dynamic-tool" &&
+                part.toolName === "superdoc_api_search")
+            ) {
+              const state: string = part.state || "input-available";
+              if (state === "input-streaming" || state === "input-available") {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/70 dark:bg-indigo-500/10 p-2.5 text-xs text-indigo-700 dark:text-indigo-200"
+                  >
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                    <span>Đang tra cứu API cấu trúc tài liệu Word…</span>
+                  </div>
+                );
+              }
+              if (state === "output-available") {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8FAFF] dark:bg-white/[0.03] px-3 py-2 text-[11.5px] text-[#464555] dark:text-neutral-300"
+                  >
+                    <Search className="h-3.5 w-3.5 shrink-0 text-[#4F46E5] dark:text-[#818CF8]" />
+                    <span className="font-semibold text-[#0B1C30] dark:text-white">
+                      Đã tra cứu schema thao tác nâng cao trên tài liệu Word
+                    </span>
+                  </div>
+                );
+              }
+            }
+
+            if (
+              part.type === "tool-superdoc_api_call" ||
+              (part.type === "dynamic-tool" &&
+                part.toolName === "superdoc_api_call")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isDone = state === "output-available";
+              const errorMessage: string | undefined =
+                part.output?.errorMessage;
+              const isError =
+                state === "output-error" ||
+                Boolean(errorMessage) ||
+                (isDone && part.output?.status === "failed");
+              const operationId: string =
+                part.output?.operationId || part.input?.operationId || "doc.api";
+              const docId: string | undefined = part.output?.documentId;
+
+              if (isRunning) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2.5 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF] dark:bg-[#4F46E5]/10 p-3 text-xs text-[#4F46E5] dark:text-[#818CF8]"
+                  >
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                    <span>Đang thực thi thao tác nâng cao ({operationId})…</span>
+                  </div>
+                );
+              }
+
+              if (isError) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/20 p-3 text-xs text-[#BA1A1A] dark:text-rose-400"
+                  >
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                      {errorMessage ||
+                        `Không thể thực thi thao tác (${operationId}).`}
+                    </span>
+                  </div>
+                );
+              }
+
+              if (isDone) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#C7D2FE] dark:border-[#4F46E5]/35 bg-[#F8FAFF] dark:bg-white/[0.03] px-3 py-2 text-[11.5px]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span className="font-semibold text-[#0B1C30] dark:text-white">
+                        Đã cập nhật cấu trúc Word ({operationId})
+                      </span>
+                    </div>
+                    {docId && (
+                      <button
+                        type="button"
+                        onClick={() => focusDocumentReviewBanner(docId)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-[#E5EEFF] dark:border-white/[0.1] px-2 py-1 text-[11px] font-semibold text-[#4F46E5] dark:text-[#818CF8] hover:bg-[#4F46E5] hover:text-white transition-colors cursor-pointer"
+                      >
+                        <Eye className="h-3 w-3" />
+                        <span>Xem trên tài liệu</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              }
+            }
+
             if (part.type === "tool-invocation") {
               const invocation = part.toolInvocation;
               return (

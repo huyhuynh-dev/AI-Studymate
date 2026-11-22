@@ -48,6 +48,11 @@ import { WordDocumentToolbar } from "./toolbar/WordDocumentToolbar";
 import { WordAiReviewBanner } from "./review/WordAiReviewBanner";
 import { WordSelectionAiPill } from "./review/WordSelectionAiPill";
 import { WordTrackedChangePopover } from "./review/WordTrackedChangePopover";
+import { TrackedReplacementCaret } from "./review/TrackedReplacementCaret";
+import {
+  BrowserTextStreamManager,
+  isValidStreamTextInput,
+} from "./stream/browser-text-stream";
 import { useWordDocumentPersistence } from "./useWordDocumentPersistence";
 import {
   buildCitationSearchQueries,
@@ -248,7 +253,7 @@ function DocumentWordWorkspace({
     markDirty,
   } = persistence;
 
-  const { registerEditor, triggerQuickPrompt } = useWordAgent();
+  const { registerEditor, triggerQuickPrompt, setChangeMode } = useWordAgent();
 
   const [documentMode, setDocumentMode] = useState<DocumentMode>(() =>
     compactReaderMode ? "viewing" : "editing",
@@ -267,6 +272,7 @@ function DocumentWordWorkspace({
     useState<CitationResolutionTier>(2);
 
   const superdocInstanceRef = useRef<SuperDoc | null>(null);
+  const streamManagerRef = useRef<BrowserTextStreamManager | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const editorOverlayRef = useRef<HTMLDivElement | null>(null);
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -274,6 +280,7 @@ function DocumentWordWorkspace({
   const exportMenuRef = useRef<HTMLDivElement | null>(null);
   const isReadyRef = useRef(false);
   const [reviewExpandSignal, setReviewExpandSignal] = useState(0);
+  const [isAiStreamingText, setIsAiStreamingText] = useState(false);
 
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
@@ -335,6 +342,26 @@ function DocumentWordWorkspace({
           });
         }
         markDirty();
+      },
+      pushStreamText: (toolCallId, args, targetChangeMode) => {
+        const manager = streamManagerRef.current;
+        if (!manager || !isValidStreamTextInput(args)) return;
+        const instance = superdocInstanceRef.current;
+        if (instance && isReadyRef.current && targetChangeMode === "tracked") {
+          setTrackedChangesView("markup");
+          instance.setViewingOptions({
+            comments: true,
+            trackedChanges: "markup",
+          });
+        }
+        manager.pushUpdate(toolCallId, args, targetChangeMode);
+      },
+      waitForPendingStreams: async () => {
+        const manager = streamManagerRef.current;
+        if (!manager) {
+          return { anyLiveSucceeded: false, anyFailed: false };
+        }
+        return manager.waitForAll();
       },
       acceptAllChanges: async () => {
         const instance = superdocInstanceRef.current;
@@ -420,7 +447,7 @@ function DocumentWordWorkspace({
       zoom: FIT_WIDTH_ZOOM,
       ui: {
         toolbar: false,
-        comments: true,
+        comments: false,
         contextMenu: !compactReaderMode,
         loading: false,
         search: true,
@@ -432,6 +459,16 @@ function DocumentWordWorkspace({
       onReady: ({ superdoc: readySuperDoc }) => {
         if (disposed) return;
         superdocInstanceRef.current = readySuperDoc;
+        void streamManagerRef.current?.dispose();
+        const docApi = readySuperDoc.activeEditor?.doc;
+        streamManagerRef.current =
+          !compactReaderMode && docApi
+            ? new BrowserTextStreamManager({
+                doc: docApi,
+                onMutated: markDirty,
+                onStreamingChange: setIsAiStreamingText,
+              })
+            : null;
         isReadyRef.current = true;
         setIsEditorReady(true);
         setFatalEditorError(null);
@@ -499,6 +536,8 @@ function DocumentWordWorkspace({
     return () => {
       disposed = true;
       isReadyRef.current = false;
+      void streamManagerRef.current?.dispose();
+      streamManagerRef.current = null;
       superdocInstanceRef.current = null;
       attachRef.current(null);
       instance.destroy();
@@ -517,6 +556,13 @@ function DocumentWordWorkspace({
   const handleChangeDocumentMode = useCallback(
     (nextMode: DocumentMode) => {
       setDocumentMode(nextMode);
+      if (!compactReaderMode) {
+        if (nextMode === "editing") {
+          setChangeMode("direct");
+        } else if (nextMode === "suggesting") {
+          setChangeMode("tracked");
+        }
+      }
       const instance = superdocInstanceRef.current;
       if (!instance || !isReadyRef.current) return;
       instance.setDocumentMode(nextMode);
@@ -527,7 +573,7 @@ function DocumentWordWorkspace({
         });
       }
     },
-    [trackedChangesView],
+    [compactReaderMode, setChangeMode, trackedChangesView],
   );
 
   const handleChangeTrackedChangesView = useCallback(
@@ -1276,6 +1322,20 @@ function DocumentWordWorkspace({
           stageContainerRef={stageRef}
           onDecisionSettled={markDirty}
         />
+      )}
+
+      {!compactReaderMode && (
+        <TrackedReplacementCaret
+          stageContainerRef={stageRef}
+          documentMode={documentMode}
+        />
+      )}
+
+      {!compactReaderMode && isAiStreamingText && (
+        <div className="pointer-events-none fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full border border-indigo-500/30 bg-white/95 dark:bg-[#171b26]/95 px-3.5 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-200 shadow-lg backdrop-blur-md flex items-center gap-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
+          <span>StudyMate AI đang viết trực tiếp lên tài liệu…</span>
+        </div>
       )}
 
       {/* Hộp thoại xác nhận khi đóng lúc chưa lưu */}

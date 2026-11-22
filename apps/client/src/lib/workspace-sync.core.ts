@@ -58,6 +58,7 @@ export const workspaceSyncEventSchema = z.discriminatedUnion('resource', [
     title: z.string().optional(),
     changeMode: z.enum(['tracked', 'direct']).optional(),
     count: z.number().int().nonnegative().optional(),
+    requiresSnapshotReload: z.boolean().optional(),
     occurredAt: z.string().min(1),
   }),
 ]);

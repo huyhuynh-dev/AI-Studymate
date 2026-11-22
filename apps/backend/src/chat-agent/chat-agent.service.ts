@@ -11,6 +11,12 @@ import {
   extractSuperDocSdkError,
   type SuperDocAgentChangeMode,
 } from '../documents/services/superdoc-runtime.service.js';
+import { createSuperDocRunProgress } from '../documents/services/superdoc-run-progress.helper.js';
+import {
+  commitServerTextStream,
+  filterToolkitPerformActionTool,
+  type ValidatedStreamTextArgs,
+} from '../documents/services/superdoc-stream-text.helper.js';
 import { SummariesService } from '../summaries/summaries.service.js';
 import { FlashcardAiManageService } from '../deck-flashcard/flashcard-ai-manage.service.js';
 import { QuizService } from '../quiz/quiz.service.js';
@@ -401,6 +407,10 @@ export class ChatAgentService {
         inspectInputSchema?: Record<string, unknown>;
         performActionDescription?: string;
         performActionInputSchema?: Record<string, unknown>;
+        apiSearchDescription?: string;
+        apiSearchInputSchema?: Record<string, unknown>;
+        apiCallDescription?: string;
+        apiCallInputSchema?: Record<string, unknown>;
       };
       onSuperDocInspect: (input: Record<string, unknown>) => Promise<unknown>;
       onSuperDocPerformAction: (
@@ -409,6 +419,19 @@ export class ChatAgentService {
           unknown
         >,
       ) => Promise<unknown>;
+      onSuperDocStreamText: (input: {
+        mode:
+          | 'replace'
+          | 'before'
+          | 'after'
+          | 'append'
+          | 'paragraphBefore'
+          | 'paragraphAfter';
+        anchor: string | null;
+        text: string;
+      }) => Promise<unknown>;
+      onSuperDocApiSearch: (input: Record<string, unknown>) => Promise<unknown>;
+      onSuperDocApiCall: (input: Record<string, unknown>) => Promise<unknown>;
     } | null = null;
 
     if (
@@ -438,11 +461,41 @@ export class ChatAgentService {
         const inspectDef = runtimeTools.find(
           (t) => t.name === 'superdoc_inspect',
         );
-        const performDef = runtimeTools.find(
+        const rawPerformDef = runtimeTools.find(
           (t) => t.name === 'superdoc_perform_action',
+        );
+        const filteredPerformDef = rawPerformDef
+          ? filterToolkitPerformActionTool(rawPerformDef)
+          : undefined;
+        const apiSearchDef = runtimeTools.find(
+          (t) => t.name === 'superdoc_api_search',
+        );
+        const apiCallDef = runtimeTools.find(
+          (t) => t.name === 'superdoc_api_call',
         );
 
         let mutationCount = 0;
+        const runProgress = createSuperDocRunProgress();
+
+        const recordAndGuardResult = (
+          toolName: string,
+          args: Record<string, unknown>,
+          result: unknown,
+        ) => {
+          const check = runProgress.record({ tool: toolName, args, result });
+          if (check.repeatedFailure && check.stopMessage) {
+            return {
+              status: 'failed',
+              repeatedFailure: true,
+              error: {
+                code: 'REPEATED_FAILURE',
+                message: check.stopMessage,
+              },
+              lastResult: result,
+            };
+          }
+          return result;
+        };
 
         superdocBindings = {
           activeWordDocument: {
@@ -457,8 +510,12 @@ export class ChatAgentService {
             fileName: activeDocRecord.file_name,
             inspectDescription: inspectDef?.description,
             inspectInputSchema: inspectDef?.inputSchema,
-            performActionDescription: performDef?.description,
-            performActionInputSchema: performDef?.inputSchema,
+            performActionDescription: filteredPerformDef?.description,
+            performActionInputSchema: filteredPerformDef?.inputSchema,
+            apiSearchDescription: apiSearchDef?.description,
+            apiSearchInputSchema: apiSearchDef?.inputSchema,
+            apiCallDescription: apiCallDef?.description,
+            apiCallInputSchema: apiCallDef?.inputSchema,
           },
           onSuperDocInspect: async (input) => {
             try {
@@ -476,11 +533,81 @@ export class ChatAgentService {
                     return { payload: snapshot };
                   },
                 });
-              return sessionRes.payload;
+              return recordAndGuardResult(
+                'superdoc_inspect',
+                input,
+                sessionRes.payload,
+              );
             } catch (error) {
-              return {
+              return recordAndGuardResult('superdoc_inspect', input, {
                 error: extractSuperDocSdkError(error),
-              };
+              });
+            }
+          },
+          onSuperDocStreamText: async (input) => {
+            const rawInput = input as unknown as Record<string, unknown>;
+            const policy =
+              this.superdocRuntimeService!.validateToolCallPolicy(
+                'superdoc_stream_text',
+                rawInput,
+                changeMode,
+              );
+            if (!policy.allowed) {
+              return recordAndGuardResult('superdoc_stream_text', rawInput, {
+                status: 'failed',
+                error: {
+                  code: policy.code,
+                  message: policy.message,
+                },
+              });
+            }
+
+            try {
+              const streamArgs = policy.normalizedArgs as unknown as ValidatedStreamTextArgs;
+              const sessionRes =
+                await this.superdocRuntimeService!.runWithDocumentSession({
+                  userId: ragContext.userId,
+                  documentId: activeDocRecord.id,
+                  changeMode,
+                  fn: async ({ doc, markMutated }) => {
+                    const streamReceipt = await commitServerTextStream(
+                      doc,
+                      streamArgs,
+                      changeMode,
+                    );
+                    const postSnap = streamReceipt.postSnapshot as
+                      | { revision?: string }
+                      | undefined;
+                    markMutated(postSnap?.revision);
+                    return { payload: streamReceipt };
+                  },
+                });
+
+              if (sessionRes.mutated) {
+                mutationCount += 1;
+                workspaceSyncChannel.emit({
+                  resource: 'word-document',
+                  action: 'updated',
+                  conversationId: ragContext.conversationId,
+                  entityId: activeDocRecord.id,
+                  title: activeDocRecord.file_name,
+                  changeMode,
+                  count: mutationCount,
+                  requiresSnapshotReload: false,
+                  occurredAt: new Date().toISOString(),
+                });
+              }
+
+              return recordAndGuardResult(
+                'superdoc_stream_text',
+                rawInput,
+                sessionRes.payload,
+              );
+            } catch (error) {
+              return recordAndGuardResult('superdoc_stream_text', rawInput, {
+                status: 'failed',
+                error: extractSuperDocSdkError(error),
+              });
             }
           },
           onSuperDocPerformAction: async (input) => {
@@ -491,13 +618,13 @@ export class ChatAgentService {
                 changeMode,
               );
             if (!policy.allowed) {
-              return {
+              return recordAndGuardResult('superdoc_perform_action', input, {
                 status: 'failed',
                 error: {
                   code: policy.code,
                   message: policy.message,
                 },
-              };
+              });
             }
 
             try {
@@ -536,16 +663,118 @@ export class ChatAgentService {
                   title: activeDocRecord.file_name,
                   changeMode,
                   count: mutationCount,
+                  requiresSnapshotReload: true,
                   occurredAt: new Date().toISOString(),
                 });
               }
 
-              return sessionRes.payload;
+              return recordAndGuardResult(
+                'superdoc_perform_action',
+                input,
+                sessionRes.payload,
+              );
             } catch (error) {
-              return {
+              return recordAndGuardResult('superdoc_perform_action', input, {
                 status: 'failed',
                 error: extractSuperDocSdkError(error),
-              };
+              });
+            }
+          },
+          onSuperDocApiSearch: async (input) => {
+            try {
+              const sessionRes =
+                await this.superdocRuntimeService!.runWithDocumentSession({
+                  userId: ragContext.userId,
+                  documentId: activeDocRecord.id,
+                  changeMode,
+                  fn: async ({ doc, toolkit: sessionToolkit }) => {
+                    const res = await sessionToolkit.dispatch(
+                      doc,
+                      'superdoc_api_search',
+                      input,
+                    );
+                    return { payload: res };
+                  },
+                });
+              return recordAndGuardResult(
+                'superdoc_api_search',
+                input,
+                sessionRes.payload,
+              );
+            } catch (error) {
+              return recordAndGuardResult('superdoc_api_search', input, {
+                error: extractSuperDocSdkError(error),
+              });
+            }
+          },
+          onSuperDocApiCall: async (input) => {
+            const policy =
+              this.superdocRuntimeService!.validateToolCallPolicy(
+                'superdoc_api_call',
+                input,
+                changeMode,
+              );
+            if (!policy.allowed) {
+              return recordAndGuardResult('superdoc_api_call', input, {
+                status: 'failed',
+                error: {
+                  code: policy.code,
+                  message: policy.message,
+                },
+              });
+            }
+
+            try {
+              const sessionRes =
+                await this.superdocRuntimeService!.runWithDocumentSession({
+                  userId: ragContext.userId,
+                  documentId: activeDocRecord.id,
+                  changeMode,
+                  fn: async ({
+                    doc,
+                    toolkit: sessionToolkit,
+                    markMutated,
+                  }) => {
+                    const rawReceipt = await sessionToolkit.dispatch(
+                      doc,
+                      'superdoc_api_call',
+                      policy.normalizedArgs,
+                    );
+                    const receipt = asSuperDocReceipt(rawReceipt);
+                    if (
+                      didSuperDocReceiptMutate(receipt, policy.normalizedArgs)
+                    ) {
+                      markMutated(receipt.postSnapshot?.revision);
+                    }
+                    return { payload: rawReceipt };
+                  },
+                });
+
+              if (sessionRes.mutated) {
+                mutationCount += 1;
+                workspaceSyncChannel.emit({
+                  resource: 'word-document',
+                  action: 'updated',
+                  conversationId: ragContext.conversationId,
+                  entityId: activeDocRecord.id,
+                  title: activeDocRecord.file_name,
+                  changeMode,
+                  count: mutationCount,
+                  requiresSnapshotReload: true,
+                  occurredAt: new Date().toISOString(),
+                });
+              }
+
+              return recordAndGuardResult(
+                'superdoc_api_call',
+                input,
+                sessionRes.payload,
+              );
+            } catch (error) {
+              return recordAndGuardResult('superdoc_api_call', input, {
+                status: 'failed',
+                error: extractSuperDocSdkError(error),
+              });
             }
           },
         };

@@ -58,6 +58,9 @@ import {
   type ExtractWebPageCallback,
   type SuperDocInspectCallback,
   type SuperDocPerformActionCallback,
+  type SuperDocStreamTextCallback,
+  type SuperDocApiSearchCallback,
+  type SuperDocApiCallCallback,
   type SuperDocToolkitToolMeta,
   type CitationItem,
   type DocumentCitationItem,
@@ -229,6 +232,9 @@ export class ChatAgentAiService {
       activeWordDocument?: ActiveWordDocumentPromptContext;
       onSuperDocInspect?: SuperDocInspectCallback;
       onSuperDocPerformAction?: SuperDocPerformActionCallback;
+      onSuperDocStreamText?: SuperDocStreamTextCallback;
+      onSuperDocApiSearch?: SuperDocApiSearchCallback;
+      onSuperDocApiCall?: SuperDocApiCallCallback;
       superdocToolkitMeta?: SuperDocToolkitToolMeta;
       chatConfig?: {
         modelName: string;
@@ -262,7 +268,10 @@ export class ChatAgentAiService {
     );
 
     const activeTools = Object.keys(tools).length > 0 ? tools : undefined;
-    const maxSteps = options?.onSuperDocPerformAction ? 8 : 5;
+    const maxSteps =
+      options?.onSuperDocPerformAction || options?.onSuperDocStreamText
+        ? 12
+        : 5;
 
     const sanitizedMessages = this.sanitizePendingToolCalls(messages);
     const modelMessages = await convertToModelMessages(sanitizedMessages, {

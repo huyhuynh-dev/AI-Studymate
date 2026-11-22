@@ -3,6 +3,7 @@ import { getActionDispositions } from '@superdoc/sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DOCX_MIME_TYPE } from '../constants/editable-document.constants.js';
 import {
+  ADVERTISED_SUPERDOC_TOOLS,
   SuperDocRuntimeService,
   asSuperDocReceipt,
   didSuperDocReceiptMutate,
@@ -94,7 +95,7 @@ describe('SuperDocRuntimeService', () => {
   describe('validateToolCallPolicy', () => {
     it('nên từ chối công cụ không nằm trong danh sách được cấp phép', () => {
       const result = service.validateToolCallPolicy(
-        'superdoc_api_call',
+        'superdoc_unknown_tool',
         { action: 'anything' },
         'tracked',
       );
@@ -118,8 +119,15 @@ describe('SuperDocRuntimeService', () => {
 
     it('ở chế độ tracked nên ép changeMode=tracked cho action hỗ trợ và cho phép comment direct', () => {
       const dispositions = getActionDispositions();
+      const nonStreaming = new Set([
+        'insert_paragraphs',
+        'insert_heading',
+        'replace_text',
+        'rewrite_block',
+        'fill_placeholders',
+      ]);
       const firstTrackedAction = Object.entries(dispositions).find(
-        ([, d]) => d === 'tracked',
+        ([name, d]) => d === 'tracked' && !nonStreaming.has(name),
       )?.[0];
       expect(firstTrackedAction).toBeDefined();
 
@@ -179,14 +187,83 @@ describe('SuperDocRuntimeService', () => {
     it('ở chế độ direct nên tôn trọng thao tác trực tiếp', () => {
       const res = service.validateToolCallPolicy(
         'superdoc_perform_action',
-        { action: 'insert_paragraph' },
+        { action: 'insert_table' },
         'direct',
       );
       expect(res).toEqual({
         allowed: true,
         normalizedArgs: {
-          action: 'insert_paragraph',
+          action: 'insert_table',
           changeMode: 'direct',
+        },
+      });
+    });
+
+    it('nên quảng bá đủ 5 công cụ Full preset và chặn rewrite_block / doc.replace để ép dùng superdoc_stream_text', () => {
+      expect(Array.from(ADVERTISED_SUPERDOC_TOOLS).sort()).toEqual([
+        'superdoc_api_call',
+        'superdoc_api_search',
+        'superdoc_inspect',
+        'superdoc_perform_action',
+        'superdoc_stream_text',
+      ]);
+
+      const blockedAction = service.validateToolCallPolicy(
+        'superdoc_perform_action',
+        { action: 'rewrite_block', targetText: 'A', newText: 'B' },
+        'tracked',
+      );
+      expect(blockedAction.allowed).toBe(false);
+      if (!blockedAction.allowed) {
+        expect(blockedAction.code).toBe('STREAM_TEXT_REQUIRED');
+      }
+
+      const blockedApi = service.validateToolCallPolicy(
+        'superdoc_api_call',
+        { operationId: 'doc.replace', args: {} },
+        'direct',
+      );
+      expect(blockedApi.allowed).toBe(false);
+      if (!blockedApi.allowed) {
+        expect(blockedApi.code).toBe('STREAM_TEXT_REQUIRED');
+      }
+
+      const bibTracked = service.validateToolCallPolicy(
+        'superdoc_api_call',
+        { operationId: 'doc.citations.bibliography.insert', args: {} },
+        'tracked',
+      );
+      expect(bibTracked.allowed).toBe(false);
+      if (!bibTracked.allowed) {
+        expect(bibTracked.code).toBe('DIRECT_MODE_REQUIRED');
+      }
+
+      const batchNormalized = service.validateToolCallPolicy(
+        'superdoc_api_call',
+        {
+          changeMode: 'tracked',
+          calls: [
+            { operationId: 'doc.citations.sources.insert', args: {} },
+            { operationId: 'doc.tables.insertRow', args: {} },
+          ],
+        },
+        'tracked',
+      );
+      expect(batchNormalized).toEqual({
+        allowed: true,
+        normalizedArgs: {
+          calls: [
+            {
+              operationId: 'doc.citations.sources.insert',
+              args: {},
+              changeMode: 'direct',
+            },
+            {
+              operationId: 'doc.tables.insertRow',
+              args: {},
+              changeMode: 'tracked',
+            },
+          ],
         },
       });
     });

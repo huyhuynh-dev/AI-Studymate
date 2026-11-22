@@ -375,7 +375,7 @@ export type CreateQuizCallback = (
   input: CreateQuizToolInput,
 ) => Promise<CreateQuizToolOutput>;
 
-// ── Tool 9 & 10: SuperDocs Word Editor Tools (core preset) ──
+// ── Tool 9..13: SuperDocs Word Editor Tools (full preset + streaming) ──
 export type SuperDocInspectToolInput = Record<string, unknown>;
 export type SuperDocInspectToolOutput = unknown;
 export type SuperDocInspectCallback = (
@@ -391,6 +391,34 @@ export type SuperDocPerformActionCallback = (
   input: SuperDocPerformActionToolInput,
 ) => Promise<SuperDocPerformActionToolOutput>;
 
+export interface SuperDocStreamTextToolInput {
+  mode:
+    | 'replace'
+    | 'before'
+    | 'after'
+    | 'append'
+    | 'paragraphBefore'
+    | 'paragraphAfter';
+  anchor: string | null;
+  text: string;
+}
+export type SuperDocStreamTextToolOutput = unknown;
+export type SuperDocStreamTextCallback = (
+  input: SuperDocStreamTextToolInput,
+) => Promise<SuperDocStreamTextToolOutput>;
+
+export type SuperDocApiSearchToolInput = Record<string, unknown>;
+export type SuperDocApiSearchToolOutput = unknown;
+export type SuperDocApiSearchCallback = (
+  input: SuperDocApiSearchToolInput,
+) => Promise<SuperDocApiSearchToolOutput>;
+
+export type SuperDocApiCallToolInput = Record<string, unknown>;
+export type SuperDocApiCallToolOutput = unknown;
+export type SuperDocApiCallCallback = (
+  input: SuperDocApiCallToolInput,
+) => Promise<SuperDocApiCallToolOutput>;
+
 export interface SuperDocToolkitToolMeta {
   documentId: string;
   fileName: string;
@@ -398,6 +426,10 @@ export interface SuperDocToolkitToolMeta {
   inspectInputSchema?: Record<string, unknown>;
   performActionDescription?: string;
   performActionInputSchema?: Record<string, unknown>;
+  apiSearchDescription?: string;
+  apiSearchInputSchema?: Record<string, unknown>;
+  apiCallDescription?: string;
+  apiCallInputSchema?: Record<string, unknown>;
 }
 
 // ── Tên định danh các Tool của Chat Agent ──
@@ -413,7 +445,10 @@ export type ChatAgentToolName =
   | 'searchInternet'
   | 'extractWebPage'
   | 'superdoc_inspect'
-  | 'superdoc_perform_action';
+  | 'superdoc_perform_action'
+  | 'superdoc_stream_text'
+  | 'superdoc_api_search'
+  | 'superdoc_api_call';
 
 export interface ToolCallTracker {
   recordChunkId(chunkId: string): void;
@@ -449,5 +484,8 @@ export interface ChatSessionToolCallbacks {
   onExtractWebPage?: ExtractWebPageCallback;
   onSuperDocInspect?: SuperDocInspectCallback;
   onSuperDocPerformAction?: SuperDocPerformActionCallback;
+  onSuperDocStreamText?: SuperDocStreamTextCallback;
+  onSuperDocApiSearch?: SuperDocApiSearchCallback;
+  onSuperDocApiCall?: SuperDocApiCallCallback;
   superdocToolkitMeta?: SuperDocToolkitToolMeta;
 }

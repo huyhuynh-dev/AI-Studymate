@@ -22,16 +22,30 @@ import {
   DOCX_MIME_TYPE,
   isDocxDocument,
 } from '../constants/editable-document.constants.js';
+import {
+  NON_STREAMING_TEXT_ACTIONS,
+  SOURCE_METADATA_API_OPS,
+  STREAMING_BLOCKED_API_OPS,
+  UNVERIFIED_TRACKED_INSERTION_API_OPS,
+  extractNativeApiCalls,
+  normalizeNativeOperationId,
+  validateStreamTextArgs,
+} from './superdoc-stream-text.helper.js';
 
 export type SuperDocAgentChangeMode = 'tracked' | 'direct';
 
 export const ADVERTISED_SUPERDOC_TOOLS: ReadonlySet<string> = new Set([
   'superdoc_inspect',
   'superdoc_perform_action',
+  'superdoc_api_search',
+  'superdoc_api_call',
+  'superdoc_stream_text',
 ]);
 
 const MUTATING_SUPERDOC_TOOLS: ReadonlySet<string> = new Set([
   'superdoc_perform_action',
+  'superdoc_api_call',
+  'superdoc_stream_text',
 ]);
 
 const ALLOWED_DIRECT_ACTIONS_IN_TRACKED_MODE = [
@@ -215,7 +229,7 @@ export class SuperDocRuntimeService implements OnModuleDestroy {
 
     const promise = createAgentToolkit({
       provider: 'vercel',
-      preset: 'core',
+      preset: 'full',
       ...(changeMode === 'tracked'
         ? {
             enforceChangeMode: 'tracked',
@@ -415,12 +429,96 @@ export class SuperDocRuntimeService implements OnModuleDestroy {
       return { allowed: true, normalizedArgs: args };
     }
 
+    if (toolName === 'superdoc_stream_text') {
+      const validated = validateStreamTextArgs(args);
+      if (!validated.valid) {
+        return {
+          allowed: false,
+          code: 'INVALID_STREAM_ARGS',
+          message: validated.message,
+        };
+      }
+      return {
+        allowed: true,
+        normalizedArgs: {
+          mode: validated.normalized.mode,
+          anchor: validated.normalized.anchor,
+          text: validated.normalized.text,
+          changeMode,
+        },
+      };
+    }
+
+    if (toolName === 'superdoc_api_call') {
+      const calls = extractNativeApiCalls(args);
+      for (const call of calls) {
+        const opId = normalizeNativeOperationId(call.operationId);
+        if (!opId) {
+          return {
+            allowed: false,
+            code: 'INVALID_ARGUMENT',
+            message: 'Thiếu operationId trong superdoc_api_call.',
+          };
+        }
+        if (STREAMING_BLOCKED_API_OPS.has(opId)) {
+          return {
+            allowed: false,
+            code: 'STREAM_TEXT_REQUIRED',
+            message:
+              'Document text must stream through superdoc_stream_text. Use dedicated structure tools for native structures.',
+          };
+        }
+        if (
+          changeMode === 'tracked' &&
+          UNVERIFIED_TRACKED_INSERTION_API_OPS.has(opId)
+        ) {
+          return {
+            allowed: false,
+            code: 'DIRECT_MODE_REQUIRED',
+            message: `${opId} requires Direct (Sửa trực tiếp) mode and is refused in Tracked Changes mode.`,
+          };
+        }
+      }
+
+      const cloned = structuredClone(args);
+      if (Array.isArray(cloned.calls)) {
+        delete cloned.changeMode;
+        cloned.calls = cloned.calls.map((entry) => {
+          if (!entry || typeof entry !== 'object') return entry;
+          const callObj = { ...(entry as Record<string, unknown>) };
+          const opId = normalizeNativeOperationId(callObj.operationId);
+          callObj.changeMode = SOURCE_METADATA_API_OPS.has(opId)
+            ? 'direct'
+            : changeMode;
+          return callObj;
+        });
+      } else {
+        const opId = normalizeNativeOperationId(cloned.operationId);
+        cloned.changeMode = SOURCE_METADATA_API_OPS.has(opId)
+          ? 'direct'
+          : changeMode;
+      }
+
+      return {
+        allowed: true,
+        normalizedArgs: cloned,
+      };
+    }
+
     const action = typeof args.action === 'string' ? args.action.trim() : '';
     if (!action) {
       return {
         allowed: false,
         code: 'INVALID_ARGUMENT',
         message: 'Thiếu tên hành động (action) cho superdoc_perform_action.',
+      };
+    }
+
+    if (NON_STREAMING_TEXT_ACTIONS.has(action)) {
+      return {
+        allowed: false,
+        code: 'STREAM_TEXT_REQUIRED',
+        message: `Action ${action} is unavailable: document text must stream through superdoc_stream_text. Inspect the target and use one streaming call per paragraph. For headings, stream text then apply_style; for styled prose, stream text then format_text. No changes were made by this rejected call.`,
       };
     }
 

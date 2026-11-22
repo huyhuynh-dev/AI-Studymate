@@ -220,6 +220,7 @@ export default function RightSidebar({
     pendingComposerPrompt,
     consumePendingComposerPrompt,
     exportActiveSnapshotForAgent,
+    streamTextToActiveEditor,
     syncAgentSnapshotFromServer,
   } = useWordAgent();
   const { isFocusMode, setFocusMode, setIsRightSidebarCollapsed } = useFocusMode();
@@ -246,6 +247,8 @@ export default function RightSidebar({
 
   const exportWordSnapshotRef = useRef(exportActiveSnapshotForAgent);
   exportWordSnapshotRef.current = exportActiveSnapshotForAgent;
+  const streamTextToActiveEditorRef = useRef(streamTextToActiveEditor);
+  streamTextToActiveEditorRef.current = streamTextToActiveEditor;
   const syncWordSnapshotRef = useRef(syncAgentSnapshotFromServer);
   syncWordSnapshotRef.current = syncAgentSnapshotFromServer;
   const [sidebarWidth, setSidebarWidth] = useState<number>(384);
@@ -473,6 +476,7 @@ export default function RightSidebar({
           entityId?: string;
           changeMode?: "tracked" | "direct";
           count?: number;
+          requiresSnapshotReload?: boolean;
         };
         if (
           payload.resource === "word-document" &&
@@ -481,6 +485,7 @@ export default function RightSidebar({
           void syncWordSnapshotRef.current(payload.entityId, {
             changeMode: payload.changeMode,
             count: payload.count,
+            requiresSnapshotReload: payload.requiresSnapshotReload,
           });
         }
       }
@@ -1112,6 +1117,51 @@ export default function RightSidebar({
     consumePendingComposerPrompt,
     sendMessage,
   ]);
+
+  // Đẩy trực tiếp token của superdoc_stream_text sang BrowserDocumentApi khi AI đang stream
+  useEffect(() => {
+    if (status !== "streaming" && status !== "submitted") return;
+    const wordCtx = activeWordContextRef.current;
+    if (!wordCtx?.documentId) return;
+
+    const lastMessage = messages[messages.length - 1];
+    if (
+      !lastMessage ||
+      lastMessage.role !== "assistant" ||
+      !Array.isArray(lastMessage.parts)
+    ) {
+      return;
+    }
+
+    for (const rawPart of lastMessage.parts) {
+      const part = rawPart as {
+        type?: string;
+        toolName?: string;
+        toolCallId?: string;
+        state?: string;
+        input?: unknown;
+      };
+      const isStreamTextTool =
+        part.type === "tool-superdoc_stream_text" ||
+        (part.type === "dynamic-tool" &&
+          part.toolName === "superdoc_stream_text");
+      if (!isStreamTextTool || !part.toolCallId || !part.input) {
+        continue;
+      }
+      if (
+        part.state === "input-streaming" ||
+        part.state === "input-available" ||
+        part.state === "output-available"
+      ) {
+        streamTextToActiveEditorRef.current(
+          wordCtx.documentId,
+          part.toolCallId,
+          part.input,
+          wordCtx.changeMode,
+        );
+      }
+    }
+  }, [messages, status]);
 
   // Chỉ xuất hiện ở cấp độ Conversation (khi có conversationId hợp lệ)
   if (!conversationId) {

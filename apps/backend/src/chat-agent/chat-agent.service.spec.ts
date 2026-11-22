@@ -114,15 +114,67 @@ describe('ChatAgentService', () => {
         allowed: true,
         normalizedArgs: { ...args, changeMode },
       })),
-      runWithDocumentSession: vi.fn().mockResolvedValue({
-        payload: {
-          status: 'ok',
-          intent: 'insert_paragraph',
-          changeMode: 'tracked',
-          preSnapshot: { revision: 'rev-1' },
-          postSnapshot: { revision: 'rev-2' },
-        },
-        mutated: true,
+      runWithDocumentSession: vi.fn().mockImplementation(async ({ fn }) => {
+        if (typeof fn === 'function') {
+          const mockDoc = {
+            blocks: { list: vi.fn().mockResolvedValue({ revision: 'rev-1' }) },
+            query: {
+              match: vi.fn().mockResolvedValue({
+                items: [
+                  {
+                    address: { blockId: 'b1' },
+                    target: {
+                      start: { blockId: 'b1', offset: 0 },
+                      end: { blockId: 'b1', offset: 5 },
+                    },
+                  },
+                ],
+              }),
+            },
+            replace: vi.fn().mockResolvedValue({
+              receipt: { success: true, revision: 'rev-2' },
+            }),
+            insert: vi.fn().mockResolvedValue({
+              receipt: { success: true, revision: 'rev-2' },
+            }),
+            create: {
+              paragraph: vi.fn().mockResolvedValue({
+                receipt: { success: true, revision: 'rev-2' },
+              }),
+            },
+          };
+          const mockToolkit = {
+            dispatch: vi.fn().mockResolvedValue({
+              status: 'ok',
+              intent: 'insert_table',
+              changeMode: 'tracked',
+              preSnapshot: { revision: 'rev-1' },
+              postSnapshot: { revision: 'rev-2' },
+            }),
+          };
+          let mutated = false;
+          const res = await fn({
+            doc: mockDoc,
+            toolkit: mockToolkit,
+            documentId: 'doc-word-1',
+            fileName: 'Bao_cao_thuc_tap.docx',
+            changeMode: 'tracked',
+            markMutated: () => {
+              mutated = true;
+            },
+          });
+          return { ...res, mutated };
+        }
+        return {
+          payload: {
+            status: 'ok',
+            intent: 'insert_table',
+            changeMode: 'tracked',
+            preSnapshot: { revision: 'rev-1' },
+            postSnapshot: { revision: 'rev-2' },
+          },
+          mutated: true,
+        };
       }),
     };
     repoMock = {
@@ -1018,6 +1070,11 @@ describe('ChatAgentService', () => {
         fileName: string;
       };
       onSuperDocInspect?: (input: Record<string, unknown>) => Promise<unknown>;
+      onSuperDocStreamText?: (input: {
+        mode: 'replace' | 'append';
+        anchor: string | null;
+        text: string;
+      }) => Promise<unknown>;
       onSuperDocPerformAction?: (
         input: Record<string, unknown>,
       ) => Promise<unknown>;
@@ -1043,11 +1100,11 @@ describe('ChatAgentService', () => {
     await aiOptions.onSuperDocInspect?.({ countsOnly: true });
     expect(emitted).toHaveLength(0);
 
-    await aiOptions.onSuperDocPerformAction?.({
-      action: 'insert_paragraph',
-      text: 'Đoạn mới',
+    await aiOptions.onSuperDocStreamText?.({
+      mode: 'append',
+      anchor: null,
+      text: 'Đoạn văn mới stream',
     });
-    detach();
 
     expect(emitted).toHaveLength(1);
     expect(emitted[0]).toMatchObject({
@@ -1058,6 +1115,24 @@ describe('ChatAgentService', () => {
       title: 'Bao_cao_thuc_tap.docx',
       changeMode: 'tracked',
       count: 1,
+      requiresSnapshotReload: false,
+    });
+
+    await aiOptions.onSuperDocPerformAction?.({
+      action: 'insert_table',
+    });
+    detach();
+
+    expect(emitted).toHaveLength(2);
+    expect(emitted[1]).toMatchObject({
+      resource: 'word-document',
+      action: 'updated',
+      conversationId: 'conv-1',
+      entityId: 'doc-word-1',
+      title: 'Bao_cao_thuc_tap.docx',
+      changeMode: 'tracked',
+      count: 2,
+      requiresSnapshotReload: true,
     });
   });
 

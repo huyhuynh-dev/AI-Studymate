@@ -53,6 +53,15 @@ export interface RegisteredWordEditorHandle {
     blob: Blob,
     options?: { changeMode?: WordAgentChangeMode },
   ) => Promise<void>;
+  pushStreamText: (
+    toolCallId: string,
+    args: unknown,
+    changeMode: WordAgentChangeMode,
+  ) => void;
+  waitForPendingStreams: () => Promise<{
+    anyLiveSucceeded: boolean;
+    anyFailed: boolean;
+  }>;
   acceptAllChanges: () => Promise<number>;
   rejectAllChanges: () => Promise<number>;
   openReviewPanel: () => void;
@@ -81,9 +90,19 @@ interface WordAgentContextValue {
   triggerQuickPrompt: (options: TriggerWordAiPromptOptions) => void;
   consumePendingComposerPrompt: () => void;
   exportActiveSnapshotForAgent: (documentId: string) => Promise<Blob | null>;
+  streamTextToActiveEditor: (
+    documentId: string,
+    toolCallId: string,
+    args: unknown,
+    overrideChangeMode?: WordAgentChangeMode,
+  ) => void;
   syncAgentSnapshotFromServer: (
     documentId: string,
-    options?: { changeMode?: WordAgentChangeMode; count?: number },
+    options?: {
+      changeMode?: WordAgentChangeMode;
+      count?: number;
+      requiresSnapshotReload?: boolean;
+    },
   ) => Promise<boolean>;
   clearAgentSyncState: () => void;
   focusDocumentReviewBanner: (documentId: string) => void;
@@ -143,6 +162,7 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
     documentId: string;
     changeMode?: WordAgentChangeMode;
     count?: number;
+    requiresSnapshotReload?: boolean;
   } | null>(null);
 
   const [activeWordDocument, setActiveWordDocument] =
@@ -164,7 +184,11 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
   const syncAgentSnapshotFromServer = useCallback(
     async (
       documentId: string,
-      options?: { changeMode?: WordAgentChangeMode; count?: number },
+      options?: {
+        changeMode?: WordAgentChangeMode;
+        count?: number;
+        requiresSnapshotReload?: boolean;
+      },
     ): Promise<boolean> => {
       const handle = editorHandleRef.current;
       if (!handle || handle.document.id !== documentId) {
@@ -172,14 +196,38 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
           documentId,
           changeMode: options?.changeMode,
           count: options?.count,
+          requiresSnapshotReload: options?.requiresSnapshotReload,
         };
         return false;
       }
 
       deferredSyncRef.current = null;
-      setIsApplyingSnapshot(true);
       setSnapshotSyncError(null);
+
       try {
+        const streamState = await handle.waitForPendingStreams();
+        if (
+          options?.requiresSnapshotReload === false &&
+          streamState.anyLiveSucceeded &&
+          !streamState.anyFailed
+        ) {
+          setLastAgentUpdate({
+            documentId,
+            changeMode: options?.changeMode ?? "tracked",
+            occurredAt: Date.now(),
+            count: options?.count,
+          });
+          // Đồng bộ ngược bản nháp vừa stream trên trình duyệt lên server snapshot
+          const syncedBlob = await handle.exportWorkingBlob().catch(() => null);
+          if (syncedBlob) {
+            await documentsApi
+              .stageAgentWorkingSnapshot(documentId, syncedBlob)
+              .catch(() => undefined);
+          }
+          return true;
+        }
+
+        setIsApplyingSnapshot(true);
         const snapshot =
           await documentsApi.getAgentWorkingSnapshotBlob(documentId);
         await handle.applyAgentSnapshotBlob(snapshot.blob, {
@@ -293,6 +341,26 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const streamTextToActiveEditor = useCallback(
+    (
+      documentId: string,
+      toolCallId: string,
+      args: unknown,
+      overrideChangeMode?: WordAgentChangeMode,
+    ) => {
+      const handle = editorHandleRef.current;
+      if (!handle || handle.document.id !== documentId) {
+        return;
+      }
+      handle.pushStreamText(
+        toolCallId,
+        args,
+        overrideChangeMode ?? changeMode,
+      );
+    },
+    [changeMode],
+  );
+
   const clearAgentSyncState = useCallback(() => {
     setLastAgentUpdate(null);
     setSnapshotSyncError(null);
@@ -323,6 +391,7 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
       triggerQuickPrompt,
       consumePendingComposerPrompt,
       exportActiveSnapshotForAgent,
+      streamTextToActiveEditor,
       syncAgentSnapshotFromServer,
       clearAgentSyncState,
       focusDocumentReviewBanner,
@@ -343,6 +412,7 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
       triggerQuickPrompt,
       consumePendingComposerPrompt,
       exportActiveSnapshotForAgent,
+      streamTextToActiveEditor,
       syncAgentSnapshotFromServer,
       clearAgentSyncState,
       focusDocumentReviewBanner,
