@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { LeftSidebar, RightSidebar, FocusModeProvider, useFocusMode } from "@/components/layout";
+import { AskAiProvider } from "@/contexts/AskAiContext";
 import { CitationNavigationProvider, useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { usePathname, useRouter } from "next/navigation";
@@ -126,9 +127,11 @@ export default function MainLayout({
 }) {
     return (
         <FocusModeProvider>
-            <CitationNavigationProvider>
-                <MainLayoutContent>{children}</MainLayoutContent>
-            </CitationNavigationProvider>
+            <AskAiProvider>
+                <CitationNavigationProvider>
+                    <MainLayoutContent>{children}</MainLayoutContent>
+                </CitationNavigationProvider>
+            </AskAiProvider>
         </FocusModeProvider>
     );
 }

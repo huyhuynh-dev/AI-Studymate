@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { EditorContent, useEditor, type AnyExtension, type Editor } from '@tiptap/react';
-import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import { Placeholder } from '@tiptap/extensions';
 import { Markdown } from '@tiptap/markdown';
@@ -57,6 +56,7 @@ import {
   type ProseMirrorCitationResolution,
   type ProseMirrorTextSegment,
 } from './text-anchor-resolver';
+import { EditorBubbleMenu } from './EditorBubbleMenu';
 
 export interface MarkdownWysiwygCanvasProps {
   value: string;
@@ -64,6 +64,8 @@ export interface MarkdownWysiwygCanvasProps {
   mode: Extract<DocumentEditorMode, 'markdown_wysiwyg' | 'html_wysiwyg' | 'plain_text'>;
   readOnly?: boolean;
   compactReaderMode?: boolean;
+  documentId?: string;
+  documentFileName?: string;
   citationTarget?: EditorCitationTarget | null;
   scrollToCitationNonce?: number;
   onCitationResolved?: (resolution: ProseMirrorCitationResolution | null) => void;
@@ -210,6 +212,8 @@ export function MarkdownWysiwygCanvas({
   mode,
   readOnly = false,
   compactReaderMode = false,
+  documentId,
+  documentFileName,
   citationTarget,
   scrollToCitationNonce = 0,
   onCitationResolved,
@@ -964,50 +968,16 @@ export function MarkdownWysiwygCanvas({
             ref={editorContainerRef}
             className="relative flex-1 overflow-y-auto studymate-doc-editor"
           >
-            {editor && supportsWysiwyg && !readOnly && (
-              <BubbleMenu
+            {editor && (
+              <EditorBubbleMenu
                 editor={editor}
-                shouldShow={({ editor: ed, state }) =>
-                  !ed.isDestroyed && ed.isEditable && !state.selection.empty && !isSourceView
-                }
-                className="flex items-center gap-0.5 rounded-xl border border-black/[0.08] dark:border-white/[0.12] bg-white/95 dark:bg-[#181C26]/95 px-1.5 py-1 shadow-xl backdrop-blur-xl"
-              >
-                <ToolbarBtn
-                  title="In đậm"
-                  active={editor.isActive('bold')}
-                  onClick={() => editor.chain().focus().toggleBold().run()}
-                >
-                  <Bold className="h-3.5 w-3.5" />
-                </ToolbarBtn>
-                <ToolbarBtn
-                  title="In nghiêng"
-                  active={editor.isActive('italic')}
-                  onClick={() => editor.chain().focus().toggleItalic().run()}
-                >
-                  <Italic className="h-3.5 w-3.5" />
-                </ToolbarBtn>
-                <ToolbarBtn
-                  title="Gạch chân"
-                  active={editor.isActive('underline')}
-                  onClick={() => editor.chain().focus().toggleUnderline().run()}
-                >
-                  <UnderlineIcon className="h-3.5 w-3.5" />
-                </ToolbarBtn>
-                <ToolbarBtn
-                  title="Gạch ngang"
-                  active={editor.isActive('strike')}
-                  onClick={() => editor.chain().focus().toggleStrike().run()}
-                >
-                  <Strikethrough className="h-3.5 w-3.5" />
-                </ToolbarBtn>
-                <ToolbarBtn
-                  title="Mã nội tuyến"
-                  active={editor.isActive('code')}
-                  onClick={() => editor.chain().focus().toggleCode().run()}
-                >
-                  <Code className="h-3.5 w-3.5" />
-                </ToolbarBtn>
-              </BubbleMenu>
+                supportsFormatting={supportsWysiwyg}
+                readOnly={readOnly}
+                isSourceView={isSourceView}
+                documentId={documentId}
+                documentFileName={documentFileName}
+                mode={mode}
+              />
             )}
 
             <EditorContent editor={editor} className="min-h-full" />

@@ -680,6 +680,8 @@ export default function DocumentTextEditor({
           mode={profile.mode}
           readOnly={readOnly}
           compactReaderMode={compactReaderMode}
+          documentId={document.id}
+          documentFileName={document.file_name}
           citationTarget={activeCitation}
           scrollToCitationNonce={scrollToCitationNonce}
           onCitationResolved={handleCitationResolutionUpdate}

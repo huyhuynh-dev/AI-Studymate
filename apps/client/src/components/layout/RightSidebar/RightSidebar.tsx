@@ -10,8 +10,11 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
+import { useAskAi } from "@/contexts/AskAiContext";
+import { useFocusMode } from "@/components/layout/FocusModeContext";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useDocuments } from "@/hooks/useDocuments";
+import { formatSelectionAskPrompt } from "@/lib/ask-ai-prompt.helper";
 import { handleChatStreamDataPart } from "@/lib/workspace-sync";
 import { chatSessionsApi } from "@/services/chatSessions.api";
 
@@ -172,6 +175,8 @@ export default function RightSidebar({
 
   // ── Resizable, Fullscreen & Side-panel Source Reader states ──
   const { sidePanelTarget, closeSidePanelCitation } = useCitationNavigation();
+  const { pendingAskRequest, consumeAskRequest, setIsAiResponding } = useAskAi();
+  const { isFocusMode, setFocusMode, setIsRightSidebarCollapsed } = useFocusMode();
   const [sidebarWidth, setSidebarWidth] = useState<number>(384);
   const sidebarWidthRef = useRef<number>(384);
   sidebarWidthRef.current = sidebarWidth;
@@ -886,6 +891,58 @@ export default function RightSidebar({
       executeDirectSend,
     ]
   );
+
+  // Đồng bộ trạng thái AI đang phản hồi sang AskAiContext cho BubbleMenu
+  useEffect(() => {
+    setIsAiResponding(isSending);
+    return () => {
+      setIsAiResponding(false);
+    };
+  }, [isSending, setIsAiResponding]);
+
+  // Tiếp nhận yêu cầu "Hỏi AI" từ đoạn văn bản được bôi đen trong Editor (BubbleMenu)
+  useEffect(() => {
+    if (!pendingAskRequest) return;
+
+    // Bảo đảm khung Chat ở RightSidebar hiển thị ngay cho người dùng xem câu trả lời
+    if (isFocusMode) {
+      setFocusMode(false);
+    }
+    if (isCollapsed) {
+      setIsRightSidebarCollapsed(false);
+    }
+    if (isSidePanelOpen) {
+      if (isFullscreen) {
+        setIsFullscreen(false);
+      }
+      closeSidePanelCitation();
+    }
+
+    if (isSending) {
+      return;
+    }
+
+    const formattedMessage = formatSelectionAskPrompt({
+      selectedText: pendingAskRequest.selectedText,
+      prompt: pendingAskRequest.prompt,
+      fileName: pendingAskRequest.source?.fileName,
+    });
+
+    consumeAskRequest();
+    void sendMessage(formattedMessage);
+  }, [
+    pendingAskRequest,
+    isSending,
+    isFocusMode,
+    isCollapsed,
+    isSidePanelOpen,
+    isFullscreen,
+    setFocusMode,
+    setIsRightSidebarCollapsed,
+    closeSidePanelCitation,
+    consumeAskRequest,
+    sendMessage,
+  ]);
 
   // Chỉ xuất hiện ở cấp độ Conversation (khi có conversationId hợp lệ)
   if (!conversationId) {
