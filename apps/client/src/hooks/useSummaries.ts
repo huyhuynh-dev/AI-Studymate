@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { summariesApi } from '@/services/summaries.api';
 import { extractApiErrorMessage } from '@/services/subjects.api';
+import { workspaceSwrKeys } from '@/lib/workspace-sync';
 import type {
   CreateManualNoteRequest,
   CreateSummaryRequest,
@@ -36,7 +37,7 @@ export function useSummaries(conversationId?: string | null) {
   const pendingSaveRef = useRef<PendingNoteSave | null>(null);
 
   const { data: summaries = [], isLoading, mutate } = useSWR<SummaryItem[]>(
-    conversationId ? `/conversations/${conversationId}/summaries` : null,
+    conversationId ? workspaceSwrKeys.summaries(conversationId) : null,
     () => summariesApi.getByConversationId(conversationId!),
     {
       revalidateOnFocus: false,

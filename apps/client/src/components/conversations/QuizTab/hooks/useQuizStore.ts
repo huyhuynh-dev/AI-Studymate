@@ -6,6 +6,7 @@ import type {
   FlashcardTarget, Quiz, QuizAttempt, QuizDraft, TestSetup,
 } from "../types";
 import type { QuizApi } from "../data/quizApi";
+import { subscribeWorkspaceSync } from "@/lib/workspace-sync";
 import { shuffle } from "../utils";
 
 /** Quản lý danh sách đề + lượt làm bài, đồng bộ với QuizApi (cập nhật lạc quan, lưu nháp có debounce). */
@@ -15,8 +16,18 @@ export function useQuizStore(api: QuizApi, conversationId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const attemptsRef = useRef<Record<string, QuizAttempt[]>>(attempts);
+  const activeConversationIdRef = useRef<string>(conversationId);
 
   const [weakSummary, setWeakSummary] = useState<import("../types").WeakAreasSummary | null>(null);
+
+  useEffect(() => {
+    attemptsRef.current = attempts;
+  }, [attempts]);
+
+  useEffect(() => {
+    activeConversationIdRef.current = conversationId;
+  }, [conversationId]);
 
   const refreshWeakSummary = useCallback(async () => {
     try {
@@ -46,10 +57,62 @@ export function useQuizStore(api: QuizApi, conversationId: string) {
     }
   }, [api, conversationId]);
 
+  /** Đồng bộ nền khi AI Agent vừa tạo quiz mới: không bật skeleton và không ghi đè lượt thi đang làm dở. */
+  const sync = useCallback(async () => {
+    if (!conversationId) return;
+    const targetConversationId = conversationId;
+    try {
+      const [qs, summary] = await Promise.all([
+        api.listQuizzes(targetConversationId),
+        api.getWeakAreasSummary(targetConversationId).catch(() => null),
+      ]);
+
+      if (activeConversationIdRef.current !== targetConversationId) {
+        return;
+      }
+
+      const knownAttempts = attemptsRef.current;
+      const newQuizIds = qs
+        .filter((q) => !(q.id in knownAttempts))
+        .map((q) => q.id);
+
+      const newEntries = await Promise.all(
+        newQuizIds.map(async (id) => {
+          const list = await api.listAttempts(id).catch(() => []);
+          return [id, list] as const;
+        })
+      );
+
+      if (activeConversationIdRef.current !== targetConversationId) {
+        return;
+      }
+
+      setQuizzes(qs);
+      if (summary !== null) {
+        setWeakSummary(summary);
+      }
+      if (newEntries.length > 0) {
+        setAttempts((prev) => ({
+          ...Object.fromEntries(newEntries),
+          ...prev,
+        }));
+      }
+    } catch (err) {
+      console.warn("[useQuizStore] Background sync failed:", err);
+    }
+  }, [api, conversationId]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+    return subscribeWorkspaceSync(conversationId, ["quiz"], () => {
+      void sync();
+    });
+  }, [conversationId, sync]);
 
   const putAttempt = useCallback((att: QuizAttempt) => {
     setAttempts((prev) => {
@@ -65,6 +128,7 @@ export function useQuizStore(api: QuizApi, conversationId: string) {
 
   const actions = useMemo(() => ({
     reload: load,
+    sync,
 
     async createQuiz(draft: QuizDraft) { const q = await api.createQuiz(conversationId, draft); putQuiz(q); return q; },
     async updateQuiz(id: string, draft: QuizDraft) { const q = await api.updateQuiz(id, draft); putQuiz(q); return q; },
@@ -125,7 +189,7 @@ export function useQuizStore(api: QuizApi, conversationId: string) {
     convertToFlashcards(attemptId: string, questionIds: string[], target: FlashcardTarget) {
       return api.convertToFlashcards(attemptId, questionIds, target);
     },
-  }), [api, conversationId, load, putAttempt, putQuiz, refreshWeakSummary]);
+  }), [api, conversationId, load, sync, putAttempt, putQuiz, refreshWeakSummary]);
 
   return { quizzes, attempts, weakSummary, refreshWeakSummary, loading, error, ...actions };
 }

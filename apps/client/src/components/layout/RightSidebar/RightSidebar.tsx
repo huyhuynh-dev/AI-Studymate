@@ -12,6 +12,7 @@ import {
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useDocuments } from "@/hooks/useDocuments";
+import { handleChatStreamDataPart } from "@/lib/workspace-sync";
 import { chatSessionsApi } from "@/services/chatSessions.api";
 
 import { ChatComposer } from "./components/ChatComposer";
@@ -338,6 +339,9 @@ export default function RightSidebar({
   } = useChat({
     transport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    onData: (dataPart) => {
+      handleChatStreamDataPart(dataPart);
+    },
     onError: (err) => {
       console.error("[RightSidebar] useChat onError:", err);
       setIsLoadingSuggestions(false);

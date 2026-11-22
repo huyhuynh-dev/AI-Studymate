@@ -17,6 +17,10 @@ import {
 import { CreateChatSessionDto } from './dto/create-chat-session.dto.js';
 import { UpdateChatSessionDto } from './dto/update-chat-session.dto.js';
 import { GenerateSuggestionsDto } from './dto/generate-suggestions.dto.js';
+import {
+  WorkspaceSyncChannel,
+  pipeWorkspaceSyncIntoUIMessageStream,
+} from './workspace-sync.channel.js';
 
 export interface ResolvedChatConfig {
   modelName: string;
@@ -212,7 +216,15 @@ export class ChatAgentService {
       return [];
     };
 
-    return streamResult.toUIMessageStream({
+    const streamOnError = (error: unknown) => {
+      console.error(
+        `[ChatAgentService] Stream onError cho session ${chatSessionId}:`,
+        error,
+      );
+      return 'AI chat stream encountered an error';
+    };
+
+    const innerStream = streamResult.toUIMessageStream({
       originalMessages,
       generateMessageId: createIdGenerator({
         prefix: 'msg-',
@@ -272,14 +284,26 @@ export class ChatAgentService {
           );
         }
       },
-      onError: (error: unknown) => {
-        console.error(
-          `[ChatAgentService] Stream onError cho session ${chatSessionId}:`,
-          error,
-        );
-        return 'AI chat stream encountered an error';
-      },
+      onError: streamOnError,
     });
+
+    const syncChannel = streamResult?.workspaceSyncChannel as
+      | WorkspaceSyncChannel
+      | undefined;
+
+    if (
+      syncChannel &&
+      innerStream &&
+      typeof innerStream.getReader === 'function'
+    ) {
+      return pipeWorkspaceSyncIntoUIMessageStream(
+        innerStream,
+        syncChannel,
+        streamOnError,
+      );
+    }
+
+    return innerStream;
   }
 
   // ── 2. Kích hoạt luồng Stream AI qua ChatAgentAiService ──
@@ -347,7 +371,9 @@ export class ChatAgentService {
       },
     };
 
-    return this.chatAgentAiService.executeChatStream(
+    const workspaceSyncChannel = new WorkspaceSyncChannel();
+
+    const streamResult = await this.chatAgentAiService.executeChatStream(
       messages,
       async ({
         assistantUIMessage,
@@ -532,6 +558,20 @@ export class ChatAgentService {
                       .map((id) => catalogMap.get(id))
                       .filter((name): name is string => Boolean(name));
 
+              const createdAt =
+                created.created_at instanceof Date
+                  ? created.created_at.toISOString()
+                  : String(created.created_at);
+
+              workspaceSyncChannel.emit({
+                resource: 'summary',
+                action: 'created',
+                conversationId: ragContext.conversationId,
+                entityId: created.id,
+                title: created.title,
+                occurredAt: createdAt,
+              });
+
               return {
                 summaryId: created.id,
                 title: created.title,
@@ -539,10 +579,7 @@ export class ChatAgentService {
                 mode: input.mode || 'study_guide',
                 length: input.length || 'standard',
                 documentNames,
-                createdAt:
-                  created.created_at instanceof Date
-                    ? created.created_at.toISOString()
-                    : String(created.created_at),
+                createdAt,
               };
             },
             onCreateFlashcards: async (input) => {
@@ -615,6 +652,19 @@ export class ChatAgentService {
                       .map((id) => catalogMap.get(id))
                       .filter((name): name is string => Boolean(name));
 
+              const createdAt = new Date().toISOString();
+
+              workspaceSyncChannel.emit({
+                resource: 'flashcard',
+                action: target.kind === 'deck' ? 'updated' : 'created',
+                conversationId: ragContext.conversationId,
+                entityId: created.deckId,
+                targetKind: target.kind,
+                title: created.deckName,
+                count: created.stats.saved,
+                occurredAt: createdAt,
+              });
+
               return {
                 deckId: created.deckId,
                 deckName: created.deckName,
@@ -625,7 +675,7 @@ export class ChatAgentService {
                 droppedCount: created.stats.dropped,
                 types,
                 documentNames,
-                createdAt: new Date().toISOString(),
+                createdAt,
               };
             },
             onCreateQuiz: async (input) => {
@@ -705,22 +755,37 @@ export class ChatAgentService {
                     },
                   );
 
+                const actualQuestionCount = Array.isArray(
+                  createdFromDeck.questions,
+                )
+                  ? createdFromDeck.questions.length
+                  : questionCount;
+                const createdAt =
+                  createdFromDeck.createdAt || new Date().toISOString();
+
+                workspaceSyncChannel.emit({
+                  resource: 'quiz',
+                  action: 'created',
+                  conversationId: ragContext.conversationId,
+                  entityId: createdFromDeck.id,
+                  title: createdFromDeck.title,
+                  count: actualQuestionCount,
+                  occurredAt: createdAt,
+                });
+
                 return {
                   quizId: createdFromDeck.id,
                   title: createdFromDeck.title,
                   description: createdFromDeck.description,
                   source: createdFromDeck.source,
-                  questionCount: Array.isArray(createdFromDeck.questions)
-                    ? createdFromDeck.questions.length
-                    : questionCount,
+                  questionCount: actualQuestionCount,
                   requestedCount: questionCount,
                   types: resolvedDeckTypes,
                   difficulty,
                   documentNames: createdFromDeck.sourceDeckName
                     ? [createdFromDeck.sourceDeckName]
                     : ['Bộ thẻ Flashcard'],
-                  createdAt:
-                    createdFromDeck.createdAt || new Date().toISOString(),
+                  createdAt,
                 };
               }
 
@@ -767,24 +832,43 @@ export class ChatAgentService {
                     .filter((name): name is string => Boolean(name))
                 : (availableDocuments ?? []).map((d) => d.fileName);
 
+              const actualQuestionCount = Array.isArray(created.questions)
+                ? created.questions.length
+                : questionCount;
+              const createdAt = created.createdAt || new Date().toISOString();
+
+              workspaceSyncChannel.emit({
+                resource: 'quiz',
+                action: 'created',
+                conversationId: ragContext.conversationId,
+                entityId: created.id,
+                title: created.title,
+                count: actualQuestionCount,
+                occurredAt: createdAt,
+              });
+
               return {
                 quizId: created.id,
                 title: created.title,
                 description: created.description,
                 source: created.source,
-                questionCount: Array.isArray(created.questions)
-                  ? created.questions.length
-                  : questionCount,
+                questionCount: actualQuestionCount,
                 requestedCount: questionCount,
                 types,
                 difficulty,
                 documentNames,
-                createdAt: created.createdAt || new Date().toISOString(),
+                createdAt,
               };
             },
           }
         : { chatConfig: config, ...webCallbacks },
     );
+
+    if (streamResult && typeof streamResult === 'object') {
+      Object.assign(streamResult, { workspaceSyncChannel });
+    }
+
+    return streamResult;
   }
 
   // ── 3. Function tổng hợp điều phối toàn bộ chu trình Chat ──
