@@ -5,6 +5,7 @@ import { DocumentsQueueService } from './services/documents-queue.service.js';
 import { DocumentIngestionProcessor } from './services/document-ingestion.processor.js';
 import { DoclingService } from './services/docling.service.js';
 import { RetrievalService } from './services/retrieval.service.js';
+import { GoogleDocsImportService } from './services/google-docs-import.service.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { RepoModule } from '../repo/repo.module.js';
 import { AiModule } from '../ai/ai.module.js';
@@ -18,6 +19,7 @@ import { PrismaModule } from '../prisma/prisma.module.js';
     DocumentIngestionProcessor,
     DoclingService,
     RetrievalService,
+    GoogleDocsImportService,
   ],
   controllers: [DocumentsController],
   exports: [

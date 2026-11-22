@@ -3,9 +3,10 @@ import { IsIn, IsNotEmpty, IsNumber, IsString, IsUUID, Max, Min } from 'class-va
 export const ALLOWED_MIME_TYPES = [
     // PDF
     'application/pdf',
-    // Word (.doc, .docx)
+    // Word (.doc, .docx) & OpenDocument Text (.odt)
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.oasis.opendocument.text',
     // Excel (.xls, .xlsx)
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -64,7 +65,7 @@ export class InitUploadDto {
     @IsString({ message: 'mimeType phải là chuỗi ký tự' })
     @IsIn(ALLOWED_MIME_TYPES, {
         message:
-            'Định dạng tệp không được hỗ trợ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint, Markdown, HTML, TXT, LOG, JSON, XML, YAML, CSV, TOML và ảnh JPEG/PNG/WEBP',
+            'Định dạng tệp không được hỗ trợ. Chỉ chấp nhận PDF, Word, ODT, Excel, PowerPoint, Markdown, HTML, TXT, LOG, JSON, XML, YAML, CSV, TOML và ảnh JPEG/PNG/WEBP',
     })
     mimeType: string;
 }

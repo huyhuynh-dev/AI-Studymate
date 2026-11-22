@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useMemo, useEffect, DragEvent, ChangeEvent } from "react";
+import dynamic from "next/dynamic";
 import {
   Plus,
   FileText,
@@ -14,6 +15,7 @@ import {
   UploadCloud,
   Eye,
   Layers,
+  Globe,
 } from "lucide-react";
 import { DocumentItem, UploadProgressItem } from "@/types";
 import { useFocusMode } from "@/components/layout";
@@ -21,12 +23,41 @@ import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import DocumentImageViewer from "./DocumentImageViewer";
 import DocumentPdfViewer from "./DocumentPdfViewer";
 import DocumentTextEditor from "./editor/DocumentTextEditor";
+import ImportGoogleDocModal from "./word/ImportGoogleDocModal";
+import {
+  isDocxDocument,
+  isGoogleDocsImported,
+  isLegacyWordOrOdtDocument,
+} from "./word/word-document.helpers";
 import type { EditorCitationTarget } from "./editor/text-anchor-resolver";
 import {
   EDITABLE_TEXT_EXTENSIONS_ACCEPT,
   isEditableTextDocument,
   resolveDocumentEditorProfile,
 } from "./editor/document-format-profiles";
+
+const DocumentWordEditor = dynamic(() => import("./word/DocumentWordEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[560px] w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#141720] text-neutral-500 dark:text-neutral-400">
+      <Loader2 className="h-7 w-7 animate-spin text-blue-600 dark:text-blue-400" />
+      <p className="text-xs font-medium">Đang nạp trình soạn thảo Word SuperDoc…</p>
+    </div>
+  ),
+});
+
+const DocumentLegacyDocPreview = dynamic(
+  () => import("./word/DocumentLegacyDocPreview"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[520px] w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#141720] text-neutral-500 dark:text-neutral-400">
+        <Loader2 className="h-7 w-7 animate-spin text-blue-600 dark:text-blue-400" />
+        <p className="text-xs font-medium">Đang tải bản xem trước tài liệu…</p>
+      </div>
+    ),
+  },
+);
 
 export interface DocumentsTabProps {
   documents?: DocumentItem[];
@@ -36,6 +67,7 @@ export interface DocumentsTabProps {
   errorMessage?: string | null;
   onClearError?: () => void;
   onUpload?: (files: File[]) => void;
+  onImportGoogleDoc?: (url: string, fileName?: string) => Promise<DocumentItem>;
   onDelete?: (documentId: string) => void;
   onDownload?: (documentId: string, fileName: string) => void;
   onDocumentUpdated?: (doc: DocumentItem) => void;
@@ -48,13 +80,14 @@ export interface DocumentsTabProps {
 }
 
 const ACCEPTED_FILE_EXTENSIONS =
-  `.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,${EDITABLE_TEXT_EXTENSIONS_ACCEPT}`;
+  `.pdf,.doc,.docx,.odt,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,${EDITABLE_TEXT_EXTENSIONS_ACCEPT}`;
 
 function getDocumentFormatBadge(doc: DocumentItem): string {
   const mime = doc.mime_type.toLowerCase();
   if (mime === "application/pdf") return "PDF";
-  if (mime.includes("word") || doc.file_name.toLowerCase().endsWith(".docx")) return "DOCX";
-  if (doc.file_name.toLowerCase().endsWith(".doc")) return "DOC";
+  if (isDocxDocument(doc)) return "DOCX";
+  if (mime === "application/vnd.oasis.opendocument.text" || doc.file_name.toLowerCase().endsWith(".odt")) return "ODT";
+  if (mime.includes("word") || doc.file_name.toLowerCase().endsWith(".doc")) return "DOC";
   if (mime.includes("spreadsheet") || mime.includes("excel") || doc.file_name.toLowerCase().endsWith(".xlsx")) return "XLSX";
   if (doc.file_name.toLowerCase().endsWith(".xls")) return "XLS";
   if (mime.includes("presentation") || mime.includes("powerpoint") || doc.file_name.toLowerCase().endsWith(".pptx")) return "PPTX";
@@ -100,6 +133,7 @@ export default function DocumentsTab({
   errorMessage = null,
   onClearError,
   onUpload,
+  onImportGoogleDoc,
   onDelete,
   onDownload,
   onDocumentUpdated,
@@ -110,6 +144,7 @@ export default function DocumentsTab({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showImportGoogleModal, setShowImportGoogleModal] = useState(false);
   const [viewingDocId, setViewingDocId] = useState<string | null>(null);
   const [pendingCitationTarget, setPendingCitationTarget] =
     useState<EditorCitationTarget | null>(null);
@@ -128,7 +163,10 @@ export default function DocumentsTab({
       setViewingDocId(targetDocId);
 
       const matchedDoc = documents.find((d) => d.id === targetDocId);
-      if (matchedDoc && isEditableTextDocument(matchedDoc)) {
+      if (
+        matchedDoc &&
+        (isEditableTextDocument(matchedDoc) || isDocxDocument(matchedDoc))
+      ) {
         setPendingCitationTarget({
           documentId: activeTarget.documentId,
           fileName: activeTarget.fileName ?? matchedDoc.file_name,
@@ -165,7 +203,9 @@ export default function DocumentsTab({
         viewingDoc &&
         (viewingDoc.mime_type === "application/pdf" ||
           viewingDoc.mime_type.startsWith("image/") ||
-          isEditableTextDocument(viewingDoc))
+          isEditableTextDocument(viewingDoc) ||
+          isDocxDocument(viewingDoc) ||
+          isLegacyWordOrOdtDocument(viewingDoc))
     );
     setIsViewingDocument(canViewInline);
     return () => {
@@ -197,7 +237,9 @@ export default function DocumentsTab({
     if (
       doc.mime_type === "application/pdf" ||
       doc.mime_type.startsWith("image/") ||
-      isEditableTextDocument(doc)
+      isEditableTextDocument(doc) ||
+      isDocxDocument(doc) ||
+      isLegacyWordOrOdtDocument(doc)
     ) {
       setPendingCitationTarget(null);
       setViewingDocId(doc.id);
@@ -347,6 +389,40 @@ export default function DocumentsTab({
       );
     }
 
+    if (isDocxDocument(viewingDoc)) {
+      return (
+        <DocumentWordEditor
+          key={viewingDoc.id}
+          document={viewingDoc}
+          onClose={() => {
+            setPendingCitationTarget(null);
+            handleCloseViewer();
+          }}
+          onDownload={onDownload}
+          onDocumentUpdated={onDocumentUpdated}
+          onCreateTargetedQuiz={onCreateTargetedQuiz}
+          citationTarget={pendingCitationTarget}
+          onCitationDismiss={() => setPendingCitationTarget(null)}
+          className={className}
+        />
+      );
+    }
+
+    if (isLegacyWordOrOdtDocument(viewingDoc)) {
+      return (
+        <DocumentLegacyDocPreview
+          key={viewingDoc.id}
+          document={viewingDoc}
+          onClose={() => {
+            setPendingCitationTarget(null);
+            handleCloseViewer();
+          }}
+          onDownload={onDownload}
+          className={className}
+        />
+      );
+    }
+
     if (isEditableTextDocument(viewingDoc)) {
       return (
         <DocumentTextEditor
@@ -416,21 +492,42 @@ export default function DocumentsTab({
         </h2>
 
         <p className="mt-2 max-w-[400px] text-center text-[14px] leading-relaxed text-neutral-500 dark:text-neutral-400">
-          Tải lên tài liệu (PDF, Word, Excel, PowerPoint, Markdown, HTML, TXT, LOG, JSON, XML, YAML, CSV, TOML) hoặc hình ảnh bài giảng để bắt đầu học tập cùng AI.
+          Tải lên tài liệu (PDF, Word, ODT, Excel, PowerPoint, Markdown, HTML, TXT, LOG, JSON, XML, YAML, CSV, TOML), nhập Google Docs hoặc hình ảnh bài giảng để bắt đầu học tập cùng AI.
         </p>
 
-        <button
-          type="button"
-          onClick={handleTriggerUpload}
-          className="mt-6 inline-flex h-10 items-center gap-2 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] px-5 text-[13px] font-semibold text-white shadow-xs shadow-indigo-500/20 transition-all duration-200 active:scale-[0.97] cursor-pointer"
-        >
-          <Plus className="h-4 w-4 stroke-[2.25]" />
-          <span>Tải lên tài liệu</span>
-        </button>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleTriggerUpload}
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] px-5 text-[13px] font-semibold text-white shadow-xs shadow-indigo-500/20 transition-all duration-200 active:scale-[0.97] cursor-pointer"
+          >
+            <Plus className="h-4 w-4 stroke-[2.25]" />
+            <span>Tải lên tài liệu</span>
+          </button>
+
+          {onImportGoogleDoc && (
+            <button
+              type="button"
+              onClick={() => setShowImportGoogleModal(true)}
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/10 hover:bg-blue-500/15 px-4 text-[13px] font-semibold text-blue-700 dark:text-blue-300 transition-all duration-200 active:scale-[0.97] cursor-pointer"
+            >
+              <Globe className="h-4 w-4" />
+              <span>Google Docs</span>
+            </button>
+          )}
+        </div>
 
         <p className="mt-3.5 text-[12px] text-neutral-400 dark:text-neutral-500">
-          Kéo thả tệp vào đây · PDF, DOCX, XLSX, PPTX, CSV, MD, TXT, PNG, JPG (tối đa {maxSizeMB}MB)
+          Kéo thả tệp vào đây · PDF, DOCX, DOC, ODT, XLSX, PPTX, CSV, MD, TXT, PNG, JPG (tối đa {maxSizeMB}MB)
         </p>
+
+        {onImportGoogleDoc && (
+          <ImportGoogleDocModal
+            isOpen={showImportGoogleModal}
+            onClose={() => setShowImportGoogleModal(false)}
+            onImport={onImportGoogleDoc}
+          />
+        )}
       </div>
     );
   }
@@ -530,15 +627,28 @@ export default function DocumentsTab({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleTriggerUpload}
-            className="inline-flex items-center gap-2 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer"
-          >
-            <Plus className="h-4 w-4 stroke-[2.5]" />
-            <span className="hidden sm:inline">Tải thêm tài liệu</span>
-            <span className="sm:hidden">Tải thêm</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {onImportGoogleDoc && (
+              <button
+                type="button"
+                onClick={() => setShowImportGoogleModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 hover:bg-blue-500/15 px-3.5 py-2 text-xs sm:text-sm font-semibold text-blue-700 dark:text-blue-300 transition-all active:scale-[0.98] cursor-pointer"
+              >
+                <Globe className="h-4 w-4" />
+                <span className="hidden sm:inline">Google Docs</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleTriggerUpload}
+              className="inline-flex items-center gap-2 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer"
+            >
+              <Plus className="h-4 w-4 stroke-[2.5]" />
+              <span className="hidden sm:inline">Tải thêm tài liệu</span>
+              <span className="sm:hidden">Tải thêm</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -639,16 +749,25 @@ export default function DocumentsTab({
         ) : (
           filteredDocuments.map((doc) => {
             const isImage = doc.mime_type.startsWith("image/");
+            const isDocx = isDocxDocument(doc);
+            const isLegacyWord = isLegacyWordOrOdtDocument(doc);
+            const isGoogleDoc = isGoogleDocsImported(doc);
             const textProfile = resolveDocumentEditorProfile(doc);
             const isEditableText = textProfile.mode !== "unsupported";
             const canPreviewInline =
-              isImage || doc.mime_type === "application/pdf" || isEditableText;
+              isImage ||
+              doc.mime_type === "application/pdf" ||
+              isEditableText ||
+              isDocx ||
+              isLegacyWord;
             const formatBadge = getDocumentFormatBadge(doc);
             const cardBadgeClass = isImage
               ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500/15"
-              : isEditableText
-                ? textProfile.badgeToneClass
-                : "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:bg-rose-500/15";
+              : isDocx || isLegacyWord
+                ? "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:bg-blue-500/15"
+                : isEditableText
+                  ? textProfile.badgeToneClass
+                  : "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:bg-rose-500/15";
             return (
               <div
                 key={doc.id}
@@ -668,9 +787,17 @@ export default function DocumentsTab({
                   </div>
 
                   <div className="min-w-0">
-                    <h4 className="truncate text-sm sm:text-base font-semibold text-neutral-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                      {doc.file_name}
-                    </h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="truncate text-sm sm:text-base font-semibold text-neutral-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        {doc.file_name}
+                      </h4>
+                      {isGoogleDoc && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400">
+                          <Globe className="h-2.5 w-2.5" />
+                          Google Docs
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-2 tabular-nums text-xs text-neutral-500 dark:text-neutral-400">
                       <span>{formatBytes(doc.file_size)}</span>
                       <span>•</span>
@@ -698,7 +825,7 @@ export default function DocumentsTab({
                   {renderStatusBadge(doc)}
 
                   <div className="flex items-center gap-1.5">
-                    {/* Nút Xem chi tiết (Eye Icon) cho PDF & Hình ảnh */}
+                    {/* Nút Xem chi tiết (Eye Icon) */}
                     {canPreviewInline && (
                       <button
                         type="button"
@@ -709,9 +836,13 @@ export default function DocumentsTab({
                         title={
                           doc.mime_type === "application/pdf"
                             ? "Xem tài liệu PDF"
-                            : isEditableText
-                              ? "Mở trình đọc & soạn thảo trực tiếp"
-                              : "Xem hình ảnh"
+                            : isDocx
+                              ? "Mở & chỉnh sửa tài liệu Word (SuperDoc)"
+                              : isLegacyWord
+                                ? "Xem trước nội dung tài liệu"
+                                : isEditableText
+                                  ? "Mở trình đọc & soạn thảo trực tiếp"
+                                  : "Xem hình ảnh"
                         }
                         className="flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300 shadow-2xs transition-all hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 cursor-pointer"
                       >
@@ -751,6 +882,15 @@ export default function DocumentsTab({
           })
         )}
       </div>
+
+      {/* Modal nhập nhanh từ Google Docs */}
+      {onImportGoogleDoc && (
+        <ImportGoogleDocModal
+          isOpen={showImportGoogleModal}
+          onClose={() => setShowImportGoogleModal(false)}
+          onImport={onImportGoogleDoc}
+        />
+      )}
 
       {/* Modal xác nhận xóa chuẩn Apple Destructive Alert */}
       {deletingId && (

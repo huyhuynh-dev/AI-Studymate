@@ -31,6 +31,14 @@ const PAGED_BINARY_EXTENSIONS = new Set([
 
 const MARKDOWN_OR_HTML_EXTENSIONS = new Set(['md', 'markdown', 'html', 'htm']);
 
+const WORD_OR_ODT_EXTENSIONS = new Set(['doc', 'docx', 'odt']);
+
+const WORD_OR_ODT_MIME_SET = new Set([
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.oasis.opendocument.text',
+]);
+
 const NON_PAGED_MIME_SET = new Set([
   'text/markdown',
   'text/x-markdown',
@@ -111,6 +119,28 @@ export function isPagedDocumentFile(
   return true;
 }
 
+export function isWordDocumentFile(
+  fileName?: string | null,
+  mimeType?: string | null,
+): boolean {
+  const ext = getFileExtension(fileName);
+  if (ext && WORD_OR_ODT_EXTENSIONS.has(ext)) return true;
+  const mime = normalizeMime(mimeType);
+  return (
+    WORD_OR_ODT_MIME_SET.has(mime) || mime.includes('wordprocessingml')
+  );
+}
+
+function hasReliablePhysicalWordPage(input: CitationLabelInput): boolean {
+  if (
+    Array.isArray(input.pageNumbers) &&
+    input.pageNumbers.some((p) => typeof p === 'number' && Number.isFinite(p) && p > 1)
+  ) {
+    return true;
+  }
+  return typeof input.pageNo === 'number' && Number.isFinite(input.pageNo) && input.pageNo > 1;
+}
+
 export function isCsvDocumentFile(
   fileName?: string | null,
   mimeType?: string | null,
@@ -174,19 +204,41 @@ function resolvePagedRangeLabel(input: CitationLabelInput): string {
 
 /**
  * Định dạng nhãn vị trí đa hình thay thế cho "Trang 1" cứng nhắc:
+ * - Word / ODT (.docx, .doc, .odt): "§ Tên Heading" hoặc "Đoạn #N" khi phân trang động (hoặc "Trang X–Y" nếu có trang > 1)
  * - Tệp phân trang: "Trang X" / "Trang X–Y"
  * - Markdown/HTML: "Dòng X–Y" (compact) hoặc "Dòng X–Y · Tên Heading" (detailed); fallback legacy: "§ Tên Heading" hoặc "Đoạn #N"
  * - Plain Text/Log/JSON/XML/YAML/TOML: "Dòng X–Y"
  * - CSV: "Hàng X–Y"
  */
 export function formatCitationLocationLabel(input: CitationLabelInput): string {
+  const variant = input.variant ?? 'compact';
+  const lastHeading = resolveLastHeading(input);
+  const hasChunkIndex =
+    typeof input.chunkIndex === 'number' &&
+    Number.isFinite(input.chunkIndex) &&
+    input.chunkIndex >= 0;
+
+  if (isWordDocumentFile(input.fileName, input.mimeType)) {
+    if (hasReliablePhysicalWordPage(input)) {
+      const pageLabel = resolvePagedRangeLabel(input);
+      return variant === 'detailed' && lastHeading
+        ? `${pageLabel} · ${lastHeading}`
+        : pageLabel;
+    }
+    if (lastHeading) {
+      return `§ ${lastHeading}`;
+    }
+    if (hasChunkIndex) {
+      return `Đoạn #${Math.floor(input.chunkIndex!) + 1}`;
+    }
+    return 'Tài liệu Word';
+  }
+
   if (isPagedDocumentFile(input.fileName, input.mimeType)) {
     return resolvePagedRangeLabel(input);
   }
 
   const anchor = input.textAnchor ?? null;
-  const variant = input.variant ?? 'compact';
-  const lastHeading = resolveLastHeading(input);
 
   if (anchor) {
     const unit = isCsvDocumentFile(input.fileName, input.mimeType)
@@ -206,11 +258,6 @@ export function formatCitationLocationLabel(input: CitationLabelInput): string {
   }
 
   // Fallback tương thích cho bản ghi văn bản cũ chưa có textAnchor (tuyệt đối không hiện "Trang 1")
-  const hasChunkIndex =
-    typeof input.chunkIndex === 'number' &&
-    Number.isFinite(input.chunkIndex) &&
-    input.chunkIndex >= 0;
-
   if (variant === 'compact') {
     if (hasChunkIndex) {
       return `Đoạn #${Math.floor(input.chunkIndex!) + 1}`;
@@ -234,6 +281,12 @@ export function formatCitationLocationLabel(input: CitationLabelInput): string {
  * Định dạng nhãn nút hành động nhảy tới vị trí trích dẫn ("Nhảy tới Trang X" / "Nhảy tới Dòng X–Y" / "Định vị đoạn trích").
  */
 export function formatCitationActionLabel(input: CitationLabelInput): string {
+  if (isWordDocumentFile(input.fileName, input.mimeType)) {
+    return hasReliablePhysicalWordPage(input)
+      ? `Nhảy tới ${resolvePagedRangeLabel(input)}`
+      : 'Định vị đoạn trích';
+  }
+
   if (isPagedDocumentFile(input.fileName, input.mimeType)) {
     return `Nhảy tới ${resolvePagedRangeLabel(input)}`;
   }
@@ -257,8 +310,10 @@ export function formatCitationActionLabel(input: CitationLabelInput): string {
  */
 export function formatCitationTooltipLabel(input: CitationLabelInput): string {
   const detail = formatCitationLocationLabel({ ...input, variant: 'detailed' });
-  const prefix = isPagedDocumentFile(input.fileName, input.mimeType)
-    ? 'Xem nguồn trong PDF'
-    : 'Xem nguồn trong tài liệu';
+  const prefix = isWordDocumentFile(input.fileName, input.mimeType)
+    ? 'Xem nguồn trong tài liệu Word'
+    : isPagedDocumentFile(input.fileName, input.mimeType)
+      ? 'Xem nguồn trong PDF'
+      : 'Xem nguồn trong tài liệu';
   return `${prefix} (${detail})`;
 }

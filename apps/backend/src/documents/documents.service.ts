@@ -4,6 +4,7 @@ import {
     Injectable,
     Logger,
     NotFoundException,
+    Optional,
 } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { StorageService } from '../storage/storage.service.js';
@@ -11,12 +12,18 @@ import { DocumentsRepoService, DocumentResponse } from '../repo/documents-repo/d
 import { DocumentAssetsRepoService } from '../repo/document-assets-repo/document-assets-repo.service.js';
 import { ConversationsRepoService } from '../repo/conversations-repo/conversations-repo.service.js';
 import { DocumentsQueueService } from './services/documents-queue.service.js';
+import { GoogleDocsImportService } from './services/google-docs-import.service.js';
 import { InitUploadDto, MAX_FILE_SIZE_BYTES } from './dto/init-upload.dto.js';
 import { CompleteUploadDto } from './dto/complete-upload.dto.js';
 import { UpdateDocumentContentDto } from './dto/update-document-content.dto.js';
+import { OverwriteVersionDto } from './dto/complete-overwrite.dto.js';
+import { ImportGoogleDocDto } from './dto/import-google-doc.dto.js';
 import {
+    DOCX_MIME_TYPE,
     MAX_EDITABLE_TEXT_BYTES,
     MAX_READONLY_PREVIEW_BYTES,
+    ODT_MIME_TYPE,
+    isDocxDocument,
     isEditableTextDocument,
     prepareTextForHybridChunking,
     resolveCanonicalMimeType,
@@ -33,6 +40,7 @@ export class DocumentsService {
         private readonly documentAssetsRepo: DocumentAssetsRepoService,
         private readonly conversationsRepo: ConversationsRepoService,
         private readonly documentsQueueService: DocumentsQueueService,
+        @Optional() private readonly googleDocsImportService?: GoogleDocsImportService,
     ) { }
 
     private sanitizeFileName(fileName: string): string {
@@ -160,8 +168,128 @@ export class DocumentsService {
         return { downloadUrl };
     }
 
-    async getOverwriteUrl(userId: string, documentId: string): Promise<{ uploadUrl: string }> {
+    async importGoogleDoc(
+        userId: string,
+        dto: ImportGoogleDocDto,
+    ): Promise<DocumentResponse> {
+        if (!this.googleDocsImportService) {
+            throw new BadRequestException('Dịch vụ nhập Google Docs chưa được cấu hình');
+        }
+
+        const conversation = await this.conversationsRepo.getConversationById(
+            dto.conversationId,
+            userId,
+        );
+        if (!conversation) {
+            throw new NotFoundException(
+                'Không tìm thấy cuộc trò chuyện hoặc bạn không có quyền truy cập',
+            );
+        }
+
+        const imported = await this.googleDocsImportService.downloadPublicDocAsDocx(
+            dto.url,
+            dto.fileName,
+        );
+
+        const documentId = randomUUID();
+        const safeName = this.sanitizeFileName(imported.fileName);
+        const storageKey = `users/${userId}/conversations/${dto.conversationId}/${documentId}-${safeName}`;
+        const fileHash = createHash('sha256').update(imported.buffer).digest('hex');
+
+        await this.storageService.uploadObjectBuffer(
+            storageKey,
+            imported.buffer,
+            DOCX_MIME_TYPE,
+        );
+
+        let document: DocumentResponse;
+        try {
+            document = await this.documentsRepo.createDocument({
+                id: documentId,
+                conversation_id: dto.conversationId,
+                user_id: userId,
+                file_name: imported.fileName,
+                mime_type: DOCX_MIME_TYPE,
+                file_size: BigInt(imported.buffer.length),
+                file_hash: fileHash,
+                storage_key: storageKey,
+                ocr_status: 'pending',
+                embed_status: 'pending',
+                content_version: 1,
+                indexed_version: 0,
+                doc_metadata: {
+                    source_type: 'google_docs',
+                    source_url: imported.canonicalUrl,
+                    google_doc_id: imported.googleDocId,
+                },
+                uploaded_at: new Date(),
+            });
+        } catch (error) {
+            await this.storageService.deleteObject(storageKey).catch((e) =>
+                this.logger.error(
+                    `Không thể xóa tệp R2 sau khi tạo bản ghi Google Docs thất bại: ${e.message}`,
+                ),
+            );
+            throw error;
+        }
+
+        await this.documentsQueueService.addProcessingJob({
+            documentId: document.id,
+            mimeType: document.mime_type,
+            storageKey: document.storage_key,
+            fileName: document.file_name,
+        });
+
+        return document;
+    }
+
+    async getDocumentPreview(userId: string, documentId: string) {
         const doc = await this.getDocumentById(userId, documentId);
+        const lowerName = doc.file_name.toLowerCase();
+        let readOnlyReason: string | null = null;
+
+        if (!isDocxDocument(doc.mime_type, doc.file_name)) {
+            if (doc.mime_type === ODT_MIME_TYPE || lowerName.endsWith('.odt')) {
+                readOnlyReason =
+                    'Định dạng OpenDocument (.odt) chỉ hỗ trợ xem trước nội dung đã trích xuất. Hãy lưu tệp sang .docx để mở trình soạn thảo SuperDoc.';
+            } else {
+                readOnlyReason =
+                    'Định dạng Word cũ (.doc) chỉ hỗ trợ xem trước nội dung đã trích xuất. Hãy chuyển đổi tệp sang .docx để mở trình soạn thảo SuperDoc.';
+            }
+        }
+
+        return {
+            id: doc.id,
+            fileName: doc.file_name,
+            mimeType: doc.mime_type,
+            fileSize: doc.file_size,
+            rawText: doc.raw_text ?? null,
+            ocrStatus: doc.ocr_status,
+            embedStatus: doc.embed_status,
+            pageCount: doc.page_count ?? null,
+            processingError: doc.processing_error ?? null,
+            updatedAt: doc.updated_at,
+            readOnlyReason,
+        };
+    }
+
+    async getOverwriteUrl(
+        userId: string,
+        documentId: string,
+        dto?: OverwriteVersionDto,
+    ): Promise<{ uploadUrl: string }> {
+        const doc = await this.getDocumentById(userId, documentId);
+        if (dto?.expectedVersion !== undefined) {
+            const currentVersion = doc.content_version ?? 1;
+            if (dto.expectedVersion !== currentVersion) {
+                throw new ConflictException({
+                    message:
+                        'Tài liệu đã có bản lưu mới hơn ở nơi khác. Vui lòng tải lại trước khi lưu.',
+                    currentVersion,
+                });
+            }
+        }
+
         const uploadUrl = await this.storageService.getSignedUrlForUpload(
             doc.storage_key,
             doc.mime_type
@@ -169,7 +297,11 @@ export class DocumentsService {
         return { uploadUrl };
     }
 
-    async completeOverwrite(userId: string, documentId: string): Promise<DocumentResponse> {
+    async completeOverwrite(
+        userId: string,
+        documentId: string,
+        dto?: OverwriteVersionDto,
+    ): Promise<DocumentResponse> {
         const doc = await this.getDocumentById(userId, documentId);
 
         const head = await this.storageService.headObject(doc.storage_key);
@@ -183,17 +315,44 @@ export class DocumentsService {
 
         const updatedSize = head.contentLength ? BigInt(head.contentLength) : BigInt(doc.file_size);
         const wasAlreadyExtracted = doc.ocr_status === 'done';
-        const nextVersion = (doc.content_version ?? 1) + 1;
+        const currentVersion = doc.content_version ?? 1;
+        const targetExpectedVersion = dto?.expectedVersion;
+        const nextVersion =
+            (targetExpectedVersion !== undefined ? targetExpectedVersion : currentVersion) + 1;
 
-        // Phương án 2: Giữ ocr_status='done' nếu tài liệu đã extract trước đó để RAG Search không bị gián đoạn
-        const updatedDoc = await this.documentsRepo.updateDocument(documentId, userId, {
+        const updatePayload = {
             file_size: updatedSize,
             content_version: nextVersion,
-            ocr_status: wasAlreadyExtracted ? 'done' : 'pending',
-            embed_status: 'pending',
+            ocr_status: (wasAlreadyExtracted ? 'done' : 'pending') as 'done' | 'pending',
+            embed_status: 'pending' as const,
             processing_error: null,
             sync_error: null,
-        });
+        };
+
+        // Phương án 2: Giữ ocr_status='done' nếu tài liệu đã extract trước đó để RAG Search không bị gián đoạn
+        let updatedDoc: DocumentResponse | null;
+        if (targetExpectedVersion !== undefined) {
+            updatedDoc = await this.documentsRepo.updateDocumentWithOptimisticLock(
+                documentId,
+                userId,
+                targetExpectedVersion,
+                updatePayload,
+            );
+            if (!updatedDoc) {
+                const latestDoc = await this.documentsRepo.getDocumentById(documentId, userId);
+                throw new ConflictException({
+                    message:
+                        'Tài liệu đã có bản lưu mới hơn trong lúc ghi dữ liệu. Vui lòng tải lại.',
+                    currentVersion: latestDoc?.content_version ?? currentVersion + 1,
+                });
+            }
+        } else {
+            updatedDoc = await this.documentsRepo.updateDocument(
+                documentId,
+                userId,
+                updatePayload,
+            );
+        }
 
         if (typeof this.documentsQueueService.enqueueContentReindexJob === 'function') {
             await this.documentsQueueService.enqueueContentReindexJob(

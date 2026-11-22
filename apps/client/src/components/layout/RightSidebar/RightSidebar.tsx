@@ -67,6 +67,37 @@ const SidePanelTextEditor = dynamic(
     ),
   }
 );
+
+const SidePanelWordEditor = dynamic(
+  () => import("@/components/conversations/DocumentsTab/word/DocumentWordEditor"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2.5 bg-neutral-50/80 dark:bg-[#0F1218] text-neutral-500 dark:text-neutral-400">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
+        <span className="text-xs font-medium">Đang mở tài liệu Word…</span>
+      </div>
+    ),
+  }
+);
+
+const SidePanelLegacyDocPreview = dynamic(
+  () => import("@/components/conversations/DocumentsTab/word/DocumentLegacyDocPreview"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2.5 bg-neutral-50/80 dark:bg-[#0F1218] text-neutral-500 dark:text-neutral-400">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
+        <span className="text-xs font-medium">Đang tải bản xem trước tài liệu…</span>
+      </div>
+    ),
+  }
+);
+
+import {
+  isDocxDocument,
+  isLegacyWordOrOdtDocument,
+} from "@/components/conversations/DocumentsTab/word/word-document.helpers";
 import {
   ATTACHMENT_PROCESSING_TIMEOUT_MS,
   DEFAULT_EFFORT,
@@ -1016,10 +1047,10 @@ export default function RightSidebar({
         tabIndex={-1}
         className="hidden"
         multiple
-        accept={`.pdf,.png,.jpg,.jpeg,.webp,.docx,${EDITABLE_TEXT_EXTENSIONS_ACCEPT}`}
+        accept={`.pdf,.png,.jpg,.jpeg,.webp,.docx,.doc,.odt,${EDITABLE_TEXT_EXTENSIONS_ACCEPT}`}
       />
 
-      {/* Trình xem nguồn PDF / Ảnh / Text & Markdown tạm thời (mượn chỗ RightSidebar) */}
+      {/* Trình xem nguồn PDF / Ảnh / Word / Text & Markdown tạm thời (mượn chỗ RightSidebar) */}
       {isSidePanelOpen && (
         <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
           {sidePanelDocument?.mime_type === "application/pdf" ? (
@@ -1048,6 +1079,41 @@ export default function RightSidebar({
                 closeSidePanelCitation();
               }}
               className="h-full flex-1 rounded-none border-none"
+            />
+          ) : sidePanelDocument && isDocxDocument(sidePanelDocument) ? (
+            <SidePanelWordEditor
+              key={sidePanelDocument.id}
+              document={sidePanelDocument}
+              compactReaderMode
+              isExternalFullscreen={isFullscreen}
+              onToggleExternalFullscreen={() => setIsFullscreen((prev) => !prev)}
+              onDownload={downloadDocument}
+              onDocumentUpdated={updateDocumentInCache}
+              citationTarget={sidePanelCitationTarget}
+              onCitationDismiss={() =>
+                setDismissedSidePanelCitationNonce(sidePanelTarget?.nonce ?? null)
+              }
+              onClose={() => {
+                if (isFullscreen) {
+                  setIsFullscreen(false);
+                }
+                closeSidePanelCitation();
+              }}
+            />
+          ) : sidePanelDocument && isLegacyWordOrOdtDocument(sidePanelDocument) ? (
+            <SidePanelLegacyDocPreview
+              key={sidePanelDocument.id}
+              document={sidePanelDocument}
+              compactReaderMode
+              isExternalFullscreen={isFullscreen}
+              onToggleExternalFullscreen={() => setIsFullscreen((prev) => !prev)}
+              onDownload={downloadDocument}
+              onClose={() => {
+                if (isFullscreen) {
+                  setIsFullscreen(false);
+                }
+                closeSidePanelCitation();
+              }}
             />
           ) : sidePanelDocument && isEditableTextDocument(sidePanelDocument) ? (
             <SidePanelTextEditor

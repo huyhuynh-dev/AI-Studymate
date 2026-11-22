@@ -7,7 +7,12 @@ import type { DocumentsRepoService } from '../repo/documents-repo/documents-repo
 import type { DocumentAssetsRepoService } from '../repo/document-assets-repo/document-assets-repo.service.js';
 import type { ConversationsRepoService } from '../repo/conversations-repo/conversations-repo.service.js';
 import type { DocumentsQueueService } from './services/documents-queue.service.js';
-import { MAX_EDITABLE_TEXT_BYTES } from './constants/editable-document.constants.js';
+import type { GoogleDocsImportService } from './services/google-docs-import.service.js';
+import {
+  DOCX_MIME_TYPE,
+  MAX_EDITABLE_TEXT_BYTES,
+  ODT_MIME_TYPE,
+} from './constants/editable-document.constants.js';
 
 describe('DocumentsService', () => {
   let service: DocumentsService;
@@ -30,6 +35,9 @@ describe('DocumentsService', () => {
   let documentsQueueService: {
     addProcessingJob: ReturnType<typeof vi.fn>;
     enqueueContentReindexJob: ReturnType<typeof vi.fn>;
+  };
+  let googleDocsImportService: {
+    downloadPublicDocAsDocx: ReturnType<typeof vi.fn>;
   };
 
   const baseDoc = {
@@ -59,7 +67,11 @@ describe('DocumentsService', () => {
     };
     documentsRepo = {
       getDocumentById: vi.fn().mockResolvedValue(baseDoc),
-      createDocument: vi.fn(),
+      createDocument: vi.fn().mockImplementation((data) => ({
+        ...baseDoc,
+        ...data,
+        file_size: Number(data.file_size ?? 0),
+      })),
       updateDocument: vi.fn().mockImplementation((_id, _uid, patch) => ({
         ...baseDoc,
         ...patch,
@@ -79,6 +91,14 @@ describe('DocumentsService', () => {
       addProcessingJob: vi.fn().mockResolvedValue(undefined),
       enqueueContentReindexJob: vi.fn().mockResolvedValue(undefined),
     };
+    googleDocsImportService = {
+      downloadPublicDocAsDocx: vi.fn().mockResolvedValue({
+        buffer: Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]),
+        fileName: 'Đề cương môn học.docx',
+        canonicalUrl: 'https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQr/edit',
+        googleDocId: '1AbCdEfGhIjKlMnOpQr',
+      }),
+    };
 
     service = new DocumentsService(
       storageService as unknown as StorageService,
@@ -86,6 +106,7 @@ describe('DocumentsService', () => {
       {} as unknown as DocumentAssetsRepoService,
       conversationsRepo as unknown as ConversationsRepoService,
       documentsQueueService as unknown as DocumentsQueueService,
+      googleDocsImportService as unknown as GoogleDocsImportService,
     );
   });
 
@@ -229,5 +250,129 @@ describe('DocumentsService', () => {
       }),
       { delayMs: 4000 },
     );
+  });
+
+  it('DOCX Optimistic Locking: getOverwriteUrl và completeOverwrite khớp version thì cập nhật nguyên tử, lệch version trả 409', async () => {
+    documentsRepo.getDocumentById.mockResolvedValueOnce({
+      ...baseDoc,
+      file_name: 'report.docx',
+      mime_type: DOCX_MIME_TYPE,
+      content_version: 2,
+    });
+
+    const overwriteUrl = await service.getOverwriteUrl('user-1', 'doc-1', {
+      expectedVersion: 2,
+    });
+    expect(overwriteUrl).toEqual({ uploadUrl: 'https://r2.signed/put' });
+
+    documentsRepo.getDocumentById.mockResolvedValueOnce({
+      ...baseDoc,
+      file_name: 'report.docx',
+      mime_type: DOCX_MIME_TYPE,
+      content_version: 3,
+    });
+    await expect(
+      service.getOverwriteUrl('user-1', 'doc-1', { expectedVersion: 2 }),
+    ).rejects.toThrow(ConflictException);
+
+    documentsRepo.getDocumentById.mockResolvedValueOnce({
+      ...baseDoc,
+      file_name: 'report.docx',
+      mime_type: DOCX_MIME_TYPE,
+      ocr_status: 'done',
+      content_version: 2,
+    });
+    const updated = await service.completeOverwrite('user-1', 'doc-1', {
+      expectedVersion: 2,
+    });
+    expect(documentsRepo.updateDocumentWithOptimisticLock).toHaveBeenCalledWith(
+      'doc-1',
+      'user-1',
+      2,
+      expect.objectContaining({
+        content_version: 3,
+        ocr_status: 'done',
+        embed_status: 'pending',
+      }),
+    );
+    expect(updated.content_version).toBe(3);
+
+    documentsRepo.getDocumentById
+      .mockResolvedValueOnce({
+        ...baseDoc,
+        file_name: 'report.docx',
+        mime_type: DOCX_MIME_TYPE,
+        content_version: 2,
+      })
+      .mockResolvedValueOnce({
+        ...baseDoc,
+        file_name: 'report.docx',
+        mime_type: DOCX_MIME_TYPE,
+        content_version: 4,
+      });
+    documentsRepo.updateDocumentWithOptimisticLock.mockResolvedValueOnce(null);
+
+    await expect(
+      service.completeOverwrite('user-1', 'doc-1', { expectedVersion: 2 }),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('importGoogleDoc: tải DOCX công khai, upload R2 với doc_metadata nguồn Google Docs và đẩy BullMQ job', async () => {
+    const res = await service.importGoogleDoc('user-1', {
+      conversationId: 'conv-1',
+      url: 'https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQr/edit',
+    });
+
+    expect(googleDocsImportService.downloadPublicDocAsDocx).toHaveBeenCalledWith(
+      'https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQr/edit',
+      undefined,
+    );
+    expect(storageService.uploadObjectBuffer).toHaveBeenCalledWith(
+      expect.stringContaining('.docx'),
+      expect.any(Buffer),
+      DOCX_MIME_TYPE,
+    );
+    expect(documentsRepo.createDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file_name: 'Đề cương môn học.docx',
+        mime_type: DOCX_MIME_TYPE,
+        doc_metadata: {
+          source_type: 'google_docs',
+          source_url: 'https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQr/edit',
+          google_doc_id: '1AbCdEfGhIjKlMnOpQr',
+        },
+      }),
+    );
+    expect(documentsQueueService.addProcessingJob).toHaveBeenCalledTimes(1);
+    expect(res.mime_type).toBe(DOCX_MIME_TYPE);
+  });
+
+  it('importGoogleDoc: dọn R2 object nếu lưu PostgreSQL thất bại', async () => {
+    documentsRepo.createDocument.mockRejectedValueOnce(new Error('DB write failure'));
+
+    await expect(
+      service.importGoogleDoc('user-1', {
+        conversationId: 'conv-1',
+        url: 'https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQr/edit',
+      }),
+    ).rejects.toThrow('DB write failure');
+
+    expect(storageService.deleteObject).toHaveBeenCalledTimes(1);
+  });
+
+  it('getDocumentPreview: trả về rawText đã trích xuất và readOnlyReason cho .doc / .odt', async () => {
+    documentsRepo.getDocumentById.mockResolvedValueOnce({
+      ...baseDoc,
+      file_name: 'tai-lieu.odt',
+      mime_type: ODT_MIME_TYPE,
+      raw_text: '# Tiêu đề\nNội dung trích xuất bởi Docling',
+      page_count: 2,
+    });
+
+    const preview = await service.getDocumentPreview('user-1', 'doc-1');
+
+    expect(preview.fileName).toBe('tai-lieu.odt');
+    expect(preview.rawText).toContain('Nội dung trích xuất bởi Docling');
+    expect(preview.readOnlyReason).toContain('.odt');
   });
 });

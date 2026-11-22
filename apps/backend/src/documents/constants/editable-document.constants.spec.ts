@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
+  DOCX_MIME_TYPE,
+  LEGACY_DOC_MIME_TYPE,
+  ODT_MIME_TYPE,
   isDirectTextIngestionDocument,
+  isDocxDocument,
   isEditableTextDocument,
+  isLegacyWordOrOdtDocument,
   prepareTextForHybridChunking,
   resolveCanonicalMimeType,
   sliceUtf8Preview,
@@ -81,6 +86,30 @@ describe('editable-document.constants', () => {
 
       expect(sliced.includes('\uFFFD')).toBe(false);
       expect(sliced.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Word (.docx, .doc) & OpenDocument (.odt) helpers', () => {
+    it('chuẩn hóa chính xác MIME từ phần mở rộng .docx, .doc, .odt', () => {
+      expect(resolveCanonicalMimeType('bao-cao.docx', 'application/octet-stream')).toBe(
+        DOCX_MIME_TYPE,
+      );
+      expect(resolveCanonicalMimeType('tai-lieu-cu.doc', '')).toBe(LEGACY_DOC_MIME_TYPE);
+      expect(resolveCanonicalMimeType('google-export.odt', 'application/octet-stream')).toBe(
+        ODT_MIME_TYPE,
+      );
+    });
+
+    it('phân biệt chính xác DOCX (SuperDoc) với tài liệu chỉ xem trước (.doc, .odt)', () => {
+      expect(isDocxDocument(DOCX_MIME_TYPE, 'essay.docx')).toBe(true);
+      expect(isDocxDocument('application/octet-stream', 'ESSAY.DOCX')).toBe(true);
+      expect(isDocxDocument(LEGACY_DOC_MIME_TYPE, 'essay.doc')).toBe(false);
+      expect(isDocxDocument('application/pdf', 'essay.pdf')).toBe(false);
+
+      expect(isLegacyWordOrOdtDocument(LEGACY_DOC_MIME_TYPE, 'legacy.doc')).toBe(true);
+      expect(isLegacyWordOrOdtDocument(ODT_MIME_TYPE, 'export.odt')).toBe(true);
+      expect(isLegacyWordOrOdtDocument('application/octet-stream', 'NOTES.ODT')).toBe(true);
+      expect(isLegacyWordOrOdtDocument(DOCX_MIME_TYPE, 'essay.docx')).toBe(false);
     });
   });
 });

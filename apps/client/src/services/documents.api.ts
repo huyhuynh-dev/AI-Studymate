@@ -4,9 +4,12 @@ import type {
   CompleteUploadRequest,
   DocumentContentData,
   DocumentItem,
+  DocumentPreviewData,
   DocumentStatus,
+  ImportGoogleDocRequest,
   InitUploadRequest,
   InitUploadResponse,
+  OverwriteVersionRequest,
   UpdateDocumentContentRequest,
   UpdateDocumentContentResponse,
 } from '@/types';
@@ -35,6 +38,29 @@ interface RawDocumentContentPayload {
   isTruncated?: boolean;
   updatedAt?: string | Date;
   updated_at?: string | Date;
+}
+
+interface RawDocumentPreviewPayload {
+  id: string;
+  fileName?: string;
+  file_name?: string;
+  mimeType?: string;
+  mime_type?: string;
+  fileSize?: number;
+  file_size?: number;
+  rawText?: string | null;
+  raw_text?: string | null;
+  ocrStatus?: DocumentStatus;
+  ocr_status?: DocumentStatus;
+  embedStatus?: DocumentStatus;
+  embed_status?: DocumentStatus;
+  pageCount?: number | null;
+  page_count?: number | null;
+  processingError?: string | null;
+  processing_error?: string | null;
+  updatedAt?: string | Date;
+  updated_at?: string | Date;
+  readOnlyReason?: string | null;
 }
 
 interface RawUpdateDocumentContentPayload {
@@ -93,6 +119,22 @@ function mapUpdateDocumentContent(
     indexedVersion: Number(raw.indexedVersion ?? mappedDoc.indexed_version ?? 0),
     unchanged: Boolean(raw.unchanged),
     embedStatus: raw.embedStatus ?? mappedDoc.embed_status,
+  };
+}
+
+function mapDocumentPreview(raw: RawDocumentPreviewPayload): DocumentPreviewData {
+  return {
+    id: raw.id,
+    fileName: raw.fileName ?? raw.file_name ?? 'document',
+    mimeType: raw.mimeType ?? raw.mime_type ?? 'application/msword',
+    fileSize: Number(raw.fileSize ?? raw.file_size ?? 0),
+    rawText: raw.rawText ?? raw.raw_text ?? null,
+    ocrStatus: raw.ocrStatus ?? raw.ocr_status ?? 'pending',
+    embedStatus: raw.embedStatus ?? raw.embed_status ?? 'pending',
+    pageCount: raw.pageCount ?? raw.page_count ?? null,
+    processingError: raw.processingError ?? raw.processing_error ?? null,
+    updatedAt: normalizeIsoDate(raw.updatedAt ?? raw.updated_at),
+    readOnlyReason: raw.readOnlyReason ?? null,
   };
 }
 
@@ -172,14 +214,15 @@ export const documentsApi = {
 
   uploadToR2: async (
     uploadUrl: string,
-    file: File,
+    file: File | Blob,
     onProgress?: (percent: number) => void,
     contentType?: string,
   ): Promise<void> => {
+    const inferredType = file instanceof File ? file.type : '';
     // Tải trực tiếp lên Cloudflare R2 qua Presigned PUT URL không qua Proxy
     await axios.put(uploadUrl, file, {
       headers: {
-        'Content-Type': contentType || file.type || 'application/octet-stream',
+        'Content-Type': contentType || inferredType || 'application/octet-stream',
       },
       onUploadProgress: (progressEvent) => {
         if (progressEvent.total) {
@@ -198,6 +241,18 @@ export const documentsApi = {
     return mapDocumentItem(res.data);
   },
 
+  importGoogleDoc: async (payload: ImportGoogleDocRequest): Promise<DocumentItem> => {
+    const res = await axiosClient.post<DocumentItem>('/documents/import-google-doc', payload);
+    return mapDocumentItem(res.data);
+  },
+
+  getPreview: async (documentId: string): Promise<DocumentPreviewData> => {
+    const res = await axiosClient.get<RawDocumentPreviewPayload>(
+      `/documents/${documentId}/preview`,
+    );
+    return mapDocumentPreview(res.data);
+  },
+
   getDownloadUrl: async (documentId: string): Promise<{ downloadUrl: string }> => {
     const res = await axiosClient.get<{ downloadUrl: string }>(`/documents/${documentId}/download`);
     return res.data;
@@ -210,13 +265,42 @@ export const documentsApi = {
     return res.data;
   },
 
-  getOverwriteUrl: async (documentId: string): Promise<{ uploadUrl: string }> => {
-    const res = await axiosClient.post<{ uploadUrl: string }>(`/documents/${documentId}/overwrite-url`);
+  fetchDocumentBlob: async (
+    signedUrl: string,
+    mimeType: string,
+    signal?: AbortSignal,
+  ): Promise<Blob> => {
+    const response = await fetch(signedUrl, { signal });
+    if (!response.ok) {
+      throw new Error(`Không thể tải nội dung tệp từ bộ nhớ (${response.status}).`);
+    }
+    const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
+    if (contentType.startsWith('text/html')) {
+      throw new Error('Phản hồi tải tệp trả về HTML không hợp lệ thay vì dữ liệu nhị phân.');
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    return new Blob([arrayBuffer], { type: mimeType });
+  },
+
+  getOverwriteUrl: async (
+    documentId: string,
+    payload?: OverwriteVersionRequest,
+  ): Promise<{ uploadUrl: string }> => {
+    const res = await axiosClient.post<{ uploadUrl: string }>(
+      `/documents/${documentId}/overwrite-url`,
+      payload ?? {},
+    );
     return res.data;
   },
 
-  completeOverwrite: async (documentId: string): Promise<DocumentItem> => {
-    const res = await axiosClient.post<DocumentItem>(`/documents/${documentId}/overwrite-complete`);
+  completeOverwrite: async (
+    documentId: string,
+    payload?: OverwriteVersionRequest,
+  ): Promise<DocumentItem> => {
+    const res = await axiosClient.post<DocumentItem>(
+      `/documents/${documentId}/overwrite-complete`,
+      payload ?? {},
+    );
     return mapDocumentItem(res.data);
   },
 

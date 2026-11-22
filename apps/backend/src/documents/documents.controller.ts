@@ -18,6 +18,8 @@ import { DocumentsService } from './documents.service.js';
 import { InitUploadDto } from './dto/init-upload.dto.js';
 import { CompleteUploadDto } from './dto/complete-upload.dto.js';
 import { UpdateDocumentContentDto } from './dto/update-document-content.dto.js';
+import { OverwriteVersionDto } from './dto/complete-overwrite.dto.js';
+import { ImportGoogleDocDto } from './dto/import-google-doc.dto.js';
 
 @Controller('documents')
 @UseGuards(JwtAuthGuard)
@@ -37,6 +39,14 @@ export class DocumentsController {
         @Body() dto: InitUploadDto
     ) {
         return this.documentsService.initUpload(this.getUserId(req), dto);
+    }
+
+    @Post('import-google-doc')
+    async importGoogleDoc(
+        @Req() req: Request,
+        @Body() dto: ImportGoogleDocDto
+    ) {
+        return this.documentsService.importGoogleDoc(this.getUserId(req), dto);
     }
 
     @Post(':id/complete')
@@ -72,6 +82,14 @@ export class DocumentsController {
         return this.documentsService.getDocumentContent(this.getUserId(req), id);
     }
 
+    @Get(':id/preview')
+    async getDocumentPreview(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string
+    ) {
+        return this.documentsService.getDocumentPreview(this.getUserId(req), id);
+    }
+
     @Put(':id/content')
     async updateDocumentContent(
         @Req() req: Request,
@@ -93,17 +111,19 @@ export class DocumentsController {
     @Post(':id/overwrite-url')
     async getOverwriteUrl(
         @Req() req: Request,
-        @Param('id', new ParseUUIDPipe()) id: string
+        @Param('id', new ParseUUIDPipe()) id: string,
+        @Body() dto?: OverwriteVersionDto
     ) {
-        return this.documentsService.getOverwriteUrl(this.getUserId(req), id);
+        return this.documentsService.getOverwriteUrl(this.getUserId(req), id, dto);
     }
 
     @Post(':id/overwrite-complete')
     async completeOverwrite(
         @Req() req: Request,
-        @Param('id', new ParseUUIDPipe()) id: string
+        @Param('id', new ParseUUIDPipe()) id: string,
+        @Body() dto?: OverwriteVersionDto
     ) {
-        return this.documentsService.completeOverwrite(this.getUserId(req), id);
+        return this.documentsService.completeOverwrite(this.getUserId(req), id, dto);
     }
 
     @Delete(':id')

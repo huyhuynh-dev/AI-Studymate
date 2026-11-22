@@ -16,10 +16,16 @@ export const EDITABLE_TEXT_EXTENSION_TO_MIME: Record<string, string> = {
   toml: 'application/toml',
 };
 
+export const DOCX_MIME_TYPE =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+export const LEGACY_DOC_MIME_TYPE = 'application/msword';
+export const ODT_MIME_TYPE = 'application/vnd.oasis.opendocument.text';
+
 export const BINARY_DOCUMENT_EXTENSION_TO_MIME: Record<string, string> = {
   pdf: 'application/pdf',
-  doc: 'application/msword',
-  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  doc: LEGACY_DOC_MIME_TYPE,
+  docx: DOCX_MIME_TYPE,
+  odt: ODT_MIME_TYPE,
   xls: 'application/vnd.ms-excel',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ppt: 'application/vnd.ms-powerpoint',
@@ -29,6 +35,32 @@ export const BINARY_DOCUMENT_EXTENSION_TO_MIME: Record<string, string> = {
   png: 'image/png',
   webp: 'image/webp',
 };
+
+function normalizeDocFileExtension(fileName?: string | null): string {
+  if (!fileName) return '';
+  const dotIdx = fileName.lastIndexOf('.');
+  return dotIdx >= 0 ? fileName.slice(dotIdx + 1).toLowerCase() : '';
+}
+
+export function isDocxDocument(mimeType?: string | null, fileName?: string | null): boolean {
+  const normalizedMime = mimeType?.split(';')[0]?.trim().toLowerCase() ?? '';
+  if (normalizedMime === DOCX_MIME_TYPE) {
+    return true;
+  }
+  return normalizeDocFileExtension(fileName) === 'docx';
+}
+
+export function isLegacyWordOrOdtDocument(
+  mimeType?: string | null,
+  fileName?: string | null,
+): boolean {
+  const normalizedMime = mimeType?.split(';')[0]?.trim().toLowerCase() ?? '';
+  if (normalizedMime === LEGACY_DOC_MIME_TYPE || normalizedMime === ODT_MIME_TYPE) {
+    return true;
+  }
+  const ext = normalizeDocFileExtension(fileName);
+  return ext === 'doc' || ext === 'odt';
+}
 
 export const ALL_ALLOWED_EXTENSION_TO_MIME: Record<string, string> = {
   ...BINARY_DOCUMENT_EXTENSION_TO_MIME,

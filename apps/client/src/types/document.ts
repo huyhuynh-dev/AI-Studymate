@@ -83,3 +83,27 @@ export interface UploadProgressItem {
   status: 'uploading' | 'verifying' | 'completed' | 'error';
   errorMessage?: string;
 }
+
+export interface OverwriteVersionRequest {
+  expectedVersion?: number;
+}
+
+export interface ImportGoogleDocRequest {
+  conversationId: string;
+  url: string;
+  fileName?: string;
+}
+
+export interface DocumentPreviewData {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  rawText: string | null;
+  ocrStatus: DocumentStatus;
+  embedStatus: DocumentStatus;
+  pageCount: number | null;
+  processingError: string | null;
+  updatedAt: string;
+  readOnlyReason: string | null;
+}

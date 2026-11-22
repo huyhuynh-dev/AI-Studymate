@@ -20,6 +20,7 @@ import {
 export interface TocMasterySidebarProps {
   documentId: string;
   onJumpToPage: (pageNumber: number, bboxes?: unknown[]) => void;
+  onSelectSection?: (section: TocMasterySection) => void;
   onCreateTargetedQuiz?: (opts: {
     chunkIds: string[];
     sectionTitle: string;
@@ -30,6 +31,7 @@ export interface TocMasterySidebarProps {
 export default function TocMasterySidebar({
   documentId,
   onJumpToPage,
+  onSelectSection,
   onCreateTargetedQuiz,
   onClose,
 }: TocMasterySidebarProps) {
@@ -200,7 +202,16 @@ export default function TocMasterySidebar({
             ) : (
               visibleSections.map((section) => {
                 const meta = MASTERY_STATUS_META[section.status];
-                const canJump = section.startPage !== null;
+                const canJump = section.startPage !== null || Boolean(onSelectSection);
+                const handleSectionActivate = () => {
+                  if (onSelectSection) {
+                    onSelectSection(section);
+                    return;
+                  }
+                  if (section.startPage) {
+                    onJumpToPage(section.startPage, section.bboxes);
+                  }
+                };
                 return (
                   <div
                     key={`${section.index}-${section.text}`}
@@ -210,20 +221,19 @@ export default function TocMasterySidebar({
                       role={canJump ? 'button' : undefined}
                       tabIndex={canJump ? 0 : undefined}
                       onClick={(e) => {
-                        if (canJump && section.startPage) {
+                        if (canJump) {
                           e.stopPropagation();
-                          onJumpToPage(section.startPage, section.bboxes);
+                          handleSectionActivate();
                         }
                       }}
                       onKeyDown={(e) => {
                         if (
                           canJump &&
-                          section.startPage &&
                           (e.key === 'Enter' || e.key === ' ')
                         ) {
                           e.preventDefault();
                           e.stopPropagation();
-                          onJumpToPage(section.startPage, section.bboxes);
+                          handleSectionActivate();
                         }
                       }}
                       className={`group relative flex flex-col gap-1.5 rounded-xl border border-black/[0.05] dark:border-white/[0.08] bg-white dark:bg-[#161922] p-2.5 pl-3.5 transition-all duration-200 ${

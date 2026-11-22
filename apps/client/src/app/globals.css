@@ -640,3 +640,39 @@ html {
     animation: none;
   }
 }
+
+/* Cô lập vùng SuperDoc khỏi CSS Dark Mode & typography toàn cục của StudyMate */
+.studymate-superdoc-host {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  color-scheme: light;
+}
+
+.studymate-superdoc-host .superdoc,
+.studymate-superdoc-host .superdoc-wrapper,
+.studymate-superdoc-host .superdoc-container {
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.studymate-superdoc-host .ProseMirror h1,
+.studymate-superdoc-host .ProseMirror h2,
+.studymate-superdoc-host .ProseMirror h3,
+.studymate-superdoc-host .ProseMirror h4,
+.studymate-superdoc-host .ProseMirror h5,
+.studymate-superdoc-host .ProseMirror h6,
+.studymate-superdoc-host .ProseMirror p {
+  font-family: inherit;
+  color: inherit;
+}
+
+.studymate-superdoc-host .studymate-word-citation-pulse {
+  background-color: rgba(79, 70, 229, 0.14);
+  outline: 2px solid rgba(79, 70, 229, 0.45);
+  border-radius: 4px;
+  transition: background-color 0.4s ease, outline-color 0.4s ease;
+}

@@ -705,4 +705,286 @@ describe('DocumentIngestionProcessor', () => {
       'page.html',
     );
   });
+
+  it('DOCX Phương án 2: giữ UUID chunk không đổi, chỉ embed chunk mới và gắn quote_exact khi thiếu bboxes', async () => {
+    const docxMime =
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    const unchangedContent = '# Chương 1\nĐoạn giữ nguyên từ bản DOCX v1';
+    const unchangedHash = computeChunkContentHash({
+      content: unchangedContent,
+      headings: ['Chương 1'],
+    });
+
+    documentsRepo.findRawDocumentById.mockResolvedValue({
+      ...mockDocument,
+      file_name: 'bao-cao.docx',
+      mime_type: docxMime,
+      ocr_status: 'done',
+      embed_status: 'pending',
+      content_version: 2,
+      indexed_version: 1,
+      doc_metadata: {
+        source_type: 'google_docs',
+        source_url: 'https://docs.google.com/document/d/abc/edit',
+        google_doc_id: 'abc',
+      },
+    });
+    storageService.getObjectBuffer.mockResolvedValue(Buffer.from('docx-v2-bytes'));
+    doclingService.convertDocument.mockResolvedValue({
+      mdContent: '# Chương 1\nĐoạn giữ nguyên\n\n# Chương 2\nĐoạn mới thêm',
+      pageCount: 1,
+      sanitizedJsonContent: { schema_name: 'DoclingDocument' },
+      docMetadata: { origin_type: 'docx' },
+      extractedPictures: [],
+    });
+    doclingService.chunkFromDoclingJson.mockResolvedValue([
+      {
+        index: 0,
+        pageNumbers: [1],
+        content: unchangedContent,
+        rawContent: 'Đoạn giữ nguyên từ bản DOCX v1',
+        tokenCount: 12,
+        headings: ['Chương 1'],
+        bboxes: [],
+        chunkType: 'text',
+        hasImage: false,
+        hasTable: false,
+      },
+      {
+        index: 1,
+        pageNumbers: [1],
+        content: '# Chương 2\nĐoạn mới chỉnh sửa trong SuperDoc',
+        rawContent: 'Đoạn mới chỉnh sửa trong SuperDoc',
+        tokenCount: 14,
+        headings: ['Chương 2'],
+        bboxes: [],
+        chunkType: 'text',
+        hasImage: false,
+        hasTable: false,
+      },
+    ]);
+    documentChunksRepo.findExistingChunksForDiff.mockResolvedValue([
+      {
+        id: 'kept-docx-chunk-uuid',
+        chunkIndex: 0,
+        contentHash: unchangedHash,
+      },
+      {
+        id: 'deleted-docx-chunk-uuid',
+        chunkIndex: 1,
+        contentHash: 'old-hash-to-remove',
+      },
+    ]);
+    embeddingService.embedBatch.mockResolvedValue([{ values: [0.25, 0.75] }]);
+
+    await invokeJob({
+      documentId: 'doc-1',
+      mimeType: docxMime,
+      storageKey: 'key.docx',
+      fileName: 'bao-cao.docx',
+      targetVersion: 2,
+      isReindex: true,
+    });
+
+    // Chỉ embed đúng 1 chunk thay đổi (O(Δ))
+    expect(embeddingService.embedBatch).toHaveBeenCalledTimes(1);
+    expect(embeddingService.embedBatch).toHaveBeenCalledWith([
+      '# Chương 2\nĐoạn mới chỉnh sửa trong SuperDoc',
+    ]);
+
+    // Kiểm tra kế hoạch incremental diff giữ nguyên UUID cũ và truyền quote_exact vào chunk mới
+    expect(
+      documentChunksRepo.applyIncrementalChunkPlanWithEmbeddings,
+    ).toHaveBeenCalledWith(
+      'doc-1',
+      expect.objectContaining({
+        keptChunks: [
+          expect.objectContaining({
+            existingId: 'kept-docx-chunk-uuid',
+            chunkIndex: 0,
+          }),
+        ],
+        toDeleteIds: ['deleted-docx-chunk-uuid'],
+        toInsertWithEmbeddings: [
+          expect.objectContaining({
+            chunk: expect.objectContaining({
+              metadata: expect.objectContaining({
+                quote_exact: 'Đoạn mới chỉnh sửa trong SuperDoc',
+              }),
+            }),
+          }),
+        ],
+      }),
+    );
+
+    // Bảo toàn doc_metadata Google Docs qua re-index
+    expect(documentsRepo.updateDocumentById).toHaveBeenCalledWith(
+      'doc-1',
+      expect.objectContaining({
+        doc_metadata: expect.objectContaining({
+          source_type: 'google_docs',
+          google_doc_id: 'abc',
+        }),
+      }),
+    );
+  });
+
+  it('DOCX Re-index: dọn sạch document_assets khi xóa hết ảnh và tái sử dụng VLM cache cho ảnh trùng SHA-256', async () => {
+    const docxMime =
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    const reusedPicBuffer = Buffer.from('same-chart-png-bytes');
+    const reusedPicHash = (await import('node:crypto'))
+      .createHash('sha256')
+      .update(reusedPicBuffer)
+      .digest('hex');
+
+    const deleteObjectMock = vi.fn().mockResolvedValue(undefined);
+    (storageService as Record<string, unknown>).deleteObject = deleteObjectMock;
+
+    documentsRepo.findRawDocumentById.mockResolvedValue({
+      ...mockDocument,
+      file_name: 'slides-doc.docx',
+      mime_type: docxMime,
+      ocr_status: 'done',
+      embed_status: 'pending',
+      content_version: 2,
+      indexed_version: 1,
+      doc_metadata: {
+        asset_vlm_cache: {
+          [reusedPicHash]: {
+            vlmDescription: 'Mô tả biểu đồ đã cache từ lần index trước',
+            caption: 'Biểu đồ A',
+          },
+        },
+      },
+    });
+    documentAssetsRepo.findAssetsByDocumentId.mockResolvedValue([
+      {
+        id: 'asset-old-1',
+        document_id: 'doc-1',
+        chunk_id: null,
+        asset_type: 'image',
+        self_ref: '#/pictures/0',
+        page_no: 1,
+        bbox: null,
+        storage_key: 'users/user-1/conversations/conv-1/assets/doc-1/picture-0.png',
+        caption: 'Biểu đồ A',
+        vlm_description: 'Mô tả cũ',
+      },
+      {
+        id: 'asset-old-2',
+        document_id: 'doc-1',
+        chunk_id: null,
+        asset_type: 'image',
+        self_ref: '#/pictures/1',
+        page_no: 1,
+        bbox: null,
+        storage_key: 'users/user-1/conversations/conv-1/assets/doc-1/picture-1.png',
+        caption: 'Ảnh đã xóa',
+        vlm_description: null,
+      },
+    ]);
+
+    // Lần 1: Giữ lại 1 ảnh trùng SHA-256 (xóa ảnh 1) -> phải tái dùng VLM cache & xóa asset-old-2 trên R2
+    doclingService.convertDocument.mockResolvedValueOnce({
+      mdContent: '# Tài liệu có ảnh',
+      pageCount: 1,
+      sanitizedJsonContent: { schema_name: 'DoclingDocument' },
+      docMetadata: {},
+      extractedPictures: [
+        {
+          index: 0,
+          selfRef: '#/pictures/0',
+          assetType: 'image',
+          pageNo: 1,
+          bbox: null,
+          buffer: reusedPicBuffer,
+          mimeType: 'image/png',
+          caption: null,
+          vlmDescription: null,
+        },
+      ],
+    });
+    doclingService.chunkFromDoclingJson.mockResolvedValueOnce([]);
+    doclingService.chunkMarkdownHybrid.mockResolvedValueOnce([
+      {
+        index: 0,
+        pageNumbers: [1],
+        content: '# Tài liệu có ảnh',
+        rawContent: 'Tài liệu có ảnh',
+        tokenCount: 5,
+      },
+    ]);
+    embeddingService.embedBatch.mockResolvedValueOnce([{ values: [0.1, 0.2] }]);
+
+    await invokeJob({
+      documentId: 'doc-1',
+      mimeType: docxMime,
+      storageKey: 'key.docx',
+      fileName: 'slides-doc.docx',
+      targetVersion: 2,
+      isReindex: true,
+    });
+
+    expect(visionService.analyzeAndChunkImage).not.toHaveBeenCalled();
+    expect(documentAssetsRepo.replaceDocumentAssets).toHaveBeenCalledWith('doc-1', [
+      expect.objectContaining({
+        vlmDescription: 'Mô tả biểu đồ đã cache từ lần index trước',
+        caption: 'Biểu đồ A',
+      }),
+    ]);
+    expect(deleteObjectMock).toHaveBeenCalledWith(
+      'users/user-1/conversations/conv-1/assets/doc-1/picture-1.png',
+    );
+
+    // Lần 2: Người dùng xóa toàn bộ ảnh -> phải xóa trắng document_assets ([]) và xóa R2 key cũ
+    deleteObjectMock.mockClear();
+    documentAssetsRepo.replaceDocumentAssets.mockClear();
+    documentAssetsRepo.findAssetsByDocumentId.mockResolvedValueOnce([
+      {
+        id: 'asset-old-1',
+        document_id: 'doc-1',
+        chunk_id: null,
+        asset_type: 'image',
+        self_ref: '#/pictures/0',
+        page_no: 1,
+        bbox: null,
+        storage_key: 'users/user-1/conversations/conv-1/assets/doc-1/picture-0.png',
+        caption: 'Biểu đồ A',
+        vlm_description: 'Mô tả cũ',
+      },
+    ]);
+    doclingService.convertDocument.mockResolvedValueOnce({
+      mdContent: '# Tài liệu đã xóa ảnh',
+      pageCount: 1,
+      sanitizedJsonContent: { schema_name: 'DoclingDocument' },
+      docMetadata: {},
+      extractedPictures: [],
+    });
+    doclingService.chunkFromDoclingJson.mockResolvedValueOnce([]);
+    doclingService.chunkMarkdownHybrid.mockResolvedValueOnce([
+      {
+        index: 0,
+        pageNumbers: [1],
+        content: '# Tài liệu đã xóa ảnh',
+        rawContent: 'Tài liệu đã xóa ảnh',
+        tokenCount: 5,
+      },
+    ]);
+    embeddingService.embedBatch.mockResolvedValueOnce([{ values: [0.3, 0.4] }]);
+
+    await invokeJob({
+      documentId: 'doc-1',
+      mimeType: docxMime,
+      storageKey: 'key.docx',
+      fileName: 'slides-doc.docx',
+      targetVersion: 2,
+      isReindex: true,
+    });
+
+    expect(documentAssetsRepo.replaceDocumentAssets).toHaveBeenCalledWith('doc-1', []);
+    expect(deleteObjectMock).toHaveBeenCalledWith(
+      'users/user-1/conversations/conv-1/assets/doc-1/picture-0.png',
+    );
+  });
 });

@@ -32,13 +32,30 @@ import {
   type DocumentJobData,
   DocumentsQueueService,
 } from './documents-queue.service.js';
-import { isDirectTextIngestionDocument, prepareTextForHybridChunking } from '../constants/editable-document.constants.js';
+import {
+  isDirectTextIngestionDocument,
+  isDocxDocument,
+  prepareTextForHybridChunking,
+} from '../constants/editable-document.constants.js';
 import {
   computeChunkContentHash,
   computeIncrementalChunkPlan,
   type IncomingChunkForDiff,
 } from '../helpers/chunk-diff.helper.js';
 import { alignChunksToSourceText } from '../helpers/text-anchor.helper.js';
+
+interface CachedAssetVlmEntry {
+  vlmDescription: string;
+  caption: string | null;
+}
+
+const MAX_ASSET_VLM_CACHE_ENTRIES = 50;
+const DOCX_QUOTE_EXACT_MAX_CHARS = 600;
+const PRESERVED_SOURCE_METADATA_KEYS = [
+  'source_type',
+  'source_url',
+  'google_doc_id',
+] as const;
 
 @Injectable()
 export class DocumentIngestionProcessor
@@ -712,26 +729,51 @@ export class DocumentIngestionProcessor
       );
     }
 
+    const previousAssets =
+      typeof this.documentAssetsRepo.findAssetsByDocumentId === 'function'
+        ? await this.documentAssetsRepo.findAssetsByDocumentId(doc.id)
+        : [];
+    const previousVlmCache = this.extractAssetVlmCache(doc.doc_metadata);
+
     // Upload các ảnh crop (pictures) lên R2 và lưu vào bảng document_assets
     let createdAssets: DocumentAsset[] = [];
+    let nextVlmCache: Record<string, CachedAssetVlmEntry> = {};
     if (conversion.extractedPictures.length > 0) {
-      createdAssets = await this.uploadAndSaveExtractedPictures(
+      const assetResult = await this.uploadAndSaveExtractedPictures(
         doc,
         conversion.extractedPictures,
         fileName,
+        previousVlmCache,
       );
+      createdAssets = assetResult.assets;
+      nextVlmCache = assetResult.vlmCache;
+    } else if (previousAssets.length > 0) {
+      await this.documentAssetsRepo.replaceDocumentAssets(doc.id, []);
     }
+
+    await this.cleanupOrphanedAssetObjects(
+      doc.id,
+      doc.storage_key,
+      previousAssets,
+      createdAssets,
+    );
 
     const hasContentForChunking =
       conversion.mdContent.length > 0 ||
       Boolean(conversion.sanitizedJsonContent);
+
+    const mergedDocMetadata = this.mergeDocumentMetadata(
+      doc.doc_metadata,
+      conversion.docMetadata,
+      nextVlmCache,
+    );
 
     await this.documentsRepo.updateDocumentById(doc.id, {
       file_hash: fileHash,
       raw_text: conversion.mdContent,
       page_count: conversion.pageCount,
       docling_json_key: doclingJsonKey,
-      doc_metadata: conversion.docMetadata as Prisma.InputJsonValue,
+      doc_metadata: mergedDocMetadata as Prisma.InputJsonValue,
       ocr_status: 'done',
       embed_status: hasContentForChunking ? 'processing' : 'done',
       indexed_version: hasContentForChunking ? doc.indexed_version : snapshotVersion,
@@ -787,6 +829,12 @@ export class DocumentIngestionProcessor
           : rawMarkdownChunks;
     }
 
+    chunks = this.attachDocxQuoteMetadataIfMissing(
+      chunks,
+      doc.mime_type,
+      fileName,
+    );
+
     // Bước 3: Tạo Embedding tăng dần (Phương án 2), lưu document_chunks và liên kết đa tầng chunk_id sang document_assets
     const { insertedChunks, abortedAsStale } =
       await this.embedAndSaveChunks(doc.id, chunks, snapshotVersion);
@@ -818,18 +866,34 @@ export class DocumentIngestionProcessor
     doc: Document,
     pictures: ExtractedDoclingPicture[],
     fileName?: string,
-  ): Promise<DocumentAsset[]> {
+    previousVlmCache: Record<string, CachedAssetVlmEntry> = {},
+  ): Promise<{
+    assets: DocumentAsset[];
+    vlmCache: Record<string, CachedAssetVlmEntry>;
+  }> {
     const assetInputs: CreateDocumentAssetInput[] = [];
+    const nextVlmCache: Record<string, CachedAssetVlmEntry> = {};
 
     for (const pic of pictures) {
       const ext = this.extensionFromImageMime(pic.mimeType);
       const assetKey = `users/${doc.user_id}/conversations/${doc.conversation_id}/assets/${doc.id}/picture-${pic.index}.${ext}`;
+      const picSha256 = createHash('sha256').update(pic.buffer).digest('hex');
 
       await this.storageService.uploadObjectBuffer(
         assetKey,
         pic.buffer,
         pic.mimeType,
       );
+
+      if (!pic.vlmDescription?.trim()) {
+        const cached = previousVlmCache[picSha256];
+        if (cached?.vlmDescription) {
+          pic.vlmDescription = cached.vlmDescription;
+          if (!pic.caption && cached.caption) {
+            pic.caption = cached.caption;
+          }
+        }
+      }
 
       if (
         !pic.vlmDescription?.trim() &&
@@ -858,6 +922,16 @@ export class DocumentIngestionProcessor
         }
       }
 
+      if (
+        pic.vlmDescription?.trim() &&
+        Object.keys(nextVlmCache).length < MAX_ASSET_VLM_CACHE_ENTRIES
+      ) {
+        nextVlmCache[picSha256] = {
+          vlmDescription: pic.vlmDescription.trim(),
+          caption: pic.caption ?? null,
+        };
+      }
+
       assetInputs.push({
         assetType: pic.assetType,
         selfRef: pic.selfRef,
@@ -869,10 +943,148 @@ export class DocumentIngestionProcessor
       });
     }
 
-    return await this.documentAssetsRepo.replaceDocumentAssets(
+    const assets = await this.documentAssetsRepo.replaceDocumentAssets(
       doc.id,
       assetInputs,
     );
+    return { assets, vlmCache: nextVlmCache };
+  }
+
+  private async cleanupOrphanedAssetObjects(
+    documentId: string,
+    documentStorageKey: string,
+    previousAssets: DocumentAsset[],
+    createdAssets: DocumentAsset[],
+  ): Promise<void> {
+    if (
+      previousAssets.length === 0 ||
+      typeof this.storageService.deleteObject !== 'function'
+    ) {
+      return;
+    }
+
+    const activeKeys = new Set(createdAssets.map((a) => a.storage_key));
+    for (const prev of previousAssets) {
+      if (
+        !prev.storage_key ||
+        prev.storage_key === documentStorageKey ||
+        activeKeys.has(prev.storage_key)
+      ) {
+        continue;
+      }
+      await this.storageService.deleteObject(prev.storage_key).catch((err) => {
+        this.logger.warn(
+          `Không thể xóa asset cũ trên R2 (${prev.storage_key}) cho [${documentId}]: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+    }
+  }
+
+  private extractAssetVlmCache(
+    rawMeta: Prisma.JsonValue | null | undefined,
+  ): Record<string, CachedAssetVlmEntry> {
+    if (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta)) {
+      return {};
+    }
+    const cacheRaw = (rawMeta as Record<string, unknown>).asset_vlm_cache;
+    if (!cacheRaw || typeof cacheRaw !== 'object' || Array.isArray(cacheRaw)) {
+      return {};
+    }
+
+    const result: Record<string, CachedAssetVlmEntry> = {};
+    for (const [hash, value] of Object.entries(
+      cacheRaw as Record<string, unknown>,
+    )) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        continue;
+      }
+      const entry = value as Record<string, unknown>;
+      if (typeof entry.vlmDescription === 'string' && entry.vlmDescription.trim()) {
+        result[hash] = {
+          vlmDescription: entry.vlmDescription,
+          caption: typeof entry.caption === 'string' ? entry.caption : null,
+        };
+      }
+    }
+    return result;
+  }
+
+  private mergeDocumentMetadata(
+    previousMeta: Prisma.JsonValue | null | undefined,
+    incomingMeta: Record<string, unknown> | null | undefined,
+    nextVlmCache: Record<string, CachedAssetVlmEntry>,
+  ): Record<string, unknown> {
+    const merged: Record<string, unknown> =
+      incomingMeta && typeof incomingMeta === 'object' && !Array.isArray(incomingMeta)
+        ? { ...incomingMeta }
+        : {};
+
+    if (
+      previousMeta &&
+      typeof previousMeta === 'object' &&
+      !Array.isArray(previousMeta)
+    ) {
+      const prevRecord = previousMeta as Record<string, unknown>;
+      for (const key of PRESERVED_SOURCE_METADATA_KEYS) {
+        if (prevRecord[key] !== undefined && merged[key] === undefined) {
+          merged[key] = prevRecord[key];
+        }
+      }
+    }
+
+    if (Object.keys(nextVlmCache).length > 0) {
+      merged.asset_vlm_cache = nextVlmCache;
+    } else {
+      delete merged.asset_vlm_cache;
+    }
+
+    return merged;
+  }
+
+  private attachDocxQuoteMetadataIfMissing(
+    chunks: DoclingChunkResult[],
+    mimeType: string,
+    fileName: string,
+  ): DoclingChunkResult[] {
+    if (!isDocxDocument(mimeType, fileName) || chunks.length === 0) {
+      return chunks;
+    }
+
+    return chunks.map((chunk) => {
+      if (chunk.bboxes && chunk.bboxes.length > 0) {
+        return chunk;
+      }
+      const existingQuote = chunk.metadata?.quote_exact;
+      if (typeof existingQuote === 'string' && existingQuote.trim().length > 0) {
+        return chunk;
+      }
+
+      const rawSource = (chunk.rawContent || chunk.content || '').trim();
+      if (!rawSource) {
+        return chunk;
+      }
+
+      const cleanedQuote = rawSource
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/[*_`~]/g, '')
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, DOCX_QUOTE_EXACT_MAX_CHARS);
+
+      if (!cleanedQuote) {
+        return chunk;
+      }
+
+      return {
+        ...chunk,
+        metadata: {
+          ...(chunk.metadata ?? {}),
+          quote_exact: cleanedQuote,
+        },
+      };
+    });
   }
 
   private async embedAndSaveChunks(

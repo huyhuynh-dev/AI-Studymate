@@ -2,13 +2,14 @@
 
 import { useState, useCallback } from 'react';
 import useSWR from 'swr';
-import { documentsApi } from '@/services/documents.api';
+import { documentsApi, extractDocumentApiError } from '@/services/documents.api';
 import { DocumentItem, UploadProgressItem } from '@/types';
 
 export const ALLOWED_MIME_TYPES = [
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.oasis.opendocument.text',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.ms-powerpoint',
@@ -40,6 +41,7 @@ const EXTENSION_TO_MIME_MAP: Record<string, string> = {
   pdf: 'application/pdf',
   doc: 'application/msword',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  odt: 'application/vnd.oasis.opendocument.text',
   xls: 'application/vnd.ms-excel',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ppt: 'application/vnd.ms-powerpoint',
@@ -303,6 +305,40 @@ export function useDocuments(conversationId?: string | null) {
     [mutate]
   );
 
+  const importGoogleDoc = useCallback(
+    async (url: string, fileName?: string): Promise<DocumentItem> => {
+      if (!conversationId) {
+        const msg = 'Chưa chọn cuộc trò chuyện để nhập tài liệu.';
+        setErrorMessage(msg);
+        throw new Error(msg);
+      }
+      setErrorMessage(null);
+      try {
+        const importedDoc = await documentsApi.importGoogleDoc({
+          conversationId,
+          url,
+          fileName: fileName?.trim() || undefined,
+        });
+        mutate(
+          (current) => [
+            importedDoc,
+            ...(current ?? []).filter((d) => d.id !== importedDoc.id),
+          ],
+          { revalidate: true },
+        );
+        return importedDoc;
+      } catch (err: unknown) {
+        const { message } = extractDocumentApiError(
+          err,
+          'Không thể nhập tài liệu từ Google Docs.',
+        );
+        setErrorMessage(message);
+        throw err;
+      }
+    },
+    [conversationId, mutate],
+  );
+
   return {
     documents: data || [],
     isLoading,
@@ -313,6 +349,7 @@ export function useDocuments(conversationId?: string | null) {
     clearError,
     uploadFile,
     uploadFiles,
+    importGoogleDoc,
     deleteDocument,
     downloadDocument,
     updateDocumentInCache,

@@ -6,6 +6,7 @@ import {
   formatCitationTooltipLabel,
   isCsvDocumentFile,
   isPagedDocumentFile,
+  isWordDocumentFile,
 } from '../citation-label.helper.ts';
 
 describe('citation-label.helper', () => {
@@ -145,6 +146,67 @@ describe('citation-label.helper', () => {
         headings: ['Setup'],
       }),
       'Xem nguồn trong tài liệu (Dòng 10–12 · Setup)',
+    );
+  });
+
+  it('hiển thị đúng nhãn heading/đoạn và tooltip cho tài liệu Word (.docx, .doc, .odt)', () => {
+    assert.equal(isWordDocumentFile('bao-cao.docx'), true);
+    assert.equal(
+      isWordDocumentFile(
+        'notes.odt',
+        'application/vnd.oasis.opendocument.text',
+      ),
+      true,
+    );
+    assert.equal(isWordDocumentFile('lecture.pdf', 'application/pdf'), false);
+
+    assert.equal(
+      formatCitationLocationLabel({
+        fileName: 'bao-cao.docx',
+        pageNumbers: [1],
+        headings: ['Chương 1', 'Kiến trúc RAG'],
+        chunkIndex: 0,
+        variant: 'compact',
+      }),
+      '§ Kiến trúc RAG',
+    );
+
+    assert.equal(
+      formatCitationLocationLabel({
+        fileName: 'bao-cao.docx',
+        pageNumbers: [1],
+        chunkIndex: 4,
+        variant: 'detailed',
+      }),
+      'Đoạn #5',
+    );
+
+    assert.equal(
+      formatCitationLocationLabel({
+        fileName: 'bao-cao.docx',
+        pageNumbers: [3, 4],
+        headings: ['Chương 3'],
+        variant: 'detailed',
+      }),
+      'Trang 3–4 · Chương 3',
+    );
+
+    assert.equal(
+      formatCitationActionLabel({
+        fileName: 'bao-cao.docx',
+        pageNumbers: [1],
+        headings: ['Kết luận'],
+      }),
+      'Định vị đoạn trích',
+    );
+
+    assert.equal(
+      formatCitationTooltipLabel({
+        fileName: 'bao-cao.docx',
+        pageNumbers: [1],
+        headings: ['Kết luận'],
+      }),
+      'Xem nguồn trong tài liệu Word (§ Kết luận)',
     );
   });
 });

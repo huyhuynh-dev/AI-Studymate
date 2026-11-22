@@ -293,6 +293,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     errorMessage: documentsError,
     clearError: clearDocumentsError,
     uploadFiles,
+    importGoogleDoc,
     deleteDocument,
     downloadDocument,
     updateDocumentInCache,
@@ -511,6 +512,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               errorMessage={documentsError}
               onClearError={clearDocumentsError}
               onUpload={uploadFiles}
+              onImportGoogleDoc={importGoogleDoc}
               onDelete={deleteDocument}
               onDownload={downloadDocument}
               onDocumentUpdated={updateDocumentInCache}
