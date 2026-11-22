@@ -38,6 +38,7 @@ import {
   computeIncrementalChunkPlan,
   type IncomingChunkForDiff,
 } from '../helpers/chunk-diff.helper.js';
+import { alignChunksToSourceText } from '../helpers/text-anchor.helper.js';
 
 @Injectable()
 export class DocumentIngestionProcessor
@@ -577,7 +578,7 @@ export class DocumentIngestionProcessor
     );
 
     const utf8Text = buffer.toString('utf-8');
-    const { chunkInputMarkdown, extractedRawText } =
+    const { chunkInputMarkdown, extractedRawText, isHtml } =
       prepareTextForHybridChunking(utf8Text, mimeType, fileName);
 
     if (!(await this.isVersionStillCurrent(doc.id, snapshotVersion))) {
@@ -635,8 +636,23 @@ export class DocumentIngestionProcessor
       pageNumbers: c.pageNumbers.length > 0 ? c.pageNumbers : [1],
     }));
 
+    const rawSourceForAlignment = isHtml
+      ? extractedRawText
+      : utf8Text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    const anchoredChunks = alignChunksToSourceText(
+      rawSourceForAlignment,
+      normalizedChunks,
+      {
+        fileName,
+        mimeType,
+        unwrapStructuredWrapper:
+          !isHtml && chunkInputMarkdown !== extractedRawText,
+      },
+    );
+
     const { insertedChunks, abortedAsStale } =
-      await this.embedAndSaveChunks(doc.id, normalizedChunks, snapshotVersion);
+      await this.embedAndSaveChunks(doc.id, anchoredChunks, snapshotVersion);
     if (abortedAsStale) {
       return false;
     }

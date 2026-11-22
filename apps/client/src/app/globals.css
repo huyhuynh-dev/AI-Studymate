@@ -579,3 +579,64 @@ html {
   background-color: var(--brand-primary);
   pointer-events: none;
 }
+
+/* ============================================================================
+ * Citation Highlight Layer (Plain Text / Markdown / Structured Source)
+ * ============================================================================ */
+@keyframes studymateCitationPulse {
+  0% {
+    background-color: rgba(79, 70, 229, 0.34);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.28);
+  }
+  100% {
+    background-color: rgba(79, 70, 229, 0.16);
+    box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.18);
+  }
+}
+
+.studymate-doc-editor .studymate-citation-highlight {
+  background-color: rgba(79, 70, 229, 0.16);
+  border-radius: 0.25rem;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.22);
+  padding: 0.05em 0.1em;
+  animation: studymateCitationPulse 0.9s ease-out 1;
+}
+
+.dark .studymate-doc-editor .studymate-citation-highlight {
+  background-color: rgba(129, 140, 248, 0.24);
+  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.32);
+}
+
+.studymate-doc-editor .studymate-citation-highlight--partial {
+  background-color: rgba(245, 158, 11, 0.18);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.32);
+  animation: none;
+}
+
+.dark .studymate-doc-editor .studymate-citation-highlight--partial {
+  background-color: rgba(251, 191, 36, 0.2);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.34);
+}
+
+.studymate-source-line-highlight {
+  background-color: rgba(79, 70, 229, 0.12);
+  border-left: 3px solid rgba(79, 70, 229, 0.75);
+}
+
+.dark .studymate-source-line-highlight {
+  background-color: rgba(129, 140, 248, 0.18);
+  border-left: 3px solid rgba(129, 140, 248, 0.85);
+}
+
+.studymate-source-line-highlight--partial {
+  background-color: rgba(245, 158, 11, 0.14);
+  border-left: 3px solid rgba(245, 158, 11, 0.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studymate-doc-editor .studymate-citation-highlight {
+    animation: none;
+  }
+}

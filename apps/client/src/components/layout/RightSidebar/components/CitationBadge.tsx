@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import {
+  formatCitationActionLabel,
+  formatCitationLocationLabel,
+} from "@/lib/citation-label.helper";
+import {
   formatCitationRankingMeta,
   type CitationItem,
   type DocumentCitationItem,
@@ -59,6 +63,29 @@ export const CitationBadge = React.memo(function CitationBadge({
     Array.isArray(docItem?.headings) && docItem!.headings.length > 0
       ? docItem!.headings[docItem!.headings.length - 1]
       : undefined;
+
+  const locationLabel = !isWeb
+    ? formatCitationLocationLabel({
+        fileName: docItem?.fileName,
+        pageNumbers: docItem?.pageNumbers,
+        pageNo,
+        textAnchor: docItem?.textAnchor,
+        headings: docItem?.headings,
+        chunkIndex: docItem?.chunkIndex,
+        variant: "compact",
+      })
+    : "";
+
+  const actionLabel = !isWeb
+    ? formatCitationActionLabel({
+        fileName: docItem?.fileName,
+        pageNumbers: docItem?.pageNumbers,
+        pageNo,
+        textAnchor: docItem?.textAnchor,
+        headings: docItem?.headings,
+        chunkIndex: docItem?.chunkIndex,
+      })
+    : "";
 
   // Đoạn trích dẫn
   const snippet =
@@ -194,9 +221,9 @@ export const CitationBadge = React.memo(function CitationBadge({
                   ) : (
                     <>
                       <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                        Trang {pageNo}
+                        {locationLabel}
                       </span>
-                      {heading && (
+                      {heading && !locationLabel.startsWith("§ ") && (
                         <>
                           <span>•</span>
                           <span className="truncate max-w-[140px]">{heading}</span>
@@ -211,7 +238,7 @@ export const CitationBadge = React.memo(function CitationBadge({
             <button
               type="button"
               onClick={handleClick}
-              title={isWeb ? "Mở liên kết web" : `Mở trang ${pageNo}`}
+              title={isWeb ? "Mở liên kết web" : actionLabel}
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/80 dark:bg-white/[0.05] text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-indigo-500 hover:text-white dark:hover:bg-indigo-600 cursor-pointer"
             >
               <ArrowUpRight className="h-3.5 w-3.5" />
@@ -267,7 +294,7 @@ export const CitationBadge = React.memo(function CitationBadge({
                   : "text-indigo-600 dark:text-indigo-400 hover:text-indigo-700"
               }`}
             >
-              <span>{isWeb ? "Mở bài viết gốc" : `Nhảy tới Trang ${pageNo}`}</span>
+              <span>{isWeb ? "Mở bài viết gốc" : actionLabel}</span>
               <ArrowUpRight className="h-3 w-3" />
             </button>
           </span>

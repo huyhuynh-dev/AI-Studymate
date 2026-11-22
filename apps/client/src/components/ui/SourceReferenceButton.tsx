@@ -4,7 +4,11 @@ import React, { useState } from "react";
 import { ArrowUpRight, ChevronDown, FileText } from "lucide-react";
 import { useFocusMode } from "@/components/layout/FocusModeContext";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
-import { formatSourcePageLabel, type SourceReference } from "@/types";
+import {
+  formatCitationLocationLabel,
+  formatCitationTooltipLabel,
+} from "@/lib/citation-label.helper";
+import type { SourceReference } from "@/types";
 
 export interface SourceReferenceButtonProps {
   sourceRefs?: SourceReference[];
@@ -49,7 +53,23 @@ export function SourceReferenceButton({
   const safeIdx = selectedIdx < validRefs.length ? selectedIdx : 0;
   const activeRef = validRefs[safeIdx];
   const pageNo = activeRef.pageNumbers?.[0] ?? 1;
-  const pageLabel = formatSourcePageLabel(activeRef.pageNumbers);
+  const locationBadgeLabel = formatCitationLocationLabel({
+    fileName: activeRef.fileName,
+    pageNumbers: activeRef.pageNumbers,
+    pageNo,
+    textAnchor: activeRef.textAnchor,
+    headings: activeRef.headings,
+    chunkIndex: activeRef.chunkIndex,
+    variant: "compact",
+  });
+  const tooltipLabel = formatCitationTooltipLabel({
+    fileName: activeRef.fileName,
+    pageNumbers: activeRef.pageNumbers,
+    pageNo,
+    textAnchor: activeRef.textAnchor,
+    headings: activeRef.headings,
+    chunkIndex: activeRef.chunkIndex,
+  });
   const latestHeading =
     Array.isArray(activeRef.headings) && activeRef.headings.length > 0
       ? activeRef.headings[activeRef.headings.length - 1]
@@ -69,7 +89,11 @@ export function SourceReferenceButton({
       fileName: ref.fileName,
       pageNo: ref.pageNumbers?.[0] ?? 1,
       bboxes: ref.bboxes,
-      rawContent: ref.snippet,
+      rawContent: ref.textAnchor?.quoteExact || ref.snippet,
+      chunkId: ref.chunkId,
+      chunkIndex: ref.chunkIndex,
+      headings: ref.headings,
+      textAnchor: ref.textAnchor,
     };
 
     if (targetMode === "side-panel") {
@@ -87,12 +111,12 @@ export function SourceReferenceButton({
         type="button"
         data-source-ref-btn="true"
         onClick={(e) => handleNavigate(activeRef, e)}
-        title={`Xem nguồn: ${activeRef.fileName} (${pageLabel})${latestHeading ? ` · ${latestHeading}` : ""}`}
-        aria-label={`Xem nguồn (${pageLabel})`}
+        title={`Xem nguồn: ${activeRef.fileName} (${locationBadgeLabel})${latestHeading && !locationBadgeLabel.startsWith("§ ") ? ` · ${latestHeading}` : ""}`}
+        aria-label={`Xem nguồn (${locationBadgeLabel})`}
         className={`inline-flex shrink-0 items-center gap-1 rounded-full border border-indigo-200/70 dark:border-indigo-500/30 bg-indigo-50/80 dark:bg-indigo-500/10 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-700 dark:text-indigo-300 transition-colors hover:bg-indigo-100 dark:hover:bg-indigo-500/20 hover:border-indigo-300 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] cursor-pointer ${className}`}
       >
         <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-        <span>{pageLabel}</span>
+        <span>{locationBadgeLabel}</span>
       </button>
     );
   }
@@ -105,7 +129,15 @@ export function SourceReferenceButton({
         } ${className}`}
       >
         {validRefs.map((ref, idx) => {
-          const label = formatSourcePageLabel(ref.pageNumbers);
+          const label = formatCitationLocationLabel({
+            fileName: ref.fileName,
+            pageNumbers: ref.pageNumbers,
+            pageNo: ref.pageNumbers?.[0] ?? 1,
+            textAnchor: ref.textAnchor,
+            headings: ref.headings,
+            chunkIndex: ref.chunkIndex,
+            variant: "compact",
+          });
           return (
             <button
               key={`${ref.documentId}-${ref.chunkId ?? idx}`}
@@ -171,9 +203,9 @@ export function SourceReferenceButton({
                 </span>
                 <span className="text-[var(--on-surface-variant)]">·</span>
                 <span className="tabular-nums text-indigo-600 dark:text-indigo-400">
-                  {pageLabel}
+                  {locationBadgeLabel}
                 </span>
-                {latestHeading && (
+                {latestHeading && !locationBadgeLabel.startsWith("§ ") && (
                   <>
                     <span className="text-[var(--on-surface-variant)]">·</span>
                     <span className="truncate max-w-[180px] text-[12.5px] font-medium text-[var(--on-surface-variant)]">
@@ -208,9 +240,9 @@ export function SourceReferenceButton({
                 </span>
                 <span className="text-[var(--on-surface-variant)]">·</span>
                 <span className="tabular-nums text-indigo-600 dark:text-indigo-400">
-                  {pageLabel}
+                  {locationBadgeLabel}
                 </span>
-                {latestHeading && (
+                {latestHeading && !locationBadgeLabel.startsWith("§ ") && (
                   <>
                     <span className="text-[var(--on-surface-variant)]">·</span>
                     <span className="truncate max-w-[180px] text-[12.5px] font-medium text-[var(--on-surface-variant)]">
@@ -228,8 +260,8 @@ export function SourceReferenceButton({
           type="button"
           data-source-ref-btn="true"
           onClick={(e) => handleNavigate(activeRef, e)}
-          aria-label={`Xem nguồn trong PDF (Trang ${pageNo})`}
-          title={`Mở ${activeRef.fileName} (${pageLabel})`}
+          aria-label={tooltipLabel}
+          title={`Mở ${activeRef.fileName} (${locationBadgeLabel})`}
           className="group inline-flex h-9 shrink-0 items-center justify-center gap-1.5 self-start rounded-full border border-indigo-500/25 bg-white dark:bg-white/[0.08] px-3.5 text-[13px] font-semibold text-indigo-700 dark:text-indigo-300 shadow-2xs transition-colors duration-200 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 hover:border-indigo-400 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-[#4F46E5] sm:self-center cursor-pointer"
         >
           <span>Xem nguồn</span>
@@ -259,7 +291,16 @@ export function SourceReferenceButton({
                       : "bg-white/80 dark:bg-white/[0.06] text-[var(--on-surface-variant)] hover:text-foreground"
                   }`}
                 >
-                  Nguồn {idx + 1} · {formatSourcePageLabel(ref.pageNumbers)}
+                  Nguồn {idx + 1} ·{" "}
+                  {formatCitationLocationLabel({
+                    fileName: ref.fileName,
+                    pageNumbers: ref.pageNumbers,
+                    pageNo: ref.pageNumbers?.[0] ?? 1,
+                    textAnchor: ref.textAnchor,
+                    headings: ref.headings,
+                    chunkIndex: ref.chunkIndex,
+                    variant: "compact",
+                  })}
                 </button>
               ))}
             </div>

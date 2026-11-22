@@ -21,6 +21,7 @@ import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import DocumentImageViewer from "./DocumentImageViewer";
 import DocumentPdfViewer from "./DocumentPdfViewer";
 import DocumentTextEditor from "./editor/DocumentTextEditor";
+import type { EditorCitationTarget } from "./editor/text-anchor-resolver";
 import {
   EDITABLE_TEXT_EXTENSIONS_ACCEPT,
   isEditableTextDocument,
@@ -110,7 +111,8 @@ export default function DocumentsTab({
   const [isDragging, setIsDragging] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [viewingDocId, setViewingDocId] = useState<string | null>(null);
-  const [pendingCitationSnippet, setPendingCitationSnippet] = useState<string | null>(null);
+  const [pendingCitationTarget, setPendingCitationTarget] =
+    useState<EditorCitationTarget | null>(null);
   const [filterType, setFilterType] = useState<"all" | "pdf" | "image">("all");
   const { setIsViewingDocument, setFocusMode } = useFocusMode();
   const { activeTarget, consumeActiveTarget } = useCitationNavigation();
@@ -127,9 +129,21 @@ export default function DocumentsTab({
 
       const matchedDoc = documents.find((d) => d.id === targetDocId);
       if (matchedDoc && isEditableTextDocument(matchedDoc)) {
-        setPendingCitationSnippet(activeTarget.rawContent ?? null);
+        setPendingCitationTarget({
+          documentId: activeTarget.documentId,
+          fileName: activeTarget.fileName ?? matchedDoc.file_name,
+          citationId: activeTarget.citationId,
+          chunkId: activeTarget.chunkId,
+          chunkIndex: activeTarget.chunkIndex,
+          pageNo: activeTarget.pageNo,
+          rawContent: activeTarget.rawContent,
+          headings: activeTarget.headings,
+          textAnchor: activeTarget.textAnchor,
+          nonce: activeTarget.nonce,
+        });
         consumeActiveTarget();
       } else if (matchedDoc && matchedDoc.mime_type !== "application/pdf") {
+        setPendingCitationTarget(null);
         consumeActiveTarget();
       }
     });
@@ -185,7 +199,7 @@ export default function DocumentsTab({
       doc.mime_type.startsWith("image/") ||
       isEditableTextDocument(doc)
     ) {
-      setPendingCitationSnippet(null);
+      setPendingCitationTarget(null);
       setViewingDocId(doc.id);
     } else {
       onDownload?.(doc.id, doc.file_name);
@@ -194,7 +208,7 @@ export default function DocumentsTab({
 
   const handleCloseViewer = () => {
     setFocusMode(false);
-    setPendingCitationSnippet(null);
+    setPendingCitationTarget(null);
     setViewingDocId(null);
   };
 
@@ -338,11 +352,14 @@ export default function DocumentsTab({
         <DocumentTextEditor
           key={viewingDoc.id}
           document={viewingDoc}
-          onClose={handleCloseViewer}
+          onClose={() => {
+            setPendingCitationTarget(null);
+            handleCloseViewer();
+          }}
           onDownload={onDownload}
           onDocumentUpdated={onDocumentUpdated}
-          highlightSnippet={pendingCitationSnippet}
-          onSnippetLocated={() => setPendingCitationSnippet(null)}
+          citationTarget={pendingCitationTarget}
+          onCitationDismiss={() => setPendingCitationTarget(null)}
           className={className}
         />
       );

@@ -1,3 +1,4 @@
+import type { TextCitationAnchor } from '../../common/types/source-ref.types.js';
 import type {
   DocumentFullContent,
   DocumentSectionOrPagesOutput,
@@ -11,6 +12,7 @@ export interface DocumentCitationItem {
   sourceType: 'document';
   citationId: string; // "c1", "c2", ...
   chunkId: string;
+  chunkIndex?: number;
   documentId: string;
   fileName: string;
   pageNumbers: number[];
@@ -19,6 +21,7 @@ export interface DocumentCitationItem {
   content?: string;
   previewSnippet?: string;
   bboxes?: unknown;
+  textAnchor?: TextCitationAnchor;
   assets?: unknown[];
   rrfScore?: number;
   rerankScore?: number | null;
@@ -76,6 +79,7 @@ export interface SearchDocumentChunksToolOutput {
     previewSnippet?: string;
     rawContent?: string | null;
     bboxes?: unknown;
+    textAnchor?: TextCitationAnchor;
     assets?: unknown[];
     neighbors?: {
       prev?: { chunkIndex: number; content: string; pageNumbers: number[] } | null;
@@ -117,6 +121,7 @@ export interface GetDocumentSectionOrPagesToolOutput {
     previewSnippet?: string;
     rawContent?: string | null;
     bboxes?: unknown;
+    textAnchor?: TextCitationAnchor;
     assets?: unknown[];
   }>;
 }

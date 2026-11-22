@@ -24,6 +24,7 @@ import {
   EDITABLE_TEXT_EXTENSIONS_ACCEPT,
   isEditableTextDocument,
 } from "@/components/conversations/DocumentsTab/editor/document-format-profiles";
+import type { EditorCitationTarget } from "@/components/conversations/DocumentsTab/editor/text-anchor-resolver";
 
 const SidePanelPdfViewer = dynamic(
   () => import("@/components/conversations/DocumentsTab/DocumentPdfViewer"),
@@ -178,8 +179,28 @@ export default function RightSidebar({
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
+  const [dismissedSidePanelCitationNonce, setDismissedSidePanelCitationNonce] =
+    useState<number | null>(null);
 
   const isSidePanelOpen = Boolean(sidePanelTarget);
+
+  const sidePanelCitationTarget = useMemo<EditorCitationTarget | null>(() => {
+    if (!sidePanelTarget || sidePanelTarget.nonce === dismissedSidePanelCitationNonce) {
+      return null;
+    }
+    return {
+      documentId: sidePanelTarget.documentId,
+      fileName: sidePanelTarget.fileName,
+      citationId: sidePanelTarget.citationId,
+      chunkId: sidePanelTarget.chunkId,
+      chunkIndex: sidePanelTarget.chunkIndex,
+      pageNo: sidePanelTarget.pageNo,
+      rawContent: sidePanelTarget.rawContent,
+      headings: sidePanelTarget.headings,
+      textAnchor: sidePanelTarget.textAnchor,
+      nonce: sidePanelTarget.nonce,
+    };
+  }, [sidePanelTarget, dismissedSidePanelCitationNonce]);
 
   useEffect(() => {
     setMounted(true);
@@ -242,7 +263,7 @@ export default function RightSidebar({
     if (!isFullscreen && !isSidePanelOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" || e.defaultPrevented) return;
       if (isFullscreen) {
         setIsFullscreen(false);
         return;
@@ -980,7 +1001,10 @@ export default function RightSidebar({
               onToggleExternalFullscreen={() => setIsFullscreen((prev) => !prev)}
               onDownload={downloadDocument}
               onDocumentUpdated={updateDocumentInCache}
-              highlightSnippet={sidePanelTarget?.rawContent}
+              citationTarget={sidePanelCitationTarget}
+              onCitationDismiss={() =>
+                setDismissedSidePanelCitationNonce(sidePanelTarget?.nonce ?? null)
+              }
               onClose={() => {
                 if (isFullscreen) {
                   setIsFullscreen(false);

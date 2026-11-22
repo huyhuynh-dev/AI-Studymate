@@ -6,6 +6,7 @@ import {
     UnprocessableEntityException,
 } from '@nestjs/common';
 import { CardTypeEnum, Prisma } from '../generated/prisma/client.js';
+import { extractTextAnchorFromChunkMetadata } from '../common/types/source-ref.types.js';
 import {
     FlashcardAiService,
     MAX_EXISTING_FOR_DEDUPE,
@@ -222,15 +223,19 @@ export class FlashcardAiManageService {
             id: d.id,
             name: d.file_name || d.id,
             text: d.raw_text!.trim(),
-            chunks: (chunksByDocId.get(d.id) ?? []).map((c) => ({
-                id: c.id,
-                chunkIndex: c.chunk_index,
-                content: c.content,
-                rawContent: c.raw_content,
-                pageNumbers: c.page_numbers,
-                headings: c.headings,
-                bboxes: c.bboxes,
-            })),
+            chunks: (chunksByDocId.get(d.id) ?? []).map((c) => {
+                const textAnchor = extractTextAnchorFromChunkMetadata(c.chunk_metadata);
+                return {
+                    id: c.id,
+                    chunkIndex: c.chunk_index,
+                    content: c.content,
+                    rawContent: c.raw_content,
+                    pageNumbers: c.page_numbers,
+                    headings: c.headings,
+                    bboxes: c.bboxes,
+                    ...(textAnchor ? { textAnchor } : {}),
+                };
+            }),
         }));
 
         return usableDocs;

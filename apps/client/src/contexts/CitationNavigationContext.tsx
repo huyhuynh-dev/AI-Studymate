@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
 import type { CitationItem, DocumentCitationItem, WebCitationItem } from "@/lib/citation-parser";
+import type { TextCitationAnchor } from "@/types/source-ref";
 
 export interface ActiveCitationTarget {
   documentId: string;
@@ -10,6 +11,10 @@ export interface ActiveCitationTarget {
   bboxes?: unknown[];
   rawContent?: string;
   citationId?: string;
+  chunkId?: string;
+  chunkIndex?: number;
+  headings?: string[];
+  textAnchor?: TextCitationAnchor;
   mode?: "main" | "side-panel";
   nonce: number;
 }
@@ -29,7 +34,22 @@ export interface CitationNavigationContextValue {
   /** Trạng thái tô sáng khung bboxes đang hiển thị trên trang PDF */
   activeHighlight: ActiveHighlightState | null;
   /** Kích hoạt điều hướng tới một trích dẫn bất kỳ (tài liệu hoặc web) */
-  navigateToCitation: (citation: CitationItem | { documentId: string; pageNo: number; fileName?: string; bboxes?: unknown[]; rawContent?: string; citationId?: string }) => void;
+  navigateToCitation: (
+    citation:
+      | CitationItem
+      | {
+          documentId: string;
+          pageNo: number;
+          fileName?: string;
+          bboxes?: unknown[];
+          rawContent?: string;
+          citationId?: string;
+          chunkId?: string;
+          chunkIndex?: number;
+          headings?: string[];
+          textAnchor?: TextCitationAnchor;
+        }
+  ) => void;
   /** Điều hướng cụ thể tới tài liệu (mở ở Tab Tài liệu chính) */
   navigateToDocumentCitation: (target: Omit<ActiveCitationTarget, "nonce" | "mode">) => void;
   /** Mở tài liệu nguồn ngay tại cột RightSidebar bên phải */
@@ -114,6 +134,10 @@ export function CitationNavigationProvider({ children }: { children: React.React
             bboxes?: unknown[];
             rawContent?: string;
             citationId?: string;
+            chunkId?: string;
+            chunkIndex?: number;
+            headings?: string[];
+            textAnchor?: TextCitationAnchor;
             url?: string;
             sourceType?: string;
           }
@@ -145,8 +169,12 @@ export function CitationNavigationProvider({ children }: { children: React.React
         fileName: docItem.fileName,
         pageNo,
         bboxes,
-        rawContent: docItem.rawContent || docItem.content,
+        rawContent: docItem.rawContent || docItem.content || docItem.previewSnippet,
         citationId: docItem.citationId,
+        chunkId: docItem.chunkId,
+        chunkIndex: docItem.chunkIndex,
+        headings: docItem.headings,
+        textAnchor: docItem.textAnchor,
       });
     },
     [navigateToDocumentCitation, navigateToWebCitation]

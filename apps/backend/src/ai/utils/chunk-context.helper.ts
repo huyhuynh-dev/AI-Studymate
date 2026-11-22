@@ -1,4 +1,12 @@
-import type { SourceReferenceItem } from '../../common/types/source-ref.types.js';
+import {
+    extractTextAnchorFromChunkMetadata,
+    type SourceReferenceItem,
+    type TextCitationAnchor,
+} from '../../common/types/source-ref.types.js';
+import {
+    formatBackendChunkLocationLabel,
+    isPagedDocumentFileName,
+} from '../../documents/helpers/text-anchor.helper.js';
 
 export interface ChunkableDocumentChunk {
     id?: string;
@@ -8,6 +16,8 @@ export interface ChunkableDocumentChunk {
     pageNumbers: number[];
     headings: string[];
     bboxes?: unknown;
+    metadata?: unknown;
+    textAnchor?: TextCitationAnchor;
 }
 
 export interface ChunkableDocumentInput {
@@ -39,6 +49,7 @@ interface NormalizedChunkItem {
     pageNumbers: number[];
     headings: string[];
     bboxes?: unknown[];
+    textAnchor?: TextCitationAnchor;
 }
 
 const SNIPPET_MAX_CHARS = 240;
@@ -50,15 +61,9 @@ function cleanSnippet(text: string, maxLength = SNIPPET_MAX_CHARS): string {
     return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
-function formatPageRangeLabel(pageNumbers: number[]): string {
-    if (pageNumbers.length === 0) return 'Trang 1';
-    if (pageNumbers.length === 1) return `Trang ${pageNumbers[0]}`;
-    const first = pageNumbers[0];
-    const last = pageNumbers[pageNumbers.length - 1];
-    return first === last ? `Trang ${first}` : `Trang ${first}–${last}`;
-}
-
 function normalizeDocumentChunks(doc: ChunkableDocumentInput): NormalizedChunkItem[] {
+    const isPaged = isPagedDocumentFileName(doc.fileName);
+
     const validChunks = [...doc.chunks]
         .sort((a, b) => a.chunkIndex - b.chunkIndex)
         .map((c): NormalizedChunkItem | null => {
@@ -71,13 +76,15 @@ function normalizeDocumentChunks(doc: ChunkableDocumentInput): NormalizedChunkIt
             const headings = Array.isArray(c.headings)
                 ? c.headings.map((h) => h.trim()).filter(Boolean)
                 : [];
+            const textAnchor = c.textAnchor ?? extractTextAnchorFromChunkMetadata(c.metadata);
             return {
                 id: c.id,
                 chunkIndex: c.chunkIndex,
                 body,
-                pageNumbers: pageNumbers.length > 0 ? pageNumbers : [1],
+                pageNumbers: isPaged ? (pageNumbers.length > 0 ? pageNumbers : [1]) : [],
                 headings,
                 bboxes: Array.isArray(c.bboxes) && c.bboxes.length > 0 ? c.bboxes : undefined,
+                ...(textAnchor ? { textAnchor } : {}),
             };
         })
         .filter((item): item is NormalizedChunkItem => item !== null);
@@ -95,7 +102,7 @@ function normalizeDocumentChunks(doc: ChunkableDocumentInput): NormalizedChunkIt
         {
             chunkIndex: 0,
             body: fallbackText,
-            pageNumbers: [1],
+            pageNumbers: isPaged ? [1] : [],
             headings: [],
         },
     ];
@@ -202,10 +209,18 @@ export function packChunkedDocuments(
         const formattedChunks: string[] = [];
         for (const chunk of selected) {
             const refIndex = nextRefIndex++;
-            const pageLabel = formatPageRangeLabel(chunk.pageNumbers);
+            const locationLabel = formatBackendChunkLocationLabel({
+                fileName: entry.doc.fileName,
+                pageNumbers: chunk.pageNumbers,
+                textAnchor: chunk.textAnchor,
+                headings: chunk.headings,
+                chunkIndex: chunk.chunkIndex,
+            });
             const headingLabel =
-                chunk.headings.length > 0 ? ` | Mục: ${chunk.headings.join(' > ')}` : '';
-            const header = `[CHUNK #${refIndex} | ${pageLabel}${headingLabel}]`;
+                chunk.headings.length > 0 && !locationLabel.startsWith('Mục: ')
+                    ? ` | Mục: ${chunk.headings.join(' > ')}`
+                    : '';
+            const header = `[CHUNK #${refIndex} | ${locationLabel}${headingLabel}]`;
 
             formattedChunks.push(`${header}\n${chunk.body}`);
             chunkRefMap.set(refIndex, {
@@ -216,6 +231,7 @@ export function packChunkedDocuments(
                 pageNumbers: chunk.pageNumbers,
                 ...(chunk.bboxes ? { bboxes: chunk.bboxes } : {}),
                 ...(chunk.headings.length > 0 ? { headings: chunk.headings } : {}),
+                ...(chunk.textAnchor ? { textAnchor: chunk.textAnchor } : {}),
                 snippet: cleanSnippet(chunk.body),
             });
             totalChunksIncluded++;

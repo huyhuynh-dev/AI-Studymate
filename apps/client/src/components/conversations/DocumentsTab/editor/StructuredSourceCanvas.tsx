@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -12,6 +12,11 @@ import {
 } from 'lucide-react';
 import type { DocumentEditorLanguage } from './document-format-profiles';
 import { validateStructuredContent } from './structured-validation.helper';
+import {
+  resolveStructuredTextCitation,
+  type EditorCitationTarget,
+  type StructuredCitationResolution,
+} from './text-anchor-resolver';
 
 export { validateStructuredContent };
 
@@ -21,6 +26,32 @@ export interface StructuredSourceCanvasProps {
   language: DocumentEditorLanguage;
   readOnly?: boolean;
   compactReaderMode?: boolean;
+  citationTarget?: EditorCitationTarget | null;
+  scrollToCitationNonce?: number;
+  onCitationResolved?: (resolution: StructuredCitationResolution | null) => void;
+  onCitationDismiss?: () => void;
+}
+
+function getEditedLineRange(prevText: string, nextText: string): { startLine: number; endLine: number } {
+  const prevNorm = prevText.replace(/\r\n/g, '\n');
+  const nextNorm = nextText.replace(/\r\n/g, '\n');
+  const minLen = Math.min(prevNorm.length, nextNorm.length);
+
+  let prefixLen = 0;
+  while (prefixLen < minLen && prevNorm[prefixLen] === nextNorm[prefixLen]) {
+    prefixLen += 1;
+  }
+
+  let prevEnd = prevNorm.length;
+  let nextEnd = nextNorm.length;
+  while (prevEnd > prefixLen && nextEnd > prefixLen && prevNorm[prevEnd - 1] === nextNorm[nextEnd - 1]) {
+    prevEnd -= 1;
+    nextEnd -= 1;
+  }
+
+  const startLine = prevNorm.slice(0, prefixLen).split('\n').length;
+  const endLine = prevNorm.slice(0, Math.max(prefixLen, prevEnd)).split('\n').length;
+  return { startLine, endLine: Math.max(startLine, endLine) };
 }
 
 function parseCsvPreviewRows(csvText: string, maxRows = 300): string[][] {
@@ -76,14 +107,26 @@ export function StructuredSourceCanvas({
   language,
   readOnly = false,
   compactReaderMode = false,
+  citationTarget,
+  scrollToCitationNonce = 0,
+  onCitationResolved,
+  onCitationDismiss,
 }: StructuredSourceCanvasProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
+  const csvContainerRef = useRef<HTMLDivElement>(null);
+  const onCitationResolvedRef = useRef(onCitationResolved);
+  const lastAutoScrollKeyRef = useRef<string | null>(null);
 
   const [csvViewMode, setCsvViewMode] = useState<'source' | 'table'>('source');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [replaceQuery, setReplaceQuery] = useState('');
+  const [scrollTop, setScrollTop] = useState(0);
+
+  useEffect(() => {
+    onCitationResolvedRef.current = onCitationResolved;
+  });
 
   const lines = useMemo(() => value.replace(/\r\n/g, '\n').split('\n'), [value]);
   const jsonError = useMemo(
@@ -95,10 +138,86 @@ export function StructuredSourceCanvas({
     [language, csvViewMode, value],
   );
 
-  const handleSyncScroll = () => {
-    if (textareaRef.current && gutterRef.current) {
-      gutterRef.current.scrollTop = textareaRef.current.scrollTop;
+  const citationResolution = useMemo(
+    () => resolveStructuredTextCitation(value, citationTarget),
+    [value, citationTarget],
+  );
+
+  const highlightedLineRange = useMemo(() => {
+    if (
+      !citationResolution ||
+      citationResolution.tier === 4 ||
+      !citationResolution.startLine ||
+      !citationResolution.endLine
+    ) {
+      return null;
     }
+    return {
+      startLine: citationResolution.startLine,
+      endLine: citationResolution.endLine,
+      tier: citationResolution.tier,
+    };
+  }, [citationResolution]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      onCitationResolvedRef.current?.(citationResolution);
+    });
+  }, [citationResolution]);
+
+  useEffect(() => {
+    if (!citationTarget) {
+      lastAutoScrollKeyRef.current = null;
+      return;
+    }
+    if (!highlightedLineRange) return;
+
+    const scrollKey = `${citationTarget.nonce}:${scrollToCitationNonce}:${csvViewMode}`;
+    if (lastAutoScrollKeyRef.current === scrollKey) {
+      return;
+    }
+    lastAutoScrollKeyRef.current = scrollKey;
+
+    requestAnimationFrame(() => {
+      if (language === 'csv' && csvViewMode === 'table') {
+        const container = csvContainerRef.current;
+        if (!container) return;
+        const firstRow = container.querySelector<HTMLElement>(
+          '[data-csv-citation-highlight="true"]',
+        );
+        firstRow?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const lineMid = (highlightedLineRange.startLine + highlightedLineRange.endLine) / 2;
+      const lineMidPx = 16 + (lineMid - 0.5) * 24;
+      const targetTop = Math.max(0, lineMidPx - ta.clientHeight / 2);
+      ta.scrollTo({ top: targetTop, behavior: 'smooth' });
+    });
+  }, [citationTarget, scrollToCitationNonce, highlightedLineRange, language, csvViewMode]);
+
+  const handleSyncScroll = () => {
+    if (textareaRef.current) {
+      setScrollTop(textareaRef.current.scrollTop);
+      if (gutterRef.current) {
+        gutterRef.current.scrollTop = textareaRef.current.scrollTop;
+      }
+    }
+  };
+
+  const handleSourceTextChange = (nextValue: string) => {
+    if (highlightedLineRange && onCitationDismiss) {
+      const edited = getEditedLineRange(value, nextValue);
+      if (
+        edited.startLine <= highlightedLineRange.endLine &&
+        edited.endLine >= highlightedLineRange.startLine
+      ) {
+        onCitationDismiss();
+      }
+    }
+    onChange(nextValue);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -326,14 +445,34 @@ export function StructuredSourceCanvas({
 
       {/* Bảng CSV (nếu bật) hoặc Canvas Monospace + Số dòng */}
       {language === 'csv' && csvViewMode === 'table' ? (
-        <div className="flex-1 overflow-auto p-4 bg-white dark:bg-[#0D1017]">
+        <div
+          ref={csvContainerRef}
+          className="flex-1 overflow-auto p-4 bg-white dark:bg-[#0D1017]"
+        >
           {csvRows.length === 0 ? (
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Tệp CSV không có dữ liệu.</p>
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-black/[0.08] dark:border-white/[0.08]">
               <table className="w-full border-collapse text-left text-xs sm:text-[13px]">
                 <thead className="bg-neutral-100/90 dark:bg-white/[0.05] font-semibold text-neutral-800 dark:text-neutral-100">
-                  <tr>
+                  <tr
+                    data-csv-citation-highlight={
+                      highlightedLineRange &&
+                      highlightedLineRange.startLine <= 1 &&
+                      highlightedLineRange.endLine >= 1
+                        ? 'true'
+                        : undefined
+                    }
+                    className={
+                      highlightedLineRange &&
+                      highlightedLineRange.startLine <= 1 &&
+                      highlightedLineRange.endLine >= 1
+                        ? highlightedLineRange.tier === 3
+                          ? 'studymate-source-line-highlight--partial'
+                          : 'studymate-source-line-highlight'
+                        : ''
+                    }
+                  >
                     <th className="w-10 border-b border-r border-black/[0.06] dark:border-white/[0.08] px-2.5 py-2 text-center text-[11px] font-mono text-neutral-400">
                       #
                     </th>
@@ -348,24 +487,39 @@ export function StructuredSourceCanvas({
                   </tr>
                 </thead>
                 <tbody>
-                  {csvRows.slice(1).map((row, rIdx) => (
-                    <tr
-                      key={`r-${rIdx}`}
-                      className="even:bg-neutral-50/60 dark:even:bg-white/[0.02] hover:bg-indigo-500/[0.04]"
-                    >
-                      <td className="border-b border-r border-black/[0.05] dark:border-white/[0.06] px-2.5 py-2 text-center text-[11px] font-mono text-neutral-400">
-                        {rIdx + 1}
-                      </td>
-                      {csvRows[0].map((_, cIdx) => (
-                        <td
-                          key={`c-${rIdx}-${cIdx}`}
-                          className="border-b border-r last:border-r-0 border-black/[0.05] dark:border-white/[0.06] px-3 py-2 text-neutral-700 dark:text-neutral-300"
-                        >
-                          {row[cIdx] ?? ''}
+                  {csvRows.slice(1).map((row, rIdx) => {
+                    const fileLineNumber = rIdx + 2;
+                    const isRowHighlighted =
+                      highlightedLineRange !== null &&
+                      fileLineNumber >= highlightedLineRange.startLine &&
+                      fileLineNumber <= highlightedLineRange.endLine;
+
+                    return (
+                      <tr
+                        key={`r-${rIdx}`}
+                        data-csv-citation-highlight={isRowHighlighted ? 'true' : undefined}
+                        className={
+                          isRowHighlighted
+                            ? highlightedLineRange?.tier === 3
+                              ? 'studymate-source-line-highlight--partial'
+                              : 'studymate-source-line-highlight'
+                            : 'even:bg-neutral-50/60 dark:even:bg-white/[0.02] hover:bg-indigo-500/[0.04]'
+                        }
+                      >
+                        <td className="border-b border-r border-black/[0.05] dark:border-white/[0.06] px-2.5 py-2 text-center text-[11px] font-mono text-neutral-400">
+                          {rIdx + 1}
                         </td>
-                      ))}
-                    </tr>
-                  ))}
+                        {csvRows[0].map((_, cIdx) => (
+                          <td
+                            key={`c-${rIdx}-${cIdx}`}
+                            className="border-b border-r last:border-r-0 border-black/[0.05] dark:border-white/[0.06] px-3 py-2 text-neutral-700 dark:text-neutral-300"
+                          >
+                            {row[cIdx] ?? ''}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -379,22 +533,57 @@ export function StructuredSourceCanvas({
             aria-hidden="true"
             className="w-12 shrink-0 overflow-hidden border-r border-black/[0.06] dark:border-white/[0.08] bg-neutral-50/80 dark:bg-[#11141D] py-4 pr-2.5 text-right font-mono text-[12px] leading-6 text-neutral-400 dark:text-neutral-500 select-none tabular-nums"
           >
-            {lines.map((_, idx) => (
-              <div key={idx}>{idx + 1}</div>
-            ))}
+            {lines.map((_, idx) => {
+              const lineNum = idx + 1;
+              const isHighlighted =
+                highlightedLineRange !== null &&
+                lineNum >= highlightedLineRange.startLine &&
+                lineNum <= highlightedLineRange.endLine;
+              return (
+                <div
+                  key={idx}
+                  className={
+                    isHighlighted
+                      ? highlightedLineRange?.tier === 3
+                        ? 'rounded-l bg-amber-500/20 font-semibold text-amber-700 dark:text-amber-300 -mr-2.5 pr-2.5'
+                        : 'rounded-l bg-indigo-500/15 font-semibold text-indigo-700 dark:text-indigo-300 -mr-2.5 pr-2.5'
+                      : undefined
+                  }
+                >
+                  {lineNum}
+                </div>
+              );
+            })}
           </div>
 
-          <textarea
-            ref={textareaRef}
-            value={value}
-            readOnly={readOnly}
-            onChange={(e) => onChange(e.target.value)}
-            onScroll={handleSyncScroll}
-            onKeyDown={handleKeyDown}
-            spellCheck={false}
-            aria-label={`Trình soạn thảo mã nguồn ${language.toUpperCase()}`}
-            className="h-full w-full flex-1 resize-none overflow-auto bg-transparent p-4 font-mono text-[13px] leading-6 text-neutral-900 dark:text-neutral-100 outline-none selection:bg-indigo-500/20"
-          />
+          <div className="relative flex-1 min-w-0 overflow-hidden">
+            {highlightedLineRange && (
+              <div
+                aria-hidden="true"
+                className={`pointer-events-none absolute left-0 right-0 z-0 ${
+                  highlightedLineRange.tier === 3
+                    ? 'studymate-source-line-highlight--partial'
+                    : 'studymate-source-line-highlight'
+                }`}
+                style={{
+                  top: `${16 + (highlightedLineRange.startLine - 1) * 24 - scrollTop}px`,
+                  height: `${Math.max(1, highlightedLineRange.endLine - highlightedLineRange.startLine + 1) * 24}px`,
+                }}
+              />
+            )}
+
+            <textarea
+              ref={textareaRef}
+              value={value}
+              readOnly={readOnly}
+              onChange={(e) => handleSourceTextChange(e.target.value)}
+              onScroll={handleSyncScroll}
+              onKeyDown={handleKeyDown}
+              spellCheck={false}
+              aria-label={`Trình soạn thảo mã nguồn ${language.toUpperCase()}`}
+              className="relative z-10 h-full w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-[13px] leading-6 text-neutral-900 dark:text-neutral-100 outline-none selection:bg-indigo-500/20"
+            />
+          </div>
         </div>
       )}
     </div>

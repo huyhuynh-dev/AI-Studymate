@@ -1,5 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
+import { formatBackendChunkLocationLabel } from '../../../../documents/helpers/text-anchor.helper.js';
 import type {
   GetDocumentSectionOrPagesCallback,
   GetDocumentSectionOrPagesToolOutput,
@@ -64,6 +65,7 @@ export function createGetDocumentSectionOrPagesTool(
         if (tracker) {
           citationId = tracker.allocateCitation({
             chunkId: chunk.id,
+            chunkIndex: chunk.chunkIndex,
             documentId: chunk.documentId,
             fileName: chunk.fileName,
             pageNumbers: chunk.pageNumbers,
@@ -71,6 +73,7 @@ export function createGetDocumentSectionOrPagesTool(
             content: chunk.content,
             rawContent: chunk.rawContent,
             bboxes: chunk.bboxes,
+            ...(chunk.textAnchor ? { textAnchor: chunk.textAnchor } : {}),
             assets: chunk.assets,
           });
         }
@@ -83,6 +86,7 @@ export function createGetDocumentSectionOrPagesTool(
           headings: chunk.headings,
           content: chunk.content,
           previewSnippet: chunk.content ? chunk.content.slice(0, 200) : '',
+          ...(chunk.textAnchor ? { textAnchor: chunk.textAnchor } : {}),
         };
       });
 
@@ -119,15 +123,20 @@ export function createGetDocumentSectionOrPagesTool(
 
       const formattedChunks = output.chunks
         .map((chunk) => {
-          const pageLabel =
-            chunk.pageNumbers && chunk.pageNumbers.length > 0
-              ? `Trang ${chunk.pageNumbers.join(', ')}`
-              : `Chunk #${chunk.chunkIndex}`;
+          const locationLabel = formatBackendChunkLocationLabel({
+            fileName: output.fileName,
+            pageNumbers: chunk.pageNumbers,
+            textAnchor: chunk.textAnchor,
+            headings: chunk.headings,
+            chunkIndex: chunk.chunkIndex,
+          });
           const headingLabel =
-            chunk.headings && chunk.headings.length > 0
+            chunk.headings &&
+            chunk.headings.length > 0 &&
+            !locationLabel.startsWith('Mục: ')
               ? ` | Mục: "${chunk.headings.join(' > ')}"`
               : '';
-          return `[Dẫn chứng [${chunk.citationId}] | Tài liệu: "${output.fileName}" | ${pageLabel}${headingLabel}]\n${chunk.content}`;
+          return `[Dẫn chứng [${chunk.citationId}] | Tài liệu: "${output.fileName}" | ${locationLabel}${headingLabel}]\n${chunk.content}`;
         })
         .join('\n\n---\n\n');
 

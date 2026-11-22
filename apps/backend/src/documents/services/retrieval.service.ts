@@ -3,6 +3,10 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { EmbeddingService } from '../../ai/embedding.service.js';
 import { AiService } from '../../ai/ai.service.js';
+import {
+  extractTextAnchorFromChunkMetadata,
+  type TextCitationAnchor,
+} from '../../common/types/source-ref.types.js';
 
 export const DEFAULT_TOP_K = 8;
 export const DEFAULT_RRF_POOL_SIZE = 25;
@@ -44,6 +48,7 @@ export interface RetrievedChunk {
   hasImage: boolean;
   hasTable: boolean;
   bboxes?: unknown;
+  textAnchor?: TextCitationAnchor;
   assets: RetrievedChunkAsset[];
   neighbors?: {
     prev?: RetrievedNeighborChunk | null;
@@ -154,6 +159,7 @@ export interface DocumentSectionChunk {
   hasImage: boolean;
   hasTable: boolean;
   bboxes?: unknown;
+  textAnchor?: TextCitationAnchor;
   assets: RetrievedChunkAsset[];
 }
 
@@ -372,6 +378,7 @@ export class RetrievalService {
         has_image: true,
         has_table: true,
         bboxes: true,
+        chunk_metadata: true,
         assets: {
           select: {
             id: true,
@@ -388,27 +395,31 @@ export class RetrievalService {
       take: isFullDocument ? undefined : 20,
     });
 
-    const mappedChunks: DocumentSectionChunk[] = chunks.map((c) => ({
-      id: c.id,
-      documentId: doc.id,
-      fileName: doc.file_name,
-      chunkIndex: c.chunk_index,
-      pageNumbers: c.page_numbers,
-      headings: c.headings,
-      content: c.content,
-      rawContent: c.raw_content,
-      chunkType: String(c.chunk_type),
-      hasImage: c.has_image,
-      hasTable: c.has_table,
-      bboxes: c.bboxes,
-      assets: c.assets.map((a) => ({
-        id: a.id,
-        assetType: a.asset_type,
-        storageKey: a.storage_key,
-        caption: a.caption,
-        pageNo: a.page_no,
-      })),
-    }));
+    const mappedChunks: DocumentSectionChunk[] = chunks.map((c) => {
+      const textAnchor = extractTextAnchorFromChunkMetadata(c.chunk_metadata);
+      return {
+        id: c.id,
+        documentId: doc.id,
+        fileName: doc.file_name,
+        chunkIndex: c.chunk_index,
+        pageNumbers: c.page_numbers,
+        headings: c.headings,
+        content: c.content,
+        rawContent: c.raw_content,
+        chunkType: String(c.chunk_type),
+        hasImage: c.has_image,
+        hasTable: c.has_table,
+        bboxes: c.bboxes,
+        ...(textAnchor ? { textAnchor } : {}),
+        assets: c.assets.map((a) => ({
+          id: a.id,
+          assetType: a.asset_type,
+          storageKey: a.storage_key,
+          caption: a.caption,
+          pageNo: a.page_no,
+        })),
+      };
+    });
 
     return {
       documentId: doc.id,
@@ -1113,6 +1124,7 @@ export class RetrievalService {
         hasImage: boolean;
         hasTable: boolean;
         bboxes: unknown;
+        chunkMetadata: unknown;
         assetsJson: unknown;
         rrfScore: number;
         vectorRank: number | null;
@@ -1171,6 +1183,7 @@ export class RetrievalService {
         dc."has_image" AS "hasImage",
         dc."has_table" AS "hasTable",
         dc."bboxes" AS "bboxes",
+        dc."chunk_metadata" AS "chunkMetadata",
         COALESCE(asset_sub.assets_json, '[]'::json) AS "assetsJson",
         (
           COALESCE(1.0 / (${rrfK} + v.rn), 0.0) +
@@ -1211,6 +1224,10 @@ export class RetrievalService {
             }))
         : [];
 
+      const textAnchor = extractTextAnchorFromChunkMetadata(
+        (row as { chunkMetadata?: unknown }).chunkMetadata,
+      );
+
       return {
         id: row.id,
         documentId: row.documentId,
@@ -1224,6 +1241,7 @@ export class RetrievalService {
         hasImage: Boolean(row.hasImage),
         hasTable: Boolean(row.hasTable),
         bboxes: row.bboxes,
+        ...(textAnchor ? { textAnchor } : {}),
         assets,
         rrfScore: Number(row.rrfScore),
         vectorRank: row.vectorRank !== null ? Number(row.vectorRank) : null,

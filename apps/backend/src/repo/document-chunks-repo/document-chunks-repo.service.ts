@@ -7,6 +7,10 @@ import {
     type InsertChunkPlanItem,
     type KeptChunkPlanItem,
 } from '../../documents/helpers/chunk-diff.helper.js';
+import {
+    extractTextAnchorFromChunkMetadata,
+    type TextCitationAnchor,
+} from '../../common/types/source-ref.types.js';
 
 export interface InsertedChunkRecord {
     id: string;
@@ -82,6 +86,7 @@ export class DocumentChunksRepoService {
             page_numbers: number[];
             headings: string[];
             bboxes: Prisma.JsonValue | null;
+            chunk_metadata: Prisma.JsonValue | null;
         }>
     > {
         const uniqueIds = [...new Set(documentIds.filter(Boolean))];
@@ -101,6 +106,7 @@ export class DocumentChunksRepoService {
                 page_numbers: true,
                 headings: true,
                 bboxes: true,
+                chunk_metadata: true,
             },
             orderBy: [{ document_id: 'asc' }, { chunk_index: 'asc' }],
         });
@@ -126,6 +132,7 @@ export class DocumentChunksRepoService {
                 pageNumbers: number[];
                 headings: string[];
                 bboxes: Prisma.JsonValue | null;
+                textAnchor?: TextCitationAnchor;
             }>;
         }>
     > {
@@ -198,6 +205,7 @@ export class DocumentChunksRepoService {
                 page_numbers: true,
                 headings: true,
                 bboxes: true,
+                chunk_metadata: true,
                 document: {
                     select: {
                         file_name: true,
@@ -220,6 +228,7 @@ export class DocumentChunksRepoService {
                     pageNumbers: number[];
                     headings: string[];
                     bboxes: Prisma.JsonValue | null;
+                    textAnchor?: TextCitationAnchor;
                 }>;
             }
         >();
@@ -236,6 +245,7 @@ export class DocumentChunksRepoService {
                 };
                 grouped.set(row.document_id, entry);
             }
+            const textAnchor = extractTextAnchorFromChunkMetadata(row.chunk_metadata);
             entry.chunks.push({
                 id: row.id,
                 chunkIndex: row.chunk_index,
@@ -244,6 +254,7 @@ export class DocumentChunksRepoService {
                 pageNumbers: row.page_numbers,
                 headings: row.headings,
                 bboxes: row.bboxes,
+                ...(textAnchor ? { textAnchor } : {}),
             });
         }
 

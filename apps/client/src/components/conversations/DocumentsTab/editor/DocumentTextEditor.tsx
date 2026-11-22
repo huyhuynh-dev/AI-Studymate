@@ -25,6 +25,13 @@ import {
   StructuredSourceCanvas,
   validateStructuredContent,
 } from './StructuredSourceCanvas';
+import { CitationEvidenceBanner } from './CitationEvidenceBanner';
+import type {
+  CitationResolutionTier,
+  EditorCitationTarget,
+  ProseMirrorCitationResolution,
+  StructuredCitationResolution,
+} from './text-anchor-resolver';
 
 export interface DocumentTextEditorProps {
   document: DocumentItem;
@@ -34,6 +41,8 @@ export interface DocumentTextEditorProps {
   compactReaderMode?: boolean;
   isExternalFullscreen?: boolean;
   onToggleExternalFullscreen?: () => void;
+  citationTarget?: EditorCitationTarget | null;
+  onCitationDismiss?: () => void;
   highlightSnippet?: string | null;
   onSnippetLocated?: () => void;
   className?: string;
@@ -50,6 +59,8 @@ export default function DocumentTextEditor({
   compactReaderMode = false,
   isExternalFullscreen = false,
   onToggleExternalFullscreen,
+  citationTarget,
+  onCitationDismiss,
   highlightSnippet,
   onSnippetLocated,
   className = '',
@@ -76,6 +87,64 @@ export default function DocumentTextEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
+  const [dismissedCitationKey, setDismissedCitationKey] = useState<string | null>(null);
+  const [scrollToCitationNonce, setScrollToCitationNonce] = useState(0);
+  const [resolvedInfo, setResolvedInfo] = useState<{
+    key: string;
+    tier: CitationResolutionTier;
+    startLine?: number | null;
+    endLine?: number | null;
+  } | null>(null);
+
+  const fallbackCitationTarget = useMemo<EditorCitationTarget | null>(() => {
+    if (citationTarget) return citationTarget;
+    if (highlightSnippet && highlightSnippet.trim()) {
+      return {
+        documentId: document.id,
+        fileName: document.file_name,
+        rawContent: highlightSnippet,
+        nonce: 1,
+      };
+    }
+    return null;
+  }, [citationTarget, highlightSnippet, document.id, document.file_name]);
+
+  const activeCitationKey = fallbackCitationTarget
+    ? `${fallbackCitationTarget.documentId}:${fallbackCitationTarget.nonce}:${fallbackCitationTarget.rawContent?.slice(0, 24) ?? ''}`
+    : null;
+
+  const activeCitation =
+    fallbackCitationTarget && activeCitationKey !== dismissedCitationKey
+      ? fallbackCitationTarget
+      : null;
+
+  const activeResolvedMeta =
+    resolvedInfo && activeCitationKey && resolvedInfo.key === activeCitationKey
+      ? resolvedInfo
+      : null;
+
+  const handleDismissCitation = useCallback(() => {
+    if (activeCitationKey) {
+      setDismissedCitationKey(activeCitationKey);
+    }
+    onCitationDismiss?.();
+    onSnippetLocated?.();
+  }, [activeCitationKey, onCitationDismiss, onSnippetLocated]);
+
+  const handleCitationResolutionUpdate = useCallback(
+    (resolution: ProseMirrorCitationResolution | StructuredCitationResolution | null) => {
+      if (!activeCitationKey || !resolution) return;
+      const startLine = 'startLine' in resolution ? resolution.startLine : null;
+      const endLine = 'endLine' in resolution ? resolution.endLine : null;
+      setResolvedInfo({
+        key: activeCitationKey,
+        tier: resolution.tier,
+        startLine,
+        endLine,
+      });
+    },
+    [activeCitationKey],
+  );
 
   const mountedRef = useRef(true);
   const versionRef = useRef(document.content_version ?? 1);
@@ -292,6 +361,23 @@ export default function DocumentTextEditor({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [performSave]);
+
+  // Phím Esc tắt vùng highlight trích dẫn trước khi kích hoạt hành vi Esc đóng panel bên ngoài
+  useEffect(() => {
+    if (!activeCitation) return;
+
+    const handleEscapeHighlight = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      handleDismissCitation();
+    };
+
+    window.addEventListener('keydown', handleEscapeHighlight, { capture: true });
+    return () => {
+      window.removeEventListener('keydown', handleEscapeHighlight, { capture: true });
+    };
+  }, [activeCitation, handleDismissCitation]);
 
   const isAiSyncing =
     embedStatus === 'pending' ||
@@ -534,6 +620,17 @@ export default function DocumentTextEditor({
         </div>
       )}
 
+      {!isLoading && !loadError && activeCitation && (
+        <CitationEvidenceBanner
+          target={activeCitation}
+          resolvedTier={activeResolvedMeta?.tier ?? 1}
+          resolvedStartLine={activeResolvedMeta?.startLine}
+          resolvedEndLine={activeResolvedMeta?.endLine}
+          onScrollToLocation={() => setScrollToCitationNonce((n) => n + 1)}
+          onDismiss={handleDismissCitation}
+        />
+      )}
+
       {/* Vùng Nội dung Chính */}
       {isLoading ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
@@ -569,6 +666,10 @@ export default function DocumentTextEditor({
           language={profile.language}
           readOnly={readOnly}
           compactReaderMode={compactReaderMode}
+          citationTarget={activeCitation}
+          scrollToCitationNonce={scrollToCitationNonce}
+          onCitationResolved={handleCitationResolutionUpdate}
+          onCitationDismiss={handleDismissCitation}
         />
       ) : profile.mode === 'markdown_wysiwyg' ||
         profile.mode === 'html_wysiwyg' ||
@@ -579,8 +680,10 @@ export default function DocumentTextEditor({
           mode={profile.mode}
           readOnly={readOnly}
           compactReaderMode={compactReaderMode}
-          highlightSnippet={highlightSnippet}
-          onSnippetLocated={onSnippetLocated}
+          citationTarget={activeCitation}
+          scrollToCitationNonce={scrollToCitationNonce}
+          onCitationResolved={handleCitationResolutionUpdate}
+          onCitationDismiss={handleDismissCitation}
         />
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">

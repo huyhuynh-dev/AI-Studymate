@@ -47,6 +47,16 @@ import {
   joinMarkdownFrontmatter,
   splitMarkdownFrontmatter,
 } from './markdown-frontmatter.helper';
+import {
+  CitationHighlightExtension,
+  dispatchCitationHighlight,
+} from './citation-highlight.extension';
+import {
+  resolveTextSegmentsCitation,
+  type EditorCitationTarget,
+  type ProseMirrorCitationResolution,
+  type ProseMirrorTextSegment,
+} from './text-anchor-resolver';
 
 export interface MarkdownWysiwygCanvasProps {
   value: string;
@@ -54,8 +64,10 @@ export interface MarkdownWysiwygCanvasProps {
   mode: Extract<DocumentEditorMode, 'markdown_wysiwyg' | 'html_wysiwyg' | 'plain_text'>;
   readOnly?: boolean;
   compactReaderMode?: boolean;
-  highlightSnippet?: string | null;
-  onSnippetLocated?: () => void;
+  citationTarget?: EditorCitationTarget | null;
+  scrollToCitationNonce?: number;
+  onCitationResolved?: (resolution: ProseMirrorCitationResolution | null) => void;
+  onCitationDismiss?: () => void;
 }
 
 interface ToolbarBtnProps {
@@ -129,54 +141,67 @@ function extractOutlineHeadings(editor: Editor): OutlineHeadingItem[] {
   return headings;
 }
 
-function findSnippetRangeInEditor(
+function findTextRangeInEditor(
   editor: Editor,
   rawQuery: string,
   fromOffset = 0,
 ): { from: number; to: number } | null {
-  const needle = rawQuery
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
+  const needle = rawQuery.replace(/\s+/g, ' ').trim().toLowerCase();
   if (!needle) return null;
 
-  const probes = [needle];
-  if (needle.length > 72) {
-    probes.push(needle.slice(0, 72).trim());
-  }
+  let found: { from: number; to: number } | null = null;
+  let firstMatch: { from: number; to: number } | null = null;
 
-  for (const probe of probes) {
-    if (!probe) continue;
-    let found: { from: number; to: number } | null = null;
-    let firstMatch: { from: number; to: number } | null = null;
+  editor.state.doc.descendants((node, pos) => {
+    if (found) return false;
+    if (!node.isTextblock) return true;
 
-    editor.state.doc.descendants((node, pos) => {
-      if (found) return false;
-      if (!node.isTextblock) return true;
+    const text = node.textContent.toLowerCase();
+    const idx = text.indexOf(needle);
+    if (idx === -1) return true;
 
-      const text = node.textContent.toLowerCase();
-      const idx = text.indexOf(probe);
-      if (idx === -1) return true;
+    const matchRange = {
+      from: pos + 1 + idx,
+      to: Math.min(pos + 1 + idx + needle.length, pos + 1 + node.textContent.length),
+    };
+    if (!firstMatch) firstMatch = matchRange;
+    if (matchRange.from >= fromOffset) {
+      found = matchRange;
+      return false;
+    }
+    return true;
+  });
 
-      const matchRange = {
-        from: pos + 1 + idx,
-        to: Math.min(pos + 1 + idx + probe.length, pos + 1 + node.textContent.length),
-      };
-      if (!firstMatch) {
-        firstMatch = matchRange;
-      }
-      if (matchRange.from >= fromOffset) {
-        found = matchRange;
-        return false;
-      }
+  return found ?? firstMatch;
+}
+
+function extractProseMirrorTextSegments(editor: Editor): ProseMirrorTextSegment[] {
+  const segments: ProseMirrorTextSegment[] = [];
+  let headingActive = false;
+  let needBlockBreak = false;
+
+  editor.state.doc.descendants((node, pos) => {
+    if (node.isTextblock) {
+      headingActive = node.type.name === 'heading';
+      needBlockBreak = true;
       return true;
-    });
+    }
 
-    if (found) return found;
-    if (firstMatch) return firstMatch;
-  }
+    if (node.isText && node.text) {
+      segments.push({
+        text: node.text,
+        from: pos,
+        to: pos + node.text.length,
+        isBlockStart: needBlockBreak,
+        isHeading: headingActive,
+      });
+      needBlockBreak = false;
+    }
 
-  return null;
+    return true;
+  });
+
+  return segments;
 }
 
 export function MarkdownWysiwygCanvas({
@@ -185,8 +210,10 @@ export function MarkdownWysiwygCanvas({
   mode,
   readOnly = false,
   compactReaderMode = false,
-  highlightSnippet,
-  onSnippetLocated,
+  citationTarget,
+  scrollToCitationNonce = 0,
+  onCitationResolved,
+  onCitationDismiss,
 }: MarkdownWysiwygCanvasProps) {
   const supportsWysiwyg = mode !== 'plain_text';
   const supportsSourceToggle = mode === 'markdown_wysiwyg' || mode === 'html_wysiwyg';
@@ -200,7 +227,10 @@ export function MarkdownWysiwygCanvas({
   const frontmatterRef = useRef(initialMountSplit.frontmatter);
   const lastEmittedRef = useRef(value);
   const onChangeRef = useRef(onChange);
-  const appliedSnippetRef = useRef<string | null>(null);
+  const onCitationResolvedRef = useRef(onCitationResolved);
+  const onCitationDismissRef = useRef(onCitationDismiss);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const lastAutoSwitchedNonceRef = useRef<number | null>(null);
 
   const [isSourceView, setIsSourceView] = useState(false);
   const [isOutlineOpen, setIsOutlineOpen] = useState(false);
@@ -216,9 +246,15 @@ export function MarkdownWysiwygCanvas({
 
   useEffect(() => {
     onChangeRef.current = onChange;
+    onCitationResolvedRef.current = onCitationResolved;
+    onCitationDismissRef.current = onCitationDismiss;
   });
 
   const extensions = useMemo<AnyExtension[]>(() => {
+    const citationHighlightExt = CitationHighlightExtension.configure({
+      onAutoDismiss: () => onCitationDismissRef.current?.(),
+    });
+
     if (mode === 'plain_text') {
       return [
         StarterKit.configure({
@@ -241,6 +277,7 @@ export function MarkdownWysiwygCanvas({
         Placeholder.configure({
           placeholder: 'Nhập văn bản thuần...',
         }),
+        citationHighlightExt,
       ];
     }
 
@@ -263,6 +300,7 @@ export function MarkdownWysiwygCanvas({
       Placeholder.configure({
         placeholder: 'Bắt đầu gõ nội dung hoặc sử dụng thanh công cụ định dạng phía trên...',
       }),
+      citationHighlightExt,
     ];
 
     if (mode === 'markdown_wysiwyg') {
@@ -383,26 +421,69 @@ export function MarkdownWysiwygCanvas({
     });
   }, [editor, value, mode, syncOutlineFromEditor]);
 
-  // Tự động cuộn tới đoạn trích dẫn nguồn khi mở từ Chatbox
+  // Tự động định vị & tô sáng phi phá hủy (DecorationSet) đoạn trích dẫn nguồn 4 tầng
   useEffect(() => {
-    if (!editor || editor.isDestroyed || !highlightSnippet || isSourceView) {
-      return;
-    }
-    if (appliedSnippetRef.current === highlightSnippet) {
+    if (!editor || editor.isDestroyed) {
       return;
     }
 
-    appliedSnippetRef.current = highlightSnippet;
-    const match = findSnippetRangeInEditor(editor, highlightSnippet, 0);
-    if (match) {
-      editor
-        .chain()
-        .setTextSelection(match)
-        .scrollIntoView()
-        .run();
+    if (!citationTarget) {
+      lastAutoSwitchedNonceRef.current = null;
+      dispatchCitationHighlight(editor.view, { range: null, tier: null });
+      queueMicrotask(() => onCitationResolvedRef.current?.(null));
+      return;
     }
-    onSnippetLocated?.();
-  }, [editor, highlightSnippet, isSourceView, onSnippetLocated]);
+
+    if (
+      isSourceView &&
+      lastAutoSwitchedNonceRef.current !== citationTarget.nonce
+    ) {
+      lastAutoSwitchedNonceRef.current = citationTarget.nonce;
+      queueMicrotask(() => setIsSourceView(false));
+      return;
+    }
+
+    if (isSourceView) {
+      return;
+    }
+
+    const segments = extractProseMirrorTextSegments(editor);
+    const resolution = resolveTextSegmentsCitation(
+      segments,
+      value.length,
+      citationTarget,
+    );
+
+    if (
+      resolution &&
+      resolution.tier !== 4 &&
+      resolution.from !== null &&
+      resolution.to !== null
+    ) {
+      dispatchCitationHighlight(editor.view, {
+        range: { from: resolution.from, to: resolution.to },
+        tier: resolution.tier,
+      });
+
+      requestAnimationFrame(() => {
+        const container = editorContainerRef.current;
+        if (!container) return;
+        const firstHighlightEl = container.querySelector<HTMLElement>(
+          '[data-citation-highlight="true"]',
+        );
+        firstHighlightEl?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      });
+    } else {
+      dispatchCitationHighlight(editor.view, { range: null, tier: null });
+    }
+
+    queueMicrotask(() => {
+      onCitationResolvedRef.current?.(resolution);
+    });
+  }, [editor, citationTarget, scrollToCitationNonce, isSourceView, value]);
 
   // Lắng nghe Ctrl+F mở thanh tìm kiếm nội bộ
   useEffect(() => {
@@ -470,7 +551,7 @@ export function MarkdownWysiwygCanvas({
   const handleFindNext = () => {
     if (!findQuery || !editor || editor.isDestroyed || isSourceView) return;
     const currentPos = editor.state.selection.to;
-    const match = findSnippetRangeInEditor(editor, findQuery, currentPos);
+    const match = findTextRangeInEditor(editor, findQuery, currentPos);
     if (match) {
       editor.chain().focus().setTextSelection(match).scrollIntoView().run();
     }
@@ -879,7 +960,10 @@ export function MarkdownWysiwygCanvas({
             className="h-full w-full flex-1 resize-none overflow-auto bg-transparent p-5 sm:p-8 font-mono text-[13px] leading-6 text-neutral-900 dark:text-neutral-100 outline-none"
           />
         ) : (
-          <div className="relative flex-1 overflow-y-auto studymate-doc-editor">
+          <div
+            ref={editorContainerRef}
+            className="relative flex-1 overflow-y-auto studymate-doc-editor"
+          >
             {editor && supportsWysiwyg && !readOnly && (
               <BubbleMenu
                 editor={editor}
