@@ -178,6 +178,7 @@ export default function SummaryTab({
   const handleSelectSummary = (summaryId: string) => {
     void flushPendingSave();
     setAutoFocusNoteId(null);
+    setIsTtsOpen(false);
     setSelectedSummaryId(summaryId);
     setViewMode("detail");
   };
@@ -186,6 +187,7 @@ export default function SummaryTab({
   const handleBackToList = () => {
     void flushPendingSave();
     setAutoFocusNoteId(null);
+    setIsTtsOpen(false);
     setFocusMode(false);
     setViewMode("list");
   };
@@ -198,6 +200,7 @@ export default function SummaryTab({
 
   // Xóa ghi chú
   const handleDeleteSummary = async (summaryId: string) => {
+    setIsTtsOpen(false);
     await deleteSummary(summaryId);
     if (summaries.length <= 1) {
       setAutoFocusNoteId(null);

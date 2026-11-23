@@ -283,6 +283,9 @@ importers:
       dotenv:
         specifier: ^18.0.8
         version: 18.0.8
+      howler:
+        specifier: ^2.2.4
+        version: 2.2.4
       katex:
         specifier: ^0.19.1
         version: 0.19.1
@@ -332,6 +335,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.3.3
+      '@types/howler':
+        specifier: ^2.2.13
+        version: 2.2.13
       '@types/node':
         specifier: ^20
         version: 20.19.43
@@ -1733,6 +1739,9 @@ packages:
   '@types/hast@3.0.5':
     resolution: {integrity: sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==}
 
+  '@types/howler@2.2.13':
+    resolution: {integrity: sha512-40+EBjqIHHrC4VShlz/7i0lBUsE3QkgzZinQQji74Hd8sBkJZUBaT7LWFLK6rcabsDOOQpoMbEJvtaFQwxOu/g==}
+
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
@@ -2921,6 +2930,9 @@ packages:
 
   hookable@5.5.3:
     resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
+
+  howler@2.2.4:
+    resolution: {integrity: sha512-iARIBPgcQrwtEr+tALF+rapJ8qSc+Set2GJQl7xT1MQzWaVkFebdJhR3alVlSiUf5U7nAANKuj3aWpwerocD5w==}
 
   html-url-attributes@3.0.1:
     resolution: {integrity: sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ==}
@@ -5871,6 +5883,8 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
 
+  '@types/howler@2.2.13': {}
+
   '@types/json-schema@7.0.15': {}
 
   '@types/json5@0.0.29': {}
@@ -7305,6 +7319,8 @@ snapshots:
   highlightjs-vue@1.0.0: {}
 
   hookable@5.5.3: {}
+
+  howler@2.2.4: {}
 
   html-url-attributes@3.0.1: {}
 

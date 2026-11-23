@@ -1,16 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Howl } from "howler";
 import {
-  Volume2,
-  Play,
-  Pause,
-  Square,
-  X,
   AlertTriangle,
-  ChevronDown,
   Check,
+  ChevronDown,
   Languages,
+  Loader2,
+  Pause,
+  Play,
+  Square,
+  Volume2,
+  VolumeX,
+  X,
 } from "lucide-react";
 
 interface SummaryTtsPlayerProps {
@@ -20,73 +23,20 @@ interface SummaryTtsPlayerProps {
   onClose: () => void;
 }
 
+interface EdgeVoice {
+  id: string;
+  name: string;
+  locale: "vi-VN" | "en-US";
+}
+
+const EDGE_VOICES: EdgeVoice[] = [
+  { id: "vi-VN-HoaiMyNeural", name: "Hoài My (Nữ)", locale: "vi-VN" },
+  { id: "vi-VN-NamMinhNeural", name: "Nam Minh (Nam)", locale: "vi-VN" },
+  { id: "en-US-AriaNeural", name: "Aria (Nữ)", locale: "en-US" },
+  { id: "en-US-GuyNeural", name: "Guy (Nam)", locale: "en-US" },
+];
+
 const SPEED_OPTIONS = [0.8, 1.0, 1.25, 1.5, 1.75];
-
-/**
- * Tìm kiếm giọng đọc Tiếng Việt theo thứ tự ưu tiên chất lượng cao nhất
- */
-function findBestVietnameseVoice(
-  voices: SpeechSynthesisVoice[]
-): SpeechSynthesisVoice | null {
-  if (!Array.isArray(voices) || voices.length === 0) return null;
-
-  // 1. Ưu tiên cao nhất: Microsoft Edge Online Natural Voices (Hoài My, Nam Minh)
-  const edgeNatural = voices.find(
-    (v) =>
-      (v.name.includes("HoaiMy") || v.name.includes("NamMinh")) &&
-      (v.lang.toLowerCase().includes("vi") || v.name.toLowerCase().includes("vietnam"))
-  );
-  if (edgeNatural) return edgeNatural;
-
-  // 2. Ưu tiên: Google Chrome tiếng Việt
-  const googleVi = voices.find(
-    (v) =>
-      v.name.toLowerCase().includes("tiếng việt") ||
-      (v.name.toLowerCase().includes("google") && v.lang.toLowerCase().startsWith("vi"))
-  );
-  if (googleVi) return googleVi;
-
-  // 3. Ưu tiên: Giọng chuẩn mã ngôn ngữ vi-VN hoặc vi_*
-  const standardVi = voices.find(
-    (v) =>
-      v.lang.toLowerCase().startsWith("vi") ||
-      v.lang.toLowerCase().replace("_", "-") === "vi-vn"
-  );
-  if (standardVi) return standardVi;
-
-  // 4. Ưu tiên: Tên chứa Vietnamese
-  const nameVi = voices.find(
-    (v) =>
-      v.name.toLowerCase().includes("vietnamese") ||
-      v.name.toLowerCase().includes("vietnam")
-  );
-  if (nameVi) return nameVi;
-
-  return null;
-}
-
-/**
- * Rút gọn tên hiển thị thân thiện cho giọng đọc
- */
-function formatVoiceName(voice: SpeechSynthesisVoice): string {
-  const name = voice.name;
-  if (name.includes("HoaiMy")) return "Hoài My (Edge Natural)";
-  if (name.includes("NamMinh")) return "Nam Minh (Edge Natural)";
-  if (name.includes("Google") && name.toLowerCase().includes("tiếng việt"))
-    return "Google Tiếng Việt";
-  if (name.includes("An") && voice.lang.includes("VN"))
-    return "Microsoft An (Việt Nam)";
-  if (name.includes("Jenny")) return "Jenny (Edge Natural)";
-  if (name.includes("Guy")) return "Guy (Edge Natural)";
-  if (name.includes("Aria")) return "Aria (Edge Natural)";
-  if (name.includes("David")) return "David (US English)";
-  if (name.includes("Zira")) return "Zira (US English)";
-  if (name.includes("Mark")) return "Mark (US English)";
-
-  // Rút ngắn tên nếu quá dài
-  const clean = name.replace(/\s*-\s*English.*$/i, "").replace(/\s*-\s*Vietnamese.*$/i, "");
-  return clean.length > 20 ? `${clean.slice(0, 18)}...` : clean;
-}
 
 export default function SummaryTtsPlayer({
   blocks,
@@ -96,537 +46,509 @@ export default function SummaryTtsPlayer({
 }: SummaryTtsPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [rate, setRate] = useState<number>(1.0);
-  const [isSupported, setIsSupported] = useState<boolean>(true);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
-  const [isVoiceDropdownOpen, setIsVoiceDropdownOpen] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [rate, setRate] = useState(1);
+  const [volume, setVolume] = useState(1);
+  const [selectedVoice, setSelectedVoice] = useState<EdgeVoice>(EDGE_VOICES[0]);
+  const [isVoiceDropdownOpen, setIsVoiceDropdownOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
 
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const keepAliveIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Theo dõi vị trí ký tự đang đọc để không bị đọc lại từ đầu khi đổi tốc độ hoặc đổi giọng
-  const currentWordCharIndexRef = useRef<number>(0);
-  const textRemainingOffsetRef = useRef<number>(0);
-
+  const howlRef = useRef<Howl | null>(null);
+  const soundIdRef = useRef<number | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dropdownContainerRef = useRef<HTMLDivElement>(null);
 
-  // Đóng dropdown khi click ra ngoài
+  const extractFullText = useCallback((): string => {
+    const parts: string[] = [];
+    if (title) parts.push(title);
+
+    const inlineText = (item: unknown): string => {
+      if (typeof item === "string") return item;
+      if (!item || typeof item !== "object") return "";
+      const record = item as Record<string, unknown>;
+      if (typeof record.text === "string") return record.text;
+      if (typeof record.content === "string") return record.content;
+      return "";
+    };
+
+    const extractBlock = (block: unknown): void => {
+      if (!block || typeof block !== "object") return;
+      const record = block as Record<string, unknown>;
+
+      if (record.type === "table") {
+        const content = record.content as { rows?: unknown[] } | undefined;
+        const rows = content?.rows ?? (record.rows as unknown[] | undefined);
+        if (Array.isArray(rows)) {
+          for (const row of rows) {
+            if (!row || typeof row !== "object") continue;
+            const cells = (row as Record<string, unknown>).cells;
+            if (!Array.isArray(cells)) continue;
+            for (const cell of cells) {
+              if (Array.isArray(cell)) {
+                const text = cell.map(inlineText).join("").trim();
+                if (text) parts.push(text);
+              } else if (typeof cell === "string" && cell.trim()) {
+                parts.push(cell.trim());
+              }
+            }
+          }
+        }
+      } else if (Array.isArray(record.content)) {
+        const text = record.content.map(inlineText).join("").trim();
+        if (text) parts.push(text);
+      } else if (typeof record.content === "string" && record.content.trim()) {
+        parts.push(record.content.trim());
+      }
+
+      if (Array.isArray(record.children)) {
+        record.children.forEach(extractBlock);
+      }
+    };
+
+    if (Array.isArray(blocks)) blocks.forEach(extractBlock);
+    return parts.join(". ").trim().slice(0, 12000);
+  }, [blocks, title]);
+
+  const fullText = useMemo(() => extractFullText(), [extractFullText]);
+
+  const clearProgressInterval = useCallback(() => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+  }, []);
+
+  const stopSpeech = useCallback((resetPosition = true) => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    clearProgressInterval();
+
+    if (howlRef.current) {
+      howlRef.current.stop();
+      howlRef.current.unload();
+      howlRef.current = null;
+    }
+    soundIdRef.current = null;
+
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+
+    setIsPlaying(false);
+    setIsPaused(false);
+    setIsLoading(false);
+    if (resetPosition) {
+      setCurrentTime(0);
+      setDuration(0);
+    }
+  }, [clearProgressInterval]);
+
+  const startProgressUpdates = useCallback(() => {
+    clearProgressInterval();
+    progressIntervalRef.current = setInterval(() => {
+      const howl = howlRef.current;
+      const id = soundIdRef.current;
+      if (!howl || id === null) return;
+      const seek = howl.seek(id);
+      if (typeof seek === "number") setCurrentTime(seek);
+    }, 250);
+  }, [clearProgressInterval]);
+
+  const unloadCurrentAudio = useCallback(() => {
+    stopSpeech(true);
+  }, [stopSpeech]);
+
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleOutsideClick = (event: MouseEvent) => {
       if (
         dropdownContainerRef.current &&
         !dropdownContainerRef.current.contains(event.target as Node)
       ) {
         setIsVoiceDropdownOpen(false);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Tải danh sách Voices và lắng nghe sự kiện onvoiceschanged của trình duyệt
-  useEffect(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      setIsSupported(false);
-      return;
-    }
-
-    const updateVoices = () => {
-      const availableVoices = window.speechSynthesis.getVoices();
-      if (availableVoices && availableVoices.length > 0) {
-        setVoices(availableVoices);
-        if (!selectedVoice) {
-          const bestVi = findBestVietnameseVoice(availableVoices);
-          setSelectedVoice(bestVi || availableVoices[0] || null);
-        }
-      }
     };
-
-    updateVoices();
-    window.speechSynthesis.onvoiceschanged = updateVoices;
-
-    return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.onvoiceschanged = null;
-      }
-    };
-  }, [selectedVoice]);
-
-  // Phân loại danh sách giọng đọc theo Tiếng Việt và Tiếng Anh
-  const { vietnameseVoices, englishVoices } = useMemo(() => {
-    const vi = voices.filter(
-      (v) =>
-        v.lang.toLowerCase().startsWith("vi") ||
-        v.lang.toLowerCase().includes("vn") ||
-        v.name.toLowerCase().includes("vietnam") ||
-        v.name.toLowerCase().includes("tiếng việt")
-    );
-
-    const en = voices
-      .filter((v) => v.lang.toLowerCase().startsWith("en"))
-      .sort((a, b) => {
-        const aNat = a.name.includes("Natural") || a.name.includes("Online");
-        const bNat = b.name.includes("Natural") || b.name.includes("Online");
-        if (aNat && !bNat) return -1;
-        if (!aNat && bNat) return 1;
-        return 0;
-      })
-      .slice(0, 8); // Lấy tối đa 8 giọng tiếng Anh tốt nhất
-
-    return { vietnameseVoices: vi, englishVoices: en };
-  }, [voices]);
-
-  // Trích xuất toàn bộ văn bản thuần từ BlockNote JSON blocks
-  const extractFullText = useCallback((): string => {
-    const parts: string[] = [];
-    if (title) parts.push(title);
-
-    const extractInlineText = (item: unknown): string => {
-      if (typeof item === "string") return item;
-      if (!item || typeof item !== "object") return "";
-      const record = item as Record<string, unknown>;
-      if (record.type === "link") {
-        return typeof record.content === "string" ? record.content : "";
-      }
-      return typeof record.text === "string" ? record.text : "";
-    };
-
-    const extractCellText = (cell: unknown): string => {
-      if (typeof cell === "string") return cell.trim();
-      if (Array.isArray(cell)) {
-        return cell.map(extractInlineText).join("").trim();
-      }
-      if (cell && typeof cell === "object") {
-        const cellRecord = cell as Record<string, unknown>;
-        if (Array.isArray(cellRecord.content)) {
-          return cellRecord.content.map(extractInlineText).join("").trim();
-        }
-      }
-      return "";
-    };
-
-    const extractBlockText = (block: unknown) => {
-      if (!block || typeof block !== "object") return;
-      const b = block as Record<string, unknown>;
-      const contentRecord =
-        b.content && typeof b.content === "object" && !Array.isArray(b.content)
-          ? (b.content as Record<string, unknown>)
-          : null;
-      const propsRecord =
-        b.props && typeof b.props === "object"
-          ? (b.props as Record<string, unknown>)
-          : null;
-
-      if (b.type === "table" && (contentRecord?.rows || b.rows)) {
-        const rows = contentRecord?.rows || b.rows;
-        if (Array.isArray(rows)) {
-          rows.forEach((row) => {
-            if (!row || typeof row !== "object") return;
-            const cells = (row as Record<string, unknown>).cells;
-            if (Array.isArray(cells)) {
-              cells.forEach((cell) => {
-                const cellText = extractCellText(cell);
-                if (cellText) parts.push(cellText);
-              });
-            }
-          });
-        }
-      } else if (Array.isArray(b.content)) {
-        const text = b.content.map(extractInlineText).join("").trim();
-        if (text) parts.push(text);
-      } else if (typeof b.content === "string" && b.content.trim()) {
-        parts.push(b.content.trim());
-      } else if (typeof propsRecord?.caption === "string" && propsRecord.caption.trim()) {
-        parts.push(propsRecord.caption.trim());
-      }
-
-      if (Array.isArray(b.children)) {
-        b.children.forEach(extractBlockText);
-      }
-    };
-
-    if (Array.isArray(blocks)) {
-      blocks.forEach(extractBlockText);
-    }
-
-    return parts.join(". ");
-  }, [blocks, title]);
-
-  // Dọn dẹp âm thanh khi unmount hoặc khi đóng player
-  const stopSpeech = useCallback((resetPosition = true) => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    if (keepAliveIntervalRef.current) {
-      clearInterval(keepAliveIntervalRef.current);
-      keepAliveIntervalRef.current = null;
-    }
-    setIsPlaying(false);
-    setIsPaused(false);
-    if (resetPosition) {
-      currentWordCharIndexRef.current = 0;
-      textRemainingOffsetRef.current = 0;
-    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
   useEffect(() => {
-    if (!isOpen) {
-      stopSpeech(true);
-    }
+    if (!isOpen) stopSpeech(true);
   }, [isOpen, stopSpeech]);
 
-  // Chromium bug keep-alive: Chromium tự dừng speech sau ~15s nếu không kích hoạt pause/resume
-  const startKeepAlive = () => {
-    if (keepAliveIntervalRef.current) clearInterval(keepAliveIntervalRef.current);
-    keepAliveIntervalRef.current = setInterval(() => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-          window.speechSynthesis.pause();
-          window.speechSynthesis.resume();
-        }
-      }
-    }, 12000);
-  };
+  useEffect(() => {
+    unloadCurrentAudio();
+  }, [fullText, unloadCurrentAudio]);
 
-  /**
-   * Phát âm thanh từ vị trí ký tự chỉ định (startIndex)
-   */
-  const playFromIndex = (
-    startIndex: number,
-    currentRate: number,
-    voiceToUse: SpeechSynthesisVoice | null
-  ) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  useEffect(() => {
+    const handlePageHide = () => stopSpeech(true);
+    window.addEventListener("pagehide", handlePageHide);
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+      stopSpeech(true);
+    };
+  }, [stopSpeech]);
 
-    window.speechSynthesis.cancel();
-
-    const fullText = extractFullText();
-    if (!fullText) return;
-
-    // Giới hạn startIndex hợp lệ
-    const safeStart = Math.max(0, Math.min(startIndex, fullText.length - 1));
-    const textToSpeak = fullText.slice(safeStart);
-    if (!textToSpeak.trim()) {
-      currentWordCharIndexRef.current = 0;
-      textRemainingOffsetRef.current = 0;
-      setIsPlaying(false);
+  const synthesizeAndPlay = useCallback(async (voice = selectedVoice, nextRate = rate) => {
+    if (!fullText) {
+      setError("Ghi chú không có nội dung để đọc.");
       return;
     }
 
-    textRemainingOffsetRef.current = safeStart;
+    unloadCurrentAudio();
+    setError(null);
+    setIsLoading(true);
 
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.rate = currentRate;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
-    const activeVoice = voiceToUse || selectedVoice;
-    if (activeVoice) {
-      utterance.voice = activeVoice;
-      utterance.lang = activeVoice.lang || (activeVoice.name.includes("English") ? "en-US" : "vi-VN");
-    } else {
-      utterance.lang = "vi-VN";
-    }
+    try {
+      console.info(
+        `[TTS] Synthesis started | voice=${voice.id} | textLength=${fullText.length}`,
+      );
+      const response = await fetch("/api/tts/synthesize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: fullText,
+          voice: voice.id,
+          volume: Math.round(volume * 100),
+        }),
+        signal: controller.signal,
+      });
 
-    // Lắng nghe sự kiện boundary để cập nhật chính xác vị trí ký tự đang đọc dở
-    utterance.onboundary = (e: SpeechSynthesisEvent) => {
-      if (typeof e.charIndex === "number") {
-        currentWordCharIndexRef.current = textRemainingOffsetRef.current + e.charIndex;
+      if (!response.ok) {
+        let message = "Không thể tổng hợp giọng đọc.";
+        let retryable = false;
+        try {
+          const body = await response.json();
+          if (typeof body.error === "string") message = body.error;
+          retryable = body.retryable === true;
+        } catch {
+          // Keep the generic message.
+        }
+        console.warn(
+          `[TTS] Synthesis failed | voice=${voice.id} | status=${response.status} | retryable=${retryable} | message=${message}`,
+        );
+        throw new Error(message);
       }
-    };
 
-    utterance.onstart = () => {
-      setIsPlaying(true);
-      setIsPaused(false);
-      startKeepAlive();
-    };
+      const audio = await response.blob();
+      console.info(
+        `[TTS] Audio received | voice=${voice.id} | bytes=${audio.size} | type=${audio.type}`,
+      );
+      const objectUrl = URL.createObjectURL(audio);
+      objectUrlRef.current = objectUrl;
 
-    utterance.onend = () => {
-      setIsPlaying(false);
-      setIsPaused(false);
-      currentWordCharIndexRef.current = 0;
-      textRemainingOffsetRef.current = 0;
-      if (keepAliveIntervalRef.current) clearInterval(keepAliveIntervalRef.current);
-    };
+      const howl = new Howl({
+        src: [objectUrl],
+        format: ["mp3"],
+        html5: false,
+        preload: true,
+        volume,
+        rate: nextRate,
+        onload: () => {
+          const loadedDuration = howl.duration();
+          console.info(
+            `[TTS] Audio loaded | voice=${voice.id} | duration=${loadedDuration}`,
+          );
+          setDuration(Number.isFinite(loadedDuration) ? loadedDuration : 0);
+          const id = howl.play();
+          soundIdRef.current = id;
+          setIsLoading(false);
+          setIsPlaying(true);
+          setIsPaused(false);
+          startProgressUpdates();
+        },
+        onplay: () => {
+          setIsLoading(false);
+          setIsPlaying(true);
+          setIsPaused(false);
+        },
+        onpause: () => {
+          setIsPlaying(false);
+          setIsPaused(true);
+          clearProgressInterval();
+        },
+        onstop: () => {
+          setIsPlaying(false);
+          clearProgressInterval();
+        },
+        onend: () => {
+          setIsPlaying(false);
+          setIsPaused(false);
+          setCurrentTime(0);
+          clearProgressInterval();
+        },
+        onloaderror: (_id, loadError) => {
+          setIsLoading(false);
+          const message = String(loadError ?? "lỗi không xác định");
+          console.error(
+            `[TTS] Audio load failed | voice=${voice.id} | error=${message}`,
+          );
+          setError(`Không thể tải audio: ${message}`);
+        },
+        onplayerror: (_id, playError) => {
+          setIsLoading(false);
+          const message = String(playError ?? "lỗi không xác định");
+          console.error(
+            `[TTS] Audio playback failed | voice=${voice.id} | error=${message}`,
+          );
+          setError(`Không thể phát audio: ${message}`);
+        },
+      });
 
-    utterance.onerror = (e) => {
-      console.warn("Speech synthesis error:", e);
-      setIsPlaying(false);
-      setIsPaused(false);
-      if (keepAliveIntervalRef.current) clearInterval(keepAliveIntervalRef.current);
-    };
-
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-  };
+      howlRef.current = howl;
+    } catch (synthesisError) {
+      if (controller.signal.aborted) return;
+      setIsLoading(false);
+      setError(
+        synthesisError instanceof Error
+          ? synthesisError.message
+          : "Không thể tổng hợp giọng đọc.",
+      );
+    } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
+    }
+  }, [
+    clearProgressInterval,
+    fullText,
+    rate,
+    selectedVoice,
+    startProgressUpdates,
+    unloadCurrentAudio,
+    volume,
+  ]);
 
   const handlePlay = () => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-
-    if (isPaused) {
-      window.speechSynthesis.resume();
-      setIsPlaying(true);
-      setIsPaused(false);
-      startKeepAlive();
+    if (howlRef.current && soundIdRef.current !== null) {
+      if (isPaused) {
+        howlRef.current.play(soundIdRef.current);
+        startProgressUpdates();
+        return;
+      }
+      howlRef.current.play();
       return;
     }
-
-    // Phát từ vị trí hiện tại (mặc định là 0 nếu chưa phát)
-    playFromIndex(currentWordCharIndexRef.current, rate, selectedVoice);
+    void synthesizeAndPlay();
   };
 
   const handlePause = () => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.pause();
-      setIsPlaying(false);
-      setIsPaused(true);
-      if (keepAliveIntervalRef.current) clearInterval(keepAliveIntervalRef.current);
+    if (howlRef.current && soundIdRef.current !== null) {
+      howlRef.current.pause(soundIdRef.current);
     }
   };
 
-  /**
-   * Đổi tốc độ đọc mà KHÔNG bị đọc lại từ đầu: tiếp tục ngay tại từ đang phát
-   */
   const handleCycleRate = () => {
-    const currentIndex = SPEED_OPTIONS.indexOf(rate);
+    const index = SPEED_OPTIONS.indexOf(rate);
     const nextRate =
-      currentIndex !== -1 && currentIndex < SPEED_OPTIONS.length - 1
-        ? SPEED_OPTIONS[currentIndex + 1]
+      index >= 0 && index < SPEED_OPTIONS.length - 1
+        ? SPEED_OPTIONS[index + 1]
         : SPEED_OPTIONS[0];
-
     setRate(nextRate);
-
-    if (isPlaying) {
-      // Đang phát: dừng utterance hiện tại và tiếp tục ngay từ ký tự đang đọc dở với tốc độ mới
-      const resumeIndex = currentWordCharIndexRef.current;
-      playFromIndex(resumeIndex, nextRate, selectedVoice);
+    if (howlRef.current && soundIdRef.current !== null) {
+      howlRef.current.rate(nextRate, soundIdRef.current);
     }
   };
 
-  /**
-   * Đổi giọng đọc: nếu đang phát thì tiếp tục ngay tại vị trí hiện tại với giọng mới
-   */
-  const handleSelectVoice = (voice: SpeechSynthesisVoice) => {
+  const handleSeek = (seconds: number) => {
+    if (!howlRef.current || soundIdRef.current === null) return;
+    howlRef.current.seek(seconds, soundIdRef.current);
+    setCurrentTime(seconds);
+  };
+
+  const handleVolume = (nextVolume: number) => {
+    setVolume(nextVolume);
+    if (howlRef.current) howlRef.current.volume(nextVolume);
+  };
+
+  const handleSelectVoice = (voice: EdgeVoice) => {
     setSelectedVoice(voice);
     setIsVoiceDropdownOpen(false);
-
-    if (isPlaying) {
-      const resumeIndex = currentWordCharIndexRef.current;
-      playFromIndex(resumeIndex, rate, voice);
-    }
+    unloadCurrentAudio();
   };
 
   if (!isOpen) return null;
 
-  if (!isSupported) {
-    return (
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 rounded-full bg-amber-50 dark:bg-amber-950/50 px-4 py-2 text-xs font-medium text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-200 select-none">
-        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-        <span>Trình duyệt không hỗ trợ Web Speech API.</span>
-        <button
-          type="button"
-          onClick={onClose}
-          className="ml-1 rounded-full p-1 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-white/[0.08] cursor-pointer"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    );
-  }
-
-  const isCurrentVoiceEnglish = selectedVoice?.lang.toLowerCase().startsWith("en");
+  const formatTime = (seconds: number) => {
+    if (!Number.isFinite(seconds)) return "0:00";
+    const minutes = Math.floor(seconds / 60);
+    const remaining = Math.floor(seconds % 60);
+    return `${minutes}:${remaining.toString().padStart(2, "0")}`;
+  };
 
   return (
-    <>
-      {/* Floating Action Widget: Mini-Player dạng Viên thuốc (Pill) phong cách Apple Dynamic Island */}
-      <div
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 sm:gap-2.5 rounded-full bg-white/90 dark:bg-[#1A1E29]/95 px-3 sm:px-3.5 py-2 text-neutral-800 dark:text-neutral-100 shadow-2xl shadow-indigo-950/20 border border-black/[0.08] dark:border-white/[0.12] backdrop-blur-xl select-none animate-in fade-in zoom-in-95 slide-in-from-bottom-3 duration-200"
-        role="region"
-        aria-label="Trình đọc nội dung ghi chú"
-      >
-        {/* Animated Waveform / Icon Loa */}
-        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shrink-0">
-          {isPlaying ? (
-            <div className="flex items-center gap-0.5 h-3.5 px-0.5">
-              <span className="w-0.5 h-3 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-              <span className="w-0.5 h-3.5 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-              <span className="w-0.5 h-2.5 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce" />
-            </div>
-          ) : (
-            <Volume2 className="h-4 w-4" />
-          )}
-        </div>
-
-        {/* Nút Play / Pause chính */}
-        {isPlaying ? (
-          <button
-            type="button"
-            onClick={handlePause}
-            title="Tạm dừng đọc"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4F46E5] hover:bg-[#4338CA] text-white shadow-xs active:scale-95 transition-all cursor-pointer"
-          >
-            <Pause className="h-4 w-4 fill-white" />
-          </button>
+    <div
+      className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-black/[0.08] bg-white/95 px-3 py-2 text-neutral-800 shadow-2xl backdrop-blur-xl dark:border-white/[0.12] dark:bg-[#1A1E29]/95 dark:text-neutral-100"
+      role="region"
+      aria-label="Trình đọc nội dung ghi chú"
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isPlaying ? (
+          <div className="flex h-3.5 items-center gap-0.5 px-0.5">
+            <span className="h-3 w-0.5 animate-bounce rounded-full bg-indigo-600 [animation-delay:-0.3s] dark:bg-indigo-400" />
+            <span className="h-3.5 w-0.5 animate-bounce rounded-full bg-indigo-600 [animation-delay:-0.15s] dark:bg-indigo-400" />
+            <span className="h-2.5 w-0.5 animate-bounce rounded-full bg-indigo-600 dark:bg-indigo-400" />
+          </div>
         ) : (
-          <button
-            type="button"
-            onClick={handlePlay}
-            title={isPaused ? "Tiếp tục đọc" : "Bắt đầu đọc ghi chú"}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4F46E5] hover:bg-[#4338CA] text-white shadow-xs active:scale-95 transition-all cursor-pointer"
-          >
-            <Play className="h-4 w-4 fill-white translate-x-0.5" />
-          </button>
+          <Volume2 className="h-4 w-4" />
         )}
-
-        {/* Nút Stop: Dừng hẳn và đặt lại vị trí về đầu */}
-        {(isPlaying || isPaused) && (
-          <button
-            type="button"
-            onClick={() => stopSpeech(true)}
-            title="Dừng và đọc lại từ đầu"
-            className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer"
-          >
-            <Square className="h-3 w-3 fill-current" />
-          </button>
-        )}
-
-        <div className="h-4 w-px bg-black/[0.08] dark:bg-white/[0.1] shrink-0" />
-
-        {/* Nút điều chỉnh tốc độ đọc dạng Cycle Pill */}
-        <button
-          type="button"
-          onClick={handleCycleRate}
-          title="Nhấn để đổi tốc độ đọc (0.8x -> 1x -> 1.25x -> 1.5x -> 1.75x) - Không làm gián đoạn vị trí đọc"
-          className="flex items-center gap-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.06] px-2.5 py-1 text-xs font-bold text-neutral-700 dark:text-neutral-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer"
-        >
-          <span>{rate}x</span>
-        </button>
-
-        <div className="h-4 w-px bg-black/[0.08] dark:bg-white/[0.1] shrink-0" />
-
-        {/* Dropdown Chọn Ngôn ngữ & Giọng đọc (Tiếng Việt & Tiếng Anh) */}
-        <div className="relative" ref={dropdownContainerRef}>
-          <button
-            type="button"
-            onClick={() => setIsVoiceDropdownOpen(!isVoiceDropdownOpen)}
-            title="Nhấn để chọn giọng đọc (Tiếng Việt hoặc Tiếng Anh)"
-            className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-all cursor-pointer max-w-[150px] xs:max-w-[180px] sm:max-w-[210px] ${
-              isCurrentVoiceEnglish
-                ? "bg-blue-50/90 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800/50 hover:bg-blue-100"
-                : selectedVoice
-                  ? "bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100"
-                  : "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 hover:bg-amber-100"
-            }`}
-          >
-            <span className="shrink-0 text-sm">
-              {isCurrentVoiceEnglish ? "🇺🇸" : selectedVoice ? "🇻🇳" : "⚠️"}
-            </span>
-            <span className="truncate">
-              {selectedVoice ? formatVoiceName(selectedVoice) : "Chọn giọng"}
-            </span>
-            <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
-          </button>
-
-          {/* Menu Dropdown danh sách các giọng đọc */}
-          {isVoiceDropdownOpen && (
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 sm:w-80 rounded-[20px] bg-white dark:bg-[#1A1E29] p-2 shadow-2xl border border-black/[0.08] dark:border-white/[0.12] text-xs text-neutral-800 dark:text-neutral-200 animate-in fade-in zoom-in-95 duration-150 z-50">
-              <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-black/[0.06] dark:border-white/[0.08] mb-1">
-                <div className="flex items-center gap-1.5 font-bold text-neutral-900 dark:text-neutral-100">
-                  <Languages className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>Chọn giọng đọc</span>
-                </div>
-                <span className="text-[10px] text-neutral-400 dark:text-neutral-500">Tiếng Việt & Tiếng Anh</span>
-              </div>
-
-              <div className="max-h-64 overflow-y-auto space-y-2 p-1">
-                {/* Nhóm 1: Tiếng Việt */}
-                <div>
-                  <div className="px-2 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-                    <span>🇻🇳</span>
-                    <span>Tiếng Việt</span>
-                  </div>
-                  {vietnameseVoices.length > 0 ? (
-                    <div className="space-y-0.5">
-                      {vietnameseVoices.map((v) => {
-                        const isSelected = selectedVoice?.name === v.name;
-                        return (
-                          <button
-                            key={v.name}
-                            type="button"
-                            onClick={() => handleSelectVoice(v)}
-                            className={`flex items-center justify-between w-full rounded-xl px-2.5 py-1.5 text-left text-xs transition-all cursor-pointer ${
-                              isSelected
-                                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/50"
-                                : "text-neutral-700 dark:text-neutral-300 hover:bg-black/[0.03] dark:hover:bg-white/[0.04] border border-transparent"
-                            }`}
-                          >
-                            <span className="truncate pr-2">{formatVoiceName(v)}</span>
-                            {isSelected && (
-                              <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="px-2.5 py-1.5 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-xl">
-                      Không tìm thấy giọng Tiếng Việt trên máy. Khuyên dùng Microsoft Edge hoặc Chrome.
-                    </div>
-                  )}
-                </div>
-
-                {/* Nhóm 2: Tiếng Anh */}
-                <div>
-                  <div className="px-2 py-1 text-[11px] font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1 border-t border-black/[0.06] dark:border-white/[0.08] pt-2">
-                    <span>🇺🇸</span>
-                    <span>Tiếng Anh (English)</span>
-                  </div>
-                  {englishVoices.length > 0 ? (
-                    <div className="space-y-0.5">
-                      {englishVoices.map((v) => {
-                        const isSelected = selectedVoice?.name === v.name;
-                        return (
-                          <button
-                            key={v.name}
-                            type="button"
-                            onClick={() => handleSelectVoice(v)}
-                            className={`flex items-center justify-between w-full rounded-xl px-2.5 py-1.5 text-left text-xs transition-all cursor-pointer ${
-                              isSelected
-                                ? "bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800/50"
-                                : "text-neutral-700 dark:text-neutral-300 hover:bg-black/[0.03] dark:hover:bg-white/[0.04] border border-transparent"
-                            }`}
-                          >
-                            <span className="truncate pr-2">{formatVoiceName(v)}</span>
-                            {isSelected && (
-                              <Check className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="px-2.5 py-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
-                      Không tìm thấy giọng tiếng Anh.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Nút Đóng Widget */}
-        <button
-          type="button"
-          onClick={() => {
-            stopSpeech(true);
-            onClose();
-          }}
-          title="Tắt trình đọc âm thanh"
-          className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer ml-0.5 shrink-0"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
       </div>
-    </>
+
+      {isPlaying ? (
+        <button
+          type="button"
+          onClick={handlePause}
+          title="Tạm dừng đọc"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4F46E5] text-white shadow-xs transition-all hover:bg-[#4338CA] active:scale-95"
+        >
+          <Pause className="h-4 w-4 fill-white" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handlePlay}
+          title={isPaused ? "Tiếp tục đọc" : "Bắt đầu đọc ghi chú"}
+          disabled={isLoading}
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4F46E5] text-white shadow-xs transition-all hover:bg-[#4338CA] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Play className="h-4 w-4 translate-x-0.5 fill-white" />
+        </button>
+      )}
+
+      {(isPlaying || isPaused) && (
+        <button
+          type="button"
+          onClick={() => stopSpeech(true)}
+          title="Dừng và đọc lại từ đầu"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-black/[0.04] hover:text-neutral-700 dark:hover:bg-white/[0.06] dark:hover:text-neutral-200"
+        >
+          <Square className="h-3 w-3 fill-current" />
+        </button>
+      )}
+
+      {duration > 0 && (
+        <div className="hidden items-center gap-1.5 sm:flex">
+          <span className="w-8 text-right text-[10px] tabular-nums text-neutral-500">
+            {formatTime(currentTime)}
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={duration}
+            step={0.1}
+            value={Math.min(currentTime, duration)}
+            onChange={(event) => handleSeek(Number(event.target.value))}
+            aria-label="Vị trí phát"
+            className="h-1 w-24 cursor-pointer accent-indigo-600"
+          />
+          <span className="w-8 text-[10px] tabular-nums text-neutral-500">
+            {formatTime(duration)}
+          </span>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleCycleRate}
+        title="Đổi tốc độ đọc"
+        className="rounded-full bg-black/[0.04] px-2.5 py-1 text-xs font-bold text-neutral-700 transition-all hover:bg-indigo-50 hover:text-indigo-600 dark:bg-white/[0.06] dark:text-neutral-200 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400"
+      >
+        {rate}x
+      </button>
+
+      <button
+        type="button"
+        onClick={() => handleVolume(volume === 0 ? 1 : 0)}
+        title={volume === 0 ? "Bật âm thanh" : "Tắt âm thanh"}
+        className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-500 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+      >
+        {volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+      </button>
+
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.05}
+        value={volume}
+        onChange={(event) => handleVolume(Number(event.target.value))}
+        aria-label="Âm lượng"
+        className="hidden h-1 w-16 cursor-pointer accent-indigo-600 md:block"
+      />
+
+      <div className="relative" ref={dropdownContainerRef}>
+        <button
+          type="button"
+          onClick={() => setIsVoiceDropdownOpen((open) => !open)}
+          className={`flex max-w-[180px] items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
+            selectedVoice.locale === "en-US"
+              ? "border-blue-200 bg-blue-50/90 text-blue-800 dark:border-blue-800/50 dark:bg-blue-950/40 dark:text-blue-300"
+              : "border-emerald-200 bg-emerald-50/90 text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+          }`}
+        >
+          <Languages className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{selectedVoice.name}</span>
+          <ChevronDown className="h-3 w-3 shrink-0" />
+        </button>
+
+        {isVoiceDropdownOpen && (
+          <div className="absolute bottom-full left-1/2 mb-3 w-72 -translate-x-1/2 rounded-[20px] border border-black/[0.08] bg-white p-2 shadow-2xl dark:border-white/[0.12] dark:bg-[#1A1E29]">
+            {(["vi-VN", "en-US"] as const).map((locale) => (
+              <div key={locale} className="py-1">
+                <div className="px-2 py-1 text-[11px] font-bold text-neutral-500">
+                  {locale === "vi-VN" ? "🇻🇳 Tiếng Việt" : "🇺🇸 Tiếng Anh"}
+                </div>
+                {EDGE_VOICES.filter((voice) => voice.locale === locale).map((voice) => (
+                  <button
+                    key={voice.id}
+                    type="button"
+                    onClick={() => handleSelectVoice(voice)}
+                    className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs ${
+                      selectedVoice.id === voice.id
+                        ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+                        : "text-neutral-700 hover:bg-black/[0.03] dark:text-neutral-300 dark:hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <span>{voice.name}</span>
+                    {selectedVoice.id === voice.id && <Check className="h-3.5 w-3.5" />}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div className="absolute bottom-full mb-3 flex max-w-sm items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/50 dark:text-rose-300">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button type="button" onClick={() => setError(null)} className="ml-1">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => {
+          stopSpeech(true);
+          onClose();
+        }}
+        title="Đóng trình đọc"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-black/[0.04] hover:text-neutral-700 dark:hover:bg-white/[0.06] dark:hover:text-neutral-200"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }

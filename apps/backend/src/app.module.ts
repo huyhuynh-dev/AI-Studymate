@@ -26,6 +26,7 @@ import { SearchModule } from './search/search.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { RagBenchmarkModule } from './rag-benchmark/rag-benchmark.module.js';
 import { AdminModule } from './admin/admin.module.js';
+import { TtsModule } from './tts/tts.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -67,6 +68,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     AnalyticsModule,
     RagBenchmarkModule,
     AdminModule,
+    TtsModule,
   ],
   controllers: [AppController],
   providers: [
