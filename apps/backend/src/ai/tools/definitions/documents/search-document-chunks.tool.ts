@@ -1,5 +1,9 @@
 import { tool } from 'ai';
 import { z } from 'zod';
+import {
+  formatBackendChunkLocationLabel,
+  isPagedDocumentFileName,
+} from '../../../../documents/helpers/text-anchor.helper.js';
 import type {
   SearchDocumentChunksCallback,
   SearchDocumentChunksSourceSummary,
@@ -139,6 +143,7 @@ export function createSearchDocumentChunksTool(
         if (tracker) {
           citationId = tracker.allocateCitation({
             chunkId: c.id,
+            chunkIndex: c.chunkIndex,
             documentId: c.documentId,
             fileName: c.fileName,
             pageNumbers: c.pageNumbers,
@@ -146,6 +151,7 @@ export function createSearchDocumentChunksTool(
             content: c.content,
             rawContent: c.rawContent,
             bboxes: c.bboxes,
+            ...(c.textAnchor ? { textAnchor: c.textAnchor } : {}),
             assets: c.assets,
             rrfScore: roundedRrfScore,
             rerankScore,
@@ -166,6 +172,7 @@ export function createSearchDocumentChunksTool(
           headings: c.headings,
           content: c.content,
           previewSnippet: c.content ? c.content.slice(0, 200) : '',
+          ...(c.textAnchor ? { textAnchor: c.textAnchor } : {}),
           neighbors: c.neighbors,
           rrfScore: roundedRrfScore,
           rerankScore,
@@ -215,13 +222,19 @@ export function createSearchDocumentChunksTool(
 
       const formattedChunks = output.chunks
         .map((chunk) => {
-          const pageLabel =
-            chunk.pageNumbers && chunk.pageNumbers.length > 0
-              ? `Trang ${chunk.pageNumbers.join(', ')}`
-              : `Chunk #${chunk.chunkIndex}`;
+          const isPaged = isPagedDocumentFileName(chunk.fileName);
+          const locationLabel = formatBackendChunkLocationLabel({
+            fileName: chunk.fileName,
+            pageNumbers: chunk.pageNumbers,
+            textAnchor: chunk.textAnchor,
+            headings: chunk.headings,
+            chunkIndex: chunk.chunkIndex,
+          });
 
           const headingLabel =
-            chunk.headings && chunk.headings.length > 0
+            chunk.headings &&
+            chunk.headings.length > 0 &&
+            !locationLabel.startsWith('Mục: ')
               ? ` | Mục: "${chunk.headings.join(' > ')}"`
               : '';
 
@@ -230,7 +243,7 @@ export function createSearchDocumentChunksTool(
               ? ` | Rerank: ${chunk.rerankScore}`
               : '';
 
-          let textBlock = `[Dẫn chứng [${chunk.citationId}] | Hạng #${chunk.rank} | Tài liệu: "${chunk.fileName}" | ${pageLabel}${headingLabel}${rerankLabel} | RRF Score: ${chunk.rrfScore}]`;
+          let textBlock = `[Dẫn chứng [${chunk.citationId}] | Hạng #${chunk.rank} | Tài liệu: "${chunk.fileName}" | ${locationLabel}${headingLabel}${rerankLabel} | RRF Score: ${chunk.rrfScore}]`;
 
           // Xử lý hiển thị includeNeighbors kèm khử trùng lặp
           const prevNeighbor = chunk.neighbors?.prev;
@@ -248,13 +261,19 @@ export function createSearchDocumentChunksTool(
             );
 
           if (prevNeighbor && !isPrevDup && prevNeighbor.content) {
-            textBlock += `\n<<< [Ngữ cảnh trước liền kề #${prevNeighbor.chunkIndex} (Trang ${prevNeighbor.pageNumbers?.join(', ') || 'N/A'})]:\n${prevNeighbor.content}\n>>>`;
+            const prevScope = isPaged
+              ? ` (Trang ${prevNeighbor.pageNumbers?.join(', ') || 'N/A'})`
+              : '';
+            textBlock += `\n<<< [Ngữ cảnh trước liền kề #${prevNeighbor.chunkIndex}${prevScope}]:\n${prevNeighbor.content}\n>>>`;
           }
 
           textBlock += `\n${chunk.content}`;
 
           if (nextNeighbor && !isNextDup && nextNeighbor.content) {
-            textBlock += `\n<<< [Ngữ cảnh sau liền kề #${nextNeighbor.chunkIndex} (Trang ${nextNeighbor.pageNumbers?.join(', ') || 'N/A'})]:\n${nextNeighbor.content}\n>>>`;
+            const nextScope = isPaged
+              ? ` (Trang ${nextNeighbor.pageNumbers?.join(', ') || 'N/A'})`
+              : '';
+            textBlock += `\n<<< [Ngữ cảnh sau liền kề #${nextNeighbor.chunkIndex}${nextScope}]:\n${nextNeighbor.content}\n>>>`;
           }
 
           return textBlock;

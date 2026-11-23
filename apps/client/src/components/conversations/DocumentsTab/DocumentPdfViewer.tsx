@@ -77,21 +77,27 @@ import {
   ListTree,
 } from "lucide-react";
 
-import { DocumentItem } from "@/types";
+import type { DocumentItem, DocumentStatus } from "@/types";
 import { documentsApi } from "@/services/documents.api";
 import { useFocusMode } from "@/components/layout";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useDocumentMastery } from "@/hooks/useLearningAnalytics";
 import { calcBoxPixels } from "@/lib/pdf-coordinates";
 import TocMasterySidebar from "./TocMasterySidebar";
+import { PdfSelectionMenu } from "./pdf/PdfSelectionMenu";
 
 export interface DocumentPdfViewerProps {
   document: DocumentItem;
   onClose: () => void;
+  onDocumentUpdated?: (doc: DocumentItem) => void;
   onCreateTargetedQuiz?: (opts: {
     chunkIds: string[];
     sectionTitle: string;
   }) => void;
+  /** Chế độ đọc gọn nhẹ khi mượn chỗ RightSidebar để đối chiếu nguồn nhanh */
+  compactReaderMode?: boolean;
+  isExternalFullscreen?: boolean;
+  onToggleExternalFullscreen?: () => void;
   className?: string;
 }
 
@@ -99,9 +105,17 @@ interface PdfToolbarProps {
   documentId: string;
   backendDocumentId: string;
   fileName: string;
+  initialContentVersion: number;
+  initialIndexedVersion: number;
+  initialEmbedStatus: DocumentStatus;
+  initialSyncError?: string | null;
+  onDocumentUpdated?: (doc: DocumentItem) => void;
   onClose: () => void;
   isTocOpen: boolean;
   onToggleToc: () => void;
+  compactReaderMode?: boolean;
+  isExternalFullscreen?: boolean;
+  onToggleExternalFullscreen?: () => void;
 }
 
 /**
@@ -113,9 +127,17 @@ function PdfToolbar({
   documentId,
   backendDocumentId,
   fileName,
+  initialContentVersion,
+  initialIndexedVersion,
+  initialEmbedStatus,
+  initialSyncError = null,
+  onDocumentUpdated,
   onClose,
   isTocOpen,
   onToggleToc,
+  compactReaderMode = false,
+  isExternalFullscreen = false,
+  onToggleExternalFullscreen,
 }: PdfToolbarProps) {
   const { mastery } = useDocumentMastery(backendDocumentId, true);
   const { provides: zoom, state: zoomState } = useZoom(documentId);
@@ -125,6 +147,10 @@ function PdfToolbar({
   const { provides: selectionCapability } = useSelectionCapability();
   const { provides: historyCapability } = useHistoryCapability();
   const { isFocusMode, toggleFocusMode, setFocusMode } = useFocusMode();
+  const effectiveFullscreen = compactReaderMode ? isExternalFullscreen : isFocusMode;
+  const handleToggleFullscreen = compactReaderMode
+    ? onToggleExternalFullscreen
+    : toggleFocusMode;
 
   const [hasSelection, setHasSelection] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -135,6 +161,10 @@ function PdfToolbar({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [docContentVersion, setDocContentVersion] = useState(initialContentVersion);
+  const [docIndexedVersion, setDocIndexedVersion] = useState(initialIndexedVersion);
+  const [docEmbedStatus, setDocEmbedStatus] = useState<DocumentStatus>(initialEmbedStatus);
+  const [docSyncError, setDocSyncError] = useState<string | null>(initialSyncError);
 
   // Suy luận trạng thái thay đổi chưa lưu từ lịch sử hoặc pending changes của Annotation
   const hasUnsavedChanges = hasUnsavedHistoryChanges || Boolean(annotationState?.hasPendingChanges);
@@ -179,7 +209,7 @@ function PdfToolbar({
         metrics.clientWidth > 0 &&
         metrics.clientHeight > 0
       ) {
-        zoom.requestZoom(1);
+        zoom.requestZoom(compactReaderMode ? ZoomMode.FitWidth : 1);
         initialZoomAppliedRef.current = true;
       }
     };
@@ -190,7 +220,7 @@ function PdfToolbar({
         initializeZoom();
       }
     });
-  }, [documentId, viewport, zoom]);
+  }, [documentId, viewport, zoom, compactReaderMode]);
 
   const handleCopySelection = useCallback(() => {
     if (!selectionCapability || !hasSelection) return;
@@ -235,8 +265,13 @@ function PdfToolbar({
       // 4. Ghi đè tệp PDF trực tiếp lên Cloudflare R2
       await documentsApi.uploadToR2(uploadUrl, updatedFile);
 
-      // 5. Đồng bộ lại dung lượng tệp mới trong cơ sở dữ liệu
-      await documentsApi.completeOverwrite(backendDocumentId);
+      // 5. Đồng bộ lại dung lượng tệp mới trong cơ sở dữ liệu (kích hoạt re-index tăng dần Phương án 2)
+      const updatedDoc = await documentsApi.completeOverwrite(backendDocumentId);
+      setDocContentVersion(updatedDoc.content_version ?? docContentVersion + 1);
+      setDocIndexedVersion(updatedDoc.indexed_version ?? docIndexedVersion);
+      setDocEmbedStatus(updatedDoc.embed_status);
+      setDocSyncError(updatedDoc.sync_error ?? null);
+      onDocumentUpdated?.(updatedDoc);
 
       setHasUnsavedHistoryChanges(false);
       setSaveSuccess(true);
@@ -251,7 +286,45 @@ function PdfToolbar({
     } finally {
       setIsSaving(false);
     }
-  }, [exportApi, isSaving, annotationApi, fileName, backendDocumentId]);
+  }, [
+    exportApi,
+    isSaving,
+    annotationApi,
+    fileName,
+    backendDocumentId,
+    docContentVersion,
+    docIndexedVersion,
+    onDocumentUpdated,
+  ]);
+
+  const isPdfAiSyncing =
+    docEmbedStatus === "pending" ||
+    docEmbedStatus === "processing" ||
+    (docEmbedStatus !== "failed" && docContentVersion > docIndexedVersion);
+
+  useEffect(() => {
+    if (!isPdfAiSyncing) return;
+    let cancelled = false;
+
+    const timer = setInterval(() => {
+      void documentsApi
+        .getById(backendDocumentId)
+        .then((latest) => {
+          if (cancelled) return;
+          setDocContentVersion(latest.content_version ?? 1);
+          setDocIndexedVersion(latest.indexed_version ?? 0);
+          setDocEmbedStatus(latest.embed_status);
+          setDocSyncError(latest.sync_error ?? null);
+          onDocumentUpdated?.(latest);
+        })
+        .catch(() => {});
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [backendDocumentId, isPdfAiSyncing, onDocumentUpdated]);
 
   const handleToggleTool = (toolId: string | null) => {
     if (!annotationApi) return;
@@ -298,7 +371,7 @@ function PdfToolbar({
         if (activeToolId !== null) {
           e.stopPropagation();
           annotationApi?.setActiveTool(null);
-        } else if (isFocusMode) {
+        } else if (!compactReaderMode && isFocusMode) {
           e.stopPropagation();
           setFocusMode(false);
         }
@@ -312,6 +385,7 @@ function PdfToolbar({
     hasSelectedAnnotation,
     activeToolId,
     isFocusMode,
+    compactReaderMode,
     handleSaveToR2,
     handleCopySelection,
     handleDeleteSelectedAnnotation,
@@ -358,19 +432,23 @@ function PdfToolbar({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/[0.06] dark:border-white/[0.08] bg-white/90 dark:bg-[#12151C]/90 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-2.5 shadow-2xs shrink-0 z-10 transition-colors">
-      {/* Cụm Trái: Nút Quay lại Apple Pill + Tên tài liệu */}
-      <div className="flex items-center gap-2 min-w-0">
+      {/* Cụm Trái: Nút Đóng nguồn / Quay lại Apple Pill + Tên tài liệu */}
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <button
           type="button"
           onClick={onClose}
-          title="Quay lại danh sách tài liệu"
+          title={compactReaderMode ? "Đóng trình xem nguồn và quay lại Trợ lý AI" : "Quay lại danh sách tài liệu"}
           className="inline-flex h-8 items-center gap-1.5 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-700 dark:text-neutral-200 shadow-2xs transition-all hover:bg-neutral-50 dark:hover:bg-white/[0.1] hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
         >
           <ChevronLeft className="h-4 w-4" />
-          <span>Quay lại</span>
+          <span>{compactReaderMode ? "Đóng nguồn" : "Quay lại"}</span>
         </button>
 
-        <div className="hidden xl:flex items-center gap-1.5 min-w-0 max-w-[200px] rounded-full bg-neutral-100/80 dark:bg-white/[0.06] px-2.5 py-1 border border-black/[0.04] dark:border-white/[0.06]">
+        <div
+          className={`${
+            compactReaderMode ? "flex max-w-[180px]" : "hidden xl:flex max-w-[200px]"
+          } items-center gap-1.5 min-w-0 rounded-full bg-neutral-100/80 dark:bg-white/[0.06] px-2.5 py-1 border border-black/[0.04] dark:border-white/[0.06]`}
+        >
           <span className="rounded-[4px] bg-rose-500/10 border border-rose-500/20 px-1 py-0.2 text-[9px] font-black text-rose-600 dark:text-rose-400 shrink-0">
             PDF
           </span>
@@ -383,7 +461,8 @@ function PdfToolbar({
         </div>
       </div>
 
-      {/* Cụm Giữa: Chế độ Con trỏ, Sao chép & Công cụ Highlight / Ghi chú */}
+      {/* Cụm Giữa: Chế độ Con trỏ, Sao chép & Công cụ Highlight / Ghi chú (ẩn trong compactReaderMode) */}
+      {!compactReaderMode && (
       <div className="flex items-center gap-1">
         {/* Nút Con trỏ */}
         <button
@@ -552,7 +631,27 @@ function PdfToolbar({
             </>
           )}
         </button>
+
+        {/* Tầng 2: Chỉ báo đồng bộ AI tăng dần (Phương án 2) cho PDF Overwrite */}
+        {docEmbedStatus === "failed" ? (
+          <span
+            title={docSyncError || "Lỗi đồng bộ chỉ mục AI"}
+            className="hidden md:inline-flex h-7 items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 text-[11px] font-semibold text-orange-700 dark:text-orange-400 cursor-help"
+          >
+            <AlertCircle className="h-3 w-3" />
+            <span>Lỗi Sync AI</span>
+          </span>
+        ) : isPdfAiSyncing ? (
+          <span
+            title="Đang cập nhật chỉ mục Vector AI theo bản PDF mới nhất"
+            className="hidden md:inline-flex h-7 items-center gap-1 rounded-full border border-purple-500/25 bg-purple-500/10 px-2 text-[11px] font-semibold text-purple-700 dark:text-purple-300"
+          >
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Đang đồng bộ AI...</span>
+          </span>
+        ) : null}
       </div>
+      )}
 
       {/* Cụm Phải: Segmented Zoom Pill & Nút Focus Mode */}
       <div className="flex items-center gap-1.5">
@@ -619,27 +718,29 @@ function PdfToolbar({
           )}
         </button>
 
-        {/* Nút Chế độ tập trung (Focus Mode) */}
-        <button
-          type="button"
-          onClick={toggleFocusMode}
-          title={
-            isFocusMode
-              ? "Thoát Chế độ tập trung (Esc)"
-              : "Chế độ tập trung — Ẩn thanh điều hướng & mở rộng tối đa vùng đọc PDF"
-          }
-          className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all active:scale-95 cursor-pointer ${
-            isFocusMode
-              ? "border-indigo-600 bg-[#4F46E5] text-white shadow-xs hover:bg-[#4338CA]"
-              : "border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 shadow-2xs hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400"
-          }`}
-        >
-          {isFocusMode ? (
-            <Minimize2 className="h-4 w-4" />
-          ) : (
-            <Maximize2 className="h-4 w-4" />
-          )}
-        </button>
+        {/* Nút Chế độ tập trung / Toàn màn hình */}
+        {handleToggleFullscreen && (
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            title={
+              effectiveFullscreen
+                ? "Thu nhỏ về mặc định (Esc)"
+                : "Phóng to toàn màn hình"
+            }
+            className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all active:scale-95 cursor-pointer ${
+              effectiveFullscreen
+                ? "border-indigo-600 bg-[#4F46E5] text-white shadow-xs hover:bg-[#4338CA]"
+                : "border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 shadow-2xs hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400"
+            }`}
+          >
+            {effectiveFullscreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -738,7 +839,7 @@ function PdfCitationManager({
 
     triggerScroll();
     // Dự phòng khi scroller vừa mount chưa kịp tính layout hoặc virtualItems
-    const retryTimer = setTimeout(triggerScroll, 100);
+    const retryTimer = setTimeout(triggerScroll, 80);
 
     // Thiết lập vùng tô sáng để CitationHighlightLayer hiển thị và thực hiện Bước 2
     if (bboxes.length > 0) {
@@ -748,6 +849,8 @@ function PdfCitationManager({
         bboxes,
         createdAt: Date.now(),
       });
+    } else {
+      clearHighlight();
     }
 
     // Consume activeTarget sau khi đã xử lý để tránh lặp lại khi chuyển Tab
@@ -761,6 +864,7 @@ function PdfCitationManager({
     backendDocumentId,
     scroll,
     setHighlight,
+    clearHighlight,
     consumeActiveTarget,
   ]);
 
@@ -832,8 +936,8 @@ function CitationHighlightLayer({
       }
     };
 
-    // Chờ 60-100ms để trang hoàn tất paint và layout trong viewport của EmbedPDF
-    const timer = setTimeout(scrollToHighlight, 80);
+    // Chờ trang hoàn tất paint/layout và sau retryTimer (80ms) của Bước 1 để không bị ghi đè cuộn
+    const timer = setTimeout(scrollToHighlight, 160);
 
     return () => clearTimeout(timer);
   }, [isCurrentPage, activeHighlight]);
@@ -894,16 +998,27 @@ function PdfTocSidebarBridge({
   onClose: () => void;
 }) {
   const { provides: scroll } = useScroll(documentId);
+  const { navigateToDocumentCitation } = useCitationNavigation();
 
   const handleJumpToPage = useCallback(
-    (pageNumber: number) => {
-      try {
-        scroll?.scrollToPage({ pageNumber, behavior: "smooth" });
-      } catch (err) {
-        console.warn("[PdfTocSidebarBridge] scrollToPage warning:", err);
+    (pageNumber: number, bboxes?: unknown[]) => {
+      const validBboxes =
+        Array.isArray(bboxes) && bboxes.length > 0 ? bboxes : undefined;
+      navigateToDocumentCitation({
+        documentId: backendDocumentId,
+        pageNo: pageNumber,
+        bboxes: validBboxes,
+      });
+
+      if (!validBboxes) {
+        try {
+          scroll?.scrollToPage({ pageNumber, behavior: "smooth" });
+        } catch (err) {
+          console.warn("[PdfTocSidebarBridge] scrollToPage warning:", err);
+        }
       }
     },
-    [scroll]
+    [backendDocumentId, navigateToDocumentCitation, scroll]
   );
 
   return (
@@ -921,7 +1036,11 @@ function PdfTocSidebarBridge({
 export default function DocumentPdfViewer({
   document,
   onClose,
+  onDocumentUpdated,
   onCreateTargetedQuiz,
+  compactReaderMode = false,
+  isExternalFullscreen = false,
+  onToggleExternalFullscreen,
   className = "",
 }: DocumentPdfViewerProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -930,6 +1049,10 @@ export default function DocumentPdfViewer({
   const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
 
   const { isFocusMode, toggleFocusMode } = useFocusMode();
+  const effectiveFullscreen = compactReaderMode ? isExternalFullscreen : isFocusMode;
+  const handleToggleFullscreen = compactReaderMode
+    ? onToggleExternalFullscreen
+    : toggleFocusMode;
   const { engine, isLoading: isEngineLoading, error: engineError } = usePdfiumEngine();
 
   const fetchPdfViewUrl = useCallback(async () => {
@@ -992,7 +1115,9 @@ export default function DocumentPdfViewer({
       createPluginRegistration(ScrollPluginPackage),
       createPluginRegistration(RenderPluginPackage),
       createPluginRegistration(InteractionManagerPluginPackage),
-      createPluginRegistration(SelectionPluginPackage),
+      createPluginRegistration(SelectionPluginPackage, {
+        menuHeight: 44,
+      }),
       createPluginRegistration(HistoryPluginPackage),
       createPluginRegistration(AnnotationPluginPackage, {
         annotationAuthor: "StudyMate User",
@@ -1014,10 +1139,12 @@ export default function DocumentPdfViewer({
 
   return (
     <div
-      className={`flex w-full flex-col overflow-hidden rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100 dark:bg-[#0B0D12] transition-all duration-300 ease-in-out ${
-        isFocusMode
-          ? "h-screen flex-1 rounded-none border-none"
-          : "h-[calc(100vh-185px)] min-h-[580px] flex-1"
+      className={`flex w-full flex-col overflow-hidden bg-neutral-100 dark:bg-[#0B0D12] transition-all duration-300 ease-in-out ${
+        compactReaderMode
+          ? "h-full flex-1 rounded-none border-none"
+          : effectiveFullscreen
+            ? "h-screen flex-1 rounded-none border-none"
+            : "h-[calc(100vh-185px)] min-h-[580px] flex-1 rounded-[24px] border border-black/[0.06] dark:border-white/[0.08]"
       } ${className}`}
     >
       {/* Thanh Header phụ trợ khi đang tải hoặc gặp lỗi (trước khi PdfToolbar được mount) */}
@@ -1030,25 +1157,27 @@ export default function DocumentPdfViewer({
               className="inline-flex h-8 items-center gap-1.5 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.06] px-3 text-xs font-semibold text-neutral-700 dark:text-neutral-200 shadow-2xs transition-all hover:bg-neutral-50 dark:hover:bg-white/[0.1] hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0"
             >
               <ChevronLeft className="h-4 w-4" />
-              <span>Quay lại</span>
+              <span>{compactReaderMode ? "Đóng nguồn" : "Quay lại"}</span>
             </button>
             <span className="truncate text-xs font-semibold text-neutral-800 dark:text-neutral-200">
               {document.file_name}
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={toggleFocusMode}
-            title={isFocusMode ? "Thoát Chế độ tập trung (Esc)" : "Chế độ tập trung"}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-white/[0.1] cursor-pointer"
-          >
-            {isFocusMode ? (
-              <Minimize2 className="h-4 w-4" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
-          </button>
+          {handleToggleFullscreen && (
+            <button
+              type="button"
+              onClick={handleToggleFullscreen}
+              title={effectiveFullscreen ? "Thu nhỏ về mặc định (Esc)" : "Chế độ tập trung"}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-white/[0.06] text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-white/[0.1] cursor-pointer"
+            >
+              {effectiveFullscreen ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+            </button>
+          )}
         </div>
       )}
 
@@ -1140,9 +1269,17 @@ export default function DocumentPdfViewer({
                           documentId={activeDocumentId}
                           backendDocumentId={document.id}
                           fileName={document.file_name}
+                          initialContentVersion={document.content_version ?? 1}
+                          initialIndexedVersion={document.indexed_version ?? 0}
+                          initialEmbedStatus={document.embed_status}
+                          initialSyncError={document.sync_error ?? null}
+                          onDocumentUpdated={onDocumentUpdated}
                           onClose={onClose}
                           isTocOpen={isTocOpen}
                           onToggleToc={() => setIsTocOpen((prev) => !prev)}
+                          compactReaderMode={compactReaderMode}
+                          isExternalFullscreen={isExternalFullscreen}
+                          onToggleExternalFullscreen={onToggleExternalFullscreen}
                         />
 
                         {/* Không gian đọc PDF kèm Ngăn Mục lục Heatmap có thể thu gọn */}
@@ -1181,22 +1318,42 @@ export default function DocumentPdfViewer({
                                         WebkitUserSelect: "none",
                                         backgroundColor: "#ffffff",
                                         borderRadius: "8px",
-                                        overflow: "hidden",
+                                        overflow: "visible",
                                         boxShadow:
                                           "0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                                       }}
                                     >
-                                      {/* Lớp 1: Hiển thị đồ hoạ trang PDF */}
-                                      <RenderLayer
-                                        documentId={activeDocumentId}
-                                        pageIndex={pageIndex}
-                                        style={{ pointerEvents: "none" }}
-                                      />
+                                      {/* Lớp 1: Hiển thị đồ hoạ trang PDF (bo góc riêng để không cắt SelectionMenu) */}
+                                      <div
+                                        style={{
+                                          position: "absolute",
+                                          inset: 0,
+                                          borderRadius: "8px",
+                                          overflow: "hidden",
+                                          pointerEvents: "none",
+                                        }}
+                                      >
+                                        <RenderLayer
+                                          documentId={activeDocumentId}
+                                          pageIndex={pageIndex}
+                                          style={{ pointerEvents: "none" }}
+                                        />
+                                      </div>
 
-                                      {/* Lớp 2: Bôi đen & Sao chép văn bản */}
+                                      {/* Lớp 2: Bôi đen, Hỏi Studymate & Sao chép văn bản */}
                                       <SelectionLayer
                                         documentId={activeDocumentId}
                                         pageIndex={pageIndex}
+                                        selectionMenu={(menuProps) => (
+                                          <PdfSelectionMenu
+                                            {...menuProps}
+                                            documentId={activeDocumentId}
+                                            backendDocumentId={document.id}
+                                            fileName={document.file_name}
+                                            pageWidth={width}
+                                            compactReaderMode={compactReaderMode}
+                                          />
+                                        )}
                                       />
 
                                       {/* Lớp 3: Highlight & Ghi chú */}

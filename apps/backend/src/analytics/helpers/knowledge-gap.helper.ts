@@ -24,6 +24,7 @@ import type {
   LeechCardItem,
   MissingPointCluster,
   QuizPerformanceSummary,
+  QuizRetakeGainItem,
   SrsOverviewStats,
   StudyRecommendation,
   WeakTopicItem,
@@ -240,6 +241,7 @@ export function extractWeakTopicsFromDocuments(
         quizTotal: sec.quizTotal,
         leechCount: sec.leechCount,
         missingPointCount: sec.missingPoints.length,
+        missingPoints: sec.missingPoints.slice(0, 3),
         chunkIds: sec.chunkIds.slice(0, 12),
       });
     }
@@ -330,9 +332,9 @@ export function generateStudyRecommendations(input: {
       id: `leech-cards-${topLeech.conversationId}`,
       priority: input.leechCards.length >= 3 ? 'high' : 'medium',
       actionType: 'remediate_leech_cards',
-      title: `${input.leechCards.length} thẻ khó nhớ (Leech) cần giải thích sâu`,
-      reason: `Thẻ "${topLeech.frontText}" đã bấm quên ${topLeech.againCount} lần (ease=${topLeech.easeFactor}).`,
-      actionLabel: 'Xem lại thẻ & nguồn PDF',
+      title: `Ôn lại ${input.leechCards.length} thẻ hay quên`,
+      reason: `Thẻ "${topLeech.frontText}" đã bấm quên ${topLeech.againCount} lần — nên đọc lại đoạn gốc hoặc viết lại thẻ ngắn hơn.`,
+      actionLabel: 'Xem lại thẻ & nguồn',
       payload: {
         conversationId: topLeech.conversationId,
         ...(input.subjectId ? { subjectId: input.subjectId } : {}),
@@ -369,9 +371,9 @@ export function generateStudyRecommendations(input: {
         id: `bloom-gap-${input.defaultConversationId}`,
         priority: 'medium',
         actionType: 'address_bloom_gap',
-        title: 'Luyện thêm câu hỏi Vận dụng & Phân tích (Bloom)',
-        reason: `Nhớ/Hiểu đạt ${Math.round(lowerAcc * 100)}%, nhưng Vận dụng/Phân tích mới đạt ${Math.round(higherAcc * 100)}%.`,
-        actionLabel: 'Sinh đề Ôn thi chuyên sâu',
+        title: 'Luyện thêm câu hỏi vận dụng & phân tích',
+        reason: `Bạn nắm tốt câu ghi nhớ/hiểu (${Math.round(lowerAcc * 100)}%), nhưng câu vận dụng & phân tích mới đạt ${Math.round(higherAcc * 100)}%.`,
+        actionLabel: 'Luyện câu vận dụng',
         payload: {
           conversationId: input.defaultConversationId,
           ...(input.subjectId ? { subjectId: input.subjectId } : {}),
@@ -407,4 +409,138 @@ export function generateStudyRecommendations(input: {
   }
 
   return recommendations.slice(0, 5);
+}
+
+/**
+ * Đo tiến bộ thực tế khi người học làm lại cùng một bài kiểm tra (>= 2 lượt nộp).
+ */
+export function computeQuizRetakeGains(
+  attempts: AnalyticsQuizAttemptRow[],
+  limit = 5,
+): QuizRetakeGainItem[] {
+  const byQuiz = new Map<
+    string,
+    {
+      quizTitle: string;
+      conversationId: string;
+      entries: Array<{ scorePct: number; ts: number }>;
+    }
+  >();
+
+  for (const att of attempts) {
+    if (att.maxScore <= 0) continue;
+    const scorePct = Math.round((att.score / att.maxScore) * 1000) / 10;
+    const ts = att.completedAt?.getTime() ?? 0;
+    const cur = byQuiz.get(att.quizId) ?? {
+      quizTitle: att.quizTitle,
+      conversationId: att.conversationId,
+      entries: [],
+    };
+    cur.entries.push({ scorePct, ts });
+    byQuiz.set(att.quizId, cur);
+  }
+
+  const gains: QuizRetakeGainItem[] = [];
+  for (const [quizId, group] of byQuiz.entries()) {
+    if (group.entries.length < 2) continue;
+    const sorted = [...group.entries].sort((a, b) => a.ts - b.ts);
+    const first = sorted[0].scorePct;
+    const latest = sorted[sorted.length - 1].scorePct;
+    gains.push({
+      quizId,
+      quizTitle: group.quizTitle,
+      conversationId: group.conversationId,
+      attemptsCount: sorted.length,
+      firstScorePct: Math.round(first),
+      latestScorePct: Math.round(latest),
+      gainPct: Math.round((latest - first) * 10) / 10,
+    });
+  }
+
+  return gains
+    .sort((a, b) => Math.abs(b.gainPct) - Math.abs(a.gainPct))
+    .slice(0, Math.max(1, limit));
+}
+
+export function computeLatestQuizAvgPct(
+  attempts: AnalyticsQuizAttemptRow[],
+  maxQuizzes = 5,
+): number | null {
+  const seenQuizIds = new Set<string>();
+  const latestScores: number[] = [];
+
+  for (const att of attempts) {
+    if (att.maxScore <= 0 || seenQuizIds.has(att.quizId)) continue;
+    seenQuizIds.add(att.quizId);
+    latestScores.push((att.score / att.maxScore) * 100);
+    if (latestScores.length >= maxQuizzes) break;
+  }
+
+  if (latestScores.length === 0) return null;
+  const sum = latestScores.reduce((acc, val) => acc + val, 0);
+  return Math.round((sum / latestScores.length) * 10) / 10;
+}
+
+export function computeAdvancedQuizSignals(
+  latestAnswers: AnalyticsQuizAnswerRow[],
+): {
+  flaggedCorrectCount: number;
+  flaggedIncorrectCount: number;
+  objectiveAvgPct: number | null;
+  essayAvgPct: number | null;
+  matchedPointsStrengths: string[];
+} {
+  let flaggedCorrectCount = 0;
+  let flaggedIncorrectCount = 0;
+  let objEarned = 0;
+  let objMax = 0;
+  let essayEarned = 0;
+  let essayMax = 0;
+  const matchedCounts = new Map<string, { text: string; count: number }>();
+
+  for (const ans of latestAnswers) {
+    if (ans.isFlagged) {
+      if (ans.evaluationStatus === EvaluationStatusEnum.correct) {
+        flaggedCorrectCount += 1;
+      } else if (ans.evaluationStatus === EvaluationStatusEnum.incorrect) {
+        flaggedIncorrectCount += 1;
+      }
+    }
+
+    const maxPts = Math.max(0, Number(ans.question.points) || 1);
+    const earned = Math.max(0, Math.min(maxPts, Number(ans.pointsEarned) || 0));
+    const qType = ans.question.questionType ?? '';
+    if (qType === 'essay' || qType === 'short_answer') {
+      essayEarned += earned;
+      essayMax += maxPts;
+    } else if (qType) {
+      objEarned += earned;
+      objMax += maxPts;
+    }
+
+    if (ans.evaluationStatus === EvaluationStatusEnum.correct) {
+      for (const pt of parseGradingCriteria(ans.matchedPoints)) {
+        const key = normalizeHeadingKey(pt);
+        if (!key) continue;
+        const cur = matchedCounts.get(key) ?? { text: pt, count: 0 };
+        cur.count += 1;
+        matchedCounts.set(key, cur);
+      }
+    }
+  }
+
+  const matchedPointsStrengths = Array.from(matchedCounts.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+    .map((m) => m.text);
+
+  return {
+    flaggedCorrectCount,
+    flaggedIncorrectCount,
+    objectiveAvgPct:
+      objMax > 0 ? Math.round((objEarned / objMax) * 1000) / 10 : null,
+    essayAvgPct:
+      essayMax > 0 ? Math.round((essayEarned / essayMax) * 1000) / 10 : null,
+    matchedPointsStrengths,
+  };
 }

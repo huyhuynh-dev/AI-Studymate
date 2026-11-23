@@ -289,4 +289,68 @@ describe('document-mastery.helper', () => {
     expect(secDeep.masteryScore).toBe(71);
     expect(secDeep.status).toBe('developing');
   });
+
+  it('resolves section bboxes from toc metadata or chunk bboxes (including parent sections) and corrects fallback page_no=1', () => {
+    const mastery = computeDocumentMastery({
+      documentId: docId,
+      conversationId: convId,
+      fileName: 'Search.pdf',
+      pageCount: 3,
+      docMetadata: {
+        toc: [
+          {
+            text: '1. Introduction',
+            level: 1,
+            page_no: 1,
+            bbox: { l: 50, t: 700, r: 300, b: 680, coord_origin: 'BOTTOMLEFT' },
+          },
+          { text: '1.1 Overview', level: 2, page_no: 1 },
+          { text: '2. Binary Search', level: 1, page_no: 1 },
+        ],
+      },
+      chunks: [
+        {
+          id: 'chk-a',
+          documentId: docId,
+          chunkIndex: 0,
+          headings: ['1. Introduction', '1.1 Overview'],
+          pageNumbers: [1],
+          bboxes: [
+            {
+              page_no: 1,
+              label: 'text',
+              bbox: { l: 50, t: 640, r: 500, b: 580, coord_origin: 'BOTTOMLEFT' },
+            },
+          ],
+        },
+        {
+          id: 'chk-b',
+          documentId: docId,
+          chunkIndex: 1,
+          headings: ['2. Binary Search'],
+          pageNumbers: [2],
+          bboxes: [
+            {
+              page_no: 2,
+              label: 'section_header',
+              bbox: { l: 50, t: 710, r: 280, b: 690, coord_origin: 'BOTTOMLEFT' },
+            },
+          ],
+        },
+      ],
+      latestQuizAnswers: [],
+      flashcards: [],
+    });
+
+    expect(mastery.sections[0].bboxes).toHaveLength(1);
+    expect(mastery.sections[0].bboxes?.[0]).toMatchObject({
+      page_no: 1,
+      label: 'section_header',
+    });
+    expect(mastery.sections[1].bboxes).toHaveLength(1);
+    expect(mastery.sections[1].bboxes?.[0]).toMatchObject({ page_no: 1 });
+    expect(mastery.sections[2].startPage).toBe(2);
+    expect(mastery.sections[2].bboxes).toHaveLength(1);
+    expect(mastery.sections[2].bboxes?.[0]).toMatchObject({ page_no: 2 });
+  });
 });

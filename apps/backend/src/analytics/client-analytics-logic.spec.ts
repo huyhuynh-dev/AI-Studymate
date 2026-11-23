@@ -10,6 +10,11 @@ type AnalyticsHelpersMod = {
   formatPercent: (value: number | null | undefined) => string;
   formatResponseSeconds: (ms: number | null | undefined) => string;
   formatPageRange: (startPage: number | null, endPage: number | null) => string;
+  formatMinutes: (minutes: number | null | undefined) => string;
+  formatDeltaPct: (delta: number | null | undefined) => string | null;
+  buildPlainBloomSentence: (
+    levels: Array<{ level: string; totalAnswered: number; accuracyRate: number | null }>,
+  ) => string;
 };
 
 type AnalyticsApiMod = {
@@ -52,6 +57,24 @@ type AnalyticsApiMod = {
       actionType: string;
       payload: { conversationId: string; chunkIds?: string[]; bloomPreset?: string };
     }>;
+    todayPlan: {
+      tasks: Array<{ id: string; order: number; title: string }>;
+      dailyGoalMinutes: number;
+      overdueCount: number;
+    };
+    headline: {
+      retention: { value: number | null; label: string; sampleSize: number };
+      habit: { daysStudiedThisWeek: number; weekDaysMask: boolean[] };
+    };
+    attentionItems: Array<{ sectionKey: string; reasons: string[] }>;
+    insights: Array<{ ruleId: string; tone: string; message: string }>;
+    progress: {
+      windowDays: number;
+      buckets: Array<{ label: string; minutesStudied: number }>;
+    };
+    advanced: {
+      deckComposition: { matureCount: number; youngCount: number };
+    };
   };
   normalizeSubjectAnalytics: (raw: unknown) => {
     subjectId: string;
@@ -61,6 +84,8 @@ type AnalyticsApiMod = {
       avgQuizScorePct: number | null;
     }>;
     topWeakTopics: Array<{ topic: string; startPage: number | null }>;
+    todayPlan: { dailyGoalMinutes: number; tasks: unknown[] };
+    headline: { habit: { weekDaysMask: boolean[] } };
   };
 };
 
@@ -200,5 +225,47 @@ describe('Phase 4 Client Analytics Logic & DTO Mappers', () => {
     expect(emptySubj.color).toBeNull();
     expect(emptySubj.conversationSummaries).toEqual([]);
     expect(emptySubj.topWeakTopics).toEqual([]);
+    expect(emptySubj.todayPlan.dailyGoalMinutes).toBe(15);
+    expect(emptySubj.headline.habit.weekDaysMask).toHaveLength(7);
+
+    expect(helpers.formatMinutes(12.4)).toBe('12 phút');
+    expect(helpers.formatDeltaPct(4.2)).toBe('▲ +4%');
+    expect(helpers.formatDeltaPct(0)).toBeNull();
+    expect(
+      helpers.buildPlainBloomSentence([
+        { level: 'remember', totalAnswered: 6, accuracyRate: 90 },
+        { level: 'analyze', totalAnswered: 6, accuracyRate: 40 },
+      ]),
+    ).toContain('ghi nhớ');
+  });
+
+  it('normalizeConversationAnalytics maps Phase 2 coaching blocks (todayPlan, headline, attentionItems, progress, advanced)', () => {
+    const conv = apiMod.normalizeConversationAnalytics({
+      conversationId: 'conv-2',
+      dailyGoalMinutes: 25,
+      todayPlan: {
+        tasks: [{ id: 't1', order: 1, actionType: 'review_due_cards', title: 'Ôn 10 thẻ', estimatedMinutes: 4 }],
+        dailyGoalMinutes: 25,
+        overdueCount: 0,
+      },
+      headline: {
+        retention: { value: 88, deltaVsPrev: 5, sampleSize: 25, minSampleSize: 20, label: 'good', explanation: 'Tốt' },
+        habit: { daysStudiedThisWeek: 4, weekDaysMask: [true, true, false, true, true, false, false] },
+      },
+      attentionItems: [
+        { sectionKey: 'doc-1:0', title: 'Chương 3', reasons: ['Đúng 2/5 câu'], primaryAction: { type: 'targeted_quiz_weak_chunk', label: 'Luyện mục này', payload: { conversationId: 'conv-2' } } },
+      ],
+      insights: [{ ruleId: 'streak_milestone', tone: 'positive', message: 'Học liên tục 4 ngày' }],
+      progress: { windowDays: 7, buckets: [{ bucketKey: 'b1', label: 'T2', minutesStudied: 15, retentionRate: 90, reviewCount: 10 }] },
+      advanced: { deckComposition: { newCount: 2, learningCount: 1, youngCount: 3, matureCount: 5 } },
+    });
+
+    expect(conv.todayPlan.tasks).toHaveLength(1);
+    expect(conv.todayPlan.dailyGoalMinutes).toBe(25);
+    expect(conv.headline.retention.label).toBe('good');
+    expect(conv.attentionItems[0].reasons).toEqual(['Đúng 2/5 câu']);
+    expect(conv.insights[0].tone).toBe('positive');
+    expect(conv.progress.buckets[0].minutesStudied).toBe(15);
+    expect(conv.advanced.deckComposition.matureCount).toBe(5);
   });
 });

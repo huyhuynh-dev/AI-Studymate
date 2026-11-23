@@ -11,6 +11,9 @@ export interface ConversationAccessInfo {
   title: string;
   subjectId: string;
   subjectName: string;
+  dailyGoalMinutes: number;
+  examDate: Date | null;
+  targetScore: number | null;
 }
 
 export interface DocumentAccessInfo {
@@ -33,6 +36,9 @@ export interface SubjectAccessInfo {
   id: string;
   name: string;
   color: string | null;
+  dailyGoalMinutes: number;
+  examDate: Date | null;
+  targetScore: number | null;
   conversations: SubjectConversationItem[];
 }
 
@@ -64,11 +70,14 @@ export interface AnalyticsQuizAnswerRow {
   evaluationStatus: EvaluationStatusEnum;
   pointsEarned: number;
   missingPoints: unknown;
+  matchedPoints?: unknown;
+  isFlagged?: boolean;
   answeredAt: Date | null;
   question: {
     id: string;
     questionText: string;
     points: number;
+    questionType?: string;
     bloomLevel: string | null;
     sourceRefs: unknown;
   };
@@ -81,6 +90,7 @@ export interface AnalyticsQuizAttemptRow {
   conversationId: string;
   score: number;
   maxScore: number;
+  timeSpentSec?: number;
   completedAt: Date | null;
   answers: AnalyticsQuizAnswerRow[];
 }
@@ -100,6 +110,8 @@ export interface AnalyticsChunkIndexRow {
   chunkIndex: number;
   headings: string[];
   pageNumbers: number[];
+  tokenCount?: number | null;
+  bboxes?: unknown;
 }
 
 @Injectable()
@@ -116,7 +128,8 @@ export class AnalyticsRepoService {
         id: true,
         title: true,
         subject_id: true,
-        subject: { select: { name: true } },
+        user: { select: { daily_goal_minutes: true } },
+        subject: { select: { name: true, exam_date: true, target_score: true } },
       },
     });
 
@@ -131,6 +144,9 @@ export class AnalyticsRepoService {
       title: conversation.title,
       subjectId: conversation.subject_id,
       subjectName: conversation.subject.name,
+      dailyGoalMinutes: conversation.user?.daily_goal_minutes ?? 15,
+      examDate: conversation.subject.exam_date ?? null,
+      targetScore: conversation.subject.target_score ?? null,
     };
   }
 
@@ -178,6 +194,9 @@ export class AnalyticsRepoService {
         id: true,
         name: true,
         color: true,
+        exam_date: true,
+        target_score: true,
+        user: { select: { daily_goal_minutes: true } },
         conversations: {
           orderBy: { updated_at: 'desc' },
           select: {
@@ -199,6 +218,9 @@ export class AnalyticsRepoService {
       id: subject.id,
       name: subject.name,
       color: subject.color,
+      dailyGoalMinutes: subject.user?.daily_goal_minutes ?? 15,
+      examDate: subject.exam_date ?? null,
+      targetScore: subject.target_score ?? null,
       conversations: subject.conversations.map((c) => ({
         id: c.id,
         title: c.title,
@@ -336,6 +358,7 @@ export class AnalyticsRepoService {
         quiz_id: true,
         score: true,
         max_score: true,
+        time_spent_sec: true,
         completed_at: true,
         quiz: {
           select: {
@@ -350,12 +373,15 @@ export class AnalyticsRepoService {
             evaluation_status: true,
             points_earned: true,
             missing_points: true,
+            matched_points: true,
+            is_flagged: true,
             answered_at: true,
             question: {
               select: {
                 id: true,
                 question_text: true,
                 points: true,
+                question_type: true,
                 bloom_level: true,
                 source_refs: true,
               },
@@ -374,17 +400,21 @@ export class AnalyticsRepoService {
       conversationId: attempt.quiz.conversation_id,
       score: attempt.score,
       maxScore: attempt.max_score,
+      timeSpentSec: attempt.time_spent_sec ?? 0,
       completedAt: attempt.completed_at,
       answers: attempt.answers.map((ans) => ({
         questionId: ans.question_id,
         evaluationStatus: ans.evaluation_status,
         pointsEarned: ans.points_earned,
         missingPoints: ans.missing_points,
+        matchedPoints: ans.matched_points,
+        isFlagged: Boolean(ans.is_flagged),
         answeredAt: ans.answered_at,
         question: {
           id: ans.question.id,
           questionText: ans.question.question_text,
           points: ans.question.points,
+          questionType: ans.question.question_type,
           bloomLevel: ans.question.bloom_level,
           sourceRefs: ans.question.source_refs,
         },
@@ -432,6 +462,7 @@ export class AnalyticsRepoService {
         chunk_index: true,
         headings: true,
         page_numbers: true,
+        token_count: true,
       },
       orderBy: [{ document_id: 'asc' }, { chunk_index: 'asc' }],
     });
@@ -451,8 +482,43 @@ export class AnalyticsRepoService {
         chunkIndex: chunk.chunk_index,
         headings: chunk.headings,
         pageNumbers: chunk.page_numbers,
+        ...(chunk.token_count !== undefined ? { tokenCount: chunk.token_count } : {}),
       })),
     };
+  }
+
+  async getFrequentlyAskedChunkCounts(
+    conversationIds: string[],
+    userId: string,
+    sinceDate: Date,
+  ): Promise<Map<string, number>> {
+    const counts = new Map<string, number>();
+    if (conversationIds.length === 0) return counts;
+
+    const rows = await this.prisma.message.findMany({
+      where: {
+        role: 'assistant',
+        created_at: { gte: sinceDate },
+        chat_session: {
+          conversation_id: { in: conversationIds },
+          conversation: { user_id: userId },
+        },
+      },
+      select: {
+        source_chunks: true,
+      },
+      orderBy: { created_at: 'desc' },
+      take: 300,
+    });
+
+    for (const row of rows) {
+      const uniqueInMsg = new Set(row.source_chunks);
+      for (const chunkId of uniqueInMsg) {
+        counts.set(chunkId, (counts.get(chunkId) ?? 0) + 1);
+      }
+    }
+
+    return counts;
   }
 
   async getChunkIndexByDocumentId(
@@ -466,6 +532,7 @@ export class AnalyticsRepoService {
         chunk_index: true,
         headings: true,
         page_numbers: true,
+        bboxes: true,
       },
       orderBy: { chunk_index: 'asc' },
     });
@@ -476,6 +543,7 @@ export class AnalyticsRepoService {
       chunkIndex: chunk.chunk_index,
       headings: chunk.headings,
       pageNumbers: chunk.page_numbers,
+      ...(chunk.bboxes !== undefined ? { bboxes: chunk.bboxes } : {}),
     }));
   }
 }

@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ArrowUp, FileText } from "lucide-react";
 import { useClickOutside } from "../hooks/useClickOutside";
 import type { AttachedFile, ModelConfig, WorkspaceDoc } from "../types";
@@ -75,12 +82,35 @@ export function ChatComposer({
     (value.trim().length > 0 || attachedFiles.length > 0) &&
     !disabled;
 
-  useEffect(() => {
+  const syncTextareaHeight = useCallback(() => {
     const el = textareaRef.current;
-    if (!el) return;
+    if (!el || el.clientWidth === 0) return;
+
+    // Khi ô nhập trống, giữ đúng chiều cao tối thiểu để tránh placeholder xuống dòng làm phình khung
+    if (!value) {
+      el.style.height = `${MIN_HEIGHT}px`;
+      return;
+    }
+
     el.style.height = "auto";
     el.style.height = `${Math.min(Math.max(el.scrollHeight, MIN_HEIGHT), MAX_HEIGHT)}px`;
   }, [value]);
+
+  useLayoutEffect(() => {
+    syncTextareaHeight();
+  }, [syncTextareaHeight]);
+
+  // Tính lại chiều cao khi khung nhập thay đổi bề rộng (mở rộng sidebar, kéo dãn, toàn màn hình)
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => {
+      syncTextareaHeight();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [syncTextareaHeight]);
 
   // Lọc danh sách tài liệu theo từ khóa sau ký tự '@'
   const matchingMentionDocs = useMemo(() => {
@@ -217,7 +247,7 @@ export function ChatComposer({
 
   return (
     <div className="shrink-0 px-4 pb-3 pt-2 select-none">
-      <div className="relative w-full rounded-[22px] border border-[#E5EEFF] dark:border-white/[0.1] bg-white dark:bg-[#161922] p-3.5 transition-all shadow-[0_4px_20px_-4px_rgba(11,28,48,0.06)] focus-within:border-[#4F46E5] focus-within:ring-4 focus-within:ring-[#4F46E5]/12">
+      <div className="relative w-full rounded-[22px] border border-[#E5EEFF] dark:border-white/[0.1] bg-white dark:bg-[#161922] p-3.5 transition-[border-color,box-shadow] duration-150 motion-reduce:transition-none shadow-[0_4px_20px_-4px_rgba(11,28,48,0.06)] focus-within:border-[#4F46E5] focus-within:ring-4 focus-within:ring-[#4F46E5]/12">
         {/* Autocomplete Popup khi gõ '@' */}
         {mentionState?.isOpen && (
           <div
@@ -315,18 +345,18 @@ export function ChatComposer({
               aria-label="Gửi tin nhắn"
               title={
                 disabled
-                  ? "Đang gửi tin nhắn..."
+                  ? "Đang gửi tin nhắn…"
                   : isAnyFilePending
                   ? "Gửi (sẽ tự động gửi khi tài liệu xử lý xong)"
                   : "Gửi (Enter)"
               }
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all ${
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-[background-color,color,transform] duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-[#4F46E5] focus-visible:outline-offset-2 ${
                 canSend
                   ? "cursor-pointer bg-[#4F46E5] hover:bg-[#3525CD] text-white shadow-xs active:scale-95"
                   : "cursor-not-allowed bg-[#E5EEFF] dark:bg-white/[0.06] text-[#777587] dark:text-neutral-500"
               }`}
             >
-              <ArrowUp className="h-4 w-4 stroke-[2.5]" />
+              <ArrowUp aria-hidden="true" className="h-4 w-4 stroke-[2.5]" />
             </button>
           </div>
         </div>

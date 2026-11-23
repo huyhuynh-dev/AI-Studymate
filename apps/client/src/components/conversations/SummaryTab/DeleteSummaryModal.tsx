@@ -38,7 +38,7 @@ export default function DeleteSummaryModal({
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-neutral-100 leading-tight">
-                Xóa bản tóm tắt
+                Xóa ghi chú
               </h2>
               <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                 Hành động này không thể hoàn tác
@@ -59,7 +59,7 @@ export default function DeleteSummaryModal({
         {/* Modal Content */}
         <div className="px-6 py-2">
           <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
-            Bạn có chắc chắn muốn xóa bản tóm tắt{" "}
+            Bạn có chắc chắn muốn xóa ghi chú{" "}
             {summaryTitle ? (
               <span className="font-semibold text-neutral-900 dark:text-white">
                 &ldquo;{summaryTitle}&rdquo;
@@ -67,7 +67,7 @@ export default function DeleteSummaryModal({
             ) : (
               "này"
             )}
-            ? Toàn bộ ghi chú, cấu trúc và định dạng của bản tóm tắt này sẽ bị xóa khỏi cuộc trò chuyện.
+            ? Toàn bộ nội dung và định dạng của ghi chú này sẽ bị xóa khỏi cuộc trò chuyện.
           </p>
         </div>
 

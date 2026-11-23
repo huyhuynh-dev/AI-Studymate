@@ -261,6 +261,43 @@ export class PdfExportService {
       font-style: italic;
     }
 
+    .doc-media-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      border: 1px solid #E2E8F0;
+      background: #F8FAFC;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      page-break-inside: avoid;
+    }
+
+    .doc-media-badge {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #4F46E5;
+      background: #EEF2FF;
+      padding: 3px 8px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .doc-media-body {
+      font-size: 12.5px;
+      color: #1E293B;
+      word-break: break-word;
+    }
+
+    .doc-media-caption {
+      font-size: 11px;
+      color: #64748B;
+      margin-top: 3px;
+      font-style: italic;
+    }
+
     .toggle-item {
       margin-bottom: 6px;
       padding-left: 4px;
@@ -322,9 +359,9 @@ export class PdfExportService {
 <body>
   <div class="header-card">
     <div>
-      <span class="brand-tag">✨ AI StudyMate • Tóm tắt Thông minh</span>
+      <span class="brand-tag">✨ AI StudyMate • Ghi chú Học tập</span>
       <h1 class="doc-title">${this.escapeHtml(title)}</h1>
-      <div class="meta-info">Xuất bản: ${dateStr} • Được tạo tự động bởi AI StudyMate</div>
+      <div class="meta-info">Xuất bản: ${dateStr} • Xuất từ AI StudyMate</div>
     </div>
   </div>
 
@@ -334,7 +371,7 @@ export class PdfExportService {
 
   <div class="footer">
     <span>AI StudyMate Platform</span>
-    <span>Trang tài liệu học tập tóm tắt</span>
+    <span>Trang ghi chú học tập</span>
   </div>
 </body>
 </html>`;
@@ -404,6 +441,12 @@ export class PdfExportService {
                 if (!url) return '';
                 return `<figure class="doc-figure"><img src="${url}" alt="${caption}" />${caption ? `<figcaption>${caption}</figcaption>` : ''}</figure>${childrenHtml}`;
             }
+            case 'file':
+                return this.renderMediaCard('Tệp đính kèm', block, childrenHtml);
+            case 'video':
+                return this.renderMediaCard('Video', block, childrenHtml);
+            case 'audio':
+                return this.renderMediaCard('Âm thanh', block, childrenHtml);
             case 'paragraph':
             default: {
                 const contentHtml = this.renderInlineContent(block?.content);
@@ -413,6 +456,27 @@ export class PdfExportService {
                 return `<p>${contentHtml}</p>${childrenHtml}`;
             }
         }
+    }
+
+    private renderMediaCard(
+        badge: string,
+        block: any,
+        childrenHtml: string,
+    ): string {
+        const rawUrl = typeof block?.props?.url === 'string' ? block.props.url.trim() : '';
+        const safeHref = /^https?:\/\//i.test(rawUrl) ? this.escapeHtml(rawUrl) : '';
+        const rawName = typeof block?.props?.name === 'string' ? block.props.name.trim() : '';
+        const displayName = this.escapeHtml(rawName || rawUrl || badge);
+        const caption = this.escapeHtml(block?.props?.caption || '');
+
+        if (!rawUrl && !rawName) return childrenHtml;
+
+        const titleHtml = safeHref
+            ? `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${displayName}</a>`
+            : `<span>${displayName}</span>`;
+        const captionHtml = caption ? `<div class="doc-media-caption">${caption}</div>` : '';
+
+        return `<div class="doc-media-card"><span class="doc-media-badge">${this.escapeHtml(badge)}</span><div class="doc-media-body">${titleHtml}${captionHtml}</div></div>${childrenHtml}`;
     }
 
     private renderInlineContent(content: any): string {
@@ -499,6 +563,12 @@ export class PdfExportService {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000,
             });
+
+            if (html.includes('<img ')) {
+                await page.waitForNetworkIdle({ idleTime: 300, timeout: 10000 }).catch(() => {
+                    this.logger.warn('Một số hình ảnh trong ghi chú mất thời gian tải lâu hơn 10s khi xuất PDF');
+                });
+            }
 
             const pdfUint8Array = await page.pdf({
                 format: 'A4',

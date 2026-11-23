@@ -19,6 +19,7 @@ describe('AnalyticsService', () => {
     getSubmittedQuizAnalyticsByConversations: ReturnType<typeof vi.fn>;
     getDocumentsSummaryAndChunkIndex: ReturnType<typeof vi.fn>;
     getChunkIndexByDocumentId: ReturnType<typeof vi.fn>;
+    getFrequentlyAskedChunkCounts: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -28,6 +29,9 @@ describe('AnalyticsService', () => {
         title: 'Buổi 1',
         subjectId: 'subj-1',
         subjectName: 'Hệ điều hành',
+        dailyGoalMinutes: 15,
+        examDate: null,
+        targetScore: null,
       }),
       assertDocumentAccess: vi.fn().mockResolvedValue({
         id: 'doc-1',
@@ -42,6 +46,9 @@ describe('AnalyticsService', () => {
         id: 'subj-1',
         name: 'Hệ điều hành',
         color: '#2563eb',
+        dailyGoalMinutes: 15,
+        examDate: null,
+        targetScore: null,
         conversations: [
           { id: 'conv-1', title: 'Buổi 1', updatedAt: new Date('2026-11-16T00:00:00Z') },
           { id: 'conv-2', title: 'Buổi 2', updatedAt: new Date('2026-11-15T00:00:00Z') },
@@ -140,6 +147,7 @@ describe('AnalyticsService', () => {
           pageNumbers: [5],
         },
       ]),
+      getFrequentlyAskedChunkCounts: vi.fn().mockResolvedValue(new Map()),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -170,6 +178,10 @@ describe('AnalyticsService', () => {
     expect(res.missingPointsClusters[0].point).toBe('Thiếu Hold and Wait');
     expect(res.documentMasterySummaries[0].weakSectionsCount).toBe(1);
     expect(res.recommendations.length).toBeGreaterThanOrEqual(2);
+    expect(res.todayPlan.tasks.length).toBeLessThanOrEqual(3);
+    expect(res.headline.retention.label).toBe('insufficient_data');
+    expect(res.attentionItems.length).toBeGreaterThanOrEqual(1);
+    expect(res.progress.buckets.length).toBeLessThanOrEqual(7);
   });
 
   it('getDocumentMastery maps TOC heatmap and propagates NotFoundException on invalid access', async () => {
@@ -197,6 +209,9 @@ describe('AnalyticsService', () => {
       id: 'subj-empty',
       name: 'Môn trống',
       color: null,
+      dailyGoalMinutes: 15,
+      examDate: null,
+      targetScore: null,
       conversations: [],
     });
     mockRepo.getSrsFlashcardsByConversations.mockResolvedValueOnce([]);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check } from "lucide-react";
 import { useFocusMode } from "@/components/layout";
+import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { AiGeneratorModal, type AiTarget } from "./ai/AiGeneratorModal";
 import { DeckFormModal } from "./decks/DeckFormModal";
 import { DecksEmptyState } from "./decks/DecksEmptyState";
@@ -97,6 +98,7 @@ export default function FlashcardsTab({
   }, [decks]);
 
   const { setFocusMode } = useFocusMode();
+  const { sidePanelTarget } = useCitationNavigation();
   const activeDeck = view.name !== "decks" ? decks.find((d) => d.id === view.deckId) : undefined;
 
   // Đồng bộ Focus Mode: Tự động ẩn thanh tab & header khi vào Chế độ học (study)
@@ -108,10 +110,10 @@ export default function FlashcardsTab({
     };
   }, [view.name, setFocusMode]);
 
-  // Nhấn Escape để thoát Chế độ học và khôi phục giao diện
+  // Nhấn Escape để thoát Chế độ học (bỏ qua nếu đang mở trình xem nguồn PDF ở RightSidebar)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && view.name === "study" && activeDeck) {
+      if (e.key === "Escape" && !sidePanelTarget && view.name === "study" && activeDeck) {
         setFocusMode(false);
         refreshDecks();
         setView({ name: "detail", deckId: activeDeck.id });
@@ -119,7 +121,7 @@ export default function FlashcardsTab({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [view.name, activeDeck, setFocusMode, refreshDecks]);
+  }, [view.name, activeDeck, sidePanelTarget, setFocusMode, refreshDecks]);
 
   // Tự động làm mới danh sách và mở trực tiếp chi tiết bộ thẻ khi điều hướng từ Badge trong AI Chat
   useEffect(() => {

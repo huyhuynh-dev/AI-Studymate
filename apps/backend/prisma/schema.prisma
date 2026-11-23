@@ -70,38 +70,41 @@ enum ChunkType {
 }
 
 model User {
-  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email             String            @unique @db.VarChar(255)
-  password_hash     String?           @db.VarChar(255)
-  name              String            @db.VarChar(255)
-  avatar_url        String?           @db.VarChar(500)
-  role              String            @default("user") @db.VarChar(20)
-  is_active         Boolean           @default(true)
-  is_verified       Boolean           @default(false)
-  created_at        DateTime          @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
-  provider          String?           @db.VarChar(20)
-  provider_id       String?           @db.VarChar(255)
-  refresh_token     String?           @db.VarChar(500)
-  subjects          Subject[]
-  conversations     Conversation[]
-  documents         Document[]
-  flashcard_decks   FlashcardDeck[]
-  flashcard_reviews FlashcardReview[]
-  quizzes           Quiz[]
-  quiz_attempts     QuizAttempt[]
-  ai_usage_logs     AiUsageLog[]
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email              String            @unique @db.VarChar(255)
+  password_hash      String?           @db.VarChar(255)
+  name               String            @db.VarChar(255)
+  avatar_url         String?           @db.VarChar(500)
+  role               String            @default("user") @db.VarChar(20)
+  is_active          Boolean           @default(true)
+  is_verified        Boolean           @default(false)
+  daily_goal_minutes Int               @default(15)
+  created_at         DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  provider           String?           @db.VarChar(20)
+  provider_id        String?           @db.VarChar(255)
+  refresh_token      String?           @db.VarChar(500)
+  subjects           Subject[]
+  conversations      Conversation[]
+  documents          Document[]
+  flashcard_decks    FlashcardDeck[]
+  flashcard_reviews  FlashcardReview[]
+  quizzes            Quiz[]
+  quiz_attempts      QuizAttempt[]
+  ai_usage_logs      AiUsageLog[]
 
   @@map("users")
 }
 
 model Subject {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    String   @db.Uuid
-  name       String   @db.VarChar(255)
-  color      String?  @db.VarChar(7)
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String    @db.Uuid
+  name         String    @db.VarChar(255)
+  color        String?   @db.VarChar(7)
+  exam_date    DateTime? @db.Date
+  target_score Int?      @db.SmallInt
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -305,6 +308,9 @@ model Document {
   uploaded_at      DateTime @default(now()) @db.Timestamptz(6)
   ocr_status       ProcessingStatus @default(pending)
   embed_status     ProcessingStatus @default(pending)
+  content_version  Int      @default(1)
+  indexed_version  Int      @default(0)
+  sync_error       String?  @db.Text
   created_at       DateTime @default(now()) @db.Timestamptz(6)
   updated_at       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
@@ -326,6 +332,7 @@ model DocumentChunk {
   chunk_index     Int
   content         String                      @db.Text
   raw_content     String?                     @db.Text
+  content_hash    String?                     @db.VarChar(64)
   token_count     Int?
   chunk_type      ChunkType                   @default(text)
   headings        String[]                    @default([])
@@ -342,6 +349,7 @@ model DocumentChunk {
 
   @@unique([document_id, chunk_index])
   @@index([document_id])
+  @@index([document_id, content_hash])
   @@index([page_numbers], type: Gin)
   @@map("document_chunks")
 }

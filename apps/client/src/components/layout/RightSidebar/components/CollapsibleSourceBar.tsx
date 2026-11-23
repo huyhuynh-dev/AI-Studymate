@@ -10,6 +10,7 @@ import {
   Layers,
 } from "lucide-react";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
+import { formatCitationLocationLabel } from "@/lib/citation-label.helper";
 import {
   formatCitationRankingMeta,
   type CitationBadgeMeta,
@@ -156,6 +157,18 @@ export const CollapsibleSourceBar = React.memo(function CollapsibleSourceBar({
                   ? docItem!.headings[docItem!.headings.length - 1]
                   : undefined;
 
+              const locationLabel = !isWeb
+                ? formatCitationLocationLabel({
+                    fileName: docItem?.fileName,
+                    pageNumbers: docItem?.pageNumbers,
+                    pageNo,
+                    textAnchor: docItem?.textAnchor,
+                    headings: docItem?.headings,
+                    chunkIndex: docItem?.chunkIndex,
+                    variant: "compact",
+                  })
+                : "";
+
               const snippet =
                 (docItem?.previewSnippet || docItem?.rawContent || docItem?.content || webItem?.previewSnippet || "")
                   .trim()
@@ -231,7 +244,7 @@ export const CollapsibleSourceBar = React.memo(function CollapsibleSourceBar({
                       )}
                       {!isWeb ? (
                         <span className="rounded bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/30">
-                          Trang {pageNo}
+                          {locationLabel}
                         </span>
                       ) : webItem?.domain ? (
                         <span className="rounded bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/30">

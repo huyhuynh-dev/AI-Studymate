@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { STARTER_PROMPTS } from "../constants";
 import { getGreeting } from "../utils";
 
@@ -11,9 +11,10 @@ export function EmptyState({ onPromptSelect }: EmptyStateProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-4 py-8 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden select-none">
       <div className="flex flex-col items-center gap-3.5 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EEF2FF] dark:bg-[#4F46E5]/20 text-[#4F46E5] dark:text-[#818CF8] border border-[#C7D2FE] dark:border-[#4F46E5]/30 shadow-xs transition-transform hover:scale-105 duration-200">
-          <Sparkles className="h-6 w-6 stroke-[1.8]" />
-        </div>
+        <StudyMateAiIcon
+          variant="full"
+          className="h-14 w-14 transition-transform hover:scale-105 duration-200"
+        />
         <div className="space-y-1">
           <h3
             className="text-lg font-bold font-heading text-[#0B1C30] dark:text-[#EFF0F6] tracking-tight"

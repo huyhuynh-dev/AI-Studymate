@@ -1,4 +1,5 @@
-import { Layers, Plus, Sparkles } from "lucide-react";
+import { Layers, Plus } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { Button, cx, FONT_HEADING, SQUIRCLE } from "../ui";
 
 /** A4 / Tầng 3 — Bộ thẻ chưa có flashcard nào (Empty State chuẩn Apple HIG) */
@@ -21,7 +22,7 @@ export function CardListEmpty({ onCreate, onAi }: { onCreate: () => void; onAi: 
         <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={onCreate}>
           Thêm thẻ mới
         </Button>
-        <Button variant="secondary" icon={<Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />} onClick={onAi}>
+        <Button variant="secondary" icon={<StudyMateAiIcon variant="simple" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />} onClick={onAi}>
           Tạo bằng AI
         </Button>
       </div>

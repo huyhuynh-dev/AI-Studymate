@@ -5,14 +5,16 @@ import {
   AlertCircle,
   ArrowUpRight,
   BookOpen,
-  Bot,
   Brain,
   CheckCircle2,
   ChevronDown,
+  Eye,
+  FileEdit,
   FileQuestion,
   FileSearch,
   FileText,
   FolderSearch,
+  GitPullRequest,
   Globe,
   HelpCircle,
   Layers,
@@ -21,6 +23,8 @@ import {
   Send,
   Sparkles,
 } from "lucide-react";
+import { useWordAgent } from "@/contexts/WordAgentContext";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { ASSISTANT_NAME } from "../constants";
 import type { ChatMessage } from "../types";
 import { MarkdownRenderer } from "./MarkdownRenderer";
@@ -270,6 +274,7 @@ export const AiMessage = React.memo(function AiMessage({
   onOpenFlashcardDeck,
   onOpenQuiz,
 }: AiMessageProps) {
+  const { focusDocumentReviewBanner } = useWordAgent();
   const parts = message.parts;
 
   // Chuẩn hóa parts để hỗ trợ cả định dạng phẳng lẫn lồng nhau
@@ -418,9 +423,7 @@ export const AiMessage = React.memo(function AiMessage({
     <div className="space-y-2 select-text">
       {/* Tên trợ lý */}
       <div className="flex items-center gap-2 select-none">
-        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#EEF2FF] dark:bg-[#4F46E5]/20 text-[#4F46E5] dark:text-[#818CF8] shadow-2xs">
-          <Bot className="h-3.5 w-3.5 stroke-[2]" />
-        </span>
+        <StudyMateAiIcon variant="full" className="h-6 w-6 shrink-0" />
         <span className="text-xs font-bold text-[#0B1C30] dark:text-[#EFF0F6]">
           {ASSISTANT_NAME}
         </span>
@@ -1278,12 +1281,12 @@ export const AiMessage = React.memo(function AiMessage({
                     key={index}
                     type="button"
                     onClick={handleBadgeClick}
-                    title={`Nhấn để mở "${summaryTitle}" trong Tab Tóm tắt`}
+                    title={`Nhấn để mở "${summaryTitle}" trong Tab Ghi chú`}
                     className="group my-2 flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/40 bg-gradient-to-r from-[#EEF2FF] via-white to-[#EEF2FF] dark:from-[#4F46E5]/20 dark:via-[#161922] dark:to-[#4F46E5]/10 p-3.5 text-left shadow-xs transition-all hover:border-[#4F46E5] hover:shadow-md active:scale-[0.99]"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#4F46E5] text-white shadow-xs transition-transform group-hover:scale-105">
-                        <Sparkles className="h-4 w-4" />
+                        <StudyMateAiIcon variant="simple" className="h-4.5 w-4.5" />
                       </span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -1571,6 +1574,416 @@ export const AiMessage = React.memo(function AiMessage({
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </span>
                   </button>
+                );
+              }
+            }
+
+            if (
+              part.type === "tool-superdoc_inspect" ||
+              (part.type === "dynamic-tool" &&
+                part.toolName === "superdoc_inspect")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isError =
+                state === "output-error" || Boolean(part.output?.error);
+              const isDone = state === "output-available";
+
+              const fileName: string =
+                part.output?.fileName || "tài liệu Word đang mở";
+              const paragraphCount: number = part.output?.paragraphCount ?? 0;
+              const headingCount: number = part.output?.headingCount ?? 0;
+              const trackedChangeCount: number =
+                part.output?.trackedChangeCount ?? 0;
+
+              if (isRunning) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/70 dark:bg-indigo-500/10 p-2.5 text-xs text-indigo-700 dark:text-indigo-200"
+                  >
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                    <span>Đang đọc cấu trúc và nội dung tài liệu Word…</span>
+                  </div>
+                );
+              }
+
+              if (isError) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/20 p-2.5 text-xs text-[#BA1A1A] dark:text-rose-400"
+                  >
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span>Không thể kiểm tra cấu trúc tài liệu Word.</span>
+                  </div>
+                );
+              }
+
+              if (isDone) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8FAFF] dark:bg-white/[0.03] px-3 py-2 text-[11.5px] text-[#464555] dark:text-neutral-300"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileSearch className="h-3.5 w-3.5 shrink-0 text-[#4F46E5] dark:text-[#818CF8]" />
+                      <span className="truncate font-semibold text-[#0B1C30] dark:text-white">
+                        Đã đọc cấu trúc {fileName}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-[#777587] dark:text-neutral-400">
+                      {paragraphCount} đoạn • {headingCount} tiêu đề
+                      {trackedChangeCount > 0
+                        ? ` • ${trackedChangeCount} đề xuất đang mở`
+                        : ""}
+                    </span>
+                  </div>
+                );
+              }
+            }
+
+            if (
+              part.type === "tool-superdoc_perform_action" ||
+              (part.type === "dynamic-tool" &&
+                part.toolName === "superdoc_perform_action")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isDone = state === "output-available";
+              const outputStatus: string | undefined = part.output?.status;
+              const errorMessage: string | undefined =
+                part.output?.errorMessage;
+              const isError =
+                state === "output-error" ||
+                Boolean(errorMessage) ||
+                (isDone &&
+                  typeof outputStatus === "string" &&
+                  outputStatus !== "ok");
+
+              const actionName: string =
+                part.output?.action || part.input?.action || "chỉnh sửa";
+              const actionLabelMap: Record<string, string> = {
+                insert_paragraph: "Thêm đoạn văn bản mới",
+                append_paragraph: "Bổ sung đoạn văn bản",
+                replace_paragraph: "Cập nhật đoạn văn bản",
+                delete_paragraph: "Xóa đoạn văn bản",
+                replace_text: "Thay thế nội dung văn bản",
+                insert_text: "Chèn nội dung vào tài liệu",
+                delete_text: "Xóa đoạn văn bản",
+                set_heading: "Thiết lập tiêu đề mục",
+                insert_table: "Chèn bảng biểu mới",
+                insert_list: "Tạo danh sách",
+                apply_formatting: "Định dạng văn bản",
+                add_comment: "Thêm nhận xét trên tài liệu",
+              };
+              const readableAction =
+                actionLabelMap[actionName] || actionName.replace(/_/g, " ");
+              const changeMode: string =
+                part.output?.changeMode || part.input?.changeMode || "tracked";
+              const isTracked = changeMode === "tracked";
+              const docId: string | undefined = part.output?.documentId;
+              const docFileName: string =
+                part.output?.fileName || "tài liệu Word";
+
+              if (isRunning) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2.5 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF] dark:bg-[#4F46E5]/10 p-3 text-xs text-[#4F46E5] dark:text-[#818CF8]"
+                  >
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                    <div className="space-y-0.5">
+                      <div className="font-bold text-[#3525CD] dark:text-white">
+                        Đang thực hiện chỉnh sửa trên tài liệu Word…
+                      </div>
+                      <div className="text-[11px] text-[#777587] dark:text-neutral-400">
+                        Hành động: {readableAction}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (isError) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/20 p-3 text-xs text-[#BA1A1A] dark:text-rose-400"
+                  >
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                      {errorMessage ||
+                        `Không thể hoàn tất thao tác "${readableAction}" trên tài liệu Word.`}
+                    </span>
+                  </div>
+                );
+              }
+
+              if (isDone) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/35 bg-gradient-to-r from-[#EEF2FF] via-white to-[#ECFDF5] dark:from-[#4F46E5]/15 dark:via-[#161922] dark:to-emerald-500/10 p-3 text-xs shadow-2xs"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-2xs">
+                        {isTracked ? (
+                          <GitPullRequest className="h-4 w-4" />
+                        ) : (
+                          <FileEdit className="h-4 w-4" />
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-white dark:bg-white/10 border border-indigo-500/20 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-200">
+                            <Sparkles className="h-2.5 w-2.5" />
+                            {isTracked
+                              ? "Đề xuất (Tracked Changes)"
+                              : "Sửa trực tiếp"}
+                          </span>
+                          <span className="truncate text-[11px] font-medium text-[#777587] dark:text-neutral-400">
+                            {docFileName}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 truncate font-semibold text-[#0B1C30] dark:text-white">
+                          {readableAction}
+                        </div>
+                      </div>
+                    </div>
+
+                    {docId && (
+                      <button
+                        type="button"
+                        onClick={() => focusDocumentReviewBanner(docId)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.1] px-2.5 py-1.5 text-[11.5px] font-semibold text-[#4F46E5] dark:text-[#818CF8] hover:bg-[#4F46E5] hover:text-white transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>Xem & Duyệt trên tài liệu</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              }
+            }
+
+            if (
+              part.type === "tool-superdoc_stream_text" ||
+              (part.type === "dynamic-tool" &&
+                part.toolName === "superdoc_stream_text")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isDone = state === "output-available";
+              const errorMessage: string | undefined =
+                part.output?.errorMessage;
+              const isError =
+                state === "output-error" ||
+                Boolean(errorMessage) ||
+                (isDone && part.output?.status === "failed");
+
+              const mode: string =
+                part.output?.mode || part.input?.mode || "replace";
+              const modeLabelMap: Record<string, string> = {
+                replace: "Thay thế đoạn văn bản",
+                before: "Chèn nội dung phía trước",
+                after: "Chèn nội dung phía sau",
+                append: "Viết thêm đoạn mới ở cuối tài liệu",
+                paragraphBefore: "Thêm đoạn văn mới phía trên",
+                paragraphAfter: "Thêm đoạn văn mới phía dưới",
+              };
+              const readableMode = modeLabelMap[mode] || "Viết nội dung mới";
+              const changeMode: string = part.output?.changeMode || "tracked";
+              const isTracked = changeMode === "tracked";
+              const docId: string | undefined = part.output?.documentId;
+              const docFileName: string =
+                part.output?.fileName || "tài liệu Word";
+
+              if (isRunning) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2.5 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF] dark:bg-[#4F46E5]/10 p-3 text-xs text-[#4F46E5] dark:text-[#818CF8]"
+                  >
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                    <div className="space-y-0.5">
+                      <div className="font-bold text-[#3525CD] dark:text-white">
+                        AI đang viết trực tiếp lên tài liệu Word…
+                      </div>
+                      <div className="text-[11px] text-[#777587] dark:text-neutral-400">
+                        {readableMode}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (isError) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/20 p-3 text-xs text-[#BA1A1A] dark:text-rose-400"
+                  >
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                      {errorMessage ||
+                        `Không thể viết nội dung (${readableMode}) trên tài liệu Word.`}
+                    </span>
+                  </div>
+                );
+              }
+
+              if (isDone) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/35 bg-gradient-to-r from-[#EEF2FF] via-white to-[#ECFDF5] dark:from-[#4F46E5]/15 dark:via-[#161922] dark:to-emerald-500/10 p-3 text-xs shadow-2xs"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-2xs">
+                        {isTracked ? (
+                          <GitPullRequest className="h-4 w-4" />
+                        ) : (
+                          <FileEdit className="h-4 w-4" />
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-white dark:bg-white/10 border border-indigo-500/20 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-200">
+                            <Sparkles className="h-2.5 w-2.5" />
+                            {isTracked
+                              ? "Đề xuất (Tracked Changes)"
+                              : "Sửa trực tiếp"}
+                          </span>
+                          <span className="truncate text-[11px] font-medium text-[#777587] dark:text-neutral-400">
+                            {docFileName}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 truncate font-semibold text-[#0B1C30] dark:text-white">
+                          {readableMode}
+                        </div>
+                      </div>
+                    </div>
+
+                    {docId && (
+                      <button
+                        type="button"
+                        onClick={() => focusDocumentReviewBanner(docId)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-white dark:bg-[#12151C] border border-[#E5EEFF] dark:border-white/[0.1] px-2.5 py-1.5 text-[11.5px] font-semibold text-[#4F46E5] dark:text-[#818CF8] hover:bg-[#4F46E5] hover:text-white transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>Xem & Duyệt trên tài liệu</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              }
+            }
+
+            if (
+              part.type === "tool-superdoc_api_search" ||
+              (part.type === "dynamic-tool" &&
+                part.toolName === "superdoc_api_search")
+            ) {
+              const state: string = part.state || "input-available";
+              if (state === "input-streaming" || state === "input-available") {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/70 dark:bg-indigo-500/10 p-2.5 text-xs text-indigo-700 dark:text-indigo-200"
+                  >
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                    <span>Đang tra cứu API cấu trúc tài liệu Word…</span>
+                  </div>
+                );
+              }
+              if (state === "output-available") {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8FAFF] dark:bg-white/[0.03] px-3 py-2 text-[11.5px] text-[#464555] dark:text-neutral-300"
+                  >
+                    <Search className="h-3.5 w-3.5 shrink-0 text-[#4F46E5] dark:text-[#818CF8]" />
+                    <span className="font-semibold text-[#0B1C30] dark:text-white">
+                      Đã tra cứu schema thao tác nâng cao trên tài liệu Word
+                    </span>
+                  </div>
+                );
+              }
+            }
+
+            if (
+              part.type === "tool-superdoc_api_call" ||
+              (part.type === "dynamic-tool" &&
+                part.toolName === "superdoc_api_call")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isDone = state === "output-available";
+              const errorMessage: string | undefined =
+                part.output?.errorMessage;
+              const isError =
+                state === "output-error" ||
+                Boolean(errorMessage) ||
+                (isDone && part.output?.status === "failed");
+              const operationId: string =
+                part.output?.operationId || part.input?.operationId || "doc.api";
+              const docId: string | undefined = part.output?.documentId;
+
+              if (isRunning) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2.5 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF] dark:bg-[#4F46E5]/10 p-3 text-xs text-[#4F46E5] dark:text-[#818CF8]"
+                  >
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                    <span>Đang thực thi thao tác nâng cao ({operationId})…</span>
+                  </div>
+                );
+              }
+
+              if (isError) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/20 p-3 text-xs text-[#BA1A1A] dark:text-rose-400"
+                  >
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                      {errorMessage ||
+                        `Không thể thực thi thao tác (${operationId}).`}
+                    </span>
+                  </div>
+                );
+              }
+
+              if (isDone) {
+                return (
+                  <div
+                    key={index}
+                    className="my-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#C7D2FE] dark:border-[#4F46E5]/35 bg-[#F8FAFF] dark:bg-white/[0.03] px-3 py-2 text-[11.5px]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span className="font-semibold text-[#0B1C30] dark:text-white">
+                        Đã cập nhật cấu trúc Word ({operationId})
+                      </span>
+                    </div>
+                    {docId && (
+                      <button
+                        type="button"
+                        onClick={() => focusDocumentReviewBanner(docId)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-[#E5EEFF] dark:border-white/[0.1] px-2 py-1 text-[11px] font-semibold text-[#4F46E5] dark:text-[#818CF8] hover:bg-[#4F46E5] hover:text-white transition-colors cursor-pointer"
+                      >
+                        <Eye className="h-3 w-3" />
+                        <span>Xem trên tài liệu</span>
+                      </button>
+                    )}
+                  </div>
                 );
               }
             }

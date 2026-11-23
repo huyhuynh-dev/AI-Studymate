@@ -17,8 +17,41 @@ export interface DocumentItem {
   uploaded_at: string;
   ocr_status: DocumentStatus;
   embed_status: DocumentStatus;
+  content_version?: number;
+  indexed_version?: number;
+  sync_error?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface DocumentContentData {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  content: string;
+  version: number;
+  indexedVersion: number;
+  ocrStatus: DocumentStatus;
+  embedStatus: DocumentStatus;
+  syncError: string | null;
+  readOnly: boolean;
+  readOnlyReason: string | null;
+  isTruncated: boolean;
+  updatedAt: string;
+}
+
+export interface UpdateDocumentContentRequest {
+  content: string;
+  expectedVersion: number;
+}
+
+export interface UpdateDocumentContentResponse {
+  document: DocumentItem;
+  version: number;
+  indexedVersion: number;
+  unchanged: boolean;
+  embedStatus: DocumentStatus;
 }
 
 export interface InitUploadRequest {
@@ -49,4 +82,28 @@ export interface UploadProgressItem {
   progress: number;
   status: 'uploading' | 'verifying' | 'completed' | 'error';
   errorMessage?: string;
+}
+
+export interface OverwriteVersionRequest {
+  expectedVersion?: number;
+}
+
+export interface ImportGoogleDocRequest {
+  conversationId: string;
+  url: string;
+  fileName?: string;
+}
+
+export interface DocumentPreviewData {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  rawText: string | null;
+  ocrStatus: DocumentStatus;
+  embedStatus: DocumentStatus;
+  pageCount: number | null;
+  processingError: string | null;
+  updatedAt: string;
+  readOnlyReason: string | null;
 }

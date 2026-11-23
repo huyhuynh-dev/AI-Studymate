@@ -15,6 +15,7 @@ export interface UserProfile {
   role: string;
   isActive: boolean;
   isVerified: boolean;
+  dailyGoalMinutes: number;
   provider: string | null;
   hasPassword: boolean;
   createdAt: string;
@@ -25,6 +26,7 @@ export interface UserProfile {
 export interface UpdateUserProfileInput {
   name?: string;
   avatarStorageKey?: string;
+  dailyGoalMinutes?: number;
 }
 
 export interface RequestAvatarUploadInput {

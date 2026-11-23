@@ -1,6 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { DocumentChunk, Prisma } from '../../generated/prisma/client.js';
+import {
+    computeChunkContentHash,
+    type ExistingChunkForDiff,
+    type InsertChunkPlanItem,
+    type KeptChunkPlanItem,
+} from '../../documents/helpers/chunk-diff.helper.js';
+import {
+    extractTextAnchorFromChunkMetadata,
+    type TextCitationAnchor,
+} from '../../common/types/source-ref.types.js';
 
 export interface InsertedChunkRecord {
     id: string;
@@ -76,6 +86,7 @@ export class DocumentChunksRepoService {
             page_numbers: number[];
             headings: string[];
             bboxes: Prisma.JsonValue | null;
+            chunk_metadata: Prisma.JsonValue | null;
         }>
     > {
         const uniqueIds = [...new Set(documentIds.filter(Boolean))];
@@ -95,6 +106,7 @@ export class DocumentChunksRepoService {
                 page_numbers: true,
                 headings: true,
                 bboxes: true,
+                chunk_metadata: true,
             },
             orderBy: [{ document_id: 'asc' }, { chunk_index: 'asc' }],
         });
@@ -120,6 +132,7 @@ export class DocumentChunksRepoService {
                 pageNumbers: number[];
                 headings: string[];
                 bboxes: Prisma.JsonValue | null;
+                textAnchor?: TextCitationAnchor;
             }>;
         }>
     > {
@@ -192,6 +205,7 @@ export class DocumentChunksRepoService {
                 page_numbers: true,
                 headings: true,
                 bboxes: true,
+                chunk_metadata: true,
                 document: {
                     select: {
                         file_name: true,
@@ -214,6 +228,7 @@ export class DocumentChunksRepoService {
                     pageNumbers: number[];
                     headings: string[];
                     bboxes: Prisma.JsonValue | null;
+                    textAnchor?: TextCitationAnchor;
                 }>;
             }
         >();
@@ -230,6 +245,7 @@ export class DocumentChunksRepoService {
                 };
                 grouped.set(row.document_id, entry);
             }
+            const textAnchor = extractTextAnchorFromChunkMetadata(row.chunk_metadata);
             entry.chunks.push({
                 id: row.id,
                 chunkIndex: row.chunk_index,
@@ -238,6 +254,7 @@ export class DocumentChunksRepoService {
                 pageNumbers: row.page_numbers,
                 headings: row.headings,
                 bboxes: row.bboxes,
+                ...(textAnchor ? { textAnchor } : {}),
             });
         }
 
@@ -333,6 +350,7 @@ export class DocumentChunksRepoService {
             pageNumbers: number[];
             content: string;
             embedding: number[];
+            contentHash?: string;
             rawContent?: string;
             tokenCount?: number;
             headings?: string[];
@@ -363,11 +381,17 @@ export class DocumentChunksRepoService {
 
             for (const chunk of chunks) {
                 const vector = `[${chunk.embedding.join(',')}]`;
+                const contentHash =
+                    chunk.contentHash ??
+                    computeChunkContentHash({
+                        content: chunk.content,
+                        headings: chunk.headings,
+                    });
                 const rows = await tx.$queryRaw<Array<{ id: string }>>(
                     Prisma.sql`
                         INSERT INTO "document_chunks" (
                             "id", "document_id", "chunk_index", "page_numbers", "content",
-                            "raw_content", "token_count", "headings", "bboxes", "chunk_metadata",
+                            "raw_content", "content_hash", "token_count", "headings", "bboxes", "chunk_metadata",
                             "chunk_type", "has_image", "has_table", "embedding", "created_at"
                         )
                         VALUES (
@@ -377,6 +401,7 @@ export class DocumentChunksRepoService {
                             ${chunk.pageNumbers}::integer[],
                             ${chunk.content},
                             ${chunk.rawContent ?? null},
+                            ${contentHash},
                             ${chunk.tokenCount ?? null},
                             ${chunk.headings ?? []}::text[],
                             ${chunk.bboxes ? JSON.stringify(chunk.bboxes) : null}::jsonb,
@@ -405,6 +430,166 @@ export class DocumentChunksRepoService {
         });
 
         return insertedRecords;
+    }
+
+    async findExistingChunksForDiff(
+        documentId: string
+    ): Promise<ExistingChunkForDiff[]> {
+        const rows = await this.prisma.documentChunk.findMany({
+            where: { document_id: documentId },
+            orderBy: { chunk_index: 'asc' },
+            select: {
+                id: true,
+                chunk_index: true,
+                content_hash: true,
+                content: true,
+                headings: true,
+            },
+        });
+
+        return rows.map((row) => ({
+            id: row.id,
+            chunkIndex: row.chunk_index,
+            contentHash: row.content_hash,
+            content: row.content,
+            headings: row.headings,
+        }));
+    }
+
+    /**
+     * Phương án 2: Áp dụng kế hoạch Incremental Chunk Diffing trong một Prisma transaction duy nhất.
+     * - Xóa chunk dư thừa (`toDeleteIds`).
+     * - Dùng 2-Phase Negative-Index Shift để cập nhật `chunk_index` & metadata cho `keptChunks` mà KHÔNG chạm vào `id` (UUID) hay `embedding` 768 chiều cũ.
+     * - Chỉ INSERT các chunk mới/sửa đổi (`toInsertWithEmbeddings`) kèm vector mới.
+     */
+    async applyIncrementalChunkPlanWithEmbeddings(
+        documentId: string,
+        plan: {
+            keptChunks: KeptChunkPlanItem[];
+            toInsertWithEmbeddings: Array<
+                InsertChunkPlanItem & { embedding: number[] }
+            >;
+            toDeleteIds: string[];
+        }
+    ): Promise<InsertedChunkRecord[]> {
+        for (const item of plan.toInsertWithEmbeddings) {
+            if (
+                item.embedding.length !== 768 ||
+                item.embedding.some((value) => !Number.isFinite(value))
+            ) {
+                throw new BadRequestException(
+                    `Chunk #${item.chunkIndex} có vector embedding không hợp lệ (yêu cầu 768 chiều)`
+                );
+            }
+        }
+
+        const resultRecords: InsertedChunkRecord[] = [];
+
+        await this.prisma.$transaction(async (tx) => {
+            if (plan.toDeleteIds.length > 0) {
+                await tx.documentChunk.deleteMany({
+                    where: {
+                        document_id: documentId,
+                        id: { in: plan.toDeleteIds },
+                    },
+                });
+            }
+
+            // Phase 1: Dời tạm các chunk giữ nguyên bị đổi vị trí sang index âm để tránh xung đột @@unique([document_id, chunk_index])
+            let shiftCounter = 0;
+            for (const kept of plan.keptChunks) {
+                if (kept.previousChunkIndex === kept.chunkIndex) continue;
+                shiftCounter += 1;
+                const tempNegativeIndex = -shiftCounter;
+                await tx.$executeRaw(
+                    Prisma.sql`
+                        UPDATE "document_chunks"
+                        SET "chunk_index" = ${tempNegativeIndex}
+                        WHERE "id" = ${kept.existingId}::uuid
+                          AND "document_id" = ${documentId}::uuid
+                    `
+                );
+            }
+
+            // Phase 2: Cập nhật vị trí & metadata mới cho keptChunks, bảo toàn 100% UUID và vector embedding cũ
+            for (const kept of plan.keptChunks) {
+                const { chunk } = kept;
+                await tx.$executeRaw(
+                    Prisma.sql`
+                        UPDATE "document_chunks"
+                        SET "chunk_index" = ${kept.chunkIndex},
+                            "page_numbers" = ${chunk.pageNumbers}::integer[],
+                            "raw_content" = ${chunk.rawContent ?? null},
+                            "content_hash" = ${kept.contentHash},
+                            "token_count" = ${chunk.tokenCount ?? null},
+                            "headings" = ${chunk.headings ?? []}::text[],
+                            "bboxes" = ${chunk.bboxes ? JSON.stringify(chunk.bboxes) : null}::jsonb,
+                            "chunk_metadata" = ${chunk.metadata ? JSON.stringify(chunk.metadata) : null}::jsonb,
+                            "chunk_type" = ${chunk.chunkType ?? 'text'}::"ChunkType",
+                            "has_image" = ${chunk.hasImage ?? false},
+                            "has_table" = ${chunk.hasTable ?? false}
+                        WHERE "id" = ${kept.existingId}::uuid
+                          AND "document_id" = ${documentId}::uuid
+                    `
+                );
+
+                resultRecords.push({
+                    id: kept.existingId,
+                    chunkIndex: kept.chunkIndex,
+                    pageNumbers: chunk.pageNumbers,
+                    content: chunk.content,
+                    hasImage: chunk.hasImage ?? false,
+                    metadata: chunk.metadata,
+                });
+            }
+
+            // Phase 3: Chèn các chunk mới / bị sửa đổi kèm vector 768 chiều
+            for (const ins of plan.toInsertWithEmbeddings) {
+                const { chunk } = ins;
+                const vector = `[${ins.embedding.join(',')}]`;
+                const rows = await tx.$queryRaw<Array<{ id: string }>>(
+                    Prisma.sql`
+                        INSERT INTO "document_chunks" (
+                            "id", "document_id", "chunk_index", "page_numbers", "content",
+                            "raw_content", "content_hash", "token_count", "headings", "bboxes", "chunk_metadata",
+                            "chunk_type", "has_image", "has_table", "embedding", "created_at"
+                        )
+                        VALUES (
+                            gen_random_uuid(),
+                            ${documentId}::uuid,
+                            ${ins.chunkIndex},
+                            ${chunk.pageNumbers}::integer[],
+                            ${chunk.content},
+                            ${chunk.rawContent ?? null},
+                            ${ins.contentHash},
+                            ${chunk.tokenCount ?? null},
+                            ${chunk.headings ?? []}::text[],
+                            ${chunk.bboxes ? JSON.stringify(chunk.bboxes) : null}::jsonb,
+                            ${chunk.metadata ? JSON.stringify(chunk.metadata) : null}::jsonb,
+                            ${chunk.chunkType ?? 'text'}::"ChunkType",
+                            ${chunk.hasImage ?? false},
+                            ${chunk.hasTable ?? false},
+                            ${vector}::vector,
+                            NOW()
+                        )
+                        RETURNING "id"
+                    `
+                );
+
+                if (rows[0]?.id) {
+                    resultRecords.push({
+                        id: rows[0].id,
+                        chunkIndex: ins.chunkIndex,
+                        pageNumbers: chunk.pageNumbers,
+                        content: chunk.content,
+                        hasImage: chunk.hasImage ?? false,
+                        metadata: chunk.metadata,
+                    });
+                }
+            }
+        });
+
+        return resultRecords.sort((a, b) => a.chunkIndex - b.chunkIndex);
     }
 
     async countByDocumentId(documentId: string): Promise<number> {
@@ -460,7 +645,7 @@ export class DocumentChunksRepoService {
                 Prisma.sql`
                     INSERT INTO "document_chunks" (
                         "id", "document_id", "chunk_index", "page_numbers", "content",
-                        "raw_content", "token_count", "headings", "bboxes", "chunk_metadata",
+                        "raw_content", "content_hash", "token_count", "headings", "bboxes", "chunk_metadata",
                         "chunk_type", "has_image", "has_table", "embedding", "created_at"
                     )
                     SELECT
@@ -470,6 +655,7 @@ export class DocumentChunksRepoService {
                         "page_numbers",
                         "content",
                         "raw_content",
+                        "content_hash",
                         "token_count",
                         "headings",
                         "bboxes",

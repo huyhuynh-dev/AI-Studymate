@@ -32,6 +32,30 @@ import {
   type DocumentJobData,
   DocumentsQueueService,
 } from './documents-queue.service.js';
+import {
+  isDirectTextIngestionDocument,
+  isDocxDocument,
+  prepareTextForHybridChunking,
+} from '../constants/editable-document.constants.js';
+import {
+  computeChunkContentHash,
+  computeIncrementalChunkPlan,
+  type IncomingChunkForDiff,
+} from '../helpers/chunk-diff.helper.js';
+import { alignChunksToSourceText } from '../helpers/text-anchor.helper.js';
+
+interface CachedAssetVlmEntry {
+  vlmDescription: string;
+  caption: string | null;
+}
+
+const MAX_ASSET_VLM_CACHE_ENTRIES = 50;
+const DOCX_QUOTE_EXACT_MAX_CHARS = 600;
+const PRESERVED_SOURCE_METADATA_KEYS = [
+  'source_type',
+  'source_url',
+  'google_doc_id',
+] as const;
 
 @Injectable()
 export class DocumentIngestionProcessor
@@ -110,12 +134,28 @@ export class DocumentIngestionProcessor
       );
 
       for (const doc of incompleteDocs) {
-        await this.documentsQueueService.addProcessingJob({
-          documentId: doc.id,
-          mimeType: doc.mime_type,
-          storageKey: doc.storage_key,
-          fileName: doc.file_name,
-        });
+        const isReindex = (doc as { ocr_status?: string }).ocr_status === 'done' ||
+          ((doc as { content_version?: number }).content_version ?? 1) > 1;
+        if (isReindex && typeof this.documentsQueueService.enqueueContentReindexJob === 'function') {
+          await this.documentsQueueService.enqueueContentReindexJob(
+            {
+              documentId: doc.id,
+              mimeType: doc.mime_type,
+              storageKey: doc.storage_key,
+              fileName: doc.file_name,
+              targetVersion: (doc as { content_version?: number }).content_version,
+              isReindex: true,
+            },
+            { delayMs: 0 },
+          );
+        } else {
+          await this.documentsQueueService.addProcessingJob({
+            documentId: doc.id,
+            mimeType: doc.mime_type,
+            storageKey: doc.storage_key,
+            fileName: doc.file_name,
+          });
+        }
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -149,75 +189,133 @@ export class DocumentIngestionProcessor
       return;
     }
 
-    if (doc.ocr_status === 'done' && doc.embed_status === 'done') {
+    const rawContentVersion = (doc as { content_version?: number }).content_version;
+    const rawIndexedVersion = (doc as { indexed_version?: number }).indexed_version;
+    const contentVersion = rawContentVersion ?? 1;
+    const indexedVersion =
+      rawIndexedVersion !== undefined
+        ? rawIndexedVersion
+        : doc.ocr_status === 'done' && doc.embed_status === 'done'
+          ? contentVersion
+          : 0;
+
+    if (
+      doc.ocr_status === 'done' &&
+      doc.embed_status === 'done' &&
+      indexedVersion >= contentVersion
+    ) {
       this.logger.debug(
-        `Tài liệu [${documentId}] đã hoàn tất xử lý từ trước, bỏ qua job [${job.id}]`,
+        `Tài liệu [${documentId}] đã hoàn tất đồng bộ tới version ${contentVersion}, bỏ qua job [${job.id}]`,
       );
       return;
     }
 
     this.activeDocumentIds.add(documentId);
     return RequestContextStore.runWithUserContext(doc.user_id, async () => {
-      await this.executeIngestionPipeline(job, doc, fileName);
+      await this.executeIngestionPipeline(job, doc, contentVersion, fileName);
     });
+  }
+
+  private async isVersionStillCurrent(
+    documentId: string,
+    snapshotVersion: number,
+  ): Promise<boolean> {
+    const latest = await this.documentsRepo.findRawDocumentById(documentId);
+    if (!latest) {
+      return false;
+    }
+    const currentVersion =
+      (latest as { content_version?: number }).content_version ?? 1;
+    return currentVersion === snapshotVersion;
   }
 
   private async executeIngestionPipeline(
     job: Job<DocumentJobData>,
     doc: NonNullable<Awaited<ReturnType<DocumentsRepoService['findRawDocumentById']>>>,
+    snapshotVersion: number,
     fileName?: string,
   ): Promise<void> {
     const { documentId, mimeType, storageKey } = job.data;
     const effectiveFileName = fileName || doc.file_name || 'document';
+    const isReindex = doc.ocr_status === 'done';
+    let failed = false;
+    let committedVersion = 0;
+
     this.logger.log(
-      `Bắt đầu pipeline xử lý tài liệu [${documentId}] (MIME: ${mimeType}, File: ${effectiveFileName})`,
+      `Bắt đầu pipeline xử lý tài liệu [${documentId}] (MIME: ${mimeType}, File: ${effectiveFileName}, v=${snapshotVersion}, reindex=${isReindex})`,
     );
 
     try {
-      // 1. Đánh dấu bắt đầu bước trích xuất
-      await this.documentsRepo.updateDocumentById(documentId, {
-        ocr_status: 'processing',
-        processing_error: null,
-      });
+      // 1. Đánh dấu bắt đầu xử lý (Zero-Downtime: nếu là re-index thì giữ nguyên ocr_status = 'done' để RAG Search không bị gián đoạn)
+      if (isReindex) {
+        await this.documentsRepo.updateDocumentById(documentId, {
+          embed_status: 'processing',
+          processing_error: null,
+          sync_error: null,
+        });
+      } else {
+        await this.documentsRepo.updateDocumentById(documentId, {
+          ocr_status: 'processing',
+          processing_error: null,
+          sync_error: null,
+        });
+      }
 
       // 2. Tải buffer từ R2 đúng 1 lần duy nhất và tính SHA-256 file_hash
       const buffer = await this.storageService.getObjectBuffer(storageKey);
       const fileHash = createHash('sha256').update(buffer).digest('hex');
 
-      // 3. Kiểm tra trùng lặp file_hash trong cùng conversation_id
-      const reused = await this.tryReuseDuplicateDocument(doc, fileHash);
-      if (reused) {
-        this.logger.log(
-          `Tái sử dụng thành công dữ liệu từ tài liệu trùng file_hash [${fileHash}] cho [${documentId}]`,
+      // 3. Kiểm tra trùng lặp file_hash trong cùng conversation_id (chỉ áp dụng khi upload mới lần đầu)
+      if (!isReindex) {
+        const reused = await this.tryReuseDuplicateDocument(
+          doc,
+          fileHash,
+          snapshotVersion,
         );
-        return;
+        if (reused) {
+          committedVersion = snapshotVersion;
+          this.logger.log(
+            `Tái sử dụng thành công dữ liệu từ tài liệu trùng file_hash [${fileHash}] cho [${documentId}]`,
+          );
+          return;
+        }
       }
 
       // 4. Phân nhánh xử lý theo loại tệp
+      let didCommit = false;
       if (this.isImageDocument(mimeType, effectiveFileName)) {
-        await this.processImageDocument(
+        didCommit = await this.processImageDocument(
           doc,
           buffer,
           fileHash,
           mimeType,
           effectiveFileName,
+          snapshotVersion,
         );
-      } else if (this.isPlainTextOrMarkdown(mimeType, effectiveFileName)) {
-        await this.processPlainTextOrMarkdownDocument(
+      } else if (isDirectTextIngestionDocument(mimeType, effectiveFileName)) {
+        didCommit = await this.processPlainTextOrMarkdownDocument(
           doc,
           buffer,
           fileHash,
+          mimeType,
           effectiveFileName,
+          snapshotVersion,
         );
       } else {
-        await this.processStructuredDocument(
+        didCommit = await this.processStructuredDocument(
           doc,
           buffer,
           fileHash,
           effectiveFileName,
+          snapshotVersion,
         );
       }
+
+      if (didCommit) {
+        committedVersion = snapshotVersion;
+      }
     } catch (error: unknown) {
+      failed = true;
       const message =
         error instanceof Error
           ? error.message
@@ -229,15 +327,63 @@ export class DocumentIngestionProcessor
         stack,
       );
 
-      await this.documentsRepo.updateDocumentById(documentId, {
-        ocr_status: 'failed',
-        embed_status: 'failed',
-        processing_error: message,
-      });
+      if (isReindex) {
+        await this.documentsRepo.updateDocumentById(documentId, {
+          embed_status: 'failed',
+          sync_error: message,
+          processing_error: message,
+        });
+      } else {
+        await this.documentsRepo.updateDocumentById(documentId, {
+          ocr_status: 'failed',
+          embed_status: 'failed',
+          processing_error: message,
+          sync_error: message,
+        });
+      }
 
       throw error;
     } finally {
       this.activeDocumentIds.delete(documentId);
+
+      if (
+        !failed &&
+        typeof this.documentsQueueService.enqueueContentReindexJob === 'function'
+      ) {
+        try {
+          const latestDoc = await this.documentsRepo.findRawDocumentById(documentId);
+          const rawLatestVersion = (
+            latestDoc as { content_version?: number } | null
+          )?.content_version;
+
+          if (latestDoc && rawLatestVersion !== undefined) {
+            const rawLatestIndexed =
+              (latestDoc as { indexed_version?: number }).indexed_version ?? 0;
+            const effectiveIndexed = Math.max(rawLatestIndexed, committedVersion);
+
+            if (
+              rawLatestVersion > effectiveIndexed &&
+              latestDoc.embed_status !== 'failed'
+            ) {
+              await Promise.resolve(
+                this.documentsQueueService.enqueueContentReindexJob(
+                  {
+                    documentId: latestDoc.id,
+                    mimeType: latestDoc.mime_type,
+                    storageKey: latestDoc.storage_key,
+                    fileName: latestDoc.file_name,
+                    targetVersion: rawLatestVersion,
+                    isReindex: latestDoc.ocr_status === 'done',
+                  },
+                  { delayMs: 500 },
+                ),
+              );
+            }
+          }
+        } catch {
+          // Bỏ qua lỗi đọc DB / Redis tạm thời khi kiểm tra follow-up version
+        }
+      }
     }
   }
 
@@ -248,6 +394,7 @@ export class DocumentIngestionProcessor
   private async tryReuseDuplicateDocument(
     doc: Document,
     fileHash: string,
+    snapshotVersion = 1,
   ): Promise<boolean> {
     const existingDoc = await this.documentsRepo.findCompletedDocumentByHash(
       doc.conversation_id,
@@ -312,7 +459,9 @@ export class DocumentIngestionProcessor
         (existingDoc.doc_metadata as Prisma.InputJsonValue) ?? Prisma.DbNull,
       ocr_status: 'done',
       embed_status: 'done',
+      indexed_version: snapshotVersion,
       processing_error: null,
+      sync_error: null,
     });
 
     this.logger.log(
@@ -330,7 +479,8 @@ export class DocumentIngestionProcessor
     fileHash: string,
     mimeType: string,
     fileName: string,
-  ): Promise<void> {
+    snapshotVersion = 1,
+  ): Promise<boolean> {
     this.logger.log(
       `[Nhánh Ảnh] Gửi hình ảnh [${doc.id}] (${fileName}) tới Vision LLM (Single-Pass OCR + Mô tả + Chunking)...`,
     );
@@ -396,7 +546,11 @@ export class DocumentIngestionProcessor
       processing_error: null,
     });
 
-    const insertedChunks = await this.embedAndSaveChunks(doc.id, chunks);
+    const { insertedChunks, abortedAsStale } =
+      await this.embedAndSaveChunks(doc.id, chunks, snapshotVersion);
+    if (abortedAsStale) {
+      return false;
+    }
 
     await this.documentAssetsRepo.replaceDocumentAssets(doc.id, [
       {
@@ -413,30 +567,47 @@ export class DocumentIngestionProcessor
 
     await this.documentsRepo.updateDocumentById(doc.id, {
       embed_status: 'done',
+      indexed_version: snapshotVersion,
       processing_error: null,
+      sync_error: null,
     });
 
     this.logger.log(
       `[Nhánh Ảnh] Hoàn tất xử lý ảnh [${doc.id}]: đã lưu ${insertedChunks.length} chunks và 1 asset`,
     );
+    return true;
   }
 
   /**
-   * TRƯỜNG HỢP 1A: Xử lý tệp .md / .txt
-   * Đọc trực tiếp UTF-8 để lưu raw_text (bỏ qua API Convert của Docling) và chỉ gọi API HybridChunker.
+   * TRƯỜNG HỢP 1A: Xử lý tệp văn bản thuần & đánh dấu (.md, .txt, .html, .json, .xml, .yaml, .csv, .toml, .log)
+   * Đọc trực tiếp UTF-8 để chuẩn hóa raw_text (bỏ qua API Convert của Docling) và chỉ gọi API HybridChunker.
    */
   private async processPlainTextOrMarkdownDocument(
     doc: Document,
     buffer: Buffer,
     fileHash: string,
+    mimeType: string,
     fileName: string,
-  ): Promise<void> {
+    snapshotVersion = 1,
+  ): Promise<boolean> {
     this.logger.log(
-      `[Nhánh MD/TXT] Đọc trực tiếp UTF-8 cho [${doc.id}] (${fileName}) và băm qua Docling HybridChunker...`,
+      `[Nhánh Text/Markup] Đọc trực tiếp UTF-8 cho [${doc.id}] (${fileName}, v=${snapshotVersion}) và băm qua Docling HybridChunker...`,
     );
 
-    const rawText = buffer.toString('utf-8').replace(/\r\n/g, '\n').trim();
-    const toc = this.doclingService.extractTocFromMarkdown(rawText);
+    const utf8Text = buffer.toString('utf-8');
+    const { chunkInputMarkdown, extractedRawText, isHtml } =
+      prepareTextForHybridChunking(utf8Text, mimeType, fileName);
+
+    if (!(await this.isVersionStillCurrent(doc.id, snapshotVersion))) {
+      this.logger.debug(
+        `[Nhánh Text/Markup] Phiên bản v=${snapshotVersion} của [${doc.id}] đã lỗi thời, dừng trước khi ghi DB`,
+      );
+      return false;
+    }
+
+    const toc = chunkInputMarkdown
+      ? this.doclingService.extractTocFromMarkdown(chunkInputMarkdown)
+      : [];
 
     const docMetadata: Record<string, unknown> = {
       toc,
@@ -447,20 +618,34 @@ export class DocumentIngestionProcessor
 
     await this.documentsRepo.updateDocumentById(doc.id, {
       file_hash: fileHash,
-      raw_text: rawText,
+      raw_text: extractedRawText,
       page_count: 1,
       doc_metadata: docMetadata as Prisma.InputJsonValue,
       ocr_status: 'done',
-      embed_status: rawText.length > 0 ? 'processing' : 'done',
+      embed_status: chunkInputMarkdown.length > 0 ? 'processing' : 'done',
       processing_error: null,
+      sync_error: null,
     });
 
-    if (rawText.length === 0) {
-      return;
+    if (chunkInputMarkdown.length === 0) {
+      const emptySync = await this.embedAndSaveChunks(
+        doc.id,
+        [],
+        snapshotVersion,
+      );
+      if (emptySync.abortedAsStale) return false;
+
+      await this.documentsRepo.updateDocumentById(doc.id, {
+        embed_status: 'done',
+        indexed_version: snapshotVersion,
+        processing_error: null,
+        sync_error: null,
+      });
+      return true;
     }
 
     const rawChunks = await this.doclingService.chunkMarkdownHybrid(
-      rawText,
+      chunkInputMarkdown,
       fileName,
     );
     const normalizedChunks = rawChunks.map((c) => ({
@@ -468,33 +653,51 @@ export class DocumentIngestionProcessor
       pageNumbers: c.pageNumbers.length > 0 ? c.pageNumbers : [1],
     }));
 
-    const insertedChunks = await this.embedAndSaveChunks(
-      doc.id,
+    const rawSourceForAlignment = isHtml
+      ? extractedRawText
+      : utf8Text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    const anchoredChunks = alignChunksToSourceText(
+      rawSourceForAlignment,
       normalizedChunks,
+      {
+        fileName,
+        mimeType,
+        unwrapStructuredWrapper:
+          !isHtml && chunkInputMarkdown !== extractedRawText,
+      },
     );
+
+    const { insertedChunks, abortedAsStale } =
+      await this.embedAndSaveChunks(doc.id, anchoredChunks, snapshotVersion);
+    if (abortedAsStale) {
+      return false;
+    }
 
     await this.documentsRepo.updateDocumentById(doc.id, {
       embed_status: 'done',
+      indexed_version: snapshotVersion,
       processing_error: null,
+      sync_error: null,
     });
 
     this.logger.log(
-      `[Nhánh MD/TXT] Hoàn tất xử lý [${doc.id}]: đã lưu ${insertedChunks.length} chunks`,
+      `[Nhánh Text/Markup] Hoàn tất xử lý [${doc.id}] (v=${snapshotVersion}): tổng ${insertedChunks.length} chunks`,
     );
+    return true;
   }
 
   /**
-   * TRƯỜNG HỢP 1B (Cách 3A): Xử lý tệp tài liệu có cấu trúc (PDF, DOCX, PPTX, XLSX, CSV...)
-   * Bước 1: Convert qua Docling (lấy md_content + json_content + ảnh crop + VLM Tiếng Việt).
-   * Bước 2: Truyền json_docling nhẹ sang API HybridChunker + Giải tham chiếu JSON Pointer & Post-Chunking Enrichment.
-   * Bước 3: Tạo Vector Embedding, lưu document_chunks và ánh xạ đa tầng chunk_id vào document_assets (đạt 100%).
+   * TRƯỜNG HỢP 1B (Cách 3A): Xử lý tệp tài liệu có cấu trúc (PDF, DOCX, PPTX, XLSX...)
+   * Kết hợp Phương án 2 (Incremental Chunk Diffing) khi overwrite PDF để bảo toàn chunk_id và giảm chi phí Embedding.
    */
   private async processStructuredDocument(
     doc: Document,
     buffer: Buffer,
     fileHash: string,
     fileName: string,
-  ): Promise<void> {
+    snapshotVersion = 1,
+  ): Promise<boolean> {
     this.logger.log(
       `[Nhánh Tài liệu] Bước 1: Gửi [${doc.id}] (${fileName}) tới Docling Convert...`,
     );
@@ -503,6 +706,13 @@ export class DocumentIngestionProcessor
       buffer,
       fileName,
     );
+
+    if (!(await this.isVersionStillCurrent(doc.id, snapshotVersion))) {
+      this.logger.debug(
+        `[Nhánh Tài liệu] Phiên bản v=${snapshotVersion} của [${doc.id}] đã lỗi thời sau bước Docling Convert, bỏ qua ghi đè`,
+      );
+      return false;
+    }
 
     // Upload file .docling.json (đã làm nhẹ base64 bằng PNG 1x1) lên R2
     let doclingJsonKey: string | null = null;
@@ -519,36 +729,65 @@ export class DocumentIngestionProcessor
       );
     }
 
+    const previousAssets =
+      typeof this.documentAssetsRepo.findAssetsByDocumentId === 'function'
+        ? await this.documentAssetsRepo.findAssetsByDocumentId(doc.id)
+        : [];
+    const previousVlmCache = this.extractAssetVlmCache(doc.doc_metadata);
+
     // Upload các ảnh crop (pictures) lên R2 và lưu vào bảng document_assets
     let createdAssets: DocumentAsset[] = [];
+    let nextVlmCache: Record<string, CachedAssetVlmEntry> = {};
     if (conversion.extractedPictures.length > 0) {
-      createdAssets = await this.uploadAndSaveExtractedPictures(
+      const assetResult = await this.uploadAndSaveExtractedPictures(
         doc,
         conversion.extractedPictures,
         fileName,
+        previousVlmCache,
       );
+      createdAssets = assetResult.assets;
+      nextVlmCache = assetResult.vlmCache;
+    } else if (previousAssets.length > 0) {
+      await this.documentAssetsRepo.replaceDocumentAssets(doc.id, []);
     }
+
+    await this.cleanupOrphanedAssetObjects(
+      doc.id,
+      doc.storage_key,
+      previousAssets,
+      createdAssets,
+    );
 
     const hasContentForChunking =
       conversion.mdContent.length > 0 ||
       Boolean(conversion.sanitizedJsonContent);
+
+    const mergedDocMetadata = this.mergeDocumentMetadata(
+      doc.doc_metadata,
+      conversion.docMetadata,
+      nextVlmCache,
+    );
 
     await this.documentsRepo.updateDocumentById(doc.id, {
       file_hash: fileHash,
       raw_text: conversion.mdContent,
       page_count: conversion.pageCount,
       docling_json_key: doclingJsonKey,
-      doc_metadata: conversion.docMetadata as Prisma.InputJsonValue,
+      doc_metadata: mergedDocMetadata as Prisma.InputJsonValue,
       ocr_status: 'done',
       embed_status: hasContentForChunking ? 'processing' : 'done',
+      indexed_version: hasContentForChunking ? doc.indexed_version : snapshotVersion,
       processing_error: null,
+      sync_error: null,
     });
 
     if (!hasContentForChunking) {
+      const emptySync = await this.embedAndSaveChunks(doc.id, [], snapshotVersion);
+      if (emptySync.abortedAsStale) return false;
       this.logger.log(
         `[Nhánh Tài liệu] Tài liệu [${doc.id}] không có nội dung để chunk, hoàn tất.`,
       );
-      return;
+      return true;
     }
 
     // Bước 2: Chuyển tiếp json_docling sang HybridChunker (Cách 3A - Luồng chính bắt buộc)
@@ -590,8 +829,19 @@ export class DocumentIngestionProcessor
           : rawMarkdownChunks;
     }
 
-    // Bước 3: Tạo Embedding, lưu document_chunks và liên kết đa tầng chunk_id sang document_assets
-    const insertedChunks = await this.embedAndSaveChunks(doc.id, chunks);
+    chunks = this.attachDocxQuoteMetadataIfMissing(
+      chunks,
+      doc.mime_type,
+      fileName,
+    );
+
+    // Bước 3: Tạo Embedding tăng dần (Phương án 2), lưu document_chunks và liên kết đa tầng chunk_id sang document_assets
+    const { insertedChunks, abortedAsStale } =
+      await this.embedAndSaveChunks(doc.id, chunks, snapshotVersion);
+    if (abortedAsStale) {
+      return false;
+    }
+
     await this.linkInsertedChunksToAssets(
       doc.id,
       insertedChunks,
@@ -601,30 +851,49 @@ export class DocumentIngestionProcessor
 
     await this.documentsRepo.updateDocumentById(doc.id, {
       embed_status: 'done',
+      indexed_version: snapshotVersion,
       processing_error: null,
+      sync_error: null,
     });
 
     this.logger.log(
-      `[Nhánh Tài liệu] Hoàn tất toàn bộ pipeline cho [${doc.id}]: ${conversion.pageCount} trang, ${insertedChunks.length} chunks, ${conversion.extractedPictures.length} assets`,
+      `[Nhánh Tài liệu] Hoàn tất toàn bộ pipeline cho [${doc.id}] (v=${snapshotVersion}): ${conversion.pageCount} trang, ${insertedChunks.length} chunks, ${conversion.extractedPictures.length} assets`,
     );
+    return true;
   }
 
   private async uploadAndSaveExtractedPictures(
     doc: Document,
     pictures: ExtractedDoclingPicture[],
     fileName?: string,
-  ): Promise<DocumentAsset[]> {
+    previousVlmCache: Record<string, CachedAssetVlmEntry> = {},
+  ): Promise<{
+    assets: DocumentAsset[];
+    vlmCache: Record<string, CachedAssetVlmEntry>;
+  }> {
     const assetInputs: CreateDocumentAssetInput[] = [];
+    const nextVlmCache: Record<string, CachedAssetVlmEntry> = {};
 
     for (const pic of pictures) {
       const ext = this.extensionFromImageMime(pic.mimeType);
       const assetKey = `users/${doc.user_id}/conversations/${doc.conversation_id}/assets/${doc.id}/picture-${pic.index}.${ext}`;
+      const picSha256 = createHash('sha256').update(pic.buffer).digest('hex');
 
       await this.storageService.uploadObjectBuffer(
         assetKey,
         pic.buffer,
         pic.mimeType,
       );
+
+      if (!pic.vlmDescription?.trim()) {
+        const cached = previousVlmCache[picSha256];
+        if (cached?.vlmDescription) {
+          pic.vlmDescription = cached.vlmDescription;
+          if (!pic.caption && cached.caption) {
+            pic.caption = cached.caption;
+          }
+        }
+      }
 
       if (
         !pic.vlmDescription?.trim() &&
@@ -653,6 +922,16 @@ export class DocumentIngestionProcessor
         }
       }
 
+      if (
+        pic.vlmDescription?.trim() &&
+        Object.keys(nextVlmCache).length < MAX_ASSET_VLM_CACHE_ENTRIES
+      ) {
+        nextVlmCache[picSha256] = {
+          vlmDescription: pic.vlmDescription.trim(),
+          caption: pic.caption ?? null,
+        };
+      }
+
       assetInputs.push({
         assetType: pic.assetType,
         selfRef: pic.selfRef,
@@ -664,27 +943,246 @@ export class DocumentIngestionProcessor
       });
     }
 
-    return await this.documentAssetsRepo.replaceDocumentAssets(
+    const assets = await this.documentAssetsRepo.replaceDocumentAssets(
       doc.id,
       assetInputs,
     );
+    return { assets, vlmCache: nextVlmCache };
+  }
+
+  private async cleanupOrphanedAssetObjects(
+    documentId: string,
+    documentStorageKey: string,
+    previousAssets: DocumentAsset[],
+    createdAssets: DocumentAsset[],
+  ): Promise<void> {
+    if (
+      previousAssets.length === 0 ||
+      typeof this.storageService.deleteObject !== 'function'
+    ) {
+      return;
+    }
+
+    const activeKeys = new Set(createdAssets.map((a) => a.storage_key));
+    for (const prev of previousAssets) {
+      if (
+        !prev.storage_key ||
+        prev.storage_key === documentStorageKey ||
+        activeKeys.has(prev.storage_key)
+      ) {
+        continue;
+      }
+      await this.storageService.deleteObject(prev.storage_key).catch((err) => {
+        this.logger.warn(
+          `Không thể xóa asset cũ trên R2 (${prev.storage_key}) cho [${documentId}]: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+    }
+  }
+
+  private extractAssetVlmCache(
+    rawMeta: Prisma.JsonValue | null | undefined,
+  ): Record<string, CachedAssetVlmEntry> {
+    if (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta)) {
+      return {};
+    }
+    const cacheRaw = (rawMeta as Record<string, unknown>).asset_vlm_cache;
+    if (!cacheRaw || typeof cacheRaw !== 'object' || Array.isArray(cacheRaw)) {
+      return {};
+    }
+
+    const result: Record<string, CachedAssetVlmEntry> = {};
+    for (const [hash, value] of Object.entries(
+      cacheRaw as Record<string, unknown>,
+    )) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        continue;
+      }
+      const entry = value as Record<string, unknown>;
+      if (typeof entry.vlmDescription === 'string' && entry.vlmDescription.trim()) {
+        result[hash] = {
+          vlmDescription: entry.vlmDescription,
+          caption: typeof entry.caption === 'string' ? entry.caption : null,
+        };
+      }
+    }
+    return result;
+  }
+
+  private mergeDocumentMetadata(
+    previousMeta: Prisma.JsonValue | null | undefined,
+    incomingMeta: Record<string, unknown> | null | undefined,
+    nextVlmCache: Record<string, CachedAssetVlmEntry>,
+  ): Record<string, unknown> {
+    const merged: Record<string, unknown> =
+      incomingMeta && typeof incomingMeta === 'object' && !Array.isArray(incomingMeta)
+        ? { ...incomingMeta }
+        : {};
+
+    if (
+      previousMeta &&
+      typeof previousMeta === 'object' &&
+      !Array.isArray(previousMeta)
+    ) {
+      const prevRecord = previousMeta as Record<string, unknown>;
+      for (const key of PRESERVED_SOURCE_METADATA_KEYS) {
+        if (prevRecord[key] !== undefined && merged[key] === undefined) {
+          merged[key] = prevRecord[key];
+        }
+      }
+    }
+
+    if (Object.keys(nextVlmCache).length > 0) {
+      merged.asset_vlm_cache = nextVlmCache;
+    } else {
+      delete merged.asset_vlm_cache;
+    }
+
+    return merged;
+  }
+
+  private attachDocxQuoteMetadataIfMissing(
+    chunks: DoclingChunkResult[],
+    mimeType: string,
+    fileName: string,
+  ): DoclingChunkResult[] {
+    if (!isDocxDocument(mimeType, fileName) || chunks.length === 0) {
+      return chunks;
+    }
+
+    return chunks.map((chunk) => {
+      if (chunk.bboxes && chunk.bboxes.length > 0) {
+        return chunk;
+      }
+      const existingQuote = chunk.metadata?.quote_exact;
+      if (typeof existingQuote === 'string' && existingQuote.trim().length > 0) {
+        return chunk;
+      }
+
+      const rawSource = (chunk.rawContent || chunk.content || '').trim();
+      if (!rawSource) {
+        return chunk;
+      }
+
+      const cleanedQuote = rawSource
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/[*_`~]/g, '')
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, DOCX_QUOTE_EXACT_MAX_CHARS);
+
+      if (!cleanedQuote) {
+        return chunk;
+      }
+
+      return {
+        ...chunk,
+        metadata: {
+          ...(chunk.metadata ?? {}),
+          quote_exact: cleanedQuote,
+        },
+      };
+    });
   }
 
   private async embedAndSaveChunks(
     documentId: string,
     chunks: DoclingChunkResult[],
-  ): Promise<InsertedChunkRecord[]> {
+    snapshotVersion = 1,
+  ): Promise<{ insertedChunks: InsertedChunkRecord[]; abortedAsStale: boolean }> {
+    const canIncrementalDiff =
+      typeof this.documentChunksRepo.findExistingChunksForDiff === 'function' &&
+      typeof this.documentChunksRepo.applyIncrementalChunkPlanWithEmbeddings ===
+        'function';
+
+    if (canIncrementalDiff) {
+      const existingChunks =
+        await this.documentChunksRepo.findExistingChunksForDiff(documentId);
+
+      // Nhánh Incremental (Phương án 2): chỉ chạy khi đã có chunk từ trước hoặc để xử lý xóa sạch chunk nếu tài liệu rỗng
+      if (existingChunks.length > 0 || chunks.length === 0) {
+        const incomingForDiff: IncomingChunkForDiff[] = chunks.map(
+          (chunk, idx) => ({
+            chunkIndex: idx,
+            pageNumbers: chunk.pageNumbers,
+            content: chunk.content,
+            rawContent: chunk.rawContent,
+            tokenCount: chunk.tokenCount,
+            headings: chunk.headings,
+            bboxes: chunk.bboxes,
+            chunkType: chunk.chunkType,
+            hasImage: chunk.hasImage,
+            hasTable: chunk.hasTable,
+            metadata: chunk.metadata,
+          }),
+        );
+
+        const plan = computeIncrementalChunkPlan(
+          existingChunks,
+          incomingForDiff,
+        );
+
+        this.logger.log(
+          `[Phương án 2 - Chunk Diff] Tài liệu [${documentId}] (v=${snapshotVersion}): giữ nguyên ${plan.stats.reusedCount}, nhúng mới ${plan.stats.insertedCount}, xóa ${plan.stats.deletedCount}`,
+        );
+
+        const toInsertEmbeddings =
+          plan.toInsert.length > 0
+            ? await this.embeddingService.embedBatch(
+                plan.toInsert.map((item) => item.chunk.content),
+              )
+            : [];
+
+        if (!(await this.isVersionStillCurrent(documentId, snapshotVersion))) {
+          this.logger.debug(
+            `[Phương án 2] Phiên bản v=${snapshotVersion} của [${documentId}] đã lỗi thời trước khi commit chunk, hủy commit bản cũ`,
+          );
+          return { insertedChunks: [], abortedAsStale: true };
+        }
+
+        const toInsertWithEmbeddings = plan.toInsert.map((item, idx) => ({
+          ...item,
+          embedding: toInsertEmbeddings[idx].values,
+        }));
+
+        const insertedChunks =
+          await this.documentChunksRepo.applyIncrementalChunkPlanWithEmbeddings(
+            documentId,
+            {
+              keptChunks: plan.keptChunks,
+              toInsertWithEmbeddings,
+              toDeleteIds: plan.toDeleteIds,
+            },
+          );
+
+        return { insertedChunks, abortedAsStale: false };
+      }
+    }
+
     if (chunks.length === 0) {
-      return [];
+      return { insertedChunks: [], abortedAsStale: false };
     }
 
     const chunkTexts = chunks.map((c) => c.content);
     const embeddings = await this.embeddingService.embedBatch(chunkTexts);
 
+    if (!(await this.isVersionStillCurrent(documentId, snapshotVersion))) {
+      this.logger.debug(
+        `Phiên bản v=${snapshotVersion} của [${documentId}] đã lỗi thời trước khi lưu chunk lần đầu`,
+      );
+      return { insertedChunks: [], abortedAsStale: true };
+    }
+
     const chunksWithEmbeddings = chunks.map((chunk, idx) => ({
       chunkIndex: chunk.index,
       pageNumbers: chunk.pageNumbers,
       content: chunk.content,
+      contentHash: computeChunkContentHash({
+        content: chunk.content,
+        headings: chunk.headings,
+      }),
       rawContent: chunk.rawContent,
       tokenCount: chunk.tokenCount,
       headings: chunk.headings,
@@ -696,10 +1194,13 @@ export class DocumentIngestionProcessor
       embedding: embeddings[idx].values,
     }));
 
-    return await this.documentChunksRepo.replaceChunksWithEmbeddings(
-      documentId,
-      chunksWithEmbeddings,
-    );
+    const insertedChunks =
+      await this.documentChunksRepo.replaceChunksWithEmbeddings(
+        documentId,
+        chunksWithEmbeddings,
+      );
+
+    return { insertedChunks, abortedAsStale: false };
   }
 
   /**
@@ -886,23 +1387,7 @@ export class DocumentIngestionProcessor
   }
 
   private isPlainTextOrMarkdown(mimeType: string, fileName: string): boolean {
-    const lowerMime = mimeType.toLowerCase();
-    const lowerName = fileName.toLowerCase();
-
-    if (
-      lowerMime === 'text/markdown' ||
-      lowerMime === 'text/x-markdown' ||
-      lowerName.endsWith('.md') ||
-      lowerName.endsWith('.markdown')
-    ) {
-      return true;
-    }
-
-    if (lowerMime === 'text/plain' && !lowerName.endsWith('.csv')) {
-      return true;
-    }
-
-    return lowerName.endsWith('.txt');
+    return isDirectTextIngestionDocument(mimeType, fileName);
   }
 
   private extensionFromImageMime(mimeType: string): string {

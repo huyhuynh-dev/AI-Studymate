@@ -1,10 +1,11 @@
-import { Layers, PenLine, Sparkles } from "lucide-react";
+import { Layers, PenLine } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import type { BloomLevel, EvaluationStatus, Quiz, QuestionType } from "../types";
 import { BLOOM_META, EVAL_META, QUESTION_TYPE_META } from "../constants";
 import { Badge } from "./primitives";
 
 export function SourceBadge({ quiz }: { quiz: Pick<Quiz, "source" | "sourceDeckName"> }) {
-  if (quiz.source === "ai") return <Badge tone="ai" icon={<Sparkles className="h-3 w-3" aria-hidden />}>Tạo bởi AI</Badge>;
+  if (quiz.source === "ai") return <Badge tone="ai" icon={<StudyMateAiIcon variant="simple" className="h-3 w-3" />}>Tạo bởi AI</Badge>;
   if (quiz.source === "flashcard")
     return (
       <Badge tone="primary" icon={<Layers className="h-3 w-3" aria-hidden />} className="max-w-full">

@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, Share2, MoreHorizontal, Sparkles } from "lucide-react";
+import { ChevronLeft, Share2, MoreHorizontal } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -146,7 +147,10 @@ export default function ConversationHeader({
                 : "border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 backdrop-blur-md text-neutral-600 dark:text-neutral-400 hover:border-indigo-200 dark:hover:border-indigo-800/40 hover:bg-indigo-50/50 hover:text-[#4F46E5]"
             }`}
           >
-            <Sparkles className="h-4 w-4 text-[#4F46E5] dark:text-[#818CF8] transition-transform duration-200 group-hover:scale-110" />
+            <StudyMateAiIcon
+              variant="simple"
+              className="h-4 w-4 text-[#4F46E5] dark:text-[#818CF8] transition-transform duration-200 group-hover:scale-110"
+            />
           </button>
 
           {/* Tooltip Apple Floating Capsule */}

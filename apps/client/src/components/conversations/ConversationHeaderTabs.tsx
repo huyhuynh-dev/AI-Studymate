@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { BarChart3, Sparkles, PlayingCards, FileQuestion } from "lucide-react";
+import { BarChart3, PlayingCards, FileQuestion, NotebookPen } from "lucide-react";
 
 export type TabKey = "documents" | "summary" | "flashcard" | "quiz" | "analytics";
 
@@ -79,13 +79,10 @@ export const DEFAULT_TABS_CONFIG: TabConfig<TabKey>[] = [
   },
   {
     id: "summary",
-    label: "Tóm tắt",
-    shortLabel: "Tóm tắt",
-    icon: Sparkles,
-    badge: (
-      <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
-    ),
-    tooltip: "Bản tóm tắt bài giảng AI",
+    label: "Ghi chú",
+    shortLabel: "Ghi chú",
+    icon: NotebookPen,
+    tooltip: "Ghi chú học tập & Tóm tắt AI",
   },
   {
     id: "flashcard",

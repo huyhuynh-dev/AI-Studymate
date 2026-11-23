@@ -1,8 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, use, useMemo } from "react";
+import React, { useState, useEffect, use, useMemo, useRef, useCallback } from "react";
 import ConversationHeader from "@/components/conversations/ConversationHeader";
-import ConversationHeaderTabs, { TabKey } from "@/components/conversations/ConversationHeaderTabs";
+import ConversationHeaderTabs, {
+  DEFAULT_TABS_CONFIG,
+  TabConfig,
+  TabKey,
+} from "@/components/conversations/ConversationHeaderTabs";
 import DocumentsTab from "@/components/conversations/DocumentsTab/DocumentsTab";
 import SummaryTab from "@/components/conversations/SummaryTab/SummaryTab";
 import FlashcardsTab from "@/components/conversations/FlashcardTab";
@@ -14,9 +18,24 @@ import { useSubjects } from "@/hooks/useSubjects";
 import { useConversations } from "@/hooks/useConversations";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useDecks } from "@/hooks/useDecks";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useConversationAnalytics } from "@/hooks/useLearningAnalytics";
 import { quizApi } from "@/services/quiz.api";
+import { extractApiErrorMessage } from "@/services/subjects.api";
+import { extractUserApiError } from "@/services/users.api";
+import {
+  publishWorkspaceSync,
+  subscribeWorkspaceSync,
+  type WorkspaceSyncResource,
+} from "@/lib/workspace-sync";
 import type { SourceReference, StudyRecommendation } from "@/types";
+
+const SYNC_RESOURCE_TO_TAB: Record<WorkspaceSyncResource, TabKey> = {
+  summary: "summary",
+  flashcard: "flashcard",
+  quiz: "quiz",
+  "word-document": "documents",
+};
 
 interface ConversationPageProps {
   params: Promise<{
@@ -45,6 +64,68 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   const [quizTargetedRequest, setQuizTargetedRequest] =
     useState<TargetedQuizRequest | null>(null);
   const [analyticsWindowDays, setAnalyticsWindowDays] = useState<number>(30);
+  const [unseenByConversation, setUnseenByConversation] = useState<
+    Record<string, Partial<Record<TabKey, number>>>
+  >({});
+  const activeTabRef = useRef<TabKey>(activeTab);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  const clearTabUnseen = useCallback(
+    (tab: TabKey) => {
+      setUnseenByConversation((prev) => {
+        const current = prev[conversationId];
+        if (!current || !(tab in current)) return prev;
+        const nextForConv = { ...current };
+        delete nextForConv[tab];
+        return { ...prev, [conversationId]: nextForConv };
+      });
+    },
+    [conversationId]
+  );
+
+  // Ghi nhận thông báo thay đổi dữ liệu ở các tab không active để hiển thị badge nhắc nhẹ
+  useEffect(() => {
+    return subscribeWorkspaceSync(
+      conversationId,
+      ["summary", "flashcard", "quiz"],
+      (event) => {
+        const targetTab = SYNC_RESOURCE_TO_TAB[event.resource];
+        if (activeTabRef.current === targetTab) return;
+        setUnseenByConversation((prev) => {
+          const current = prev[conversationId] ?? {};
+          return {
+            ...prev,
+            [conversationId]: {
+              ...current,
+              [targetTab]: (current[targetTab] ?? 0) + 1,
+            },
+          };
+        });
+      }
+    );
+  }, [conversationId]);
+
+  const headerTabs = useMemo<TabConfig<TabKey>[]>(() => {
+    const unseenCounts = unseenByConversation[conversationId] ?? {};
+    return DEFAULT_TABS_CONFIG.map((tab) => {
+      const count = activeTab === tab.id ? 0 : (unseenCounts[tab.id] ?? 0);
+      if (count <= 0) return tab;
+      return {
+        ...tab,
+        badge: (
+          <span
+            aria-label={`${count} mục mới vừa được tạo`}
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#4F46E5] px-1 text-[10px] font-bold leading-none text-white shadow-2xs dark:bg-[#818CF8] dark:text-[#0B0D13]"
+          >
+            +{count}
+          </span>
+        ),
+      };
+    });
+  }, [activeTab, conversationId, unseenByConversation]);
   const {
     isFocusMode,
     isViewingDocument,
@@ -52,7 +133,12 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     isRightSidebarCollapsed,
     toggleRightSidebar,
   } = useFocusMode();
-  const { activeTarget, navigateToDocumentCitation } = useCitationNavigation();
+  const {
+    activeTarget,
+    navigateToDocumentCitation,
+    openSidePanelCitation,
+    closeSidePanelCitation,
+  } = useCitationNavigation();
 
   const {
     analytics: conversationAnalytics,
@@ -66,13 +152,15 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     analyticsWindowDays
   );
 
-  // Đọc tham số điều hướng ban đầu từ Subject Analytics (?tab=analytics|flashcard|quiz)
+  // Đọc tham số điều hướng ban đầu từ Subject Analytics (?tab=analytics|flashcard|quiz|documents&docId=&page=)
   useEffect(() => {
     if (typeof window === "undefined") return;
     let cancelled = false;
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get("tab");
     const deckIdParam = params.get("deckId");
+    const docIdParam = params.get("docId");
+    const pageParam = Number(params.get("page") ?? "1");
 
     void Promise.resolve().then(() => {
       if (cancelled) return;
@@ -88,16 +176,22 @@ export default function ConversationPage({ params }: ConversationPageProps) {
       if (tabParam === "flashcard" && deckIdParam) {
         setFlashcardOpenRequest({ deckId: deckIdParam, nonce: Date.now() });
       }
+      if (docIdParam) {
+        navigateToDocumentCitation({
+          documentId: docIdParam,
+          pageNo: Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1,
+        });
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [navigateToDocumentCitation]);
 
-  // Tự động chuyển sang Tab "Tài liệu" khi người dùng bấm vào một Badge trích dẫn tài liệu từ Chatbox
+  // Tự động chuyển sang Tab "Tài liệu" khi người dùng bấm vào một Badge trích dẫn từ Chatbox (bỏ qua nếu mở ở cột phải)
   useEffect(() => {
-    if (!activeTarget?.documentId) return;
+    if (!activeTarget?.documentId || activeTarget.mode === "side-panel") return;
     let cancelled = false;
     void Promise.resolve().then(() => {
       if (!cancelled) {
@@ -119,6 +213,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           ? window.sessionStorage.getItem("studymate:open-summary-id") || ""
           : "");
       if (targetId) {
+        clearTabUnseen("summary");
         setActiveTab("summary");
         setSummaryOpenRequest({ summaryId: targetId, nonce: Date.now() });
       }
@@ -131,7 +226,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         handleOpenSummaryEvent
       );
     };
-  }, []);
+  }, [clearTabUnseen]);
 
   // Lắng nghe sự kiện mở trực tiếp bộ thẻ Flashcard từ Badge trong RightSidebar AI Chat
   useEffect(() => {
@@ -143,6 +238,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           ? window.sessionStorage.getItem("studymate:open-deck-id") || ""
           : "");
       if (targetId) {
+        clearTabUnseen("flashcard");
         setFocusMode(false);
         setActiveTab("flashcard");
         setFlashcardOpenRequest({ deckId: targetId, nonce: Date.now() });
@@ -159,7 +255,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         handleOpenFlashcardDeckEvent
       );
     };
-  }, [setFocusMode]);
+  }, [setFocusMode, clearTabUnseen]);
 
   // Lắng nghe sự kiện mở trực tiếp đề kiểm tra Quiz từ Badge trong RightSidebar AI Chat
   useEffect(() => {
@@ -171,6 +267,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           ? window.sessionStorage.getItem("studymate:open-quiz-id") || ""
           : "");
       if (targetId) {
+        clearTabUnseen("quiz");
         setFocusMode(false);
         setActiveTab("quiz");
         setQuizOpenRequest({ quizId: targetId, nonce: Date.now() });
@@ -181,10 +278,11 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     return () => {
       window.removeEventListener("studymate:open-quiz", handleOpenQuizEvent);
     };
-  }, [setFocusMode]);
+  }, [setFocusMode, clearTabUnseen]);
 
-  // Lấy dữ liệu môn học và danh sách cuộc hội thoại thực tế
-  const { subjects } = useSubjects();
+  // Lấy dữ liệu người dùng, môn học và danh sách cuộc hội thoại thực tế
+  const { user, updateProfile } = useCurrentUser();
+  const { subjects, updateSubject } = useSubjects();
   const { conversations } = useConversations(subjectId);
 
   // Hook quản lý danh sách và tiến trình tải lên tài liệu
@@ -196,8 +294,10 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     errorMessage: documentsError,
     clearError: clearDocumentsError,
     uploadFiles,
+    importGoogleDoc,
     deleteDocument,
     downloadDocument,
+    updateDocumentInCache,
   } = useDocuments(conversationId);
 
   // Hook quản lý danh sách bộ thẻ flashcard để liên kết với QuizTab
@@ -223,7 +323,11 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   };
 
   const handleTabChange = (tab: TabKey) => {
+    clearTabUnseen(tab);
     setActiveTab(tab);
+    if (tab === "documents") {
+      closeSidePanelCitation();
+    }
     if (tab !== "documents" && tab !== "summary") {
       setFocusMode(false);
     }
@@ -233,25 +337,60 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   };
 
   const handleJumpToSourceRef = (ref: SourceReference) => {
-    setFocusMode(false);
-    navigateToDocumentCitation({
+    openSidePanelCitation({
       documentId: ref.documentId,
       fileName: ref.fileName,
       pageNo: ref.pageNumbers[0] ?? 1,
       bboxes: ref.bboxes,
+      rawContent: ref.snippet,
     });
   };
 
   const handleOpenDocumentFromAnalytics = (
     documentId: string,
-    fileName: string
+    fileName: string,
+    pageNo = 1
   ) => {
     setFocusMode(false);
     navigateToDocumentCitation({
       documentId,
       fileName,
-      pageNo: 1,
+      pageNo: pageNo > 0 ? pageNo : 1,
     });
+  };
+
+  const [goalActionFeedback, setGoalActionFeedback] = useState<string | null>(null);
+
+  const handleUpdateDailyGoal = async (minutes: number) => {
+    setGoalActionFeedback(null);
+    try {
+      await updateProfile({ dailyGoalMinutes: minutes });
+      await refreshConversationAnalytics();
+    } catch (error) {
+      setGoalActionFeedback(
+        extractUserApiError(error, "Không thể cập nhật mục tiêu học hằng ngày")
+      );
+      throw error;
+    }
+  };
+
+  const handleUpdateExamGoal = async (input: {
+    examDate: string | null;
+    targetScore?: number | null;
+  }) => {
+    setGoalActionFeedback(null);
+    try {
+      await updateSubject(subjectId, {
+        examDate: input.examDate,
+        targetScore: input.targetScore ?? null,
+      });
+      await refreshConversationAnalytics();
+    } catch (error) {
+      setGoalActionFeedback(
+        extractApiErrorMessage(error, "Không thể cập nhật ngày thi cho môn học")
+      );
+      throw error;
+    }
   };
 
   const handleTriggerTargetedQuiz = (opts: {
@@ -259,6 +398,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     sectionTitle?: string;
     bloomPreset?: "familiarize" | "balanced" | "exam_prep";
   }) => {
+    clearTabUnseen("quiz");
     setFocusMode(false);
     setQuizTargetedRequest({
       nonce: Date.now(),
@@ -275,6 +415,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
       rec.actionType === "review_due_cards" ||
       rec.actionType === "remediate_leech_cards"
     ) {
+      clearTabUnseen("flashcard");
       setFocusMode(false);
       if (p.deckId) {
         setFlashcardOpenRequest({ deckId: p.deckId, nonce: Date.now() });
@@ -342,6 +483,7 @@ export default function ConversationPage({ params }: ConversationPageProps) {
         <ConversationHeaderTabs
           activeTab={activeTab}
           onTabChange={handleTabChange}
+          tabs={headerTabs}
         />
       </div>
 
@@ -371,8 +513,10 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               errorMessage={documentsError}
               onClearError={clearDocumentsError}
               onUpload={uploadFiles}
+              onImportGoogleDoc={importGoogleDoc}
               onDelete={deleteDocument}
               onDownload={downloadDocument}
+              onDocumentUpdated={updateDocumentInCache}
               onCreateTargetedQuiz={(opts) =>
                 handleTriggerTargetedQuiz({
                   chunkIds: opts.chunkIds,
@@ -426,36 +570,75 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               api={quizApi}
               hasDocuments={documents.length > 0}
               onUploadDocument={handleGoToDocuments}
+              onFlashcardsCreated={(info) => {
+                publishWorkspaceSync({
+                  resource: "flashcard",
+                  action: "updated",
+                  conversationId,
+                  entityId: info.deckId,
+                  targetKind: "deck",
+                  count: info.created,
+                  occurredAt: new Date().toISOString(),
+                });
+              }}
               className="w-full flex-1"
             />
           )}
 
           {activeTab === "analytics" && (
-            <AnalyticsDashboardView
-              mode="conversation"
-              data={conversationAnalytics}
-              isLoading={isAnalyticsLoading}
-              isValidating={isAnalyticsValidating}
-              errorMessage={analyticsError}
-              windowDays={analyticsWindowDays}
-              onWindowDaysChange={setAnalyticsWindowDays}
-              onRetry={() => void refreshConversationAnalytics()}
-              onExecuteAction={handleExecuteStudyAction}
-              onJumpToSource={handleJumpToSourceRef}
-              onCreateTargetedQuiz={(opts) =>
-                handleTriggerTargetedQuiz({
-                  chunkIds: opts.chunkIds,
-                  sectionTitle: opts.sectionTitle,
-                  bloomPreset: "exam_prep",
-                })
-              }
-              onOpenDeck={(deckId) => {
-                setFocusMode(false);
-                setFlashcardOpenRequest({ deckId, nonce: Date.now() });
-                setActiveTab("flashcard");
-              }}
-              onOpenDocument={handleOpenDocumentFromAnalytics}
-            />
+            <div className="space-y-4">
+              {goalActionFeedback && (
+                <div
+                  role="alert"
+                  className="mx-auto max-w-[1200px] rounded-2xl border border-rose-500/20 bg-rose-50/80 dark:bg-[#FF453A]/10 px-4 py-2.5 text-xs font-medium text-rose-700 dark:text-[#FF6961]"
+                >
+                  {goalActionFeedback}
+                </div>
+              )}
+              <AnalyticsDashboardView
+                mode="conversation"
+                data={conversationAnalytics}
+                isLoading={isAnalyticsLoading}
+                isValidating={isAnalyticsValidating}
+                errorMessage={analyticsError}
+                windowDays={analyticsWindowDays}
+                onWindowDaysChange={setAnalyticsWindowDays}
+                onRetry={() => void refreshConversationAnalytics()}
+                onExecuteAction={handleExecuteStudyAction}
+                onJumpToSource={handleJumpToSourceRef}
+                onCreateTargetedQuiz={(opts) =>
+                  handleTriggerTargetedQuiz({
+                    chunkIds: opts.chunkIds,
+                    sectionTitle: opts.sectionTitle,
+                    bloomPreset: "exam_prep",
+                  })
+                }
+                onOpenDeck={(deckId) => {
+                  clearTabUnseen("flashcard");
+                  setFocusMode(false);
+                  setFlashcardOpenRequest({ deckId, nonce: Date.now() });
+                  setActiveTab("flashcard");
+                }}
+                onOpenDocument={handleOpenDocumentFromAnalytics}
+                userName={user?.name}
+                onUpdateDailyGoal={handleUpdateDailyGoal}
+                onUpdateExamGoal={handleUpdateExamGoal}
+                onGoToFlashcards={() => {
+                  clearTabUnseen("flashcard");
+                  setFocusMode(false);
+                  setActiveTab("flashcard");
+                }}
+                onGoToQuiz={() => {
+                  clearTabUnseen("quiz");
+                  setFocusMode(false);
+                  setActiveTab("quiz");
+                }}
+                onGoToDocuments={() => {
+                  setFocusMode(false);
+                  setActiveTab("documents");
+                }}
+              />
+            </div>
           )}
         </div>
       </main>

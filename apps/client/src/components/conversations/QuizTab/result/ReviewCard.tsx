@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Lightbulb, Sparkles, Check, TriangleAlert } from "lucide-react";
+import { Lightbulb, Check, TriangleAlert } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { SourceReferenceButton } from "@/components/ui/SourceReferenceButton";
 import type { AttemptAnswer, EvaluationStatus, QuizQuestion } from "../types";
 import { Badge, Button, Segmented } from "../ui/primitives";
@@ -92,7 +93,7 @@ export function ReviewCard({ index, q, a, onOverride }: {
             {a?.aiFeedback && (
               <div className="rounded-2xl border border-[var(--qz-ai)]/25 bg-[var(--qz-ai-soft)] p-4">
                 <div className="flex gap-3">
-                  <Sparkles className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[var(--qz-ai)]" aria-hidden />
+                  <StudyMateAiIcon variant="simple" className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[var(--qz-ai)]" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-semibold text-[var(--qz-ai)]">Nhận xét của AI</p>
                     <p className="mt-1 text-[14.5px] leading-6">{a.aiFeedback}</p>

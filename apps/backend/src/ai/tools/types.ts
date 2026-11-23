@@ -1,3 +1,4 @@
+import type { TextCitationAnchor } from '../../common/types/source-ref.types.js';
 import type {
   DocumentFullContent,
   DocumentSectionOrPagesOutput,
@@ -11,6 +12,7 @@ export interface DocumentCitationItem {
   sourceType: 'document';
   citationId: string; // "c1", "c2", ...
   chunkId: string;
+  chunkIndex?: number;
   documentId: string;
   fileName: string;
   pageNumbers: number[];
@@ -19,6 +21,7 @@ export interface DocumentCitationItem {
   content?: string;
   previewSnippet?: string;
   bboxes?: unknown;
+  textAnchor?: TextCitationAnchor;
   assets?: unknown[];
   rrfScore?: number;
   rerankScore?: number | null;
@@ -76,6 +79,7 @@ export interface SearchDocumentChunksToolOutput {
     previewSnippet?: string;
     rawContent?: string | null;
     bboxes?: unknown;
+    textAnchor?: TextCitationAnchor;
     assets?: unknown[];
     neighbors?: {
       prev?: { chunkIndex: number; content: string; pageNumbers: number[] } | null;
@@ -117,6 +121,7 @@ export interface GetDocumentSectionOrPagesToolOutput {
     previewSnippet?: string;
     rawContent?: string | null;
     bboxes?: unknown;
+    textAnchor?: TextCitationAnchor;
     assets?: unknown[];
   }>;
 }
@@ -370,6 +375,63 @@ export type CreateQuizCallback = (
   input: CreateQuizToolInput,
 ) => Promise<CreateQuizToolOutput>;
 
+// ── Tool 9..13: SuperDocs Word Editor Tools (full preset + streaming) ──
+export type SuperDocInspectToolInput = Record<string, unknown>;
+export type SuperDocInspectToolOutput = unknown;
+export type SuperDocInspectCallback = (
+  input: SuperDocInspectToolInput,
+) => Promise<SuperDocInspectToolOutput>;
+
+export type SuperDocPerformActionToolInput = {
+  action: string;
+  changeMode?: 'tracked' | 'direct';
+} & Record<string, unknown>;
+export type SuperDocPerformActionToolOutput = unknown;
+export type SuperDocPerformActionCallback = (
+  input: SuperDocPerformActionToolInput,
+) => Promise<SuperDocPerformActionToolOutput>;
+
+export interface SuperDocStreamTextToolInput {
+  mode:
+    | 'replace'
+    | 'before'
+    | 'after'
+    | 'append'
+    | 'paragraphBefore'
+    | 'paragraphAfter';
+  anchor: string | null;
+  text: string;
+}
+export type SuperDocStreamTextToolOutput = unknown;
+export type SuperDocStreamTextCallback = (
+  input: SuperDocStreamTextToolInput,
+) => Promise<SuperDocStreamTextToolOutput>;
+
+export type SuperDocApiSearchToolInput = Record<string, unknown>;
+export type SuperDocApiSearchToolOutput = unknown;
+export type SuperDocApiSearchCallback = (
+  input: SuperDocApiSearchToolInput,
+) => Promise<SuperDocApiSearchToolOutput>;
+
+export type SuperDocApiCallToolInput = Record<string, unknown>;
+export type SuperDocApiCallToolOutput = unknown;
+export type SuperDocApiCallCallback = (
+  input: SuperDocApiCallToolInput,
+) => Promise<SuperDocApiCallToolOutput>;
+
+export interface SuperDocToolkitToolMeta {
+  documentId: string;
+  fileName: string;
+  inspectDescription?: string;
+  inspectInputSchema?: Record<string, unknown>;
+  performActionDescription?: string;
+  performActionInputSchema?: Record<string, unknown>;
+  apiSearchDescription?: string;
+  apiSearchInputSchema?: Record<string, unknown>;
+  apiCallDescription?: string;
+  apiCallInputSchema?: Record<string, unknown>;
+}
+
 // ── Tên định danh các Tool của Chat Agent ──
 export type ChatAgentToolName =
   | 'searchDocumentChunks'
@@ -381,7 +443,12 @@ export type ChatAgentToolName =
   | 'createFlashcards'
   | 'createQuiz'
   | 'searchInternet'
-  | 'extractWebPage';
+  | 'extractWebPage'
+  | 'superdoc_inspect'
+  | 'superdoc_perform_action'
+  | 'superdoc_stream_text'
+  | 'superdoc_api_search'
+  | 'superdoc_api_call';
 
 export interface ToolCallTracker {
   recordChunkId(chunkId: string): void;
@@ -415,4 +482,10 @@ export interface ChatSessionToolCallbacks {
   onCreateQuiz?: CreateQuizCallback;
   onSearchInternet?: SearchInternetCallback;
   onExtractWebPage?: ExtractWebPageCallback;
+  onSuperDocInspect?: SuperDocInspectCallback;
+  onSuperDocPerformAction?: SuperDocPerformActionCallback;
+  onSuperDocStreamText?: SuperDocStreamTextCallback;
+  onSuperDocApiSearch?: SuperDocApiSearchCallback;
+  onSuperDocApiCall?: SuperDocApiCallCallback;
+  superdocToolkitMeta?: SuperDocToolkitToolMeta;
 }

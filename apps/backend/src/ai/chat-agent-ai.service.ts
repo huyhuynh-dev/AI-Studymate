@@ -18,6 +18,10 @@ import {
   buildSystemPromptWithDocumentCatalog,
 } from './prompts/templates/chat-agent.prompt.js';
 import {
+  buildSystemPromptWithSuperDocAgent,
+  type ActiveWordDocumentPromptContext,
+} from './prompts/templates/superdoc-agent.prompt.js';
+import {
   ToolRegistryService,
   type SearchDocumentChunksToolInput,
   type SearchDocumentChunksSourceSummary,
@@ -52,6 +56,12 @@ import {
   type ExtractWebPageToolInput,
   type ExtractWebPageToolOutput,
   type ExtractWebPageCallback,
+  type SuperDocInspectCallback,
+  type SuperDocPerformActionCallback,
+  type SuperDocStreamTextCallback,
+  type SuperDocApiSearchCallback,
+  type SuperDocApiCallCallback,
+  type SuperDocToolkitToolMeta,
   type CitationItem,
   type DocumentCitationItem,
   type WebCitationItem,
@@ -219,6 +229,13 @@ export class ChatAgentAiService {
       onCreateQuiz?: CreateQuizCallback;
       onSearchInternet?: SearchInternetCallback;
       onExtractWebPage?: ExtractWebPageCallback;
+      activeWordDocument?: ActiveWordDocumentPromptContext;
+      onSuperDocInspect?: SuperDocInspectCallback;
+      onSuperDocPerformAction?: SuperDocPerformActionCallback;
+      onSuperDocStreamText?: SuperDocStreamTextCallback;
+      onSuperDocApiSearch?: SuperDocApiSearchCallback;
+      onSuperDocApiCall?: SuperDocApiCallCallback;
+      superdocToolkitMeta?: SuperDocToolkitToolMeta;
       chatConfig?: {
         modelName: string;
         temperature: number;
@@ -235,10 +252,14 @@ export class ChatAgentAiService {
     };
 
     const basePrompt = options?.systemPrompt ?? CHAT_AGENT_SYSTEM_PROMPT;
-    const finalSystemPrompt = this.buildSystemPromptWithDocumentCatalog(
+    const promptWithCatalog = this.buildSystemPromptWithDocumentCatalog(
       basePrompt,
       options?.availableDocuments,
       options?.attachedDocumentIds,
+    );
+    const finalSystemPrompt = buildSystemPromptWithSuperDocAgent(
+      promptWithCatalog,
+      options?.activeWordDocument,
     );
 
     const { tools, tracker } = this.toolRegistry.createChatSessionToolset(
@@ -247,6 +268,10 @@ export class ChatAgentAiService {
     );
 
     const activeTools = Object.keys(tools).length > 0 ? tools : undefined;
+    const maxSteps =
+      options?.onSuperDocPerformAction || options?.onSuperDocStreamText
+        ? 12
+        : 5;
 
     const sanitizedMessages = this.sanitizePendingToolCalls(messages);
     const modelMessages = await convertToModelMessages(sanitizedMessages, {
@@ -269,7 +294,7 @@ export class ChatAgentAiService {
       tools: activeTools,
       temperature: chatConfig.temperature,
       maxOutputTokens: chatConfig.maxOutputTokens,
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(maxSteps),
       abortSignal,
       onFinish: async (event) => {
         const rawUsage = (event as { totalUsage?: unknown; usage?: unknown })

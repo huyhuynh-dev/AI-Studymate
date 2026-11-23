@@ -14,6 +14,8 @@ export interface DocumentJobData {
   mimeType: string;
   storageKey: string;
   fileName?: string;
+  targetVersion?: number;
+  isReindex?: boolean;
 }
 
 export interface QueueJobCounts {
@@ -160,6 +162,58 @@ export class DocumentsQueueService
 
     this.logger.log(
       `Đã đẩy job xử lý tài liệu [${data.documentId}] vào hàng đợi [${DOCUMENT_QUEUE_NAME}]`,
+    );
+  }
+
+  /**
+   * Đẩy job re-index có Trailing Debounce cho luồng chỉnh sửa tài liệu (Text/Markdown & PDF Overwrite).
+   * - Nếu job `reindex-${documentId}` đang chờ (`delayed`/`waiting`/`prioritized`), xóa và đặt lại với phiên bản mới + delay mới.
+   * - Nếu job đang `active`, giữ nguyên job đang chạy; DocumentIngestionProcessor sẽ tự động đẩy tiếp job theo `content_version > indexed_version` sau khi hoàn tất.
+   */
+  async enqueueContentReindexJob(
+    data: DocumentJobData,
+    options?: { delayMs?: number },
+  ): Promise<void> {
+    if (!this.queue) {
+      this.logger.warn(
+        `Queue [${DOCUMENT_QUEUE_NAME}] chưa được khởi tạo, bỏ qua re-index job cho document ${data.documentId}`,
+      );
+      return;
+    }
+
+    const delayMs = options?.delayMs ?? 4000;
+    const jobId = `reindex-${data.documentId}`;
+
+    try {
+      const existingJob = await this.queue.getJob(jobId);
+      if (existingJob) {
+        const state = await existingJob.getState();
+        if (state === 'active') {
+          this.logger.debug(
+            `Job re-index [${jobId}] đang active; Worker sẽ tự động re-enqueue phiên bản mới (${data.targetVersion ?? 'latest'}) ngay khi chạy xong`,
+          );
+          return;
+        }
+        await existingJob.remove().catch(() => {});
+      }
+    } catch {
+      // Bỏ qua lỗi đọc trạng thái cũ và thử enqueue mới
+    }
+
+    await this.queue.add('reindex-document', data, {
+      jobId,
+      delay: delayMs,
+      attempts: 2,
+      backoff: {
+        type: 'exponential',
+        delay: 15_000,
+      },
+      removeOnComplete: { count: 50 },
+      removeOnFail: false,
+    });
+
+    this.logger.log(
+      `Đã xếp lịch re-index tài liệu [${data.documentId}] (version=${data.targetVersion ?? 'latest'}, delay=${delayMs}ms)`,
     );
   }
 

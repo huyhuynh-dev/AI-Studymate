@@ -26,6 +26,7 @@ interface RawUserProfileResponse {
   role?: string;
   is_active?: boolean;
   is_verified?: boolean;
+  daily_goal_minutes?: number;
   provider?: string | null;
   has_password?: boolean;
   created_at: string | Date;
@@ -49,6 +50,10 @@ function mapUserProfile(raw: RawUserProfileResponse): UserProfile {
     role: raw.role ?? 'user',
     isActive: Boolean(raw.is_active ?? true),
     isVerified: Boolean(raw.is_verified ?? false),
+    dailyGoalMinutes:
+      typeof raw.daily_goal_minutes === 'number' && Number.isFinite(raw.daily_goal_minutes)
+        ? raw.daily_goal_minutes
+        : 15,
     provider: raw.provider ?? null,
     hasPassword: Boolean(raw.has_password),
     createdAt: toIsoString(raw.created_at),

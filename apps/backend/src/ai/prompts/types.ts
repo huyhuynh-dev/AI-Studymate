@@ -1,5 +1,6 @@
 import type { AvailableDocumentItem } from '../../documents/services/retrieval.service.js';
 import type { BloomDistribution } from '../../common/types/bloom.types.js';
+import type { ActiveWordDocumentPromptContext } from './templates/superdoc-agent.prompt.js';
 import type {
   BudgetDoc,
   GenerateFlashcardsRequest,
@@ -52,6 +53,7 @@ export interface PromptPayloadMap {
     baseSystemPrompt?: string;
     availableDocuments?: AvailableDocumentItem[];
     attachedDocumentIds?: string[];
+    activeWordDocument?: ActiveWordDocumentPromptContext;
   };
   AUTO_HEADER: {
     firstMessageSnippet: string;

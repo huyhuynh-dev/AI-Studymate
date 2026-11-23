@@ -54,6 +54,7 @@ export interface DoclingTocItem {
   text: string;
   level: number;
   page_no: number | null;
+  bbox?: Record<string, unknown> | null;
 }
 
 export interface DoclingDocumentMetadata {
@@ -759,8 +760,18 @@ export class DoclingService {
         : [];
       const pageNo =
         typeof provArr[0]?.page_no === 'number' ? provArr[0].page_no : null;
+      const rawBbox = provArr[0]?.bbox;
+      const bbox =
+        rawBbox && typeof rawBbox === 'object' && !Array.isArray(rawBbox)
+          ? (rawBbox as Record<string, unknown>)
+          : null;
 
-      toc.push({ text, level, page_no: pageNo });
+      toc.push({
+        text,
+        level,
+        page_no: pageNo,
+        ...(bbox ? { bbox } : {}),
+      });
     }
 
     return toc.length > 0 ? toc : this.extractTocFromMarkdown(fallbackMarkdown);

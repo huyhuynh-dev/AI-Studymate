@@ -2,6 +2,164 @@ import type { SourceReference } from './source-ref';
 
 export type AnalyticsBloomLevel = 'remember' | 'understand' | 'apply' | 'analyze';
 export type MasteryStatus = 'unstudied' | 'weak' | 'developing' | 'mastered';
+export type MetricStatusLabel =
+  | 'good'
+  | 'ok'
+  | 'needs_work'
+  | 'insufficient_data';
+export type MasteryConfidence = 'low' | 'medium' | 'high';
+
+export interface MetricWithContext {
+  value: number | null;
+  deltaVsPrev: number | null;
+  sampleSize: number;
+  minSampleSize: number;
+  label: MetricStatusLabel;
+  explanation: string;
+}
+
+export interface TodayPlanTask {
+  id: string;
+  order: number;
+  actionType: StudyRecommendationActionType;
+  title: string;
+  subtitle: string;
+  estimatedMinutes: number;
+  actionLabel: string;
+  payload: StudyRecommendationPayload;
+}
+
+export interface TodayStudyPlan {
+  tasks: TodayPlanTask[];
+  totalEstimatedMinutes: number;
+  minutesDoneToday: number;
+  dailyGoalMinutes: number;
+  overdueCount: number;
+  gentleCatchupSuggestion: string | null;
+}
+
+export interface ExamReadinessMetric extends MetricWithContext {
+  examDate: string;
+  targetScore: number;
+  daysLeft: number;
+  projectedScore: number | null;
+  suggestedExtraMinutesPerDay: number | null;
+  coverageRate: number;
+}
+
+export interface HeadlineMetrics {
+  mastery: MetricWithContext & {
+    sectionsMastered: number;
+    sectionsStudied: number;
+    sectionsTotal: number;
+  };
+  retention: MetricWithContext;
+  habit: {
+    daysStudiedThisWeek: number;
+    weekDaysMask: boolean[];
+    minutesThisWeek: number;
+    minutesLastWeek: number;
+    streakDays: number;
+    studiedToday: boolean;
+  };
+  readiness: ExamReadinessMetric | null;
+}
+
+export interface AttentionItem {
+  sectionKey: string;
+  title: string;
+  conversationId: string;
+  conversationTitle?: string;
+  documentId: string;
+  fileName: string;
+  startPage: number | null;
+  endPage: number | null;
+  masteryScore: number | null;
+  status: MasteryStatus;
+  confidence: MasteryConfidence;
+  priorityScore: number;
+  reasons: string[];
+  primaryAction: {
+    type: StudyRecommendationActionType;
+    label: string;
+    payload: StudyRecommendationPayload;
+  };
+  secondaryAction?: {
+    type: 'open_pdf';
+    label: string;
+    payload: {
+      documentId: string;
+      fileName: string;
+      pageNo: number;
+      conversationId: string;
+    };
+  };
+}
+
+export interface CoachingInsight {
+  ruleId: string;
+  tone: 'positive' | 'focus' | 'info';
+  message: string;
+}
+
+export interface ProgressBucketPoint {
+  bucketKey: string;
+  label: string;
+  minutesStudied: number;
+  retentionRate: number | null;
+  reviewCount: number;
+}
+
+export interface QuizRetakeGainItem {
+  quizId: string;
+  quizTitle: string;
+  conversationId: string;
+  attemptsCount: number;
+  firstScorePct: number;
+  latestScorePct: number;
+  gainPct: number;
+}
+
+export interface ProgressTrends {
+  windowDays: number;
+  buckets: ProgressBucketPoint[];
+  totalMinutesInWindow: number;
+  avgRetentionInWindow: number | null;
+  retentionSampleInWindow: number;
+  quizRetakeGains: QuizRetakeGainItem[];
+  latestQuizAvgPct: number | null;
+}
+
+export interface DocumentSectionTile {
+  index: number;
+  text: string;
+  status: MasteryStatus;
+  masteryScore: number | null;
+  startPage: number | null;
+  confidence: MasteryConfidence;
+}
+
+export interface AdvancedAnalyticsBreakdown {
+  deckComposition: {
+    newCount: number;
+    learningCount: number;
+    youngCount: number;
+    matureCount: number;
+  };
+  ratingDistribution: {
+    again: number;
+    hard: number;
+    good: number;
+    easy: number;
+    total: number;
+  };
+  flaggedCorrectCount: number;
+  flaggedIncorrectCount: number;
+  questionTypeGap: {
+    objectiveAvgPct: number | null;
+    essayAvgPct: number | null;
+  };
+}
 
 export interface SrsOverviewStats {
   totalCards: number;
@@ -88,6 +246,8 @@ export interface TocMasterySection {
   endPage: number | null;
   status: MasteryStatus;
   masteryScore: number | null;
+  confidence?: MasteryConfidence;
+  sampleSize?: number;
   quizCorrect: number;
   quizTotal: number;
   cardTotal: number;
@@ -96,6 +256,7 @@ export interface TocMasterySection {
   leechCount: number;
   missingPoints: string[];
   chunkIds: string[];
+  bboxes?: unknown[];
 }
 
 export interface DocumentMasteryResponse {
@@ -115,6 +276,7 @@ export interface DocumentMasteryResponse {
 
 export interface DocumentMasterySummary {
   documentId: string;
+  conversationId?: string;
   fileName: string;
   pageCount: number | null;
   overallMasteryScore: number | null;
@@ -123,6 +285,7 @@ export interface DocumentMasterySummary {
   studiedSectionsCount: number;
   weakSectionsCount: number;
   masteredSectionsCount: number;
+  sectionTiles?: DocumentSectionTile[];
 }
 
 export interface WeakTopicItem {
@@ -139,6 +302,7 @@ export interface WeakTopicItem {
   quizTotal: number;
   leechCount: number;
   missingPointCount: number;
+  missingPoints?: string[];
   chunkIds: string[];
 }
 
@@ -178,6 +342,9 @@ export interface ConversationAnalyticsResponse {
   subjectName: string;
   generatedAt: string;
   windowDays: number;
+  dailyGoalMinutes: number;
+  examDate: string | null;
+  targetScore: number | null;
   srsOverview: SrsOverviewStats;
   workloadForecast7Days: WorkloadForecastDay[];
   leechCards: LeechCardItem[];
@@ -187,6 +354,12 @@ export interface ConversationAnalyticsResponse {
   weakTopics: WeakTopicItem[];
   documentMasterySummaries: DocumentMasterySummary[];
   recommendations: StudyRecommendation[];
+  todayPlan: TodayStudyPlan;
+  headline: HeadlineMetrics;
+  attentionItems: AttentionItem[];
+  insights: CoachingInsight[];
+  progress: ProgressTrends;
+  advanced: AdvancedAnalyticsBreakdown;
 }
 
 export interface SubjectConversationSummary {
@@ -207,6 +380,9 @@ export interface SubjectAnalyticsResponse {
   color: string | null;
   generatedAt: string;
   windowDays: number;
+  dailyGoalMinutes: number;
+  examDate: string | null;
+  targetScore: number | null;
   srsOverview: SrsOverviewStats;
   workloadForecast7Days: WorkloadForecastDay[];
   leechCards: LeechCardItem[];
@@ -214,6 +390,13 @@ export interface SubjectAnalyticsResponse {
   bloomMastery: BloomMasterySummary;
   missingPointsClusters: MissingPointCluster[];
   topWeakTopics: WeakTopicItem[];
+  documentMasterySummaries: DocumentMasterySummary[];
   conversationSummaries: SubjectConversationSummary[];
   recommendations: StudyRecommendation[];
+  todayPlan: TodayStudyPlan;
+  headline: HeadlineMetrics;
+  attentionItems: AttentionItem[];
+  insights: CoachingInsight[];
+  progress: ProgressTrends;
+  advanced: AdvancedAnalyticsBreakdown;
 }

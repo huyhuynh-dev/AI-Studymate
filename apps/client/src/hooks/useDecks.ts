@@ -3,12 +3,13 @@
 import { useState, useCallback } from 'react';
 import useSWR from 'swr';
 import { deckApi } from '@/services/deck.api';
+import { workspaceSwrKeys } from '@/lib/workspace-sync';
 import type { Deck } from '@/components/conversations/FlashcardTab/types';
 
 export function useDecks(conversationId?: string | null) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const swrKey = conversationId ? `/deck-flashcard/decks?conversationId=${conversationId}` : null;
+  const swrKey = conversationId ? workspaceSwrKeys.decks(conversationId) : null;
 
   const { data: decks = [], error, isLoading, mutate } = useSWR<Deck[]>(
     swrKey,

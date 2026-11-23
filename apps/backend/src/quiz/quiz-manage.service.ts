@@ -9,6 +9,7 @@ import {
     resolveBloomPreset,
 } from '../common/types/bloom.types.js';
 import { Prisma, QuestionTypeEnum } from '../generated/prisma/client.js';
+import { extractTextAnchorFromChunkMetadata } from '../common/types/source-ref.types.js';
 import { QuizAiService } from '../ai/quiz-ai.service.js';
 import type { QuizQuestionInsert } from '../ai/schemas/quiz-ai.schema.js';
 import { packChunkedDocuments } from '../ai/utils/chunk-context.helper.js';
@@ -189,15 +190,19 @@ export class QuizManageService {
                 id: doc.id,
                 fileName: doc.file_name || doc.id,
                 rawText: doc.raw_text!.trim(),
-                chunks: (chunksByDocId.get(doc.id) ?? []).map((c) => ({
-                    id: c.id,
-                    chunkIndex: c.chunk_index,
-                    content: c.content,
-                    rawContent: c.raw_content,
-                    pageNumbers: c.page_numbers,
-                    headings: c.headings,
-                    bboxes: c.bboxes,
-                })),
+                chunks: (chunksByDocId.get(doc.id) ?? []).map((c) => {
+                    const textAnchor = extractTextAnchorFromChunkMetadata(c.chunk_metadata);
+                    return {
+                        id: c.id,
+                        chunkIndex: c.chunk_index,
+                        content: c.content,
+                        rawContent: c.raw_content,
+                        pageNumbers: c.page_numbers,
+                        headings: c.headings,
+                        bboxes: c.bboxes,
+                        ...(textAnchor ? { textAnchor } : {}),
+                    };
+                }),
             })),
             MAX_QUIZ_CONTEXT_CHARS
         );

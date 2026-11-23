@@ -501,14 +501,6 @@ export type NullableEnumCardStateEnumFieldUpdateOperationsInput = {
   set?: $Enums.CardStateEnum | null
 }
 
-export type NullableIntFieldUpdateOperationsInput = {
-  set?: number | null
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type FlashcardReviewCreateWithoutUserInput = {
   id?: string
   rating: number

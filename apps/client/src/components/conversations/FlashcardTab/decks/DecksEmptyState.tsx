@@ -1,4 +1,5 @@
-import { Layers, Plus, Sparkles, Upload } from "lucide-react";
+import { Layers, Plus, Upload } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { Button, cx, FONT_HEADING } from "../ui";
 
 interface Props {
@@ -27,7 +28,7 @@ export function DecksEmptyState({ hasDocuments, onCreateManual, onCreateAi, onUp
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
         {hasDocuments ? (
-          <Button variant="primary" icon={<Sparkles className="h-4 w-4" />} onClick={onCreateAi}>
+          <Button variant="primary" icon={<StudyMateAiIcon variant="simple" className="h-4 w-4" />} onClick={onCreateAi}>
             Tạo bằng AI
           </Button>
         ) : (

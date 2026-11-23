@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import useSWR from 'swr';
 import { flashcardApi } from '@/services/flashcard.api';
+import { workspaceSwrKeys } from '@/lib/workspace-sync';
 import type { CardDraft, Flashcard, Rating } from '@/components/conversations/FlashcardTab/types';
 
 function extractFlashcardErrorMessage(err: unknown, fallback: string): string {
@@ -16,7 +17,7 @@ function extractFlashcardErrorMessage(err: unknown, fallback: string): string {
 export function useFlashcards(deckId?: string | null) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const swrKey = deckId ? `/deck-flashcard/decks/${deckId}/flashcards` : null;
+  const swrKey = deckId ? workspaceSwrKeys.flashcards(deckId) : null;
 
   const { data: cards = [], error, isLoading, mutate } = useSWR<Flashcard[]>(
     swrKey,

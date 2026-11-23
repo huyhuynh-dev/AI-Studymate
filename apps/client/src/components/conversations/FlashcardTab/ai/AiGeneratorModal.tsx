@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { useState } from "react";
 import { CARD_TYPE_LABEL } from "../constants";
 import type { AiConfig, AiDocument, CardType } from "../types";
@@ -84,7 +85,7 @@ function AiDialog({
           <Button
             variant="primary"
             disabled={loading || types.length === 0 || noDocuments || noSelection}
-            icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <StudyMateAiIcon variant="simple" className="h-4 w-4" />}
             onClick={generate}
           >
             {loading ? "Đang tạo thẻ bằng AI…" : "Tạo thẻ"}

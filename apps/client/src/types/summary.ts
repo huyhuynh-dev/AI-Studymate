@@ -5,30 +5,34 @@ export type SummaryLength = 'short' | 'standard' | 'detailed';
 export interface SummaryBlock {
   id: string;
   type: string;
-  props?: Record<string, any>;
+  props?: Record<string, unknown>;
   content?: Array<{
     type: string;
     text: string;
-    styles?: Record<string, any>;
+    styles?: Record<string, unknown>;
   }>;
   children?: SummaryBlock[];
 }
 
+export interface SummaryDocumentRef {
+  id: string;
+  fileName: string;
+  mimeType: string;
+}
+
 export interface SummaryItem {
   id: string;
-  conversation_id: string;
-  document_id: string | null;
+  conversationId: string;
+  documentId: string | null;
   title: string;
-  content_json: any; // BlockNote blocks
-  pdf_storage_key: string | null;
-  created_at: string;
-  updated_at: string;
-  document?: {
-    id: string;
-    file_name: string;
-    mime_type: string;
-  } | null;
+  contentJson: unknown[];
+  pdfStorageKey: string | null;
+  createdAt: string;
+  updatedAt: string;
+  document?: SummaryDocumentRef | null;
 }
+
+export type NoteItem = SummaryItem;
 
 export interface CreateSummaryRequest {
   scope: SummaryScope;
@@ -43,11 +47,51 @@ export interface CreateSummaryRequest {
   customInstruction?: string;
 }
 
+export interface CreateManualNoteRequest {
+  title?: string;
+  contentJson?: unknown[];
+}
+
 export interface UpdateSummaryRequest {
   title?: string;
-  content_json?: any[];
+  contentJson?: unknown[];
 }
 
 export interface RefineSummaryRequest {
   instruction: string;
+}
+
+export type NoteMediaKind = 'image' | 'video' | 'audio' | 'file';
+
+export interface InitNoteMediaUploadRequest {
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  mediaKind?: NoteMediaKind;
+}
+
+export interface InitNoteMediaUploadResponse {
+  uploadUrl: string;
+  storageKey: string;
+  mediaUri: string;
+  mimeType: string;
+  mediaKind: NoteMediaKind;
+}
+
+export interface CompleteNoteMediaUploadRequest {
+  storageKey: string;
+  fileName: string;
+  mediaKind?: NoteMediaKind;
+}
+
+export interface CompleteNoteMediaUploadResponse {
+  mediaUri: string;
+  resolvedUrl: string;
+  fileSize: number;
+  mimeType: string;
+}
+
+export interface ResolveNoteMediaUrlsResponse {
+  urls: Record<string, string>;
+  expiresIn: number;
 }

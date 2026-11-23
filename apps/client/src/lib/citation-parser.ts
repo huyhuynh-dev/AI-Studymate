@@ -10,6 +10,7 @@
  */
 
 import type { ChatMessage } from '@/components/layout/RightSidebar/types';
+import { parseTextCitationAnchor, type TextCitationAnchor } from '@/types/source-ref';
 
 export type CitationSourceType = 'document' | 'web';
 
@@ -25,6 +26,7 @@ export interface DocumentCitationItem {
   sourceType: 'document';
   citationId: string; // "c1", "c2", ...
   chunkId?: string;
+  chunkIndex?: number;
   documentId: string;
   fileName: string;
   pageNumbers: number[];
@@ -33,6 +35,7 @@ export interface DocumentCitationItem {
   content?: string;
   previewSnippet?: string;
   bboxes?: unknown;
+  textAnchor?: TextCitationAnchor;
   assets?: RetrievedChunkAsset[] | unknown[];
   rrfScore?: number;
   rerankScore?: number | null;
@@ -127,7 +130,18 @@ export function extractCitationsMap(
   if (Array.isArray(message.metadata?.citations)) {
     for (const item of message.metadata.citations) {
       if (item && item.citationId) {
-        map.set(item.citationId, item);
+        if (item.sourceType === 'document') {
+          const parsedAnchor = parseTextCitationAnchor(
+            (item as { textAnchor?: unknown; text_anchor?: unknown }).textAnchor ??
+              (item as { text_anchor?: unknown }).text_anchor,
+          );
+          map.set(item.citationId, {
+            ...item,
+            ...(parsedAnchor ? { textAnchor: parsedAnchor } : {}),
+          });
+        } else {
+          map.set(item.citationId, item);
+        }
       }
     }
   }
@@ -142,10 +156,15 @@ export function extractCitationsMap(
       if (Array.isArray(chunks)) {
         for (const chunk of chunks) {
           if (chunk && chunk.citationId && !map.has(chunk.citationId)) {
+            const parsedAnchor = parseTextCitationAnchor(
+              chunk.textAnchor ?? chunk.text_anchor,
+            );
             map.set(chunk.citationId, {
               sourceType: 'document',
               citationId: chunk.citationId,
               chunkId: chunk.chunkId || chunk.id,
+              chunkIndex:
+                typeof chunk.chunkIndex === 'number' ? chunk.chunkIndex : undefined,
               documentId: chunk.documentId,
               fileName: chunk.fileName || 'Tài liệu',
               pageNumbers: Array.isArray(chunk.pageNumbers) ? chunk.pageNumbers : [],
@@ -153,6 +172,7 @@ export function extractCitationsMap(
               rawContent: chunk.rawContent || chunk.content,
               previewSnippet: chunk.previewSnippet || chunk.content?.slice(0, 300),
               bboxes: chunk.bboxes,
+              ...(parsedAnchor ? { textAnchor: parsedAnchor } : {}),
               assets: chunk.assets,
               rrfScore: typeof chunk.rrfScore === 'number' ? chunk.rrfScore : undefined,
               rerankScore:

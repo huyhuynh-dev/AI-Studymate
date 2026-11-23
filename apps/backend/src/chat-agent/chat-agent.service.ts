@@ -4,6 +4,19 @@ import { ChatAgentRepoService } from '../repo/chat-agent-repo/chat-agent-repo.se
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
 import { ChatAgentAiService } from '../ai/chat-agent-ai.service.js';
 import { RetrievalService } from '../documents/services/retrieval.service.js';
+import {
+  SuperDocRuntimeService,
+  asSuperDocReceipt,
+  didSuperDocReceiptMutate,
+  extractSuperDocSdkError,
+  type SuperDocAgentChangeMode,
+} from '../documents/services/superdoc-runtime.service.js';
+import { createSuperDocRunProgress } from '../documents/services/superdoc-run-progress.helper.js';
+import {
+  commitServerTextStream,
+  filterToolkitPerformActionTool,
+  type ValidatedStreamTextArgs,
+} from '../documents/services/superdoc-stream-text.helper.js';
 import { SummariesService } from '../summaries/summaries.service.js';
 import { FlashcardAiManageService } from '../deck-flashcard/flashcard-ai-manage.service.js';
 import { QuizService } from '../quiz/quiz.service.js';
@@ -17,6 +30,10 @@ import {
 import { CreateChatSessionDto } from './dto/create-chat-session.dto.js';
 import { UpdateChatSessionDto } from './dto/update-chat-session.dto.js';
 import { GenerateSuggestionsDto } from './dto/generate-suggestions.dto.js';
+import {
+  WorkspaceSyncChannel,
+  pipeWorkspaceSyncIntoUIMessageStream,
+} from './workspace-sync.channel.js';
 
 export interface ResolvedChatConfig {
   modelName: string;
@@ -74,6 +91,7 @@ export class ChatAgentService {
     @Optional() private readonly tavilyService?: TavilyService,
     @Optional() private readonly flashcardAiManageService?: FlashcardAiManageService,
     @Optional() private readonly quizService?: QuizService,
+    @Optional() private readonly superdocRuntimeService?: SuperDocRuntimeService,
   ) {}
 
   async createChatSession(
@@ -212,7 +230,15 @@ export class ChatAgentService {
       return [];
     };
 
-    return streamResult.toUIMessageStream({
+    const streamOnError = (error: unknown) => {
+      console.error(
+        `[ChatAgentService] Stream onError cho session ${chatSessionId}:`,
+        error,
+      );
+      return 'AI chat stream encountered an error';
+    };
+
+    const innerStream = streamResult.toUIMessageStream({
       originalMessages,
       generateMessageId: createIdGenerator({
         prefix: 'msg-',
@@ -272,14 +298,26 @@ export class ChatAgentService {
           );
         }
       },
-      onError: (error: unknown) => {
-        console.error(
-          `[ChatAgentService] Stream onError cho session ${chatSessionId}:`,
-          error,
-        );
-        return 'AI chat stream encountered an error';
-      },
+      onError: streamOnError,
     });
+
+    const syncChannel = streamResult?.workspaceSyncChannel as
+      | WorkspaceSyncChannel
+      | undefined;
+
+    if (
+      syncChannel &&
+      innerStream &&
+      typeof innerStream.getReader === 'function'
+    ) {
+      return pipeWorkspaceSyncIntoUIMessageStream(
+        innerStream,
+        syncChannel,
+        streamOnError,
+      );
+    }
+
+    return innerStream;
   }
 
   // ── 2. Kích hoạt luồng Stream AI qua ChatAgentAiService ──
@@ -295,6 +333,11 @@ export class ChatAgentService {
     chatOptions?: {
       modelId?: string;
       effort?: string;
+      activeWordContext?: {
+        documentId: string;
+        changeMode?: 'tracked' | 'direct';
+        selectedText?: string;
+      };
     },
   ) {
     const config = resolveChatConfig(chatOptions?.modelId, chatOptions?.effort);
@@ -347,7 +390,402 @@ export class ChatAgentService {
       },
     };
 
-    return this.chatAgentAiService.executeChatStream(
+    const workspaceSyncChannel = new WorkspaceSyncChannel();
+
+    let superdocBindings: {
+      activeWordDocument: {
+        documentId: string;
+        fileName: string;
+        changeMode: SuperDocAgentChangeMode;
+        selectedText?: string;
+        superdocSystemPrompt?: string;
+      };
+      superdocToolkitMeta: {
+        documentId: string;
+        fileName: string;
+        inspectDescription?: string;
+        inspectInputSchema?: Record<string, unknown>;
+        performActionDescription?: string;
+        performActionInputSchema?: Record<string, unknown>;
+        apiSearchDescription?: string;
+        apiSearchInputSchema?: Record<string, unknown>;
+        apiCallDescription?: string;
+        apiCallInputSchema?: Record<string, unknown>;
+      };
+      onSuperDocInspect: (input: Record<string, unknown>) => Promise<unknown>;
+      onSuperDocPerformAction: (
+        input: { action: string; changeMode?: 'tracked' | 'direct' } & Record<
+          string,
+          unknown
+        >,
+      ) => Promise<unknown>;
+      onSuperDocStreamText: (input: {
+        mode:
+          | 'replace'
+          | 'before'
+          | 'after'
+          | 'append'
+          | 'paragraphBefore'
+          | 'paragraphAfter';
+        anchor: string | null;
+        text: string;
+      }) => Promise<unknown>;
+      onSuperDocApiSearch: (input: Record<string, unknown>) => Promise<unknown>;
+      onSuperDocApiCall: (input: Record<string, unknown>) => Promise<unknown>;
+    } | null = null;
+
+    if (
+      ragContext &&
+      chatOptions?.activeWordContext?.documentId &&
+      this.superdocRuntimeService
+    ) {
+      const requestedWordDocId = chatOptions.activeWordContext.documentId;
+      const changeMode: SuperDocAgentChangeMode =
+        chatOptions.activeWordContext.changeMode === 'direct'
+          ? 'direct'
+          : 'tracked';
+      const selectedText = chatOptions.activeWordContext.selectedText;
+
+      try {
+        const activeDocRecord =
+          await this.superdocRuntimeService.assertOwnedDocxDocument(
+            ragContext.userId,
+            requestedWordDocId,
+          );
+        const toolkit = await this.superdocRuntimeService.getToolkit(changeMode);
+        const runtimeTools = toolkit.tools as Array<{
+          name?: string;
+          description?: string;
+          inputSchema?: Record<string, unknown>;
+        }>;
+        const inspectDef = runtimeTools.find(
+          (t) => t.name === 'superdoc_inspect',
+        );
+        const rawPerformDef = runtimeTools.find(
+          (t) => t.name === 'superdoc_perform_action',
+        );
+        const filteredPerformDef = rawPerformDef
+          ? filterToolkitPerformActionTool(rawPerformDef)
+          : undefined;
+        const apiSearchDef = runtimeTools.find(
+          (t) => t.name === 'superdoc_api_search',
+        );
+        const apiCallDef = runtimeTools.find(
+          (t) => t.name === 'superdoc_api_call',
+        );
+
+        let mutationCount = 0;
+        const runProgress = createSuperDocRunProgress();
+
+        const recordAndGuardResult = (
+          toolName: string,
+          args: Record<string, unknown>,
+          result: unknown,
+        ) => {
+          const check = runProgress.record({ tool: toolName, args, result });
+          if (check.repeatedFailure && check.stopMessage) {
+            return {
+              status: 'failed',
+              repeatedFailure: true,
+              error: {
+                code: 'REPEATED_FAILURE',
+                message: check.stopMessage,
+              },
+              lastResult: result,
+            };
+          }
+          return result;
+        };
+
+        superdocBindings = {
+          activeWordDocument: {
+            documentId: activeDocRecord.id,
+            fileName: activeDocRecord.file_name,
+            changeMode,
+            selectedText,
+            superdocSystemPrompt: toolkit.systemPrompt,
+          },
+          superdocToolkitMeta: {
+            documentId: activeDocRecord.id,
+            fileName: activeDocRecord.file_name,
+            inspectDescription: inspectDef?.description,
+            inspectInputSchema: inspectDef?.inputSchema,
+            performActionDescription: filteredPerformDef?.description,
+            performActionInputSchema: filteredPerformDef?.inputSchema,
+            apiSearchDescription: apiSearchDef?.description,
+            apiSearchInputSchema: apiSearchDef?.inputSchema,
+            apiCallDescription: apiCallDef?.description,
+            apiCallInputSchema: apiCallDef?.inputSchema,
+          },
+          onSuperDocInspect: async (input) => {
+            try {
+              const sessionRes =
+                await this.superdocRuntimeService!.runWithDocumentSession({
+                  userId: ragContext.userId,
+                  documentId: activeDocRecord.id,
+                  changeMode,
+                  fn: async ({ doc, toolkit: sessionToolkit }) => {
+                    const snapshot = await sessionToolkit.dispatch(
+                      doc,
+                      'superdoc_inspect',
+                      input,
+                    );
+                    return { payload: snapshot };
+                  },
+                });
+              return recordAndGuardResult(
+                'superdoc_inspect',
+                input,
+                sessionRes.payload,
+              );
+            } catch (error) {
+              return recordAndGuardResult('superdoc_inspect', input, {
+                error: extractSuperDocSdkError(error),
+              });
+            }
+          },
+          onSuperDocStreamText: async (input) => {
+            const rawInput = input as unknown as Record<string, unknown>;
+            const policy =
+              this.superdocRuntimeService!.validateToolCallPolicy(
+                'superdoc_stream_text',
+                rawInput,
+                changeMode,
+              );
+            if (!policy.allowed) {
+              return recordAndGuardResult('superdoc_stream_text', rawInput, {
+                status: 'failed',
+                error: {
+                  code: policy.code,
+                  message: policy.message,
+                },
+              });
+            }
+
+            try {
+              const streamArgs = policy.normalizedArgs as unknown as ValidatedStreamTextArgs;
+              const sessionRes =
+                await this.superdocRuntimeService!.runWithDocumentSession({
+                  userId: ragContext.userId,
+                  documentId: activeDocRecord.id,
+                  changeMode,
+                  fn: async ({ doc, markMutated }) => {
+                    const streamReceipt = await commitServerTextStream(
+                      doc,
+                      streamArgs,
+                      changeMode,
+                    );
+                    const postSnap = streamReceipt.postSnapshot as
+                      | { revision?: string }
+                      | undefined;
+                    markMutated(postSnap?.revision);
+                    return { payload: streamReceipt };
+                  },
+                });
+
+              if (sessionRes.mutated) {
+                mutationCount += 1;
+                workspaceSyncChannel.emit({
+                  resource: 'word-document',
+                  action: 'updated',
+                  conversationId: ragContext.conversationId,
+                  entityId: activeDocRecord.id,
+                  title: activeDocRecord.file_name,
+                  changeMode,
+                  count: mutationCount,
+                  requiresSnapshotReload: false,
+                  occurredAt: new Date().toISOString(),
+                });
+              }
+
+              return recordAndGuardResult(
+                'superdoc_stream_text',
+                rawInput,
+                sessionRes.payload,
+              );
+            } catch (error) {
+              return recordAndGuardResult('superdoc_stream_text', rawInput, {
+                status: 'failed',
+                error: extractSuperDocSdkError(error),
+              });
+            }
+          },
+          onSuperDocPerformAction: async (input) => {
+            const policy =
+              this.superdocRuntimeService!.validateToolCallPolicy(
+                'superdoc_perform_action',
+                input,
+                changeMode,
+              );
+            if (!policy.allowed) {
+              return recordAndGuardResult('superdoc_perform_action', input, {
+                status: 'failed',
+                error: {
+                  code: policy.code,
+                  message: policy.message,
+                },
+              });
+            }
+
+            try {
+              const sessionRes =
+                await this.superdocRuntimeService!.runWithDocumentSession({
+                  userId: ragContext.userId,
+                  documentId: activeDocRecord.id,
+                  changeMode,
+                  fn: async ({
+                    doc,
+                    toolkit: sessionToolkit,
+                    markMutated,
+                  }) => {
+                    const rawReceipt = await sessionToolkit.dispatch(
+                      doc,
+                      'superdoc_perform_action',
+                      policy.normalizedArgs,
+                    );
+                    const receipt = asSuperDocReceipt(rawReceipt);
+                    if (
+                      didSuperDocReceiptMutate(receipt, policy.normalizedArgs)
+                    ) {
+                      markMutated(receipt.postSnapshot?.revision);
+                    }
+                    return { payload: rawReceipt };
+                  },
+                });
+
+              if (sessionRes.mutated) {
+                mutationCount += 1;
+                workspaceSyncChannel.emit({
+                  resource: 'word-document',
+                  action: 'updated',
+                  conversationId: ragContext.conversationId,
+                  entityId: activeDocRecord.id,
+                  title: activeDocRecord.file_name,
+                  changeMode,
+                  count: mutationCount,
+                  requiresSnapshotReload: true,
+                  occurredAt: new Date().toISOString(),
+                });
+              }
+
+              return recordAndGuardResult(
+                'superdoc_perform_action',
+                input,
+                sessionRes.payload,
+              );
+            } catch (error) {
+              return recordAndGuardResult('superdoc_perform_action', input, {
+                status: 'failed',
+                error: extractSuperDocSdkError(error),
+              });
+            }
+          },
+          onSuperDocApiSearch: async (input) => {
+            try {
+              const sessionRes =
+                await this.superdocRuntimeService!.runWithDocumentSession({
+                  userId: ragContext.userId,
+                  documentId: activeDocRecord.id,
+                  changeMode,
+                  fn: async ({ doc, toolkit: sessionToolkit }) => {
+                    const res = await sessionToolkit.dispatch(
+                      doc,
+                      'superdoc_api_search',
+                      input,
+                    );
+                    return { payload: res };
+                  },
+                });
+              return recordAndGuardResult(
+                'superdoc_api_search',
+                input,
+                sessionRes.payload,
+              );
+            } catch (error) {
+              return recordAndGuardResult('superdoc_api_search', input, {
+                error: extractSuperDocSdkError(error),
+              });
+            }
+          },
+          onSuperDocApiCall: async (input) => {
+            const policy =
+              this.superdocRuntimeService!.validateToolCallPolicy(
+                'superdoc_api_call',
+                input,
+                changeMode,
+              );
+            if (!policy.allowed) {
+              return recordAndGuardResult('superdoc_api_call', input, {
+                status: 'failed',
+                error: {
+                  code: policy.code,
+                  message: policy.message,
+                },
+              });
+            }
+
+            try {
+              const sessionRes =
+                await this.superdocRuntimeService!.runWithDocumentSession({
+                  userId: ragContext.userId,
+                  documentId: activeDocRecord.id,
+                  changeMode,
+                  fn: async ({
+                    doc,
+                    toolkit: sessionToolkit,
+                    markMutated,
+                  }) => {
+                    const rawReceipt = await sessionToolkit.dispatch(
+                      doc,
+                      'superdoc_api_call',
+                      policy.normalizedArgs,
+                    );
+                    const receipt = asSuperDocReceipt(rawReceipt);
+                    if (
+                      didSuperDocReceiptMutate(receipt, policy.normalizedArgs)
+                    ) {
+                      markMutated(receipt.postSnapshot?.revision);
+                    }
+                    return { payload: rawReceipt };
+                  },
+                });
+
+              if (sessionRes.mutated) {
+                mutationCount += 1;
+                workspaceSyncChannel.emit({
+                  resource: 'word-document',
+                  action: 'updated',
+                  conversationId: ragContext.conversationId,
+                  entityId: activeDocRecord.id,
+                  title: activeDocRecord.file_name,
+                  changeMode,
+                  count: mutationCount,
+                  requiresSnapshotReload: true,
+                  occurredAt: new Date().toISOString(),
+                });
+              }
+
+              return recordAndGuardResult(
+                'superdoc_api_call',
+                input,
+                sessionRes.payload,
+              );
+            } catch (error) {
+              return recordAndGuardResult('superdoc_api_call', input, {
+                status: 'failed',
+                error: extractSuperDocSdkError(error),
+              });
+            }
+          },
+        };
+      } catch (err) {
+        console.warn(
+          `[ChatAgentService] Không thể kích hoạt SuperDoc Agent cho documentId=${requestedWordDocId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    const streamResult = await this.chatAgentAiService.executeChatStream(
       messages,
       async ({
         assistantUIMessage,
@@ -365,6 +803,7 @@ export class ChatAgentService {
             attachedDocumentIds: ragContext.attachedDocumentIds,
             chatConfig: config,
             ...webCallbacks,
+            ...superdocBindings,
             onSearchDocumentChunks: async (input) => {
               return this.retrievalService.searchRelevantChunks({
                 userId: ragContext.userId,
@@ -532,6 +971,20 @@ export class ChatAgentService {
                       .map((id) => catalogMap.get(id))
                       .filter((name): name is string => Boolean(name));
 
+              const createdAt =
+                created.created_at instanceof Date
+                  ? created.created_at.toISOString()
+                  : String(created.created_at);
+
+              workspaceSyncChannel.emit({
+                resource: 'summary',
+                action: 'created',
+                conversationId: ragContext.conversationId,
+                entityId: created.id,
+                title: created.title,
+                occurredAt: createdAt,
+              });
+
               return {
                 summaryId: created.id,
                 title: created.title,
@@ -539,10 +992,7 @@ export class ChatAgentService {
                 mode: input.mode || 'study_guide',
                 length: input.length || 'standard',
                 documentNames,
-                createdAt:
-                  created.created_at instanceof Date
-                    ? created.created_at.toISOString()
-                    : String(created.created_at),
+                createdAt,
               };
             },
             onCreateFlashcards: async (input) => {
@@ -615,6 +1065,19 @@ export class ChatAgentService {
                       .map((id) => catalogMap.get(id))
                       .filter((name): name is string => Boolean(name));
 
+              const createdAt = new Date().toISOString();
+
+              workspaceSyncChannel.emit({
+                resource: 'flashcard',
+                action: target.kind === 'deck' ? 'updated' : 'created',
+                conversationId: ragContext.conversationId,
+                entityId: created.deckId,
+                targetKind: target.kind,
+                title: created.deckName,
+                count: created.stats.saved,
+                occurredAt: createdAt,
+              });
+
               return {
                 deckId: created.deckId,
                 deckName: created.deckName,
@@ -625,7 +1088,7 @@ export class ChatAgentService {
                 droppedCount: created.stats.dropped,
                 types,
                 documentNames,
-                createdAt: new Date().toISOString(),
+                createdAt,
               };
             },
             onCreateQuiz: async (input) => {
@@ -705,22 +1168,37 @@ export class ChatAgentService {
                     },
                   );
 
+                const actualQuestionCount = Array.isArray(
+                  createdFromDeck.questions,
+                )
+                  ? createdFromDeck.questions.length
+                  : questionCount;
+                const createdAt =
+                  createdFromDeck.createdAt || new Date().toISOString();
+
+                workspaceSyncChannel.emit({
+                  resource: 'quiz',
+                  action: 'created',
+                  conversationId: ragContext.conversationId,
+                  entityId: createdFromDeck.id,
+                  title: createdFromDeck.title,
+                  count: actualQuestionCount,
+                  occurredAt: createdAt,
+                });
+
                 return {
                   quizId: createdFromDeck.id,
                   title: createdFromDeck.title,
                   description: createdFromDeck.description,
                   source: createdFromDeck.source,
-                  questionCount: Array.isArray(createdFromDeck.questions)
-                    ? createdFromDeck.questions.length
-                    : questionCount,
+                  questionCount: actualQuestionCount,
                   requestedCount: questionCount,
                   types: resolvedDeckTypes,
                   difficulty,
                   documentNames: createdFromDeck.sourceDeckName
                     ? [createdFromDeck.sourceDeckName]
                     : ['Bộ thẻ Flashcard'],
-                  createdAt:
-                    createdFromDeck.createdAt || new Date().toISOString(),
+                  createdAt,
                 };
               }
 
@@ -767,24 +1245,43 @@ export class ChatAgentService {
                     .filter((name): name is string => Boolean(name))
                 : (availableDocuments ?? []).map((d) => d.fileName);
 
+              const actualQuestionCount = Array.isArray(created.questions)
+                ? created.questions.length
+                : questionCount;
+              const createdAt = created.createdAt || new Date().toISOString();
+
+              workspaceSyncChannel.emit({
+                resource: 'quiz',
+                action: 'created',
+                conversationId: ragContext.conversationId,
+                entityId: created.id,
+                title: created.title,
+                count: actualQuestionCount,
+                occurredAt: createdAt,
+              });
+
               return {
                 quizId: created.id,
                 title: created.title,
                 description: created.description,
                 source: created.source,
-                questionCount: Array.isArray(created.questions)
-                  ? created.questions.length
-                  : questionCount,
+                questionCount: actualQuestionCount,
                 requestedCount: questionCount,
                 types,
                 difficulty,
                 documentNames,
-                createdAt: created.createdAt || new Date().toISOString(),
+                createdAt,
               };
             },
           }
         : { chatConfig: config, ...webCallbacks },
     );
+
+    if (streamResult && typeof streamResult === 'object') {
+      Object.assign(streamResult, { workspaceSyncChannel });
+    }
+
+    return streamResult;
   }
 
   // ── 3. Function tổng hợp điều phối toàn bộ chu trình Chat ──
@@ -797,6 +1294,11 @@ export class ChatAgentService {
     chatOptions?: {
       modelId?: string;
       effort?: string;
+      activeWordContext?: {
+        documentId: string;
+        changeMode?: 'tracked' | 'direct';
+        selectedText?: string;
+      };
     },
   ) {
     console.log(

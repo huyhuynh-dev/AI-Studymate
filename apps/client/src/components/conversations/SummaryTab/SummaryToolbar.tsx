@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Check,
   Loader2,
-  Sparkles,
   MoreVertical,
   Trash2,
   Edit2,
@@ -18,16 +17,24 @@ import {
   Maximize2,
   Minimize2,
   List,
+  NotebookText,
+  SquarePen,
 } from "lucide-react";
-import { SummaryItem } from "@/types";
-import { AutoSaveStatus } from "@/hooks/useSummaries";
+import type { SummaryItem } from "@/types";
+import type { AutoSaveStatus } from "@/hooks/useSummaries";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import DeleteSummaryModal from "./DeleteSummaryModal";
+import { getNoteDisplayTitle } from "./noteHelpers";
 
 interface SummaryToolbarProps {
   summaries: SummaryItem[];
   activeSummary: SummaryItem | null;
   onSelectSummary: (summaryId: string) => void;
-  onOpenCreateModal: () => void;
+  onCreateManual: () => void;
+  onOpenAiModal: () => void;
+  isCreatingNote?: boolean;
+  hasDocuments?: boolean;
+  hasReadyDocuments?: boolean;
   onBackToList?: () => void;
   onToggleTts: () => void;
   isTtsOpen: boolean;
@@ -50,7 +57,11 @@ export default function SummaryToolbar({
   summaries,
   activeSummary,
   onSelectSummary,
-  onOpenCreateModal,
+  onCreateManual,
+  onOpenAiModal,
+  isCreatingNote = false,
+  hasDocuments = false,
+  hasReadyDocuments = false,
   onBackToList,
   onToggleTts,
   isTtsOpen,
@@ -66,24 +77,31 @@ export default function SummaryToolbar({
   isFocusMode,
   onToggleFocusMode,
 }: SummaryToolbarProps) {
-  // Dropdown chọn phiên bản
+  // Dropdown chọn ghi chú
   const [isVersionDropdownOpen, setIsVersionDropdownOpen] = useState(false);
-  // Menu 3 chấm (Đổi tên / Xoá)
+  // Popover nút tạo mới (Ghi chú trống / Tóm tắt AI)
+  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
+  // Menu 3 chấm (Đổi tên / Xóa)
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const createMenuRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Đóng dropdown khi click bên ngoài
+  // Đóng các popover khi click bên ngoài
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         setIsVersionDropdownOpen(false);
       }
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      if (createMenuRef.current && !createMenuRef.current.contains(target)) {
+        setIsCreateMenuOpen(false);
+      }
+      if (menuRef.current && !menuRef.current.contains(target)) {
         setIsMenuOpen(false);
       }
     }
@@ -111,33 +129,39 @@ export default function SummaryToolbar({
     }
   };
 
+  const aiCreateSubtitle = !hasDocuments
+    ? "Tải tài liệu lên để sử dụng"
+    : !hasReadyDocuments
+      ? "Đang chờ xử lý tài liệu…"
+      : "Tổng hợp tự động từ tài liệu";
+
   return (
     <div className="relative z-30 flex items-center justify-between gap-2 border-b border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 px-3 py-2 sm:px-4 sm:py-2.5 backdrop-blur-md select-none">
-      {/* Cụm Bên Trái: Nút Quay lại danh sách + Dropdown Phiên bản + Nút Tạo mới + Trạng thái lưu */}
+      {/* Cụm Bên Trái: Nút Quay lại danh sách + Dropdown Ghi chú + Nút Tạo mới + Trạng thái lưu */}
       <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
         {/* Nút Quay lại danh sách phong cách Apple Pill */}
         {onBackToList && (
           <button
             type="button"
             onClick={onBackToList}
-            title="Quay lại danh sách các bản tóm tắt"
+            title="Quay lại danh sách ghi chú"
             className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.03] text-neutral-600 dark:text-neutral-300 shadow-2xs hover:bg-black/[0.05] dark:hover:bg-white/[0.06] hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer shrink-0"
           >
             <ChevronLeft className="h-4.5 w-4.5" />
           </button>
         )}
 
-        {/* Dropdown danh sách các bản tóm tắt */}
+        {/* Dropdown danh sách các trang ghi chú */}
         <div className="relative min-w-0" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setIsVersionDropdownOpen(!isVersionDropdownOpen)}
-            title="Nhấn để đổi bản tóm tắt khác"
+            title="Nhấn để chuyển sang ghi chú khác"
             className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.03] px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold font-heading text-neutral-800 dark:text-neutral-200 shadow-2xs hover:bg-black/[0.05] dark:hover:bg-white/[0.06] hover:border-indigo-300 dark:hover:border-indigo-700 active:scale-98 transition-all cursor-pointer max-w-[150px] xs:max-w-[190px] sm:max-w-[260px] md:max-w-[320px]"
           >
-            <Sparkles className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
+            <NotebookText className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
             <span className="truncate">
-              {activeSummary ? activeSummary.title : "Chọn bản tóm tắt"}
+              {activeSummary ? getNoteDisplayTitle(activeSummary.title) : "Chọn ghi chú"}
             </span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
           </button>
@@ -146,7 +170,7 @@ export default function SummaryToolbar({
           {isVersionDropdownOpen && (
             <div className="absolute left-0 top-full mt-1.5 z-50 w-72 sm:w-80 rounded-[20px] border border-black/[0.08] dark:border-white/[0.12] bg-white dark:bg-[#1A1E29] p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold font-heading uppercase tracking-wider text-neutral-400 dark:text-neutral-500 border-b border-black/[0.06] dark:border-white/[0.08]">
-                <span>Các bản tóm tắt ({summaries.length})</span>
+                <span>Danh sách ghi chú ({summaries.length})</span>
                 {onBackToList && (
                   <button
                     type="button"
@@ -162,26 +186,26 @@ export default function SummaryToolbar({
                 )}
               </div>
 
-              {/* Danh sách các item tóm tắt */}
+              {/* Danh sách các ghi chú */}
               <div className="max-h-64 overflow-y-auto space-y-0.5 p-1">
-                {summaries.map((s) => (
+                {summaries.map((item) => (
                   <button
-                    key={s.id}
+                    key={item.id}
                     type="button"
                     onClick={() => {
-                      onSelectSummary(s.id);
+                      onSelectSummary(item.id);
                       setIsVersionDropdownOpen(false);
                     }}
                     className={`flex items-start justify-between w-full rounded-xl px-2.5 py-2 text-left text-xs transition-all cursor-pointer ${
-                      s.id === activeSummary?.id
+                      item.id === activeSummary?.id
                         ? "bg-indigo-50 dark:bg-indigo-950/40 font-semibold text-indigo-900 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/50"
                         : "text-neutral-700 dark:text-neutral-300 hover:bg-black/[0.03] dark:hover:bg-white/[0.04] border border-transparent"
                     }`}
                   >
                     <div className="truncate pr-2">
-                      <div className="truncate">{s.title}</div>
+                      <div className="truncate">{getNoteDisplayTitle(item.title)}</div>
                       <div className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 tabular-nums">
-                        {new Date(s.created_at).toLocaleDateString("vi-VN", {
+                        {new Date(item.updatedAt).toLocaleDateString("vi-VN", {
                           hour: "2-digit",
                           minute: "2-digit",
                           day: "2-digit",
@@ -189,7 +213,7 @@ export default function SummaryToolbar({
                         })}
                       </div>
                     </div>
-                    {s.id === activeSummary?.id && (
+                    {item.id === activeSummary?.id && (
                       <Check className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
                     )}
                   </button>
@@ -199,15 +223,72 @@ export default function SummaryToolbar({
           )}
         </div>
 
-        {/* Nút Tạo mới nhanh */}
-        <button
-          type="button"
-          onClick={onOpenCreateModal}
-          title="Tạo bản tóm tắt mới"
-          className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.03] text-neutral-600 dark:text-neutral-300 shadow-2xs hover:bg-black/[0.05] dark:hover:bg-white/[0.06] hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
+        {/* Nút Tạo mới nhanh (Ghi chú mới / Tóm tắt bằng AI) */}
+        <div className="relative shrink-0" ref={createMenuRef}>
+          <button
+            type="button"
+            onClick={() => setIsCreateMenuOpen(!isCreateMenuOpen)}
+            disabled={isCreatingNote}
+            title="Tạo ghi chú mới hoặc tóm tắt bằng AI"
+            className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.03] text-neutral-600 dark:text-neutral-300 shadow-2xs hover:bg-black/[0.05] dark:hover:bg-white/[0.06] hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer disabled:opacity-60"
+          >
+            {isCreatingNote ? (
+              <Loader2 className="h-4 w-4 animate-spin text-indigo-600 dark:text-indigo-400" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+          </button>
+
+          {isCreateMenuOpen && (
+            <div className="absolute left-0 top-full mt-1.5 z-50 w-64 rounded-[20px] border border-black/[0.08] dark:border-white/[0.12] bg-white dark:bg-[#1A1E29] p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateMenuOpen(false);
+                  onCreateManual();
+                }}
+                disabled={isCreatingNote}
+                className="flex items-start gap-2.5 w-full rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-indigo-50/70 dark:hover:bg-indigo-950/30 cursor-pointer disabled:opacity-50"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-[#4F46E5] dark:text-[#818CF8]">
+                  <SquarePen className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-neutral-900 dark:text-neutral-100">
+                    Ghi chú mới
+                  </div>
+                  <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                    Tạo trang trống để tự do viết
+                  </div>
+                </div>
+              </button>
+
+              <div className="my-1 border-t border-black/[0.06] dark:border-white/[0.08]" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateMenuOpen(false);
+                  onOpenAiModal();
+                }}
+                disabled={!hasReadyDocuments}
+                className="flex items-start gap-2.5 w-full rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.05] cursor-pointer disabled:opacity-45 disabled:pointer-events-none"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-[#4F46E5] dark:text-[#818CF8]">
+                  <StudyMateAiIcon variant="simple" className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-neutral-900 dark:text-neutral-100">
+                    Tóm tắt bằng AI
+                  </div>
+                  <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                    {aiCreateSubtitle}
+                  </div>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Trạng thái Auto-save */}
         <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500 pl-1 shrink-0">
@@ -232,7 +313,7 @@ export default function SummaryToolbar({
         </div>
       </div>
 
-      {/* Cụm Bên Phải: Zoom Controls + Mở rộng Focus Mode + Icon Đọc tóm tắt + Icon Tải PDF + Menu 3 chấm */}
+      {/* Cụm Bên Phải: Zoom Controls + Mở rộng Focus Mode + Icon Đọc ghi chú + Icon Tải PDF + Menu 3 chấm */}
       <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
         {/* Bộ điều khiển Phóng to / Thu nhỏ (Zoom) - Apple Segmented Control */}
         <div className="flex items-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.04] dark:bg-white/[0.06] p-0.5 shadow-2xs">
@@ -273,7 +354,7 @@ export default function SummaryToolbar({
           title={
             isFocusMode
               ? "Thoát Chế độ mở rộng (Esc)"
-              : "Mở rộng giao diện xem tóm tắt (Chế độ tập trung)"
+              : "Mở rộng không gian viết ghi chú (Chế độ tập trung)"
           }
           className={`flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-full border transition-all active:scale-95 cursor-pointer ${
             isFocusMode
@@ -288,11 +369,11 @@ export default function SummaryToolbar({
           )}
         </button>
 
-        {/* Icon 🔊 Đọc tóm tắt (TTS) có Tooltip */}
+        {/* Icon Đọc ghi chú (TTS) có Tooltip */}
         <button
           type="button"
           onClick={onToggleTts}
-          title={isTtsOpen ? "Đang mở trình đọc giọng nói (Bấm để đóng)" : "Đọc tóm tắt bằng giọng nói"}
+          title={isTtsOpen ? "Đang mở trình đọc giọng nói (Bấm để đóng)" : "Đọc ghi chú bằng giọng nói"}
           className={`flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-full border transition-all active:scale-95 cursor-pointer ${
             isTtsOpen
               ? "border-indigo-600 bg-indigo-600 text-white shadow-xs"
@@ -302,12 +383,12 @@ export default function SummaryToolbar({
           <Volume2 className="h-4 w-4" />
         </button>
 
-        {/* Icon 📄 Tải về PDF có Tooltip */}
+        {/* Icon Tải về PDF có Tooltip */}
         <button
           type="button"
           onClick={onExportPdf}
           disabled={isExportingPdf}
-          title={isExportingPdf ? "Đang xuất file PDF..." : "Tải về bản tóm tắt PDF"}
+          title={isExportingPdf ? "Đang xuất file PDF..." : "Tải về ghi chú PDF"}
           className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.03] text-neutral-600 dark:text-neutral-300 shadow-2xs hover:bg-black/[0.05] dark:hover:bg-white/[0.06] hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 transition-all cursor-pointer disabled:opacity-60"
         >
           {isExportingPdf ? (
@@ -336,7 +417,7 @@ export default function SummaryToolbar({
                 className="flex items-center gap-2 w-full rounded-xl px-3 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
               >
                 <Edit2 className="h-3.5 w-3.5 text-neutral-400" />
-                <span>Đổi tên tóm tắt</span>
+                <span>Đổi tên ghi chú</span>
               </button>
               <div className="my-1 border-t border-black/[0.06] dark:border-white/[0.08]" />
               <button
@@ -348,7 +429,7 @@ export default function SummaryToolbar({
                 className="flex items-center gap-2 w-full rounded-xl px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                <span>Xóa bản tóm tắt</span>
+                <span>Xóa ghi chú</span>
               </button>
             </div>
           )}
@@ -363,12 +444,13 @@ export default function SummaryToolbar({
             className="w-full max-w-sm rounded-[22px] bg-white dark:bg-[#161922] p-5 shadow-2xl border border-black/[0.06] dark:border-white/[0.1] space-y-4 animate-in zoom-in-95 duration-200"
           >
             <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
-              Đổi tên bản tóm tắt
+              Đổi tên ghi chú
             </h4>
             <input
               type="text"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Nhập tiêu đề ghi chú..."
               className="w-full rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-[#1A1E29] p-2.5 text-xs sm:text-sm text-neutral-800 dark:text-neutral-100 outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               autoFocus
             />
@@ -395,7 +477,7 @@ export default function SummaryToolbar({
       {/* Modal Delete */}
       <DeleteSummaryModal
         isOpen={isDeleteModalOpen}
-        summaryTitle={activeSummary?.title}
+        summaryTitle={activeSummary ? getNoteDisplayTitle(activeSummary.title) : undefined}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
       />

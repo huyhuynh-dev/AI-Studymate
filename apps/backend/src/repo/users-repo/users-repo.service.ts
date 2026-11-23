@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma, User } from '../../generated/prisma/client.js';
+import { collectNoteMediaKeysFromBlocks } from '../../summaries/note-media.constants.js';
 
 export interface UserProfileStats {
     subjects_count: number;
@@ -18,6 +19,7 @@ export interface UserProfileRecord {
     role: string;
     is_active: boolean;
     is_verified: boolean;
+    daily_goal_minutes: number;
     provider: string | null;
     has_password: boolean;
     created_at: Date;
@@ -67,6 +69,7 @@ export class UsersRepoService {
                 role: true,
                 is_active: true,
                 is_verified: true,
+                daily_goal_minutes: true,
                 provider: true,
                 password_hash: true,
                 created_at: true,
@@ -95,6 +98,7 @@ export class UsersRepoService {
             role: row.role,
             is_active: row.is_active,
             is_verified: row.is_verified,
+            daily_goal_minutes: row.daily_goal_minutes,
             provider: row.provider,
             has_password: Boolean(row.password_hash),
             created_at: row.created_at,
@@ -110,7 +114,7 @@ export class UsersRepoService {
     }
 
     async collectUserStorageKeys(userId: string): Promise<string[]> {
-        const [userRow, docs] = await Promise.all([
+        const [userRow, docs, summaries] = await Promise.all([
             this.prisma.user.findUnique({
                 where: { id: userId },
                 select: { avatar_url: true },
@@ -118,6 +122,10 @@ export class UsersRepoService {
             this.prisma.document.findMany({
                 where: { user_id: userId },
                 select: { storage_key: true, docling_json_key: true },
+            }),
+            this.prisma.summary.findMany({
+                where: { conversation: { user_id: userId } },
+                select: { pdf_storage_key: true, content_json: true },
             }),
         ]);
 
@@ -131,6 +139,18 @@ export class UsersRepoService {
             }
             if (doc.docling_json_key) {
                 keys.add(doc.docling_json_key);
+            }
+        }
+        const userMediaPrefix = `users/${userId}/`;
+        for (const summary of summaries) {
+            if (summary.pdf_storage_key) {
+                keys.add(summary.pdf_storage_key);
+            }
+            for (const mediaKey of collectNoteMediaKeysFromBlocks(
+                summary.content_json,
+                userMediaPrefix,
+            )) {
+                keys.add(mediaKey);
             }
         }
         return Array.from(keys);

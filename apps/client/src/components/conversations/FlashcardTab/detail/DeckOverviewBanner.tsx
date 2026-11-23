@@ -1,4 +1,5 @@
-import { Pencil, Play, Plus, Sparkles } from "lucide-react";
+import { Pencil, Play, Plus } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import type { Deck, DeckStats } from "../types";
 import { Button, cx, FONT_HEADING, GLASS, IconButton, SHADOW_1, SQUIRCLE, StatTile } from "../ui";
 
@@ -39,7 +40,7 @@ export function DeckOverviewBanner({ deck, stats, onEdit, onStudy, onAddCard, on
           <Button icon={<Plus className="h-4 w-4" />} onClick={onAddCard}>
             Thêm thẻ
           </Button>
-          <Button icon={<Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />} onClick={onAi}>
+          <Button icon={<StudyMateAiIcon variant="simple" className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />} onClick={onAi}>
             AI tạo thêm
           </Button>
           <Button

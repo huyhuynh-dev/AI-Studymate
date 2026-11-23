@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import type { AxiosError } from 'axios';
 import useSWR from 'swr';
 import { analyticsApi } from '@/services/analytics.api';
+import { workspaceSwrKeys } from '@/lib/workspace-sync';
 import type {
   ConversationAnalyticsResponse,
   DocumentMasteryResponse,
@@ -33,7 +34,7 @@ export function useConversationAnalytics(
 ) {
   const swrKey =
     enabled && conversationId
-      ? [`/analytics/conversations/${conversationId}`, windowDays]
+      ? workspaceSwrKeys.conversationAnalytics(conversationId, windowDays)
       : null;
 
   const { data, error, isLoading, isValidating, mutate } =

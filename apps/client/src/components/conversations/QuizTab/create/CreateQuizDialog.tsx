@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Layers, PenLine, Sparkles, Target, Minus, Plus } from "lucide-react";
+import type React from "react";
+import { Layers, PenLine, Target, Minus, Plus } from "lucide-react";
+import { StudyMateAiIcon, StudyMateAiSimpleIcon } from "@/components/ui/StudyMateAiIcon";
 import type {
   AIGenerateOptions,
   BloomLevel,
@@ -176,8 +178,8 @@ function TypePicker({ value, onChange, allowed = QUESTION_TYPES }: { value: Ques
   );
 }
 
-const SOURCES: { key: QuizCreateMode; icon: typeof Sparkles; title: string; desc: string; tone: string }[] = [
-  { key: "ai", icon: Sparkles, title: "Từ tài liệu bằng AI", desc: "AI đọc tài liệu trong không gian học tập và soạn đề.", tone: "text-[var(--qz-ai)] bg-[var(--qz-ai-soft)]" },
+const SOURCES: { key: QuizCreateMode; icon: React.ComponentType<{ className?: string }>; title: string; desc: string; tone: string }[] = [
+  { key: "ai", icon: StudyMateAiSimpleIcon, title: "Từ tài liệu bằng AI", desc: "AI đọc tài liệu trong không gian học tập và soạn đề.", tone: "text-[var(--qz-ai)] bg-[var(--qz-ai-soft)]" },
   { key: "targeted", icon: Target, title: "Ôn tập bù lỗ hổng (AI Đặc trị)", desc: "AI tập trung vào câu hỏi bạn hay sai và thẻ Flashcard khó nhớ.", tone: "text-[var(--qz-danger)] bg-[var(--qz-danger-soft)]" },
   { key: "flashcard", icon: Layers, title: "Từ bộ Flashcard", desc: "Biến thẻ ghi nhớ thành câu hỏi. Nhanh, không tốn lượt AI.", tone: "text-primary bg-[var(--qz-primary-soft)]" },
   { key: "manual", icon: PenLine, title: "Tự soạn đề", desc: "Tự viết từng câu hỏi và đáp án.", tone: "text-[var(--on-surface-variant)] bg-[var(--qz-fill)]" },
@@ -320,7 +322,7 @@ export function CreateQuizDialog({ open, initialSource, decks, documents, weakSu
             variant="primary"
             loading={busy}
             disabled={noDecks || noDocs || noSelection || noWeakAreas || invalidCustomBloom}
-            icon={isTargeted ? <Target className="h-4 w-4" /> : isAI ? <Sparkles className="h-4 w-4" /> : undefined}
+            icon={isTargeted ? <Target className="h-4 w-4" /> : isAI ? <StudyMateAiIcon variant="simple" className="h-4 w-4" /> : undefined}
             onClick={run}
           >
             {busy ? (isAI || isTargeted ? "Đang sinh đề…" : "Đang tạo…") : isTargeted ? "Tạo đề đặc trị" : isAI ? "Bắt đầu sinh đề" : "Tạo bài kiểm tra"}
