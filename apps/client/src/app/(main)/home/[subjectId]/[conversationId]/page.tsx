@@ -130,8 +130,6 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     isFocusMode,
     isViewingDocument,
     setFocusMode,
-    isRightSidebarCollapsed,
-    toggleRightSidebar,
   } = useFocusMode();
   const {
     activeTarget,
@@ -467,8 +465,6 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           subjectHref={`/home/${subjectId}`}
           sessionTitle={sessionTitle}
           badgeText="Phiên mới"
-          isRightSidebarCollapsed={isRightSidebarCollapsed}
-          onToggleRightSidebar={toggleRightSidebar}
         />
       </div>
 

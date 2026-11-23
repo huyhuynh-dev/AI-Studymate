@@ -7,6 +7,7 @@ import { CitationNavigationProvider, useCitationNavigation } from "@/contexts/Ci
 import { WordAgentProvider } from "@/contexts/WordAgentContext";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { usePathname, useRouter } from "next/navigation";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
@@ -47,10 +48,9 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         closeSidePanelCitation();
     }, [pathname, setFocusMode, setIsViewingDocument, closeSidePanelCitation]);
 
-    const effectiveLeftCollapsed = isLeftCollapsed || isFocusMode;
     const effectiveRightCollapsed = sidePanelTarget
         ? !showRightSidebar
-        : isRightSidebarCollapsed || !showRightSidebar || isFocusMode;
+        : isRightSidebarCollapsed || !showRightSidebar;
 
     return (
         <div className="flex h-screen w-full flex-col overflow-hidden bg-[#F8F9FF] dark:bg-[#090B10] select-none text-[#0B1C30] dark:text-[#EFF0F6]">
@@ -73,7 +73,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                                       }
                                     : undefined
                             }
-                            isCollapsed={effectiveLeftCollapsed}
+                            isCollapsed={isLeftCollapsed}
                             onToggleCollapse={() => setIsLeftCollapsed(!isLeftCollapsed)}
                             onSettingsClick={() => router.push("/profile")}
                         />
@@ -92,6 +92,21 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                                 : "p-5 sm:p-8 lg:p-10 overflow-y-auto"
                     }`}
                 >
+                    {showRightSidebar && effectiveRightCollapsed && !sidePanelTarget && (
+                        <button
+                            type="button"
+                            onClick={() => setIsRightSidebarCollapsed(false)}
+                            aria-label="Mở Trợ lý StudyMate AI"
+                            title="Mở Trợ lý StudyMate AI"
+                            className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-[60] flex h-12 items-center gap-2 rounded-full border border-indigo-200/80 dark:border-indigo-500/40 bg-white/95 dark:bg-[#12151C]/95 px-3.5 text-xs font-semibold text-[#4F46E5] dark:text-[#818CF8] shadow-[0_12px_32px_-12px_rgba(79,70,229,0.45)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-500/60 hover:bg-indigo-50/90 dark:hover:bg-indigo-950/50 active:translate-y-0 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F46E5]"
+                        >
+                            <StudyMateAiIcon
+                                variant="simple"
+                                className="h-4 w-4"
+                            />
+                            <span className="hidden sm:inline">Mở AI</span>
+                        </button>
+                    )}
                     {/* Inner content wrapper with maximum focus and fluid readability */}
                     <div
                         className={`min-h-full w-full flex flex-col ${

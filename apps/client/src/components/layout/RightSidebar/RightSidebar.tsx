@@ -224,7 +224,7 @@ export default function RightSidebar({
     pushPerformActionToActiveEditor,
     syncAgentSnapshotFromServer,
   } = useWordAgent();
-  const { isFocusMode, setFocusMode, setIsRightSidebarCollapsed } = useFocusMode();
+  const { setIsRightSidebarCollapsed } = useFocusMode();
 
   const isWordContextForConversation = Boolean(
     activeWordDocument &&
@@ -1069,9 +1069,6 @@ export default function RightSidebar({
     if (!pendingAskRequest) return;
 
     // Bảo đảm khung Chat ở RightSidebar hiển thị ngay cho người dùng xem câu trả lời
-    if (isFocusMode) {
-      setFocusMode(false);
-    }
     if (isCollapsed) {
       setIsRightSidebarCollapsed(false);
     }
@@ -1098,11 +1095,9 @@ export default function RightSidebar({
   }, [
     pendingAskRequest,
     isSending,
-    isFocusMode,
     isCollapsed,
     isSidePanelOpen,
     isFullscreen,
-    setFocusMode,
     setIsRightSidebarCollapsed,
     closeSidePanelCitation,
     consumeAskRequest,
@@ -1112,9 +1107,6 @@ export default function RightSidebar({
   useEffect(() => {
     if (!pendingComposerPrompt) return;
 
-    if (isFocusMode) {
-      setFocusMode(false);
-    }
     if (isCollapsed) {
       setIsRightSidebarCollapsed(false);
     }
@@ -1147,11 +1139,9 @@ export default function RightSidebar({
   }, [
     pendingComposerPrompt,
     isSending,
-    isFocusMode,
     isCollapsed,
     isSidePanelOpen,
     isFullscreen,
-    setFocusMode,
     setIsRightSidebarCollapsed,
     closeSidePanelCitation,
     consumePendingComposerPrompt,

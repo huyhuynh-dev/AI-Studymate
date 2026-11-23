@@ -2,7 +2,6 @@
 
 import React from "react";
 import { ChevronLeft, Share2, MoreHorizontal } from "lucide-react";
-import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -19,10 +18,6 @@ export interface ConversationHeaderProps {
   sessionTitle?: string;
   /** Nhãn trạng thái (ví dụ: "Phiên mới") */
   badgeText?: string;
-  /** Trạng thái đóng/mở của thanh Trợ lý AI */
-  isRightSidebarCollapsed?: boolean;
-  /** Callback bật/tắt thanh Trợ lý AI */
-  onToggleRightSidebar?: () => void;
   /** Callback khi bấm nút Chia sẻ */
   onShare?: () => void;
   /** Callback khi bấm nút Tùy chọn khác */
@@ -38,8 +33,6 @@ export default function ConversationHeader({
   subjectHref,
   sessionTitle = "Phiên học mới",
   badgeText = "Phiên mới",
-  isRightSidebarCollapsed = true,
-  onToggleRightSidebar,
   onShare,
   onMoreOptions,
   className = "",
@@ -134,32 +127,6 @@ export default function ConversationHeader({
         >
           <MoreHorizontal className="h-4 w-4" />
         </button>
-
-        {/* Nút bật/tắt Trợ lý AI StudyMate */}
-        <div className="relative group">
-          <button
-            type="button"
-            onClick={onToggleRightSidebar}
-            aria-label="Trợ lý StudyMate AI"
-            className={`flex h-8.5 w-8.5 sm:h-9 sm:w-9 items-center justify-center rounded-full border transition-all duration-200 active:scale-95 cursor-pointer ${
-              !isRightSidebarCollapsed
-                ? "border-indigo-300 dark:border-indigo-500/40 bg-indigo-50 dark:bg-indigo-950/40 text-[#4F46E5] dark:text-[#818CF8] shadow-xs"
-                : "border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#12151C]/80 backdrop-blur-md text-neutral-600 dark:text-neutral-400 hover:border-indigo-200 dark:hover:border-indigo-800/40 hover:bg-indigo-50/50 hover:text-[#4F46E5]"
-            }`}
-          >
-            <StudyMateAiIcon
-              variant="simple"
-              className="h-4 w-4 text-[#4F46E5] dark:text-[#818CF8] transition-transform duration-200 group-hover:scale-110"
-            />
-          </button>
-
-          {/* Tooltip Apple Floating Capsule */}
-          <div className="pointer-events-none absolute right-0 top-full mt-2 hidden group-hover:flex items-center z-50 animate-in fade-in-50 zoom-in-95 duration-150">
-            <div className="rounded-full bg-[#0B1C30]/90 dark:bg-white/95 backdrop-blur-md px-3 py-1 text-xs font-medium text-white dark:text-[#0B1C30] shadow-xl whitespace-nowrap">
-              {isRightSidebarCollapsed ? "Mở Trợ lý StudyMate AI" : "Thu gọn Trợ lý StudyMate AI"}
-            </div>
-          </div>
-        </div>
       </div>
     </header>
   );
