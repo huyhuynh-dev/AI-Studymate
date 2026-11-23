@@ -716,3 +716,15 @@ html {
   border-radius: 4px;
   transition: background-color 0.4s ease, outline-color 0.4s ease;
 }
+
+.studymate-superdoc-host.studymate-ai-streaming-active,
+.studymate-superdoc-host.studymate-ai-streaming-active [data-v2-ime-host],
+.studymate-superdoc-host.studymate-ai-streaming-active .ProseMirror {
+  caret-color: transparent !important;
+}
+
+.studymate-superdoc-host.studymate-ai-streaming-active [data-v2-local-caret],
+.studymate-superdoc-host.studymate-ai-streaming-active .ProseMirror-cursor {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}

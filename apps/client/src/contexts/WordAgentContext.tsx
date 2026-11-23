@@ -57,6 +57,7 @@ export interface RegisteredWordEditorHandle {
     toolCallId: string,
     args: unknown,
     changeMode: WordAgentChangeMode,
+    isFinal?: boolean,
   ) => void;
   waitForPendingStreams: () => Promise<{
     anyLiveSucceeded: boolean;
@@ -95,6 +96,7 @@ interface WordAgentContextValue {
     toolCallId: string,
     args: unknown,
     overrideChangeMode?: WordAgentChangeMode,
+    isFinal?: boolean,
   ) => void;
   syncAgentSnapshotFromServer: (
     documentId: string,
@@ -347,6 +349,7 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
       toolCallId: string,
       args: unknown,
       overrideChangeMode?: WordAgentChangeMode,
+      isFinal?: boolean,
     ) => {
       const handle = editorHandleRef.current;
       if (!handle || handle.document.id !== documentId) {
@@ -356,6 +359,7 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
         toolCallId,
         args,
         overrideChangeMode ?? changeMode,
+        isFinal,
       );
     },
     [changeMode],

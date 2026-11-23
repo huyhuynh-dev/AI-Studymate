@@ -251,6 +251,7 @@ export default function RightSidebar({
   streamTextToActiveEditorRef.current = streamTextToActiveEditor;
   const syncWordSnapshotRef = useRef(syncAgentSnapshotFromServer);
   syncWordSnapshotRef.current = syncAgentSnapshotFromServer;
+  const completedStreamToolCallIdsRef = useRef<Set<string>>(new Set());
   const [sidebarWidth, setSidebarWidth] = useState<number>(384);
   const sidebarWidthRef = useRef<number>(384);
   sidebarWidthRef.current = sidebarWidth;
@@ -649,6 +650,7 @@ export default function RightSidebar({
     setPendingSubmission(null);
     setSuggestions([]);
     setIsLoadingSuggestions(false);
+    completedStreamToolCallIdsRef.current.clear();
     setMessages([]);
     setInputValue("");
     clearFiles();
@@ -686,6 +688,22 @@ export default function RightSidebar({
           ...m,
           attachedFiles: m.attachedFiles || m.metadata?.attachedFiles,
         }));
+        const historyToolIds = new Set<string>();
+        for (const msg of normalized) {
+          if (!Array.isArray(msg?.parts)) continue;
+          for (const rawPart of msg.parts) {
+            if (
+              rawPart &&
+              typeof rawPart.toolCallId === "string" &&
+              (rawPart.type === "tool-superdoc_stream_text" ||
+                (rawPart.type === "dynamic-tool" &&
+                  rawPart.toolName === "superdoc_stream_text"))
+            ) {
+              historyToolIds.add(rawPart.toolCallId);
+            }
+          }
+        }
+        completedStreamToolCallIdsRef.current = historyToolIds;
         setMessages(normalized);
       } catch (err) {
         console.error("Lỗi khi tải lịch sử tin nhắn:", err);
@@ -1118,9 +1136,8 @@ export default function RightSidebar({
     sendMessage,
   ]);
 
-  // Đẩy trực tiếp token của superdoc_stream_text sang BrowserDocumentApi khi AI đang stream
+  // Đẩy trực tiếp token của superdoc_stream_text sang BrowserDocumentApi (kể cả frame output-available cuối cùng)
   useEffect(() => {
-    if (status !== "streaming" && status !== "submitted") return;
     const wordCtx = activeWordContextRef.current;
     if (!wordCtx?.documentId) return;
 
@@ -1148,17 +1165,22 @@ export default function RightSidebar({
       if (!isStreamTextTool || !part.toolCallId || !part.input) {
         continue;
       }
-      if (
-        part.state === "input-streaming" ||
-        part.state === "input-available" ||
-        part.state === "output-available"
-      ) {
+      if (completedStreamToolCallIdsRef.current.has(part.toolCallId)) {
+        continue;
+      }
+      const isFinal =
+        part.state === "input-available" || part.state === "output-available";
+      if (part.state === "input-streaming" || isFinal) {
         streamTextToActiveEditorRef.current(
           wordCtx.documentId,
           part.toolCallId,
           part.input,
           wordCtx.changeMode,
+          isFinal,
         );
+        if (part.state === "output-available") {
+          completedStreamToolCallIdsRef.current.add(part.toolCallId);
+        }
       }
     }
   }, [messages, status]);

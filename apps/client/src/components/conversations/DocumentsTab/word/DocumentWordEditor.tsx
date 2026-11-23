@@ -49,9 +49,11 @@ import { WordAiReviewBanner } from "./review/WordAiReviewBanner";
 import { WordSelectionAiPill } from "./review/WordSelectionAiPill";
 import { WordTrackedChangePopover } from "./review/WordTrackedChangePopover";
 import { TrackedReplacementCaret } from "./review/TrackedReplacementCaret";
+import { LiveAgentTypingCaret } from "./review/LiveAgentTypingCaret";
 import {
   BrowserTextStreamManager,
   isValidStreamTextInput,
+  type AgentStreamCursorTarget,
 } from "./stream/browser-text-stream";
 import { useWordDocumentPersistence } from "./useWordDocumentPersistence";
 import {
@@ -281,6 +283,13 @@ function DocumentWordWorkspace({
   const isReadyRef = useRef(false);
   const [reviewExpandSignal, setReviewExpandSignal] = useState(0);
   const [isAiStreamingText, setIsAiStreamingText] = useState(false);
+  const [agentCursorTarget, setAgentCursorTarget] =
+    useState<AgentStreamCursorTarget | null>(null);
+  const isAiStreamingTextRef = useRef(false);
+  const lockedScrollTopRef = useRef<number | null>(null);
+  const isProgrammaticMutationRef = useRef(false);
+  const cursorClearTimerRef = useRef<number | null>(null);
+  const lastManualScrollAtRef = useRef(0);
 
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
@@ -343,18 +352,10 @@ function DocumentWordWorkspace({
         }
         markDirty();
       },
-      pushStreamText: (toolCallId, args, targetChangeMode) => {
+      pushStreamText: (toolCallId, args, targetChangeMode, isFinal) => {
         const manager = streamManagerRef.current;
         if (!manager || !isValidStreamTextInput(args)) return;
-        const instance = superdocInstanceRef.current;
-        if (instance && isReadyRef.current && targetChangeMode === "tracked") {
-          setTrackedChangesView("markup");
-          instance.setViewingOptions({
-            comments: true,
-            trackedChanges: "markup",
-          });
-        }
-        manager.pushUpdate(toolCallId, args, targetChangeMode);
+        manager.pushUpdate(toolCallId, args, targetChangeMode, isFinal);
       },
       waitForPendingStreams: async () => {
         const manager = streamManagerRef.current;
@@ -466,7 +467,83 @@ function DocumentWordWorkspace({
             ? new BrowserTextStreamManager({
                 doc: docApi,
                 onMutated: markDirty,
-                onStreamingChange: setIsAiStreamingText,
+                onCursorMove: (cursor) => {
+                  setAgentCursorTarget(cursor);
+                },
+                onStreamingChange: (streaming) => {
+                  isAiStreamingTextRef.current = streaming;
+                  setIsAiStreamingText(streaming);
+
+                  if (cursorClearTimerRef.current !== null) {
+                    window.clearTimeout(cursorClearTimerRef.current);
+                    cursorClearTimerRef.current = null;
+                  }
+
+                  const stageEl = stageRef.current;
+                  const hostEl = mountRef.current;
+
+                  if (streaming) {
+                    if (stageEl && stageEl.scrollTop > 0) {
+                      lockedScrollTopRef.current = stageEl.scrollTop;
+                    }
+                    if (hostEl) {
+                      hostEl.classList.add("studymate-ai-streaming-active");
+                      const activeEl = window.document.activeElement;
+                      if (
+                        activeEl instanceof HTMLElement &&
+                        hostEl.contains(activeEl)
+                      ) {
+                        const savedTop = stageEl?.scrollTop ?? null;
+                        activeEl.blur();
+                        if (stageEl && savedTop !== null) {
+                          stageEl.scrollTop = savedTop;
+                        }
+                      }
+                    }
+                  } else {
+                    hostEl?.classList.remove("studymate-ai-streaming-active");
+                    cursorClearTimerRef.current = window.setTimeout(() => {
+                      setAgentCursorTarget(null);
+                      lockedScrollTopRef.current = null;
+                      cursorClearTimerRef.current = null;
+                    }, 700);
+                  }
+                },
+                runWithScrollGuard: async (fn) => {
+                  const stageEl = stageRef.current;
+                  const beforeTop = stageEl ? stageEl.scrollTop : null;
+                  if (beforeTop !== null && beforeTop > 0) {
+                    lockedScrollTopRef.current = beforeTop;
+                  }
+                  isProgrammaticMutationRef.current = true;
+                  try {
+                    return await fn();
+                  } finally {
+                    if (
+                      stageEl &&
+                      beforeTop !== null &&
+                      beforeTop > 24 &&
+                      (stageEl.scrollTop < 12 ||
+                        beforeTop - stageEl.scrollTop > 120)
+                    ) {
+                      stageEl.scrollTop = beforeTop;
+                    }
+                    window.requestAnimationFrame(() => {
+                      const locked = lockedScrollTopRef.current;
+                      if (
+                        stageEl &&
+                        locked !== null &&
+                        locked > 24 &&
+                        Date.now() - lastManualScrollAtRef.current > 200 &&
+                        (stageEl.scrollTop < 12 ||
+                          locked - stageEl.scrollTop > 120)
+                      ) {
+                        stageEl.scrollTop = locked;
+                      }
+                      isProgrammaticMutationRef.current = false;
+                    });
+                  }
+                },
               })
             : null;
         isReadyRef.current = true;
@@ -536,6 +613,14 @@ function DocumentWordWorkspace({
     return () => {
       disposed = true;
       isReadyRef.current = false;
+      isAiStreamingTextRef.current = false;
+      isProgrammaticMutationRef.current = false;
+      lockedScrollTopRef.current = null;
+      if (cursorClearTimerRef.current !== null) {
+        window.clearTimeout(cursorClearTimerRef.current);
+        cursorClearTimerRef.current = null;
+      }
+      mountEl.classList.remove("studymate-ai-streaming-active");
       void streamManagerRef.current?.dispose();
       streamManagerRef.current = null;
       superdocInstanceRef.current = null;
@@ -588,6 +673,47 @@ function DocumentWordWorkspace({
     },
     [],
   );
+
+  // Khóa chống giật cuộn trang lên đầu tài liệu khi AI đang bơm ký tự vào Editor
+  useEffect(() => {
+    const stageEl = stageRef.current;
+    if (!stageEl) return undefined;
+
+    const markManualInput = () => {
+      lastManualScrollAtRef.current = Date.now();
+      if (isAiStreamingTextRef.current) {
+        lockedScrollTopRef.current = stageEl.scrollTop;
+      }
+    };
+
+    const handleScroll = () => {
+      if (Date.now() - lastManualScrollAtRef.current <= 200) {
+        lockedScrollTopRef.current = stageEl.scrollTop;
+        return;
+      }
+      const locked = lockedScrollTopRef.current;
+      if (
+        (isProgrammaticMutationRef.current || isAiStreamingTextRef.current) &&
+        locked !== null &&
+        locked > 24 &&
+        (stageEl.scrollTop < 12 || locked - stageEl.scrollTop > 120)
+      ) {
+        stageEl.scrollTop = locked;
+      }
+    };
+
+    stageEl.addEventListener("wheel", markManualInput, { passive: true });
+    stageEl.addEventListener("touchmove", markManualInput, { passive: true });
+    stageEl.addEventListener("pointerdown", markManualInput, { passive: true });
+    stageEl.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      stageEl.removeEventListener("wheel", markManualInput);
+      stageEl.removeEventListener("touchmove", markManualInput);
+      stageEl.removeEventListener("pointerdown", markManualInput);
+      stageEl.removeEventListener("scroll", handleScroll);
+    };
+  }, [isEditorReady]);
 
   // Đóng dropdown xuất file khi click ra ngoài
   useEffect(() => {
@@ -1285,6 +1411,17 @@ function DocumentWordWorkspace({
                 className="studymate-superdoc-host"
                 aria-label={`Trình soạn thảo ${document.file_name}`}
               />
+              {!compactReaderMode && (
+                <LiveAgentTypingCaret
+                  overlayContainerRef={editorOverlayRef}
+                  stageContainerRef={stageRef}
+                  cursorTarget={agentCursorTarget}
+                  isStreaming={isAiStreamingText}
+                  onAutoFollowScroll={(nextTop) => {
+                    lockedScrollTopRef.current = nextTop;
+                  }}
+                />
+              )}
               {!compactReaderMode && (
                 <WordSelectionAiPill overlayContainerRef={editorOverlayRef} />
               )}
