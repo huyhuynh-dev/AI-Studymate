@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { SelectionTarget } from "superdoc/ui";
 import {
@@ -116,7 +116,7 @@ function ListPreview({ markers }: { markers: string[] }) {
 /**
  * Nhóm nút định dạng văn bản & đoạn văn dùng chung bộ điều phối selection với keyboard shortcuts.
  */
-export function WordFormattingControls({
+export const WordFormattingControls = memo(function WordFormattingControls({
   className = "",
 }: {
   className?: string;
@@ -930,4 +930,4 @@ export function WordFormattingControls({
       ) : null}
     </>
   );
-}
+});

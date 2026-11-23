@@ -1,4 +1,5 @@
-import type { CSSProperties } from "react";
+import { memo, type CSSProperties } from "react";
+import { SelectionFormattingProvider } from "./useSelectionFormatting";
 import { WordFormattingControls } from "./WordFormattingControls";
 import { WordFormattingShortcuts } from "./WordFormattingShortcuts";
 import { WordStyleAndReviewControls } from "./WordStyleAndReviewControls";
@@ -13,7 +14,7 @@ export interface WordDocumentToolbarProps {
  * Thanh công cụ React thuần cho Word Editor, chạy bên trong `<SuperDocUIProvider>`
  * để dùng chung một controller duy nhất và tránh xung đột focus với Vue toolbar.
  */
-export function WordDocumentToolbar({
+export const WordDocumentToolbar = memo(function WordDocumentToolbar({
   className = "",
   style,
 }: WordDocumentToolbarProps) {
@@ -24,11 +25,13 @@ export function WordDocumentToolbar({
       role="toolbar"
       aria-label="Thanh công cụ soạn thảo Word"
     >
-      <WordFormattingShortcuts />
-      <div className="sd-word-toolbar-inner">
-        <WordFormattingControls />
-        <WordStyleAndReviewControls />
-      </div>
+      <SelectionFormattingProvider>
+        <WordFormattingShortcuts />
+        <div className="sd-word-toolbar-inner">
+          <WordFormattingControls />
+          <WordStyleAndReviewControls />
+        </div>
+      </SelectionFormattingProvider>
     </div>
   );
-}
+});

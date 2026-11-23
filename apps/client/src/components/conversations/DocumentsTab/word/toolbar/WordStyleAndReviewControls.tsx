@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { StyleCatalogItem } from "superdoc/ui";
 import {
@@ -29,7 +29,7 @@ const ZOOM_PRESETS = [75, 90, 100, 115, 125, 150];
  * Dropdown chọn nhanh Style (Normal, Heading 1-3...) kèm preview trực quan,
  * bộ điều chỉnh Zoom Fit-Width và thao tác duyệt Track Changes cho RightSidebar.
  */
-export function WordStyleAndReviewControls() {
+export const WordStyleAndReviewControls = memo(function WordStyleAndReviewControls() {
   const ui = useSuperDocUI();
   const documentSlice = useSuperDocDocument();
   const zoom = useSuperDocZoom();
@@ -406,4 +406,4 @@ export function WordStyleAndReviewControls() {
       ) : null}
     </>
   );
-}
+});

@@ -1,8 +1,10 @@
+import type { Server as HttpServer } from 'node:http';
 import { NestFactory } from '@nestjs/core';
 import { AppModule, ObserveInstrument } from './app.module.js';
 import { ValidationPipe } from '@nestjs/common';
 import { json, urlencoded } from 'express';
 import { HttpLoggingFilter } from './common/filters/http-logging.filter.js';
+import { SuperDocCollaborationService } from './documents/collaboration/superdoc-collaboration.service.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -26,7 +28,10 @@ async function bootstrap() {
   }));
   app.useGlobalFilters(new HttpLoggingFilter());
 
-
-  await app.listen(process.env.PORT ?? 3001);
+  const port = Number(process.env.PORT ?? 3001);
+  await app.listen(port);
+  app
+    .get(SuperDocCollaborationService)
+    .attachHttpServer(app.getHttpServer() as HttpServer, port);
 }
 await bootstrap();

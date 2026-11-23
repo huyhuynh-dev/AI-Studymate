@@ -38,7 +38,7 @@ const QUICK_ACTIONS: Array<{
   { action: "translate-en", label: "Dịch sang tiếng Anh", icon: Languages },
 ];
 
-export function WordSelectionAiPill({
+export const WordSelectionAiPill = React.memo(function WordSelectionAiPill({
   overlayContainerRef,
 }: WordSelectionAiPillProps) {
   const ui = useSuperDocUI();
@@ -226,4 +226,4 @@ export function WordSelectionAiPill({
       )}
     </div>
   );
-}
+});

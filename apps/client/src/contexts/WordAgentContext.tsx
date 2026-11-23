@@ -48,6 +48,10 @@ export interface RegisteredWordEditorHandle {
   document: DocumentItem;
   conversationId: string;
   isDirty: () => boolean;
+  hasUnstagedUserEdits?: () => boolean;
+  markAgentSynced?: () => void;
+  isCollaborationActive?: () => boolean;
+  markRemoteMutated?: () => void;
   exportWorkingBlob: () => Promise<Blob | null>;
   applyAgentSnapshotBlob: (
     blob: Blob,
@@ -59,9 +63,15 @@ export interface RegisteredWordEditorHandle {
     changeMode: WordAgentChangeMode,
     isFinal?: boolean,
   ) => void;
-  waitForPendingStreams: () => Promise<{
+  pushPerformAction?: (
+    toolCallId: string,
+    args: unknown,
+    changeMode: WordAgentChangeMode,
+  ) => boolean;
+  waitForPendingStreams: (options?: { finalizeTurn?: boolean }) => Promise<{
     anyLiveSucceeded: boolean;
     anyFailed: boolean;
+    lastErrorMessage?: string;
   }>;
   acceptAllChanges: () => Promise<number>;
   rejectAllChanges: () => Promise<number>;
@@ -98,6 +108,12 @@ interface WordAgentContextValue {
     overrideChangeMode?: WordAgentChangeMode,
     isFinal?: boolean,
   ) => void;
+  pushPerformActionToActiveEditor: (
+    documentId: string,
+    toolCallId: string,
+    args: unknown,
+    overrideChangeMode?: WordAgentChangeMode,
+  ) => boolean;
   syncAgentSnapshotFromServer: (
     documentId: string,
     options?: {
@@ -207,25 +223,42 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
       setSnapshotSyncError(null);
 
       try {
-        const streamState = await handle.waitForPendingStreams();
         if (
-          options?.requiresSnapshotReload === false &&
-          streamState.anyLiveSucceeded &&
-          !streamState.anyFailed
+          handle.isCollaborationActive?.() &&
+          options?.requiresSnapshotReload === false
         ) {
+          handle.markAgentSynced?.();
+          handle.markRemoteMutated?.();
           setLastAgentUpdate({
             documentId,
             changeMode: options?.changeMode ?? "tracked",
             occurredAt: Date.now(),
             count: options?.count,
           });
-          // Đồng bộ ngược bản nháp vừa stream trên trình duyệt lên server snapshot
-          const syncedBlob = await handle.exportWorkingBlob().catch(() => null);
-          if (syncedBlob) {
-            await documentsApi
-              .stageAgentWorkingSnapshot(documentId, syncedBlob)
-              .catch(() => undefined);
-          }
+          return true;
+        }
+
+        const streamState = await handle.waitForPendingStreams({
+          finalizeTurn: true,
+        });
+        if (streamState.anyFailed && streamState.lastErrorMessage) {
+          console.warn(
+            "[WordAgentContext] Live stream fallback to server snapshot:",
+            streamState.lastErrorMessage,
+          );
+        }
+        if (
+          options?.requiresSnapshotReload === false &&
+          streamState.anyLiveSucceeded &&
+          !streamState.anyFailed
+        ) {
+          handle.markAgentSynced?.();
+          setLastAgentUpdate({
+            documentId,
+            changeMode: options?.changeMode ?? "tracked",
+            occurredAt: Date.now(),
+            count: options?.count,
+          });
           return true;
         }
 
@@ -270,6 +303,7 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
         void syncAgentSnapshotFromServer(pending.documentId, {
           changeMode: pending.changeMode,
           count: pending.count,
+          requiresSnapshotReload: pending.requiresSnapshotReload,
         });
       }
 
@@ -335,10 +369,17 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
       if (!handle || handle.document.id !== documentId) {
         return null;
       }
-      if (!handle.isDirty()) {
+      const hasUnstaged = handle.hasUnstagedUserEdits
+        ? handle.hasUnstagedUserEdits()
+        : handle.isDirty();
+      if (!hasUnstaged) {
         return null;
       }
-      return handle.exportWorkingBlob();
+      const blob = await handle.exportWorkingBlob();
+      if (blob) {
+        handle.markAgentSynced?.();
+      }
+      return blob;
     },
     [],
   );
@@ -355,11 +396,40 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
       if (!handle || handle.document.id !== documentId) {
         return;
       }
+      if (handle.isCollaborationActive?.()) {
+        return;
+      }
       handle.pushStreamText(
         toolCallId,
         args,
         overrideChangeMode ?? changeMode,
         isFinal,
+      );
+    },
+    [changeMode],
+  );
+
+  const pushPerformActionToActiveEditor = useCallback(
+    (
+      documentId: string,
+      toolCallId: string,
+      args: unknown,
+      overrideChangeMode?: WordAgentChangeMode,
+    ): boolean => {
+      const handle = editorHandleRef.current;
+      if (!handle || handle.document.id !== documentId) {
+        return false;
+      }
+      if (handle.isCollaborationActive?.()) {
+        return true;
+      }
+      if (!handle.pushPerformAction) {
+        return false;
+      }
+      return handle.pushPerformAction(
+        toolCallId,
+        args,
+        overrideChangeMode ?? changeMode,
       );
     },
     [changeMode],
@@ -396,6 +466,7 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
       consumePendingComposerPrompt,
       exportActiveSnapshotForAgent,
       streamTextToActiveEditor,
+      pushPerformActionToActiveEditor,
       syncAgentSnapshotFromServer,
       clearAgentSyncState,
       focusDocumentReviewBanner,
@@ -417,6 +488,7 @@ export function WordAgentProvider({ children }: { children: React.ReactNode }) {
       consumePendingComposerPrompt,
       exportActiveSnapshotForAgent,
       streamTextToActiveEditor,
+      pushPerformActionToActiveEditor,
       syncAgentSnapshotFromServer,
       clearAgentSyncState,
       focusDocumentReviewBanner,

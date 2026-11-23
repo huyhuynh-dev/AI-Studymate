@@ -407,6 +407,23 @@ export type SuperDocStreamTextCallback = (
   input: SuperDocStreamTextToolInput,
 ) => Promise<SuperDocStreamTextToolOutput>;
 
+export interface SuperDocStreamTextLiveHandlers {
+  onInputStart?: (event: {
+    toolCallId: string;
+    abortSignal?: AbortSignal;
+  }) => void | Promise<void>;
+  onInputDelta?: (event: {
+    toolCallId: string;
+    inputTextDelta: string;
+    abortSignal?: AbortSignal;
+  }) => void | Promise<void>;
+  commit?: (event: {
+    toolCallId: string;
+    input: SuperDocStreamTextToolInput;
+    abortSignal?: AbortSignal;
+  }) => Promise<SuperDocStreamTextToolOutput>;
+}
+
 export type SuperDocApiSearchToolInput = Record<string, unknown>;
 export type SuperDocApiSearchToolOutput = unknown;
 export type SuperDocApiSearchCallback = (
@@ -485,6 +502,7 @@ export interface ChatSessionToolCallbacks {
   onSuperDocInspect?: SuperDocInspectCallback;
   onSuperDocPerformAction?: SuperDocPerformActionCallback;
   onSuperDocStreamText?: SuperDocStreamTextCallback;
+  superdocStreamTextLiveHandlers?: SuperDocStreamTextLiveHandlers;
   onSuperDocApiSearch?: SuperDocApiSearchCallback;
   onSuperDocApiCall?: SuperDocApiCallCallback;
   superdocToolkitMeta?: SuperDocToolkitToolMeta;

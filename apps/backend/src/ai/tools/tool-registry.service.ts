@@ -376,6 +376,7 @@ export class ToolRegistryService {
         {
           documentId: callbacks.superdocToolkitMeta?.documentId,
           fileName: callbacks.superdocToolkitMeta?.fileName,
+          liveHandlers: callbacks.superdocStreamTextLiveHandlers,
         },
       );
     }

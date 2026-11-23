@@ -14,6 +14,10 @@ import { ConversationsRepoService } from '../repo/conversations-repo/conversatio
 import { DocumentsQueueService } from './services/documents-queue.service.js';
 import { GoogleDocsImportService } from './services/google-docs-import.service.js';
 import { SuperDocRuntimeService } from './services/superdoc-runtime.service.js';
+import {
+    SuperDocCollaborationService,
+    type BrowserCollaborationSessionInfo,
+} from './collaboration/superdoc-collaboration.service.js';
 import { InitUploadDto, MAX_FILE_SIZE_BYTES } from './dto/init-upload.dto.js';
 import { CompleteUploadDto } from './dto/complete-upload.dto.js';
 import { UpdateDocumentContentDto } from './dto/update-document-content.dto.js';
@@ -43,6 +47,7 @@ export class DocumentsService {
         private readonly documentsQueueService: DocumentsQueueService,
         @Optional() private readonly googleDocsImportService?: GoogleDocsImportService,
         @Optional() private readonly superdocRuntimeService?: SuperDocRuntimeService,
+        @Optional() private readonly superdocCollaborationService?: SuperDocCollaborationService,
     ) { }
 
     private sanitizeFileName(fileName: string): string {
@@ -360,6 +365,10 @@ export class DocumentsService {
             ?.clearWorkingSnapshot(userId, documentId)
             .catch(() => undefined);
 
+        await this.superdocCollaborationService
+            ?.markRoomSaved(documentId, nextVersion)
+            .catch(() => undefined);
+
         if (typeof this.documentsQueueService.enqueueContentReindexJob === 'function') {
             await this.documentsQueueService.enqueueContentReindexJob(
                 {
@@ -427,7 +436,46 @@ export class DocumentsService {
 
     async clearAgentWorkingSnapshot(userId: string, documentId: string) {
         await this.superdocRuntimeService?.clearWorkingSnapshot(userId, documentId);
+        await this.superdocCollaborationService
+            ?.resetRoomForDocument(documentId, { deleteState: true })
+            .catch(() => undefined);
         return { cleared: true };
+    }
+
+    async createCollaborationSession(
+        userId: string,
+        documentId: string,
+        params?: { requestHost?: string; requestProto?: string },
+    ): Promise<BrowserCollaborationSessionInfo> {
+        if (!this.superdocCollaborationService?.isEnabled()) {
+            return {
+                enabled: false,
+                documentId,
+                collaborationUrl: '',
+                token: '',
+                expiresAt: new Date(Date.now() + 60_000).toISOString(),
+                contentVersion: 1,
+                hasUnsavedRoomEdits: false,
+            };
+        }
+        return this.superdocCollaborationService.createBrowserSession(
+            userId,
+            documentId,
+            params,
+        );
+    }
+
+    async refreshCollaborationToken(userId: string, documentId: string) {
+        if (!this.superdocCollaborationService?.isEnabled()) {
+            return {
+                token: '',
+                expiresAt: new Date(Date.now() + 60_000).toISOString(),
+            };
+        }
+        return this.superdocCollaborationService.refreshBrowserToken(
+            userId,
+            documentId,
+        );
     }
 
     async getDocumentContent(userId: string, documentId: string) {
@@ -597,6 +645,14 @@ export class DocumentsService {
                 this.logger.warn(`Không thể xóa object trên R2 [${key}]: ${e.message}`)
             );
         }
+
+        // Đóng và xóa phòng cộng tác Hocuspocus / working snapshot nếu có
+        await this.superdocCollaborationService
+            ?.resetRoomForDocument(documentId, { deleteState: true })
+            .catch(() => undefined);
+        await this.superdocRuntimeService
+            ?.clearWorkingSnapshot(userId, documentId)
+            .catch(() => undefined);
 
         // Xóa bản ghi trong DB (Prisma cascade xóa chunks & assets liên quan)
         await this.documentsRepo.deleteDocument(documentId, userId);

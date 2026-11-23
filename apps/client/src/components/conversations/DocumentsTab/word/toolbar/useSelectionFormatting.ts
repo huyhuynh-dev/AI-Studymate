@@ -1,4 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { SelectionInfo } from "superdoc/ui";
 import {
   useSuperDocDocument,
@@ -66,7 +76,7 @@ const VERTICAL_COMMANDS = new Set(["subscript", "superscript"]);
  * Vùng chọn thường dùng mutation plan đồng bộ theo changeMode;
  * Con trỏ hoặc lệnh đoạn văn rơi về `ui.commands.executeAsync`.
  */
-export function useSelectionFormatting() {
+function useSelectionFormattingState(enabled = true) {
   const ui = useSuperDocUI();
   const host = useSuperDocHost();
   const selection = useSuperDocSelection();
@@ -84,9 +94,14 @@ export function useSelectionFormatting() {
     documentSlice.mode === "suggesting" ? "tracked" : "direct";
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     const update = async () => {
       if (!ui || !doc?.selection?.current || !doc.plan?.execute) {
+        if (!cancelled) setLocked(false);
+        return;
+      }
+      if ((ui.contentControls?.getSnapshot?.()?.items?.length ?? 0) === 0) {
         if (!cancelled) setLocked(false);
         return;
       }
@@ -108,7 +123,7 @@ export function useSelectionFormatting() {
       cancelled = true;
       stop?.();
     };
-  }, [doc, selection, ui]);
+  }, [doc, enabled, selection, ui]);
 
   const canExecute = useCallback(
     (command: string) => {
@@ -315,12 +330,39 @@ export function useSelectionFormatting() {
     return getFormattingSelection(doc, ui);
   }, [doc, ui]);
 
-  return {
-    execute,
-    applyChanges,
-    canExecute,
-    pending,
-    readOnly,
-    getSelection,
-  };
+  return useMemo(
+    () => ({
+      execute,
+      applyChanges,
+      canExecute,
+      pending,
+      readOnly,
+      getSelection,
+    }),
+    [applyChanges, canExecute, execute, getSelection, pending, readOnly],
+  );
+}
+
+type SelectionFormattingValue = ReturnType<typeof useSelectionFormattingState>;
+
+const SelectionFormattingContext =
+  createContext<SelectionFormattingValue | null>(null);
+
+export function SelectionFormattingProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const value = useSelectionFormattingState(true);
+  return createElement(
+    SelectionFormattingContext.Provider,
+    { value },
+    children,
+  );
+}
+
+export function useSelectionFormatting(): SelectionFormattingValue {
+  const ctx = useContext(SelectionFormattingContext);
+  const fallback = useSelectionFormattingState(!ctx);
+  return ctx ?? fallback;
 }

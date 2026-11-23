@@ -7,6 +7,7 @@ import { DoclingService } from './services/docling.service.js';
 import { RetrievalService } from './services/retrieval.service.js';
 import { GoogleDocsImportService } from './services/google-docs-import.service.js';
 import { SuperDocRuntimeService } from './services/superdoc-runtime.service.js';
+import { SuperDocCollaborationService } from './collaboration/superdoc-collaboration.service.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { RepoModule } from '../repo/repo.module.js';
 import { AiModule } from '../ai/ai.module.js';
@@ -22,6 +23,7 @@ import { PrismaModule } from '../prisma/prisma.module.js';
     RetrievalService,
     GoogleDocsImportService,
     SuperDocRuntimeService,
+    SuperDocCollaborationService,
   ],
   controllers: [DocumentsController],
   exports: [
@@ -30,6 +32,7 @@ import { PrismaModule } from '../prisma/prisma.module.js';
     DoclingService,
     RetrievalService,
     SuperDocRuntimeService,
+    SuperDocCollaborationService,
   ],
 })
 export class DocumentsModule {}

@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-  OnModuleDestroy,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, NotFoundException, OnModuleDestroy, Optional } from '@nestjs/common';
 import {
   SuperDocClient,
   createAgentToolkit,
@@ -18,6 +12,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { StorageService } from '../../storage/storage.service.js';
 import { DocumentsRepoService } from '../../repo/documents-repo/documents-repo.service.js';
+import { SuperDocCollaborationService } from '../collaboration/superdoc-collaboration.service.js';
 import {
   DOCX_MIME_TYPE,
   isDocxDocument,
@@ -140,6 +135,16 @@ export class SuperDocRuntimeService implements OnModuleDestroy {
   );
   private readonly snapshots = new Map<string, WorkingSnapshotEntry>();
   private readonly keyQueues = new Map<string, Promise<unknown>>();
+  private readonly turnSessions = new Map<
+    string,
+    {
+      refCount: number;
+      doc?: SuperDocDocument;
+      fileName?: string;
+      dirty: boolean;
+      latestRevision?: string;
+    }
+  >();
   private readonly trackedCapableActions: ReadonlySet<string>;
 
   private clientPromise: Promise<SuperDocClient> | null = null;
@@ -151,6 +156,7 @@ export class SuperDocRuntimeService implements OnModuleDestroy {
   constructor(
     private readonly storageService: StorageService,
     private readonly documentsRepo: DocumentsRepoService,
+    @Optional() private readonly superdocCollaborationService?: SuperDocCollaborationService,
   ) {
     const dispositions = getActionDispositions();
     this.trackedCapableActions = new Set(
@@ -165,6 +171,17 @@ export class SuperDocRuntimeService implements OnModuleDestroy {
   }
 
   async dispose(): Promise<void> {
+    const turnDocsToClose = Array.from(this.turnSessions.values())
+      .map((session) => session.doc)
+      .filter((doc): doc is SuperDocDocument => Boolean(doc));
+    this.turnSessions.clear();
+
+    await Promise.all(
+      turnDocsToClose.map((doc) =>
+        doc.close({ discard: true }).catch(() => undefined),
+      ),
+    );
+
     const pathsToDelete = Array.from(this.snapshots.values()).map(
       (entry) => entry.filePath,
     );
@@ -300,6 +317,93 @@ export class SuperDocRuntimeService implements OnModuleDestroy {
   }
 
   /**
+   * Bắt đầu một phiên làm việc gộp theo lượt AI (turn-scoped pooling) để giữ
+   * handle tài liệu mở xuyên suốt nhiều tool calls, chỉ lưu & đóng 1 lần khi kết thúc lượt.
+   */
+  beginTurnSession(userId: string, documentId: string): () => Promise<void> {
+    const key = this.getSessionKey(userId, documentId);
+    const existing = this.turnSessions.get(key);
+    if (existing) {
+      existing.refCount += 1;
+    } else {
+      this.turnSessions.set(key, {
+        refCount: 1,
+        dirty: false,
+      });
+    }
+
+    let released = false;
+    return async () => {
+      if (released) return;
+      released = true;
+
+      const current = this.turnSessions.get(key);
+      if (!current) return;
+      current.refCount = Math.max(0, current.refCount - 1);
+      if (current.refCount <= 0) {
+        await this.enqueueForKey(key, () => this.closeAndFlushTurnSession(key));
+      }
+    };
+  }
+
+  private async flushTurnSessionIfDirty(
+    key: string,
+    documentId: string,
+  ): Promise<void> {
+    const session = this.turnSessions.get(key);
+    if (!session?.doc || !session.dirty) return;
+
+    await this.ensureSnapshotDir();
+    const outputPath = path.join(
+      this.snapshotRoot,
+      `${documentId}-${randomUUID()}.docx`,
+    );
+    await session.doc.save({ out: outputPath, force: true });
+
+    const previousEntry = this.snapshots.get(key);
+    this.snapshots.set(key, {
+      filePath: outputPath,
+      fileName: session.fileName ?? previousEntry?.fileName ?? 'document.docx',
+      mimeType: DOCX_MIME_TYPE,
+      updatedAt: Date.now(),
+      hasUnpersistedChanges: true,
+      revision: session.latestRevision,
+    });
+
+    if (previousEntry && previousEntry.filePath !== outputPath) {
+      await fs
+        .rm(previousEntry.filePath, { force: true })
+        .catch(() => undefined);
+    }
+
+    session.dirty = false;
+  }
+
+  private async discardTurnSessionDoc(key: string): Promise<void> {
+    const session = this.turnSessions.get(key);
+    if (!session?.doc) return;
+    const docToClose = session.doc;
+    session.doc = undefined;
+    session.dirty = false;
+    await docToClose.close({ discard: true }).catch(() => undefined);
+  }
+
+  private async closeAndFlushTurnSession(key: string): Promise<void> {
+    const session = this.turnSessions.get(key);
+    if (!session) return;
+    const colonIdx = key.indexOf(':');
+    const documentId = colonIdx >= 0 ? key.slice(colonIdx + 1) : key;
+    try {
+      await this.flushTurnSessionIfDirty(key, documentId);
+    } finally {
+      await this.discardTurnSessionDoc(key);
+      if (session.refCount <= 0) {
+        this.turnSessions.delete(key);
+      }
+    }
+  }
+
+  /**
    * Nhận bản nháp DOCX từ trình duyệt (khi có chỉnh sửa thủ công chưa lưu)
    * trước khi AI Agent bắt đầu phiên làm việc.
    */
@@ -315,6 +419,7 @@ export class SuperDocRuntimeService implements OnModuleDestroy {
     const key = this.getSessionKey(userId, documentId);
 
     return this.enqueueForKey(key, async () => {
+      await this.discardTurnSessionDoc(key);
       await this.ensureSnapshotDir();
       await this.pruneExpiredSnapshots();
 
@@ -363,6 +468,7 @@ export class SuperDocRuntimeService implements OnModuleDestroy {
     const key = this.getSessionKey(userId, documentId);
 
     return this.enqueueForKey(key, async () => {
+      await this.flushTurnSessionIfDirty(key, documentId);
       const existing = this.snapshots.get(key);
       if (existing) {
         try {
@@ -398,6 +504,7 @@ export class SuperDocRuntimeService implements OnModuleDestroy {
   ): Promise<void> {
     const key = this.getSessionKey(userId, documentId);
     await this.enqueueForKey(key, async () => {
+      await this.discardTurnSessionDoc(key);
       const existing = this.snapshots.get(key);
       if (!existing) return;
       this.snapshots.delete(key);
@@ -567,6 +674,39 @@ export class SuperDocRuntimeService implements OnModuleDestroy {
       params.userId,
       params.documentId,
     );
+
+    if (this.superdocCollaborationService?.isEnabled()) {
+      const toolkit = await this.getToolkit(params.changeMode);
+      return this.superdocCollaborationService.runWithCollaborativeDocument(
+        params.userId,
+        params.documentId,
+        async (doc) => {
+          let mutated = false;
+          let latestRevision: string | undefined;
+
+          const result = await params.fn({
+            doc,
+            toolkit,
+            documentId: params.documentId,
+            fileName: docRecord.file_name,
+            changeMode: params.changeMode,
+            markMutated: (revision?: string) => {
+              mutated = true;
+              if (revision) {
+                latestRevision = revision;
+              }
+            },
+          });
+
+          return {
+            ...result,
+            mutated,
+            latestRevision,
+          };
+        },
+      );
+    }
+
     const key = this.getSessionKey(params.userId, params.documentId);
 
     return this.enqueueForKey(key, async () => {
@@ -606,6 +746,44 @@ export class SuperDocRuntimeService implements OnModuleDestroy {
         this.getClient(),
         this.getToolkit(params.changeMode),
       ]);
+
+      const turnSession = this.turnSessions.get(key);
+      if (turnSession && turnSession.refCount > 0) {
+        if (!turnSession.doc) {
+          turnSession.doc = await client.open({ doc: inputPath });
+          turnSession.fileName = docRecord.file_name;
+        }
+        let mutated = false;
+        let latestRevision: string | undefined;
+
+        const result = await params.fn({
+          doc: turnSession.doc,
+          toolkit,
+          documentId: params.documentId,
+          fileName: docRecord.file_name,
+          changeMode: params.changeMode,
+          markMutated: (revision?: string) => {
+            mutated = true;
+            if (revision) {
+              latestRevision = revision;
+            }
+          },
+        });
+
+        if (mutated) {
+          turnSession.dirty = true;
+          turnSession.fileName = docRecord.file_name;
+          if (latestRevision) {
+            turnSession.latestRevision = latestRevision;
+          }
+        }
+
+        return {
+          ...result,
+          mutated,
+          latestRevision,
+        };
+      }
 
       const doc = await client.open({ doc: inputPath });
       let mutated = false;

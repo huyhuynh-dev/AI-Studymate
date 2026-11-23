@@ -350,7 +350,62 @@ export const documentsApi = {
     );
     return res.data;
   },
+
+  createCollaborationSession: async (
+    documentId: string,
+  ): Promise<CollaborationSessionResponse> => {
+    const res = await axiosClient.post<CollaborationSessionResponse>(
+      `/documents/${documentId}/collaboration-session`,
+      {},
+    );
+    return {
+      ...res.data,
+      collaborationUrl: resolveClientCollaborationUrl(
+        res.data.collaborationUrl,
+      ),
+    };
+  },
+
+  refreshCollaborationToken: async (
+    documentId: string,
+  ): Promise<{ token: string; expiresAt: string }> => {
+    const res = await axiosClient.post<{ token: string; expiresAt: string }>(
+      `/documents/${documentId}/collaboration-token`,
+      {},
+    );
+    return res.data;
+  },
 };
+
+export interface CollaborationSessionResponse {
+  enabled: boolean;
+  documentId: string;
+  collaborationUrl: string;
+  token: string;
+  expiresAt: string;
+  contentVersion: number;
+  hasUnsavedRoomEdits: boolean;
+}
+
+function resolveClientCollaborationUrl(serverUrl: string): string {
+  const envOverride = process.env.NEXT_PUBLIC_COLLABORATION_WS_URL?.trim();
+  if (envOverride) {
+    return envOverride.replace(/\/+$/, '');
+  }
+  if (!serverUrl) return '';
+  if (typeof window !== 'undefined') {
+    try {
+      const parsed = new URL(serverUrl);
+      if (parsed.hostname === '127.0.0.1' || parsed.hostname === '0.0.0.0') {
+        parsed.hostname = window.location.hostname;
+        return parsed.toString().replace(/\/+$/, '');
+      }
+    } catch {
+      return serverUrl;
+    }
+  }
+  return serverUrl;
+}
 
 export interface StageAgentSnapshotResponse {
   staged: true;

@@ -1803,18 +1803,38 @@ export const AiMessage = React.memo(function AiMessage({
                 part.output?.fileName || "tài liệu Word";
 
               if (isRunning) {
+                const streamedCharCount =
+                  typeof part.input?.text === "string"
+                    ? part.input.text.length
+                    : 0;
+                const rawAnchor =
+                  typeof part.input?.anchor?.text === "string"
+                    ? part.input.anchor.text.trim()
+                    : "";
+                const anchorPreview =
+                  rawAnchor.length > 48
+                    ? `${rawAnchor.slice(0, 48)}…`
+                    : rawAnchor;
                 return (
                   <div
                     key={index}
                     className="my-2 flex items-center gap-2.5 rounded-2xl border border-[#C7D2FE] dark:border-[#4F46E5]/30 bg-[#EEF2FF] dark:bg-[#4F46E5]/10 p-3 text-xs text-[#4F46E5] dark:text-[#818CF8]"
                   >
                     <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-                    <div className="space-y-0.5">
-                      <div className="font-bold text-[#3525CD] dark:text-white">
-                        AI đang viết trực tiếp lên tài liệu Word…
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-[#3525CD] dark:text-white">
+                          AI đang viết trực tiếp lên tài liệu Word…
+                        </span>
+                        {streamedCharCount > 0 && (
+                          <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-[#4F46E5] dark:bg-neutral-900/60 dark:text-[#A5B4FC]">
+                            {streamedCharCount} ký tự
+                          </span>
+                        )}
                       </div>
-                      <div className="text-[11px] text-[#777587] dark:text-neutral-400">
+                      <div className="truncate text-[11px] text-[#777587] dark:text-neutral-400">
                         {readableMode}
+                        {anchorPreview ? ` · “${anchorPreview}”` : ""}
                       </div>
                     </div>
                   </div>

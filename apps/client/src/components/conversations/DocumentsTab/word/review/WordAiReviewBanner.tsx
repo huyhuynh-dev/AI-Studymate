@@ -75,7 +75,7 @@ function summarizeChange(item: TrackChangesItem): {
   };
 }
 
-export function WordAiReviewBanner({
+export const WordAiReviewBanner = React.memo(function WordAiReviewBanner({
   documentId,
   forceExpandSignal = 0,
   onDecisionSettled,
@@ -388,4 +388,4 @@ export function WordAiReviewBanner({
       )}
     </div>
   );
-}
+});

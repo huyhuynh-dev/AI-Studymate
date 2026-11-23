@@ -23,13 +23,14 @@ export interface AgentStreamCursorTarget {
 export type StreamScrollGuard = <T>(fn: () => T | Promise<T>) => Promise<T>;
 
 /**
- * Chu kỳ nhịp cơ sở (~60 ký tự/giây) giúp từng chữ cái xuất hiện trôi chảy
- * như đang gõ phím thật, kết hợp nghỉ vi mô ở dấu câu và xuống dòng.
+ * Chu kỳ nhịp cơ sở (~27 transactions/giây, mỗi bước 3–5 ký tự) tiệm cận
+ * chuẩn 5 chars / 50ms của SuperDocs Demo, tránh nghẽn layout engine.
  */
-const TARGET_STEP_INTERVAL_MS = 16;
-const PUNCTUATION_PAUSE_EXTRA_MS = 28;
-const PARAGRAPH_SWITCH_PAUSE_MS = 70;
-const STREAM_IDLE_WAIT_TIMEOUT_MS = 1800;
+const TARGET_STEP_INTERVAL_MS = 36;
+const PUNCTUATION_PAUSE_EXTRA_MS = 24;
+const PARAGRAPH_SWITCH_PAUSE_MS = 55;
+const STREAM_IDLE_POLL_INTERVAL_MS = 1000;
+const MAX_STREAM_IDLE_WAIT_MS = 60_000;
 
 const VALID_MODES = new Set<string>([
   "replace",
@@ -57,10 +58,42 @@ function splitGraphemes(text: string): string[] {
   return Array.from(text);
 }
 
-function computeGraphemesForTick(remainingGraphemes: number): number {
-  if (remainingGraphemes > 240) return 3;
-  if (remainingGraphemes > 110) return 2;
+function computeGraphemesForTick(
+  remainingGraphemes: number,
+  isInputComplete: boolean,
+): number {
+  if (isInputComplete) {
+    if (remainingGraphemes > 160) {
+      return Math.min(20, Math.ceil(remainingGraphemes / 5));
+    }
+    if (remainingGraphemes > 60) return 8;
+    if (remainingGraphemes > 20) return 5;
+    return 3;
+  }
+  if (remainingGraphemes > 180) return 10;
+  if (remainingGraphemes > 90) return 7;
+  if (remainingGraphemes > 35) return 5;
+  if (remainingGraphemes > 10) return 3;
+  if (remainingGraphemes > 3) return 2;
   return 1;
+}
+
+function snapNextEndToWordBoundary(
+  graphemes: string[],
+  start: number,
+  desiredEnd: number,
+): number {
+  if (desiredEnd - start < 3 || desiredEnd >= graphemes.length) {
+    return desiredEnd;
+  }
+  const minScan = Math.max(start + 2, desiredEnd - 1);
+  const maxScan = Math.min(graphemes.length, desiredEnd + 2);
+  for (let i = minScan; i <= maxScan; i += 1) {
+    if (/\s/.test(graphemes[i - 1] ?? "")) {
+      return i;
+    }
+  }
+  return desiredEnd;
 }
 
 function computePostCharDelayMs(lastInsertedText: string): number {
@@ -76,12 +109,12 @@ function delayMs(ms: number, signal?: AbortSignal): Promise<void> {
       reject(new DOMException("Aborted", "AbortError"));
       return;
     }
-    const timer = window.setTimeout(() => {
+    const timer = globalThis.setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);
       resolve();
     }, ms);
     const onAbort = () => {
-      window.clearTimeout(timer);
+      globalThis.clearTimeout(timer);
       reject(new DOMException("Aborted", "AbortError"));
     };
     signal?.addEventListener("abort", onAbort, { once: true });
@@ -117,39 +150,6 @@ function assertBrowserReceiptOk(raw: unknown): Record<string, unknown> {
   return receipt;
 }
 
-function extractPostRevision(
-  raw: unknown,
-  receipt: Record<string, unknown>,
-): string | undefined {
-  const evaluated =
-    typeof receipt.evaluatedRevision === "object" &&
-    receipt.evaluatedRevision !== null
-      ? (receipt.evaluatedRevision as { after?: unknown })
-      : undefined;
-  if (typeof evaluated?.after === "string" && evaluated.after) {
-    return evaluated.after;
-  }
-  if (typeof receipt.evaluatedRevision === "string" && receipt.evaluatedRevision) {
-    return receipt.evaluatedRevision;
-  }
-  const topObj =
-    typeof raw === "object" && raw !== null
-      ? (raw as Record<string, unknown>)
-      : undefined;
-  if (typeof topObj?.evaluatedRevision === "string" && topObj.evaluatedRevision) {
-    return topObj.evaluatedRevision;
-  }
-  const topEvaluated =
-    typeof topObj?.evaluatedRevision === "object" &&
-    topObj.evaluatedRevision !== null
-      ? (topObj.evaluatedRevision as { after?: unknown })
-      : undefined;
-  if (typeof topEvaluated?.after === "string" && topEvaluated.after) {
-    return topEvaluated.after;
-  }
-  return undefined;
-}
-
 function extractInsertedEndOffset(
   receipt: Record<string, unknown>,
   fallbackOffset: number,
@@ -160,11 +160,30 @@ function extractInsertedEndOffset(
           insertedText?: Array<{
             target?: { range?: { end?: unknown } };
           }>;
+          resultText?: {
+            segments?: Array<{ range?: { end?: unknown } }>;
+          };
         })
       : undefined;
   const end = effects?.insertedText?.[0]?.target?.range?.end;
   if (typeof end === "number" && Number.isFinite(end) && end >= 0) {
     return end;
+  }
+  const resultTextEnd = effects?.resultText?.segments?.[0]?.range?.end;
+  if (
+    typeof resultTextEnd === "number" &&
+    Number.isFinite(resultTextEnd) &&
+    resultTextEnd >= 0
+  ) {
+    return resultTextEnd;
+  }
+  const resolution =
+    typeof receipt.resolution === "object" && receipt.resolution !== null
+      ? (receipt.resolution as { target?: { range?: { end?: unknown } } })
+      : undefined;
+  const resEnd = resolution?.target?.range?.end;
+  if (typeof resEnd === "number" && Number.isFinite(resEnd) && resEnd >= 0) {
+    return resEnd;
   }
   return fallbackOffset;
 }
@@ -200,26 +219,6 @@ interface TextStreamSession {
   hasFailed: () => boolean;
 }
 
-interface CachedCursorState {
-  blockId: string;
-  offset: number;
-  revision: string;
-  pointBase: { kind: "text"; blockId: string; [k: string]: unknown };
-  story?: unknown;
-}
-
-function buildSelectionTarget(
-  cursor: CachedCursorState,
-): Record<string, unknown> {
-  return {
-    kind: "selection",
-    coordinateSpace: "visible",
-    ...(cursor.story ? { story: cursor.story } : {}),
-    start: { ...cursor.pointBase, blockId: cursor.blockId, offset: cursor.offset },
-    end: { ...cursor.pointBase, blockId: cursor.blockId, offset: cursor.offset },
-  };
-}
-
 function createSingleBrowserTextStream(params: {
   doc: BrowserDocumentApi;
   changeMode: "tracked" | "direct";
@@ -227,6 +226,7 @@ function createSingleBrowserTextStream(params: {
   runWithScrollGuard: StreamScrollGuard;
   onMutated?: () => void;
   onCursorMove?: (cursor: AgentStreamCursorTarget) => void;
+  onStreamTargetResolved?: (target: AgentStreamCursorTarget) => void;
 }): TextStreamSession {
   const {
     doc,
@@ -235,15 +235,19 @@ function createSingleBrowserTextStream(params: {
     runWithScrollGuard,
     onMutated,
     onCursorMove,
+    onStreamTargetResolved,
   } = params;
 
   let latest: BrowserStreamTextArgs | undefined;
   let lastText = "";
+  let targetGraphemes: string[] = [];
+  let segmentedRawLength = 0;
+  let writtenGraphemeCount = 0;
   let metadataKey: string | undefined;
   let block: unknown;
   let expectedStart = 0;
-  let cachedCursor: CachedCursorState | null = null;
   let used = false;
+  let targetResolvedNotified = false;
   let failure: unknown;
   let stopped = false;
   let inputComplete = false;
@@ -251,6 +255,22 @@ function createSingleBrowserTextStream(params: {
   let lastStepDelayMs = TARGET_STEP_INTERVAL_MS;
   let activeRunPromise: Promise<void> | null = null;
   let wakeWaiter: (() => void) | null = null;
+
+  function appendIncrementalGraphemes(nextText: string): void {
+    if (nextText.length === segmentedRawLength) return;
+    if (nextText.length > segmentedRawLength && nextText.startsWith(lastText)) {
+      const delta = nextText.slice(segmentedRawLength);
+      const deltaGraphemes = splitGraphemes(delta);
+      for (const g of deltaGraphemes) {
+        targetGraphemes.push(g);
+      }
+      segmentedRawLength = nextText.length;
+      return;
+    }
+    targetGraphemes = splitGraphemes(nextText);
+    segmentedRawLength = nextText.length;
+    writtenGraphemeCount = splitGraphemes(lastText).length;
+  }
 
   function notifyWake(): void {
     if (wakeWaiter) {
@@ -270,7 +290,7 @@ function createSingleBrowserTextStream(params: {
       const done = (wokeBySignal: boolean) => {
         if (settled) return;
         settled = true;
-        window.clearTimeout(timer);
+        globalThis.clearTimeout(timer);
         signal.removeEventListener("abort", onAbort);
         if (wakeWaiter === onWake) {
           wakeWaiter = null;
@@ -279,7 +299,7 @@ function createSingleBrowserTextStream(params: {
       };
       const onWake = () => done(true);
       const onAbort = () => done(false);
-      const timer = window.setTimeout(() => done(false), timeoutMs);
+      const timer = globalThis.setTimeout(() => done(false), timeoutMs);
       wakeWaiter = onWake;
       signal.addEventListener("abort", onAbort, { once: true });
     });
@@ -335,8 +355,25 @@ function createSingleBrowserTextStream(params: {
       ? rawItems.filter((item) => item.target?.start.offset === expectedStart)
       : rawItems;
 
-    const item =
-      candidates[0] ?? (withinBlock && rawItems.length === 1 ? rawItems[0] : undefined);
+    let item =
+      candidates[0] ??
+      (withinBlock && rawItems.length === 1 ? rawItems[0] : undefined);
+    if (!item && withinBlock && rawItems.length > 0) {
+      let bestDistance = Infinity;
+      for (const candidate of rawItems) {
+        if (
+          !candidate.target ||
+          candidate.target.start.blockId !== candidate.target.end.blockId
+        ) {
+          continue;
+        }
+        const dist = Math.abs(candidate.target.start.offset - expectedStart);
+        if (dist < bestDistance) {
+          bestDistance = dist;
+          item = candidate;
+        }
+      }
+    }
     if (
       !item?.target ||
       item.target.start.blockId !== item.target.end.blockId
@@ -347,56 +384,6 @@ function createSingleBrowserTextStream(params: {
     }
 
     return { revision, item };
-  }
-
-  async function insertViaFallbackMatch(suffix: string): Promise<void> {
-    if (!latest) return;
-    const { revision, item } = await matchAnchor(lastText, block);
-    const endPoint = item.target!.end;
-    const target: Record<string, unknown> = {
-      ...item.target!,
-      coordinateSpace: "visible",
-      start: endPoint,
-      end: endPoint,
-    };
-
-    const options = { changeMode, expectedRevision: revision };
-    const result = await runWithScrollGuard(() =>
-      doc.insert(
-        {
-          target: target as never,
-          value: suffix,
-          type: "text",
-          ...options,
-        } as never,
-        options as never,
-      ),
-    );
-    const receipt = assertBrowserReceiptOk(result);
-    block = item.address;
-
-    const nextOffset = extractInsertedEndOffset(
-      receipt,
-      endPoint.offset + suffix.length,
-    );
-    const postRev = extractPostRevision(result, receipt);
-    if (postRev) {
-      cachedCursor = {
-        blockId: endPoint.blockId,
-        offset: nextOffset,
-        revision: postRev,
-        pointBase: { ...endPoint, kind: "text" },
-        story: item.target?.story,
-      };
-    } else {
-      cachedCursor = null;
-    }
-
-    onCursorMove?.({
-      blockId: endPoint.blockId,
-      offset: nextOffset,
-      story: item.target?.story,
-    });
   }
 
   async function writeNextPrefix(targetText: string): Promise<void> {
@@ -432,18 +419,17 @@ function createSingleBrowserTextStream(params: {
       }
 
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+      const createOptions: Record<string, unknown> = {
+        changeMode,
+        ...(expectedRevision ? { expectedRevision } : {}),
+      };
       const created = await runWithScrollGuard(() =>
         doc.create.paragraph(
           {
             text: suffix,
             at: at as never,
-            changeMode,
-            ...(expectedRevision ? { expectedRevision } : {}),
           } as never,
-          {
-            changeMode,
-            ...(expectedRevision ? { expectedRevision } : {}),
-          } as never,
+          createOptions as never,
         ),
       );
       const createdObj = created as unknown as {
@@ -455,7 +441,6 @@ function createSingleBrowserTextStream(params: {
           range?: { start?: number; end?: number };
           story?: unknown;
         };
-        evaluatedRevision?: unknown;
       };
       if (createdObj?.success !== true) {
         assertBrowserReceiptOk(created);
@@ -464,7 +449,6 @@ function createSingleBrowserTextStream(params: {
       block = createdObj.paragraph;
       const newBlockId =
         createdObj.insertionPoint?.blockId ?? createdObj.paragraph?.nodeId;
-      // Đoạn văn mới tạo luôn bắt đầu tại offset 0 (giống stream-text.js của Demo)
       expectedStart = 0;
 
       const endOffset =
@@ -472,43 +456,42 @@ function createSingleBrowserTextStream(params: {
         createdObj.insertionPoint.range.end >= suffix.length
           ? createdObj.insertionPoint.range.end
           : suffix.length;
-      const postRev = extractPostRevision(
-        created,
-        createdObj as unknown as Record<string, unknown>,
-      );
 
-      if (newBlockId && postRev) {
-        cachedCursor = {
+      if (newBlockId) {
+        const cursorTarget: AgentStreamCursorTarget = {
           blockId: newBlockId,
           offset: endOffset,
-          revision: postRev,
-          pointBase: { kind: "text", blockId: newBlockId },
           story: createdObj.insertionPoint?.story,
         };
+        if (!targetResolvedNotified) {
+          targetResolvedNotified = true;
+          onStreamTargetResolved?.(cursorTarget);
+        }
+        onCursorMove?.(cursorTarget);
       }
-      if (newBlockId) {
-        onCursorMove?.({
-          blockId: newBlockId,
-          offset: endOffset,
-          story: createdObj.insertionPoint?.story,
-        });
-      }
-    } else if (!used) {
-      const { revision, item } = await matchAnchor(latest.anchor ?? "");
+    } else {
+      const { revision, item } = await matchAnchor(
+        used ? lastText : (latest.anchor ?? ""),
+        used ? block : undefined,
+      );
 
-      const targetBase = {
+      let target: Record<string, unknown> = {
         ...item.target!,
         coordinateSpace: "visible" as const,
       };
-      const replacing = latest.mode === "replace";
-      const anchorPoint =
-        latest.mode === "before" || replacing
-          ? item.target!.start
-          : item.target!.end;
-      const target = replacing
-        ? targetBase
-        : { ...targetBase, start: anchorPoint, end: anchorPoint };
-      expectedStart = anchorPoint.offset;
+      const replacing = !used && latest.mode === "replace";
+      if (!replacing) {
+        const point =
+          !used && latest.mode === "before"
+            ? item.target!.start
+            : item.target!.end;
+        target = { ...target, start: point, end: point };
+      }
+      if (!used) {
+        expectedStart = replacing
+          ? item.target!.start.offset
+          : (target.start as { offset: number }).offset;
+      }
 
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       const options = { changeMode, expectedRevision: revision };
@@ -516,7 +499,7 @@ function createSingleBrowserTextStream(params: {
       const result = await runWithScrollGuard(() =>
         replacing
           ? doc.replace(
-              { target: target as never, text: suffix, ...options } as never,
+              { target: target as never, text: suffix } as never,
               options as never,
             )
           : doc.insert(
@@ -524,7 +507,6 @@ function createSingleBrowserTextStream(params: {
                 target: target as never,
                 value: suffix,
                 type: "text",
-                ...options,
               } as never,
               options as never,
             ),
@@ -532,79 +514,21 @@ function createSingleBrowserTextStream(params: {
       const receipt = assertBrowserReceiptOk(result);
       block = item.address;
 
+      const startPoint = target.start as { blockId: string; offset: number };
       const nextOffset = extractInsertedEndOffset(
         receipt,
-        anchorPoint.offset + suffix.length,
+        startPoint.offset + suffix.length,
       );
-      const postRev = extractPostRevision(result, receipt);
-      if (postRev) {
-        cachedCursor = {
-          blockId: anchorPoint.blockId,
-          offset: nextOffset,
-          revision: postRev,
-          pointBase: { ...anchorPoint, kind: "text" },
-          story: item.target?.story,
-        };
-      }
-      onCursorMove?.({
-        blockId: anchorPoint.blockId,
+      const cursorTarget: AgentStreamCursorTarget = {
+        blockId: startPoint.blockId,
         offset: nextOffset,
         story: item.target?.story,
-      });
-    } else if (cachedCursor) {
-      // Nhịp O(1): chèn trực tiếp tại tọa độ cuối hiện tại bằng revision liền trước
-      const cursor = cachedCursor;
-      const target = buildSelectionTarget(cursor);
-      const options = { changeMode, expectedRevision: cursor.revision };
-
-      if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-      try {
-        const result = await runWithScrollGuard(() =>
-          doc.insert(
-            {
-              target: target as never,
-              value: suffix,
-              type: "text",
-              ...options,
-            } as never,
-            options as never,
-          ),
-        );
-        const receipt = assertBrowserReceiptOk(result);
-        const postRev = extractPostRevision(result, receipt);
-        const nextOffset = extractInsertedEndOffset(
-          receipt,
-          cursor.offset + suffix.length,
-        );
-        if (postRev) {
-          cursor.offset = nextOffset;
-          cursor.revision = postRev;
-        } else {
-          cachedCursor = null;
-        }
-        onCursorMove?.({
-          blockId: cursor.blockId,
-          offset: nextOffset,
-          story: cursor.story,
-        });
-      } catch (fastErr) {
-        const code = (fastErr as { code?: string })?.code;
-        if (
-          code === "REVISION_MISMATCH" ||
-          code === "STALE_REVISION" ||
-          code === "ADDRESS_STALE" ||
-          code === "INVALID_TARGET" ||
-          code === "TARGET_NOT_FOUND" ||
-          code === "PRECONDITION_FAILED"
-        ) {
-          cachedCursor = null;
-          await insertViaFallbackMatch(suffix);
-        } else {
-          throw fastErr;
-        }
+      };
+      if (!targetResolvedNotified) {
+        targetResolvedNotified = true;
+        onStreamTargetResolved?.(cursorTarget);
       }
-    } else {
-      await insertViaFallbackMatch(suffix);
+      onCursorMove?.(cursorTarget);
     }
 
     metadataKey = identity;
@@ -614,6 +538,8 @@ function createSingleBrowserTextStream(params: {
   }
 
   async function runLoop(canFinishWhenEmpty: () => boolean): Promise<void> {
+    let idleStartedAt: number | null = null;
+
     while (!stopped && !failure) {
       if (signal.aborted) {
         throw new DOMException("Aborted", "AbortError");
@@ -621,25 +547,39 @@ function createSingleBrowserTextStream(params: {
 
       if (!latest) {
         if (inputComplete || canFinishWhenEmpty()) break;
-        await waitForNewInputOrTimeout(STREAM_IDLE_WAIT_TIMEOUT_MS);
+        const woke = await waitForNewInputOrTimeout(STREAM_IDLE_POLL_INTERVAL_MS);
+        if (woke) {
+          idleStartedAt = null;
+        } else {
+          idleStartedAt ??= Date.now();
+          if (Date.now() - idleStartedAt >= MAX_STREAM_IDLE_WAIT_MS) {
+            throw new Error("Hết thời gian chờ dữ liệu stream ban đầu từ AI Agent.");
+          }
+        }
         continue;
       }
 
-      const targetGraphemes = splitGraphemes(latest.text);
-      const writtenCount = splitGraphemes(lastText).length;
-      const remaining = targetGraphemes.length - writtenCount;
+      const remaining = targetGraphemes.length - writtenGraphemeCount;
 
       if (remaining <= 0) {
         if (inputComplete || canFinishWhenEmpty()) {
           break;
         }
-        const woke = await waitForNewInputOrTimeout(STREAM_IDLE_WAIT_TIMEOUT_MS);
-        if (!woke && !inputComplete && !canFinishWhenEmpty()) {
-          // Quá thời gian chờ token tiếp theo -> kết thúc an toàn để nhường hàng đợi
-          break;
+        const woke = await waitForNewInputOrTimeout(STREAM_IDLE_POLL_INTERVAL_MS);
+        if (woke) {
+          idleStartedAt = null;
+        } else if (!inputComplete && !canFinishWhenEmpty()) {
+          idleStartedAt ??= Date.now();
+          if (Date.now() - idleStartedAt >= MAX_STREAM_IDLE_WAIT_MS) {
+            throw new Error(
+              "Hết thời gian chờ token tiếp theo từ AI Agent khi chưa hoàn tất đoạn văn.",
+            );
+          }
         }
         continue;
       }
+
+      idleStartedAt = null;
 
       const waitMs = lastStepDelayMs - (Date.now() - lastWriteAt);
       if (lastWriteAt > 0 && waitMs > 0) {
@@ -647,21 +587,28 @@ function createSingleBrowserTextStream(params: {
       }
       if (stopped || !latest) break;
 
-      const refreshedGraphemes = splitGraphemes(latest.text);
-      const currentWritten = splitGraphemes(lastText).length;
-      const currentRemaining = refreshedGraphemes.length - currentWritten;
+      const currentRemaining = targetGraphemes.length - writtenGraphemeCount;
       if (currentRemaining <= 0) continue;
 
-      const stepSize = computeGraphemesForTick(currentRemaining);
-      const nextEnd = Math.min(
-        currentWritten + stepSize,
-        refreshedGraphemes.length,
+      const stepSize = computeGraphemesForTick(
+        currentRemaining,
+        inputComplete || canFinishWhenEmpty(),
       );
-      const nextPrefix = refreshedGraphemes.slice(0, nextEnd).join("");
-      const newlyInserted = refreshedGraphemes
-        .slice(currentWritten, nextEnd)
+      const desiredEnd = Math.min(
+        writtenGraphemeCount + stepSize,
+        targetGraphemes.length,
+      );
+      const nextEnd = snapNextEndToWordBoundary(
+        targetGraphemes,
+        writtenGraphemeCount,
+        desiredEnd,
+      );
+      const nextPrefix = targetGraphemes.slice(0, nextEnd).join("");
+      const newlyInserted = targetGraphemes
+        .slice(writtenGraphemeCount, nextEnd)
         .join("");
       await writeNextPrefix(nextPrefix);
+      writtenGraphemeCount = nextEnd;
       lastWriteAt = Date.now();
       lastStepDelayMs = computePostCharDelayMs(newlyInserted);
     }
@@ -670,6 +617,7 @@ function createSingleBrowserTextStream(params: {
   return {
     setLatest(args: BrowserStreamTextArgs, isComplete: boolean) {
       latest = args;
+      appendIncrementalGraphemes(args.text);
       if (isComplete) {
         inputComplete = true;
       }
@@ -701,7 +649,199 @@ function createSingleBrowserTextStream(params: {
       }
     },
     hasSucceeded() {
-      return used && !failure;
+      return (
+        used &&
+        !failure &&
+        inputComplete &&
+        writtenGraphemeCount >= targetGraphemes.length
+      );
+    },
+    hasFailed() {
+      return Boolean(failure);
+    },
+  };
+}
+
+export function isSupportedBrowserInlineAction(
+  raw: unknown,
+): raw is Record<string, unknown> & { action: "apply_style" | "format_text" } {
+  if (!raw || typeof raw !== "object") return false;
+  const action = (raw as Record<string, unknown>).action;
+  return action === "apply_style" || action === "format_text";
+}
+
+async function resolveBlockTargetFromSelector(
+  doc: BrowserDocumentApi,
+  selector: unknown,
+): Promise<Record<string, unknown> | null> {
+  if (!selector || typeof selector !== "object") return null;
+  const sel = selector as Record<string, unknown>;
+  if (sel.kind === "nodeId" && typeof sel.nodeId === "string" && sel.nodeId) {
+    return {
+      kind: "block",
+      nodeType: typeof sel.nodeType === "string" ? sel.nodeType : "paragraph",
+      nodeId: sel.nodeId,
+    };
+  }
+  if (sel.kind === "textSearch" && Array.isArray(sel.terms)) {
+    const firstTerm = sel.terms.find(
+      (t): t is string => typeof t === "string" && t.trim().length > 0,
+    );
+    if (firstTerm) {
+      const matches = await doc.query.match({
+        select: { type: "text", pattern: firstTerm, caseSensitive: false },
+        require: "first",
+      });
+      const item = matches?.items?.[0];
+      if (item?.address) {
+        return item.address as unknown as Record<string, unknown>;
+      }
+    }
+  }
+  return null;
+}
+
+function buildInlineFormatPatch(
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  const inline: Record<string, unknown> = {};
+  if (typeof args.bold === "boolean") inline.bold = args.bold;
+  if (typeof args.italic === "boolean") inline.italic = args.italic;
+  if (typeof args.underline === "boolean") inline.underline = args.underline;
+  if (typeof args.strikethrough === "boolean") {
+    inline.strike = args.strikethrough;
+  } else if (typeof args.strike === "boolean") {
+    inline.strike = args.strike;
+  }
+  if (typeof args.color === "string" && args.color.trim()) {
+    inline.color = args.color.trim();
+  }
+  const highlight = args.highlightColor ?? args.highlight;
+  if (typeof highlight === "string" && highlight.trim()) {
+    inline.highlight = highlight.trim();
+  }
+  const fontSize = args.fontSizePt ?? args.fontSize;
+  if (typeof fontSize === "number" && Number.isFinite(fontSize)) {
+    inline.fontSizePt = fontSize;
+  }
+  if (typeof args.fontFamily === "string" && args.fontFamily.trim()) {
+    inline.fontFamily = args.fontFamily.trim();
+  }
+  return inline;
+}
+
+function createInlineActionSession(params: {
+  doc: BrowserDocumentApi;
+  args: Record<string, unknown> & { action: "apply_style" | "format_text" };
+  changeMode: "tracked" | "direct";
+  signal: AbortSignal;
+  runWithScrollGuard: StreamScrollGuard;
+  onMutated?: () => void;
+}): TextStreamSession {
+  const { doc, args, changeMode, signal, runWithScrollGuard, onMutated } =
+    params;
+  let completed = false;
+  let failure: unknown;
+  let stopped = false;
+
+  return {
+    setLatest() {
+      // Action định dạng là one-shot, không stream từng phần
+    },
+    markInputComplete() {
+      // Không cần chờ thêm input
+    },
+    async runUntilDrained() {
+      if (stopped || completed || failure) return;
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+      try {
+        if (args.action === "apply_style") {
+          const headingLevel =
+            typeof args.headingLevel === "number" ? args.headingLevel : undefined;
+          const styleId =
+            typeof args.styleId === "string" && args.styleId.trim()
+              ? args.styleId.trim()
+              : headingLevel && headingLevel >= 1 && headingLevel <= 6
+                ? `Heading${headingLevel}`
+                : undefined;
+          if (!styleId) {
+            throw new Error("Thiếu styleId hoặc headingLevel cho apply_style.");
+          }
+          const blockTarget = await resolveBlockTargetFromSelector(
+            doc,
+            args.selector,
+          );
+          if (!blockTarget) {
+            throw new Error("Không tìm thấy block cho apply_style trên trình duyệt.");
+          }
+          const result = await runWithScrollGuard(() =>
+            doc.invoke({
+              operationId: "styles.paragraph.setStyleRef",
+              input: { target: blockTarget as never, styleId },
+              options: { changeMode },
+            } as never),
+          );
+          assertBrowserReceiptOk(result);
+        } else {
+          const inline = buildInlineFormatPatch(args);
+          if (Object.keys(inline).length === 0) {
+            throw new Error("Không có thuộc tính định dạng hợp lệ cho format_text.");
+          }
+          const patterns: string[] = [];
+          if (Array.isArray(args.targetTexts)) {
+            for (const item of args.targetTexts) {
+              if (typeof item === "string" && item.trim()) {
+                patterns.push(item);
+              }
+            }
+          }
+          if (typeof args.targetText === "string" && args.targetText.trim()) {
+            patterns.push(args.targetText);
+          }
+          if (
+            patterns.length === 0 &&
+            args.selector &&
+            typeof args.selector === "object" &&
+            Array.isArray((args.selector as Record<string, unknown>).terms)
+          ) {
+            for (const t of (args.selector as Record<string, unknown>)
+              .terms as unknown[]) {
+              if (typeof t === "string" && t.trim()) patterns.push(t);
+            }
+          }
+          if (patterns.length === 0) {
+            throw new Error("Thiếu targetText cho format_text trên trình duyệt.");
+          }
+          for (const pattern of patterns) {
+            const matches = await doc.query.match({
+              select: { type: "text", pattern, caseSensitive: false },
+              require: "first",
+            });
+            const match = matches?.items?.[0];
+            if (!match || match.matchKind !== "text" || !match.target) {
+              throw new Error(`Không tìm thấy đoạn "${pattern}" để format_text.`);
+            }
+            const result = await runWithScrollGuard(() =>
+              doc.format.apply(
+                { target: match.target, inline: inline as never },
+                { changeMode } as never,
+              ),
+            );
+            assertBrowserReceiptOk(result);
+          }
+        }
+        completed = true;
+        onMutated?.();
+      } catch (err) {
+        failure = err;
+        throw err;
+      }
+    },
+    async stop() {
+      stopped = true;
+    },
+    hasSucceeded() {
+      return completed && !failure;
     },
     hasFailed() {
       return Boolean(failure);
@@ -727,20 +867,29 @@ export class BrowserTextStreamManager {
   private readonly onMutated?: () => void;
   private readonly onStreamingChange?: (isStreaming: boolean) => void;
   private readonly onCursorMove?: (cursor: AgentStreamCursorTarget) => void;
+  private readonly onStreamTargetResolved?: (
+    target: AgentStreamCursorTarget,
+  ) => void;
   private readonly runWithScrollGuard: StreamScrollGuard;
+  private readonly onError?: (error: Error, toolCallId: string) => void;
   private isStreamingActive = false;
+  private lastError: Error | null = null;
 
   constructor(params: {
     doc: BrowserDocumentApi;
     onMutated?: () => void;
     onStreamingChange?: (isStreaming: boolean) => void;
     onCursorMove?: (cursor: AgentStreamCursorTarget) => void;
+    onStreamTargetResolved?: (target: AgentStreamCursorTarget) => void;
+    onError?: (error: Error, toolCallId: string) => void;
     runWithScrollGuard?: StreamScrollGuard;
   }) {
     this.doc = params.doc;
     this.onMutated = params.onMutated;
     this.onStreamingChange = params.onStreamingChange;
     this.onCursorMove = params.onCursorMove;
+    this.onStreamTargetResolved = params.onStreamTargetResolved;
+    this.onError = params.onError;
     this.runWithScrollGuard =
       params.runWithScrollGuard ?? (async (fn) => fn());
   }
@@ -777,11 +926,18 @@ export class BrowserTextStreamManager {
 
       if (entry) {
         try {
-          await entry.session.runUntilDrained(
-            () => entry.inputComplete || this.queueOrder.length > idx + 1,
-          );
-        } catch {
-          // Lỗi đã được ghi nhận trong session.hasFailed() để waitForAll xử lý fallback
+          await entry.session.runUntilDrained(() => entry.inputComplete);
+        } catch (err) {
+          const normalized =
+            err instanceof Error ? err : new Error(String(err));
+          if (normalized.name !== "AbortError") {
+            console.error(
+              `[BrowserTextStreamManager] Live stream failed for toolCallId=${toolCallId}:`,
+              normalized,
+            );
+            this.lastError = normalized;
+            this.onError?.(normalized, toolCallId);
+          }
         }
       }
 
@@ -793,7 +949,16 @@ export class BrowserTextStreamManager {
       ) {
         try {
           await delayMs(PARAGRAPH_SWITCH_PAUSE_MS, this.controller.signal);
-        } catch {
+        } catch (delayErr) {
+          if (
+            delayErr instanceof Error &&
+            delayErr.name !== "AbortError"
+          ) {
+            console.warn(
+              "[BrowserTextStreamManager] Paragraph switch pause interrupted:",
+              delayErr,
+            );
+          }
           break;
         }
       }
@@ -812,15 +977,6 @@ export class BrowserTextStreamManager {
 
     let entry = this.sessions.get(toolCallId);
     if (!entry) {
-      // Nếu LLM đã chuyển sang gọi toolCallId mới, mọi session đứng trước nó chắc chắn đã hoàn tất JSON
-      for (const prevId of this.queueOrder) {
-        const prevEntry = this.sessions.get(prevId);
-        if (prevEntry && !prevEntry.inputComplete) {
-          prevEntry.inputComplete = true;
-          prevEntry.session.markInputComplete();
-        }
-      }
-
       const session = createSingleBrowserTextStream({
         doc: this.doc,
         changeMode,
@@ -828,6 +984,7 @@ export class BrowserTextStreamManager {
         runWithScrollGuard: this.runWithScrollGuard,
         onMutated: this.onMutated,
         onCursorMove: this.onCursorMove,
+        onStreamTargetResolved: this.onStreamTargetResolved,
       });
 
       entry = {
@@ -845,10 +1002,51 @@ export class BrowserTextStreamManager {
     this.ensureQueueProcessorRunning();
   }
 
-  async waitForAll(): Promise<{ anyLiveSucceeded: boolean; anyFailed: boolean }> {
-    for (const entry of this.sessions.values()) {
-      entry.inputComplete = true;
-      entry.session.markInputComplete();
+  pushPerformAction(
+    toolCallId: string,
+    args: unknown,
+    changeMode: "tracked" | "direct",
+  ): boolean {
+    if (this.disposed || !isSupportedBrowserInlineAction(args)) {
+      return false;
+    }
+    if (this.sessions.has(toolCallId)) {
+      return true;
+    }
+
+    const session = createInlineActionSession({
+      doc: this.doc,
+      args,
+      changeMode,
+      signal: this.controller.signal,
+      runWithScrollGuard: this.runWithScrollGuard,
+      onMutated: this.onMutated,
+    });
+
+    this.sessions.set(toolCallId, {
+      toolCallId,
+      session,
+      inputComplete: true,
+    });
+    this.queueOrder.push(toolCallId);
+    this.ensureQueueProcessorRunning();
+    return true;
+  }
+
+  async waitForAll(options?: {
+    finalizeTurn?: boolean;
+  }): Promise<{
+    anyLiveSucceeded: boolean;
+    anyFailed: boolean;
+    lastErrorMessage?: string;
+  }> {
+    const finalizeTurn = options?.finalizeTurn !== false;
+
+    if (finalizeTurn) {
+      for (const entry of this.sessions.values()) {
+        entry.inputComplete = true;
+        entry.session.markInputComplete();
+      }
     }
 
     while (this.queueProcessorPromise) {
@@ -856,10 +1054,22 @@ export class BrowserTextStreamManager {
     }
 
     const entries = Array.from(this.sessions.values());
-    return {
-      anyLiveSucceeded: entries.some((entry) => entry.session.hasSucceeded()),
-      anyFailed: entries.some((entry) => entry.session.hasFailed()),
+    const anyFailed = entries.some((entry) => entry.session.hasFailed());
+    const result = {
+      anyLiveSucceeded:
+        !anyFailed && entries.some((entry) => entry.session.hasSucceeded()),
+      anyFailed,
+      ...(this.lastError ? { lastErrorMessage: this.lastError.message } : {}),
     };
+
+    if (finalizeTurn && entries.length > 0) {
+      this.sessions.clear();
+      this.queueOrder.length = 0;
+      this.currentQueueIndex = 0;
+      this.lastError = null;
+    }
+
+    return result;
   }
 
   async dispose(): Promise<void> {

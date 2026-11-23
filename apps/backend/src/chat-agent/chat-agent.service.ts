@@ -17,6 +17,16 @@ import {
   filterToolkitPerformActionTool,
   type ValidatedStreamTextArgs,
 } from '../documents/services/superdoc-stream-text.helper.js';
+import {
+  createServerCollaborationTextStream,
+  createStreamUpdateBuffer,
+  partialTextArguments,
+  type CollaborativeDocumentHandleLike,
+  type ServerCollaborationTextStream,
+  type ServerStreamUpdateBuffer,
+} from '../documents/services/superdoc-server-text-stream.js';
+import { SuperDocCollaborationService } from '../documents/collaboration/superdoc-collaboration.service.js';
+import type { SuperDocStreamTextLiveHandlers } from '../ai/tools/types.js';
 import { SummariesService } from '../summaries/summaries.service.js';
 import { FlashcardAiManageService } from '../deck-flashcard/flashcard-ai-manage.service.js';
 import { QuizService } from '../quiz/quiz.service.js';
@@ -92,6 +102,7 @@ export class ChatAgentService {
     @Optional() private readonly flashcardAiManageService?: FlashcardAiManageService,
     @Optional() private readonly quizService?: QuizService,
     @Optional() private readonly superdocRuntimeService?: SuperDocRuntimeService,
+    @Optional() private readonly superdocCollaborationService?: SuperDocCollaborationService,
   ) {}
 
   async createChatSession(
@@ -392,6 +403,7 @@ export class ChatAgentService {
 
     const workspaceSyncChannel = new WorkspaceSyncChannel();
 
+    let releaseSuperdocTurnSession: (() => Promise<void>) | null = null;
     let superdocBindings: {
       activeWordDocument: {
         documentId: string;
@@ -430,6 +442,7 @@ export class ChatAgentService {
         anchor: string | null;
         text: string;
       }) => Promise<unknown>;
+      superdocStreamTextLiveHandlers?: SuperDocStreamTextLiveHandlers;
       onSuperDocApiSearch: (input: Record<string, unknown>) => Promise<unknown>;
       onSuperDocApiCall: (input: Record<string, unknown>) => Promise<unknown>;
     } | null = null;
@@ -497,6 +510,286 @@ export class ChatAgentService {
           return result;
         };
 
+        const isCollabEnabled = Boolean(
+          this.superdocCollaborationService?.isEnabled(),
+        );
+
+        interface LiveCollabStreamEntry {
+          rawJson: string;
+          latestParsed?: { mode: string; anchor: string | null; text: string };
+          initPromise?: Promise<{
+            writer: ServerCollaborationTextStream;
+            buffer: ServerStreamUpdateBuffer;
+            release: () => void;
+          }>;
+          resolved?: {
+            writer: ServerCollaborationTextStream;
+            buffer: ServerStreamUpdateBuffer;
+            release: () => void;
+          };
+        }
+
+        const liveStreamSessions = new Map<string, LiveCollabStreamEntry>();
+        const cleanupAllLiveStreams = async () => {
+          const entries = Array.from(liveStreamSessions.values());
+          liveStreamSessions.clear();
+          await Promise.allSettled(
+            entries.map(async (entry) => {
+              const resolved =
+                entry.resolved ??
+                (entry.initPromise
+                  ? await entry.initPromise.catch(() => undefined)
+                  : undefined);
+              if (resolved) {
+                await resolved.buffer.stop().catch(() => undefined);
+                resolved.release();
+              }
+            }),
+          );
+        };
+
+        if (isCollabEnabled) {
+          releaseSuperdocTurnSession = cleanupAllLiveStreams;
+          abortSignal?.addEventListener(
+            'abort',
+            () => {
+              void cleanupAllLiveStreams();
+            },
+            { once: true },
+          );
+        } else if (
+          typeof this.superdocRuntimeService.beginTurnSession === 'function'
+        ) {
+          releaseSuperdocTurnSession =
+            this.superdocRuntimeService.beginTurnSession(
+              ragContext.userId,
+              activeDocRecord.id,
+            );
+          abortSignal?.addEventListener(
+            'abort',
+            () => {
+              void releaseSuperdocTurnSession?.();
+            },
+            { once: true },
+          );
+        }
+
+        const runFallbackServerStreamText = async (
+          rawInput: Record<string, unknown>,
+        ) => {
+          const policy =
+            this.superdocRuntimeService!.validateToolCallPolicy(
+              'superdoc_stream_text',
+              rawInput,
+              changeMode,
+            );
+          if (!policy.allowed) {
+            return recordAndGuardResult('superdoc_stream_text', rawInput, {
+              status: 'failed',
+              error: {
+                code: policy.code,
+                message: policy.message,
+              },
+            });
+          }
+
+          try {
+            const streamArgs = policy.normalizedArgs as unknown as ValidatedStreamTextArgs;
+            const sessionRes =
+              await this.superdocRuntimeService!.runWithDocumentSession({
+                userId: ragContext.userId,
+                documentId: activeDocRecord.id,
+                changeMode,
+                fn: async ({ doc, markMutated }) => {
+                  const streamReceipt = await commitServerTextStream(
+                    doc,
+                    streamArgs,
+                    changeMode,
+                  );
+                  const postSnap = streamReceipt.postSnapshot as
+                    | { revision?: string }
+                    | undefined;
+                  markMutated(postSnap?.revision);
+                  return { payload: streamReceipt };
+                },
+              });
+
+            if (sessionRes.mutated) {
+              mutationCount += 1;
+              workspaceSyncChannel.emit({
+                resource: 'word-document',
+                action: 'updated',
+                conversationId: ragContext.conversationId,
+                entityId: activeDocRecord.id,
+                title: activeDocRecord.file_name,
+                changeMode,
+                count: mutationCount,
+                requiresSnapshotReload: false,
+                occurredAt: new Date().toISOString(),
+              });
+            }
+
+            return recordAndGuardResult(
+              'superdoc_stream_text',
+              rawInput,
+              sessionRes.payload,
+            );
+          } catch (error) {
+            return recordAndGuardResult('superdoc_stream_text', rawInput, {
+              status: 'failed',
+              error: extractSuperDocSdkError(error),
+            });
+          }
+        };
+
+        const superdocStreamTextLiveHandlers:
+          | SuperDocStreamTextLiveHandlers
+          | undefined = isCollabEnabled
+          ? {
+              onInputStart: ({ toolCallId }) => {
+                liveStreamSessions.set(toolCallId, { rawJson: '' });
+              },
+              onInputDelta: ({
+                toolCallId,
+                inputTextDelta,
+                abortSignal: callSignal,
+              }) => {
+                const entry = liveStreamSessions.get(toolCallId) ?? {
+                  rawJson: '',
+                };
+                if (!liveStreamSessions.has(toolCallId)) {
+                  liveStreamSessions.set(toolCallId, entry);
+                }
+                entry.rawJson += inputTextDelta;
+
+                const parsed = partialTextArguments(entry.rawJson);
+                if (!parsed?.text) return;
+
+                entry.latestParsed = parsed;
+                if (entry.resolved) {
+                  entry.resolved.buffer.push(parsed);
+                  return;
+                }
+
+                if (!entry.initPromise) {
+                  const combinedSignal = callSignal ?? abortSignal;
+                  entry.initPromise = (async () => {
+                    const lease =
+                      await this.superdocCollaborationService!.acquireStreamLease(
+                        ragContext.userId,
+                        activeDocRecord.id,
+                      );
+                    const onAbortRelease = () => lease.release();
+                    combinedSignal?.addEventListener('abort', onAbortRelease, {
+                      once: true,
+                    });
+                    const writer = createServerCollaborationTextStream(
+                      lease.handle as unknown as CollaborativeDocumentHandleLike,
+                      { changeMode, signal: combinedSignal },
+                    );
+                    const buffer = createStreamUpdateBuffer(
+                      writer,
+                      combinedSignal,
+                    );
+                    const resolved = {
+                      writer,
+                      buffer,
+                      release: () => {
+                        combinedSignal?.removeEventListener(
+                          'abort',
+                          onAbortRelease,
+                        );
+                        lease.release();
+                      },
+                    };
+                    entry.resolved = resolved;
+                    return resolved;
+                  })();
+
+                  void entry.initPromise
+                    .then((resolved) => {
+                      if (entry.latestParsed) {
+                        resolved.buffer.push(entry.latestParsed);
+                      }
+                    })
+                    .catch((err) => {
+                      console.warn(
+                        `[ChatAgentService] Không thể mở stream Yjs cho toolCallId=${toolCallId}: ${err instanceof Error ? err.message : String(err)}`,
+                      );
+                    });
+                }
+              },
+              commit: async ({ toolCallId, input, abortSignal: callSignal }) => {
+                const rawInput = input as unknown as Record<string, unknown>;
+                const entry = liveStreamSessions.get(toolCallId);
+                liveStreamSessions.delete(toolCallId);
+
+                if (!entry?.initPromise) {
+                  return runFallbackServerStreamText(rawInput);
+                }
+
+                const policy =
+                  this.superdocRuntimeService!.validateToolCallPolicy(
+                    'superdoc_stream_text',
+                    rawInput,
+                    changeMode,
+                  );
+                let resolved:
+                  | {
+                      writer: ServerCollaborationTextStream;
+                      buffer: ServerStreamUpdateBuffer;
+                      release: () => void;
+                    }
+                  | undefined;
+                try {
+                  resolved = await entry.initPromise;
+                  if (!policy.allowed) {
+                    return recordAndGuardResult('superdoc_stream_text', rawInput, {
+                      status: 'failed',
+                      error: {
+                        code: policy.code,
+                        message: policy.message,
+                      },
+                    });
+                  }
+
+                  await resolved.buffer.drain();
+                  const streamArgs =
+                    policy.normalizedArgs as unknown as ValidatedStreamTextArgs;
+                  const payload = await resolved.writer.commit(streamArgs);
+                  mutationCount += 1;
+                  workspaceSyncChannel.emit({
+                    resource: 'word-document',
+                    action: 'updated',
+                    conversationId: ragContext.conversationId,
+                    entityId: activeDocRecord.id,
+                    title: activeDocRecord.file_name,
+                    changeMode,
+                    count: mutationCount,
+                    requiresSnapshotReload: false,
+                    occurredAt: new Date().toISOString(),
+                  });
+                  return recordAndGuardResult(
+                    'superdoc_stream_text',
+                    rawInput,
+                    payload,
+                  );
+                } catch (error) {
+                  if (callSignal?.aborted) {
+                    await resolved?.buffer.stop().catch(() => undefined);
+                  }
+                  return recordAndGuardResult('superdoc_stream_text', rawInput, {
+                    status: 'failed',
+                    error: extractSuperDocSdkError(error),
+                  });
+                } finally {
+                  await resolved?.buffer.stop().catch(() => undefined);
+                  resolved?.release();
+                }
+              },
+            }
+          : undefined;
+
         superdocBindings = {
           activeWordDocument: {
             documentId: activeDocRecord.id,
@@ -544,72 +837,13 @@ export class ChatAgentService {
               });
             }
           },
-          onSuperDocStreamText: async (input) => {
-            const rawInput = input as unknown as Record<string, unknown>;
-            const policy =
-              this.superdocRuntimeService!.validateToolCallPolicy(
-                'superdoc_stream_text',
-                rawInput,
-                changeMode,
-              );
-            if (!policy.allowed) {
-              return recordAndGuardResult('superdoc_stream_text', rawInput, {
-                status: 'failed',
-                error: {
-                  code: policy.code,
-                  message: policy.message,
-                },
-              });
-            }
-
-            try {
-              const streamArgs = policy.normalizedArgs as unknown as ValidatedStreamTextArgs;
-              const sessionRes =
-                await this.superdocRuntimeService!.runWithDocumentSession({
-                  userId: ragContext.userId,
-                  documentId: activeDocRecord.id,
-                  changeMode,
-                  fn: async ({ doc, markMutated }) => {
-                    const streamReceipt = await commitServerTextStream(
-                      doc,
-                      streamArgs,
-                      changeMode,
-                    );
-                    const postSnap = streamReceipt.postSnapshot as
-                      | { revision?: string }
-                      | undefined;
-                    markMutated(postSnap?.revision);
-                    return { payload: streamReceipt };
-                  },
-                });
-
-              if (sessionRes.mutated) {
-                mutationCount += 1;
-                workspaceSyncChannel.emit({
-                  resource: 'word-document',
-                  action: 'updated',
-                  conversationId: ragContext.conversationId,
-                  entityId: activeDocRecord.id,
-                  title: activeDocRecord.file_name,
-                  changeMode,
-                  count: mutationCount,
-                  requiresSnapshotReload: false,
-                  occurredAt: new Date().toISOString(),
-                });
-              }
-
-              return recordAndGuardResult(
-                'superdoc_stream_text',
-                rawInput,
-                sessionRes.payload,
-              );
-            } catch (error) {
-              return recordAndGuardResult('superdoc_stream_text', rawInput, {
-                status: 'failed',
-                error: extractSuperDocSdkError(error),
-              });
-            }
-          },
+          onSuperDocStreamText: async (input) =>
+            runFallbackServerStreamText(
+              input as unknown as Record<string, unknown>,
+            ),
+          ...(superdocStreamTextLiveHandlers
+            ? { superdocStreamTextLiveHandlers }
+            : {}),
           onSuperDocPerformAction: async (input) => {
             const policy =
               this.superdocRuntimeService!.validateToolCallPolicy(
@@ -663,7 +897,7 @@ export class ChatAgentService {
                   title: activeDocRecord.file_name,
                   changeMode,
                   count: mutationCount,
-                  requiresSnapshotReload: true,
+                  requiresSnapshotReload: !isCollabEnabled,
                   occurredAt: new Date().toISOString(),
                 });
               }
@@ -760,7 +994,7 @@ export class ChatAgentService {
                   title: activeDocRecord.file_name,
                   changeMode,
                   count: mutationCount,
-                  requiresSnapshotReload: true,
+                  requiresSnapshotReload: !isCollabEnabled,
                   occurredAt: new Date().toISOString(),
                 });
               }
@@ -785,17 +1019,23 @@ export class ChatAgentService {
       }
     }
 
-    const streamResult = await this.chatAgentAiService.executeChatStream(
-      messages,
-      async ({
-        assistantUIMessage,
-        sourceChunkIds,
-        text,
-      }) => {
-        console.log(
-          `[ChatAgentService] executeAiChatStream fallback onFinish: text length=${text?.length}, parts count=${assistantUIMessage?.parts?.length}, sourceChunkIds=${sourceChunkIds?.length ?? 0}`,
-        );
-      },
+    let streamResult;
+    try {
+      streamResult = await this.chatAgentAiService.executeChatStream(
+        messages,
+        async ({
+          assistantUIMessage,
+          sourceChunkIds,
+          text,
+        }) => {
+          try {
+            console.log(
+              `[ChatAgentService] executeAiChatStream fallback onFinish: text length=${text?.length}, parts count=${assistantUIMessage?.parts?.length}, sourceChunkIds=${sourceChunkIds?.length ?? 0}`,
+            );
+          } finally {
+            await releaseSuperdocTurnSession?.().catch(() => undefined);
+          }
+        },
       abortSignal,
       ragContext
         ? {
@@ -1275,7 +1515,11 @@ export class ChatAgentService {
             },
           }
         : { chatConfig: config, ...webCallbacks },
-    );
+      );
+    } catch (error) {
+      await releaseSuperdocTurnSession?.().catch(() => undefined);
+      throw error;
+    }
 
     if (streamResult && typeof streamResult === 'object') {
       Object.assign(streamResult, { workspaceSyncChannel });

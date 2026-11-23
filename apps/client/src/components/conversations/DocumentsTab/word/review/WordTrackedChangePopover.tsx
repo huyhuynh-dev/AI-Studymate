@@ -58,7 +58,7 @@ function getChangeTypeMeta(type: string | undefined, hasDelete: boolean, hasInse
   }
 }
 
-export function WordTrackedChangePopover({
+export const WordTrackedChangePopover = React.memo(function WordTrackedChangePopover({
   stageContainerRef,
   onDecisionSettled,
 }: WordTrackedChangePopoverProps) {
@@ -288,4 +288,4 @@ export function WordTrackedChangePopover({
       </div>
     </div>
   );
-}
+});

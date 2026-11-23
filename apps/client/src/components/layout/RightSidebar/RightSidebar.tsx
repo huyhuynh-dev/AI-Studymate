@@ -221,6 +221,7 @@ export default function RightSidebar({
     consumePendingComposerPrompt,
     exportActiveSnapshotForAgent,
     streamTextToActiveEditor,
+    pushPerformActionToActiveEditor,
     syncAgentSnapshotFromServer,
   } = useWordAgent();
   const { isFocusMode, setFocusMode, setIsRightSidebarCollapsed } = useFocusMode();
@@ -249,9 +250,20 @@ export default function RightSidebar({
   exportWordSnapshotRef.current = exportActiveSnapshotForAgent;
   const streamTextToActiveEditorRef = useRef(streamTextToActiveEditor);
   streamTextToActiveEditorRef.current = streamTextToActiveEditor;
+  const pushPerformActionToActiveEditorRef = useRef(pushPerformActionToActiveEditor);
+  pushPerformActionToActiveEditorRef.current = pushPerformActionToActiveEditor;
   const syncWordSnapshotRef = useRef(syncAgentSnapshotFromServer);
   syncWordSnapshotRef.current = syncAgentSnapshotFromServer;
   const completedStreamToolCallIdsRef = useRef<Set<string>>(new Set());
+  const lastStreamedInputSignatureRef = useRef<Map<string, string>>(new Map());
+  const dispatchedPerformActionIdsRef = useRef<Set<string>>(new Set());
+  const browserHandledPerformActionIdsRef = useRef<Set<string>>(new Set());
+  const pendingWordSyncRef = useRef<{
+    documentId: string;
+    changeMode?: "tracked" | "direct";
+    count: number;
+    requiresSnapshotReload: boolean;
+  } | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState<number>(384);
   const sidebarWidthRef = useRef<number>(384);
   sidebarWidthRef.current = sidebarWidth;
@@ -483,11 +495,20 @@ export default function RightSidebar({
           payload.resource === "word-document" &&
           typeof payload.entityId === "string"
         ) {
-          void syncWordSnapshotRef.current(payload.entityId, {
-            changeMode: payload.changeMode,
-            count: payload.count,
-            requiresSnapshotReload: payload.requiresSnapshotReload,
-          });
+          const prev = pendingWordSyncRef.current;
+          const isSameDoc = prev?.documentId === payload.entityId;
+          const nextRequiresReload =
+            payload.requiresSnapshotReload === true
+              ? true
+              : payload.requiresSnapshotReload === false
+                ? (isSameDoc ? prev.requiresSnapshotReload : false)
+                : true;
+          pendingWordSyncRef.current = {
+            documentId: payload.entityId,
+            changeMode: payload.changeMode ?? (isSameDoc ? prev.changeMode : undefined),
+            count: (isSameDoc ? prev.count : 0) + (payload.count ?? 1),
+            requiresSnapshotReload: nextRequiresReload,
+          };
         }
       }
     },
@@ -1137,52 +1158,157 @@ export default function RightSidebar({
     sendMessage,
   ]);
 
-  // Đẩy trực tiếp token của superdoc_stream_text sang BrowserDocumentApi (kể cả frame output-available cuối cùng)
+  // Đẩy trực tiếp token của superdoc_stream_text & action tương thích sang BrowserDocumentApi,
+  // đồng thời gom workspace sync về cuối lượt stream để tránh giật / reload giữa chừng.
   useEffect(() => {
     const wordCtx = activeWordContextRef.current;
     if (!wordCtx?.documentId) return;
 
     const lastMessage = messages[messages.length - 1];
-    if (
-      !lastMessage ||
-      lastMessage.role !== "assistant" ||
-      !Array.isArray(lastMessage.parts)
-    ) {
-      return;
-    }
+    const assistantParts =
+      lastMessage &&
+      lastMessage.role === "assistant" &&
+      Array.isArray(lastMessage.parts)
+        ? lastMessage.parts
+        : null;
 
-    for (const rawPart of lastMessage.parts) {
-      const part = rawPart as {
-        type?: string;
-        toolName?: string;
-        toolCallId?: string;
-        state?: string;
-        input?: unknown;
-      };
-      const isStreamTextTool =
-        part.type === "tool-superdoc_stream_text" ||
-        (part.type === "dynamic-tool" &&
-          part.toolName === "superdoc_stream_text");
-      if (!isStreamTextTool || !part.toolCallId || !part.input) {
-        continue;
-      }
-      if (completedStreamToolCallIdsRef.current.has(part.toolCallId)) {
-        continue;
-      }
-      const isFinal =
-        part.state === "input-available" || part.state === "output-available";
-      if (part.state === "input-streaming" || isFinal) {
-        streamTextToActiveEditorRef.current(
-          wordCtx.documentId,
-          part.toolCallId,
-          part.input,
-          wordCtx.changeMode,
-          isFinal,
-        );
-        if (part.state === "output-available") {
-          completedStreamToolCallIdsRef.current.add(part.toolCallId);
+    if (assistantParts) {
+      for (const rawPart of assistantParts) {
+        const part = rawPart as {
+          type?: string;
+          toolName?: string;
+          toolCallId?: string;
+          state?: string;
+          input?: unknown;
+        };
+        const isStreamTextTool =
+          part.type === "tool-superdoc_stream_text" ||
+          (part.type === "dynamic-tool" &&
+            part.toolName === "superdoc_stream_text");
+        if (isStreamTextTool && part.toolCallId && part.input) {
+          if (completedStreamToolCallIdsRef.current.has(part.toolCallId)) {
+            continue;
+          }
+          const inputText =
+            typeof (part.input as { text?: unknown }).text === "string"
+              ? (part.input as { text: string }).text
+              : "";
+          const signature = `${part.state ?? ""}:${inputText.length}`;
+          if (
+            lastStreamedInputSignatureRef.current.get(part.toolCallId) ===
+            signature
+          ) {
+            if (part.state === "output-available") {
+              completedStreamToolCallIdsRef.current.add(part.toolCallId);
+            }
+            continue;
+          }
+          lastStreamedInputSignatureRef.current.set(part.toolCallId, signature);
+
+          const isFinal =
+            part.state === "input-available" ||
+            part.state === "output-available";
+          if (part.state === "input-streaming" || isFinal) {
+            streamTextToActiveEditorRef.current(
+              wordCtx.documentId,
+              part.toolCallId,
+              part.input,
+              wordCtx.changeMode,
+              isFinal,
+            );
+            if (part.state === "output-available") {
+              completedStreamToolCallIdsRef.current.add(part.toolCallId);
+              lastStreamedInputSignatureRef.current.delete(part.toolCallId);
+            }
+          }
+          continue;
+        }
+
+        const isPerformActionTool =
+          part.type === "tool-superdoc_perform_action" ||
+          (part.type === "dynamic-tool" &&
+            part.toolName === "superdoc_perform_action");
+        if (
+          isPerformActionTool &&
+          part.toolCallId &&
+          part.input &&
+          (part.state === "input-available" ||
+            part.state === "output-available") &&
+          !dispatchedPerformActionIdsRef.current.has(part.toolCallId)
+        ) {
+          dispatchedPerformActionIdsRef.current.add(part.toolCallId);
+          const handledInBrowser = pushPerformActionToActiveEditorRef.current(
+            wordCtx.documentId,
+            part.toolCallId,
+            part.input,
+            wordCtx.changeMode,
+          );
+          if (handledInBrowser) {
+            browserHandledPerformActionIdsRef.current.add(part.toolCallId);
+          }
         }
       }
+    }
+
+    if (
+      status !== "streaming" &&
+      status !== "submitted" &&
+      pendingWordSyncRef.current
+    ) {
+      const pendingSync = pendingWordSyncRef.current;
+      pendingWordSyncRef.current = null;
+
+      let effectiveRequiresReload = pendingSync.requiresSnapshotReload;
+      if (effectiveRequiresReload && assistantParts) {
+        let sawBrowserHandledTool = false;
+        let sawServerOnlyMutation = false;
+        for (const rawPart of assistantParts) {
+          const part = rawPart as {
+            type?: string;
+            toolName?: string;
+            toolCallId?: string;
+          };
+          const toolName =
+            part.type === "dynamic-tool"
+              ? part.toolName
+              : typeof part.type === "string" && part.type.startsWith("tool-")
+                ? part.type.slice(5)
+                : undefined;
+          if (!toolName || !toolName.startsWith("superdoc_")) continue;
+          if (toolName === "superdoc_stream_text") {
+            sawBrowserHandledTool = true;
+            continue;
+          }
+          if (toolName === "superdoc_perform_action") {
+            if (
+              part.toolCallId &&
+              browserHandledPerformActionIdsRef.current.has(part.toolCallId)
+            ) {
+              sawBrowserHandledTool = true;
+            } else {
+              sawServerOnlyMutation = true;
+            }
+            continue;
+          }
+          if (
+            !toolName.startsWith("superdoc_read") &&
+            !toolName.startsWith("superdoc_search") &&
+            !toolName.startsWith("superdoc_get") &&
+            !toolName.startsWith("superdoc_list")
+          ) {
+            sawServerOnlyMutation = true;
+          }
+        }
+        if (sawBrowserHandledTool && !sawServerOnlyMutation) {
+          effectiveRequiresReload = false;
+        }
+      }
+
+      void syncWordSnapshotRef.current(pendingSync.documentId, {
+        changeMode: pendingSync.changeMode,
+        count: pendingSync.count,
+        requiresSnapshotReload: effectiveRequiresReload,
+      });
     }
   }, [messages, status]);
 

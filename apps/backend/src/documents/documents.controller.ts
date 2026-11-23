@@ -156,6 +156,40 @@ export class DocumentsController {
         return this.documentsService.clearAgentWorkingSnapshot(this.getUserId(req), id);
     }
 
+    @Post(':id/collaboration-session')
+    async createCollaborationSession(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string
+    ) {
+        const forwardedHost = req.headers['x-forwarded-host'];
+        const rawHost = Array.isArray(forwardedHost)
+            ? forwardedHost[0]
+            : forwardedHost ?? req.headers.host;
+        const forwardedProto = req.headers['x-forwarded-proto'];
+        const rawProto = Array.isArray(forwardedProto)
+            ? forwardedProto[0]
+            : forwardedProto ?? req.protocol;
+        return this.documentsService.createCollaborationSession(
+            this.getUserId(req),
+            id,
+            {
+                requestHost: typeof rawHost === 'string' ? rawHost : undefined,
+                requestProto: typeof rawProto === 'string' ? rawProto : undefined,
+            },
+        );
+    }
+
+    @Post(':id/collaboration-token')
+    async refreshCollaborationToken(
+        @Req() req: Request,
+        @Param('id', new ParseUUIDPipe()) id: string
+    ) {
+        return this.documentsService.refreshCollaborationToken(
+            this.getUserId(req),
+            id,
+        );
+    }
+
     @Delete(':id')
     async deleteDocument(
         @Req() req: Request,

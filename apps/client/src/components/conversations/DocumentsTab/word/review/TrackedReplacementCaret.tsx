@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import type { DocumentMode } from "superdoc";
 import { useSuperDocUI } from "superdoc/ui/react";
 
@@ -15,7 +15,7 @@ interface TrackedReplacementCaretProps {
  * gõ phím thay thế trong chế độ Đề xuất (port từ canonical-collaboration-demo).
  * Ngăn lỗi chữ mới bị chèn tách đôi quanh phần đã bị đánh dấu xóa trước đó.
  */
-export function TrackedReplacementCaret({
+export const TrackedReplacementCaret = memo(function TrackedReplacementCaret({
   stageContainerRef,
   documentMode,
   disabled = false,
@@ -114,4 +114,4 @@ export function TrackedReplacementCaret({
   }, [stageContainerRef, ui, documentMode, disabled]);
 
   return null;
-}
+});

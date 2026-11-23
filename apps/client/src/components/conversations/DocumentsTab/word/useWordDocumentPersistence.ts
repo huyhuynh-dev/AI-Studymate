@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SuperDoc as SuperDocInstance } from "superdoc";
-import { documentsApi, extractDocumentApiError } from "@/services/documents.api";
+import {
+  documentsApi,
+  extractDocumentApiError,
+  type CollaborationSessionResponse,
+} from "@/services/documents.api";
 import { DOCX_MIME_TYPE, stripExtensionForExport } from "./word-document.helpers";
 import type { DocumentItem, DocumentStatus } from "@/types";
 
@@ -14,6 +18,7 @@ export interface UseWordDocumentPersistenceOptions {
 
 export interface WordDocumentPersistenceState {
   documentBlob: Blob | null;
+  collaborationSession: CollaborationSessionResponse | null;
   isLoadingBlob: boolean;
   loadError: string | null;
   isDirty: boolean;
@@ -40,6 +45,8 @@ export function useWordDocumentPersistence({
   onDocumentUpdated,
 }: UseWordDocumentPersistenceOptions): WordDocumentPersistenceState {
   const [documentBlob, setDocumentBlob] = useState<Blob | null>(null);
+  const [collaborationSession, setCollaborationSession] =
+    useState<CollaborationSessionResponse | null>(null);
   const [isLoadingBlob, setIsLoadingBlob] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -88,7 +95,7 @@ export function useWordDocumentPersistence({
     document.sync_error,
   ]);
 
-  // Tải binary .docx từ R2 Signed URL
+  // Tải binary .docx từ R2 Signed URL song song với khởi tạo phòng cộng tác Hocuspocus
   useEffect(() => {
     const controller = new AbortController();
     let cancelled = false;
@@ -100,9 +107,23 @@ export function useWordDocumentPersistence({
       setSaveError(null);
       setIsDirty(false);
       setDocumentBlob(null);
+      setCollaborationSession(null);
 
       try {
-        const { downloadUrl } = await documentsApi.getViewUrl(document.id);
+        const [{ downloadUrl }, collabSession] = await Promise.all([
+          documentsApi.getViewUrl(document.id),
+          compactReaderMode
+            ? Promise.resolve(null)
+            : documentsApi
+                .createCollaborationSession(document.id)
+                .catch((collabErr: unknown) => {
+                  console.warn(
+                    "[useWordDocumentPersistence] Không thể khởi tạo phòng cộng tác Hocuspocus, fallback về chế độ standalone:",
+                    collabErr,
+                  );
+                  return null;
+                }),
+        ]);
         if (cancelled) return;
 
         const blob = await documentsApi.fetchDocumentBlob(
@@ -112,6 +133,12 @@ export function useWordDocumentPersistence({
         );
         if (cancelled) return;
 
+        if (collabSession?.enabled && collabSession.collaborationUrl) {
+          setCollaborationSession(collabSession);
+          if (collabSession.hasUnsavedRoomEdits) {
+            setIsDirty(true);
+          }
+        }
         setDocumentBlob(blob);
       } catch (err: unknown) {
         if (cancelled || controller.signal.aborted) return;
@@ -136,7 +163,7 @@ export function useWordDocumentPersistence({
       dirtyUnsubRef.current = null;
       superdocRef.current = null;
     };
-  }, [document.id, reloadNonce]);
+  }, [compactReaderMode, document.id, reloadNonce]);
 
   const attachSuperDocInstance = useCallback(
     (instance: SuperDocInstance | null) => {
@@ -331,6 +358,7 @@ export function useWordDocumentPersistence({
 
   return {
     documentBlob,
+    collaborationSession,
     isLoadingBlob,
     loadError,
     isDirty,

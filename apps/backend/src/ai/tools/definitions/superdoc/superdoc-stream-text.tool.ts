@@ -2,6 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type {
   SuperDocStreamTextCallback,
+  SuperDocStreamTextLiveHandlers,
   SuperDocStreamTextToolInput,
   ToolCallTracker,
 } from '../../types.js';
@@ -81,14 +82,38 @@ export function createSuperDocStreamTextTool(
   meta?: {
     documentId?: string;
     fileName?: string;
+    liveHandlers?: SuperDocStreamTextLiveHandlers;
   },
 ) {
   return tool({
     description:
       'The required tool for writing document prose and heading wording. Streams one paragraph as it is generated, without the user needing to request streaming. Use replace for an exact unique existing passage within ONE paragraph (including headings), before/after for inline text beside an exact unique passage, paragraphBefore/paragraphAfter to create a NEW paragraph beside an existing passage, or append for a NEW paragraph at document end. To create a heading, stream the paragraph then apply_style with headingLevel. To style new prose, stream first then format_text. Text must not contain newlines: make a separate call per paragraph. Inspect before editing. Supply mode and anchor BEFORE text, and text LAST.',
     inputSchema: superdocStreamTextInputSchema,
-    execute: async (input, { toolCallId }) => {
-      const rawOutput = await callback(input);
+    ...(meta?.liveHandlers?.onInputStart
+      ? {
+          onInputStart: async ({ toolCallId, abortSignal }) => {
+            await meta.liveHandlers?.onInputStart?.({
+              toolCallId,
+              abortSignal,
+            });
+          },
+        }
+      : {}),
+    ...(meta?.liveHandlers?.onInputDelta
+      ? {
+          onInputDelta: async ({ toolCallId, inputTextDelta, abortSignal }) => {
+            await meta.liveHandlers?.onInputDelta?.({
+              toolCallId,
+              inputTextDelta,
+              abortSignal,
+            });
+          },
+        }
+      : {}),
+    execute: async (input, { toolCallId, abortSignal }) => {
+      const rawOutput = meta?.liveHandlers?.commit
+        ? await meta.liveHandlers.commit({ toolCallId, input, abortSignal })
+        : await callback(input);
       const lightweight = toSuperDocStreamTextLightweightOutput(
         input,
         rawOutput,

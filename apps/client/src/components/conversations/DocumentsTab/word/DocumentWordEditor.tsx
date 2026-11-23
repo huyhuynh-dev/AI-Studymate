@@ -37,6 +37,7 @@ import {
   X,
 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { documentsApi } from "@/services/documents.api";
 import { CitationEvidenceBanner } from "../editor/CitationEvidenceBanner";
 import type {
   CitationResolutionTier,
@@ -49,16 +50,19 @@ import { WordAiReviewBanner } from "./review/WordAiReviewBanner";
 import { WordSelectionAiPill } from "./review/WordSelectionAiPill";
 import { WordTrackedChangePopover } from "./review/WordTrackedChangePopover";
 import { TrackedReplacementCaret } from "./review/TrackedReplacementCaret";
-import { LiveAgentTypingCaret } from "./review/LiveAgentTypingCaret";
+import {
+  LiveAgentTypingCaret,
+  type LiveAgentTypingCaretHandle,
+} from "./review/LiveAgentTypingCaret";
 import {
   BrowserTextStreamManager,
   isValidStreamTextInput,
-  type AgentStreamCursorTarget,
 } from "./stream/browser-text-stream";
 import { useWordDocumentPersistence } from "./useWordDocumentPersistence";
 import {
   buildCitationSearchQueries,
   buildSuperDocUser,
+  DOCX_MIME_TYPE,
   getGoogleDocsSourceUrl,
   isGoogleDocsImported,
   stripExtensionForExport,
@@ -237,6 +241,7 @@ function DocumentWordWorkspace({
 
   const {
     documentBlob,
+    collaborationSession,
     isLoadingBlob,
     loadError,
     isDirty,
@@ -254,6 +259,17 @@ function DocumentWordWorkspace({
     clearSaveFeedback,
     markDirty,
   } = persistence;
+
+  const [collabConnectionState, setCollabConnectionState] = useState<
+    "idle" | "connecting" | "synced" | "disconnected"
+  >("idle");
+  const collabSyncedRef = useRef(false);
+  const collabEnabledRef = useRef(false);
+  collabEnabledRef.current = Boolean(
+    !compactReaderMode &&
+      collaborationSession?.enabled &&
+      collaborationSession.collaborationUrl,
+  );
 
   const { registerEditor, triggerQuickPrompt, setChangeMode } = useWordAgent();
 
@@ -275,6 +291,7 @@ function DocumentWordWorkspace({
 
   const superdocInstanceRef = useRef<SuperDoc | null>(null);
   const streamManagerRef = useRef<BrowserTextStreamManager | null>(null);
+  const liveCaretRef = useRef<LiveAgentTypingCaretHandle | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const editorOverlayRef = useRef<HTMLDivElement | null>(null);
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -283,12 +300,10 @@ function DocumentWordWorkspace({
   const isReadyRef = useRef(false);
   const [reviewExpandSignal, setReviewExpandSignal] = useState(0);
   const [isAiStreamingText, setIsAiStreamingText] = useState(false);
-  const [agentCursorTarget, setAgentCursorTarget] =
-    useState<AgentStreamCursorTarget | null>(null);
   const isAiStreamingTextRef = useRef(false);
   const lockedScrollTopRef = useRef<number | null>(null);
   const isProgrammaticMutationRef = useRef(false);
-  const cursorClearTimerRef = useRef<number | null>(null);
+  const hasUnstagedUserEditsRef = useRef(false);
   const lastManualScrollAtRef = useRef(0);
 
   const isDirtyRef = useRef(isDirty);
@@ -319,6 +334,15 @@ function DocumentWordWorkspace({
       document,
       conversationId: document.conversation_id,
       isDirty: () => isDirtyRef.current,
+      hasUnstagedUserEdits: () =>
+        collabEnabledRef.current && collabSyncedRef.current
+          ? false
+          : hasUnstagedUserEditsRef.current,
+      markAgentSynced: () => {
+        hasUnstagedUserEditsRef.current = false;
+      },
+      isCollaborationActive: () => collabEnabledRef.current,
+      markRemoteMutated: markDirty,
       exportWorkingBlob: async () => {
         const instance = superdocInstanceRef.current;
         if (!instance || !isReadyRef.current) return null;
@@ -337,32 +361,43 @@ function DocumentWordWorkspace({
       applyAgentSnapshotBlob: async (blob, options) => {
         const instance = superdocInstanceRef.current;
         if (!instance || !isReadyRef.current) return;
-        const replacement = await instance.replaceDocument(blob);
-        if (!replacement.ok) {
-          throw new Error(
-            "Không thể nạp bản chỉnh sửa DOCX mới vào trình soạn thảo SuperDoc.",
-          );
+        isProgrammaticMutationRef.current = true;
+        try {
+          const replacement = await instance.replaceDocument(blob);
+          if (!replacement.ok) {
+            throw new Error(
+              "Không thể nạp bản chỉnh sửa DOCX mới vào trình soạn thảo SuperDoc.",
+            );
+          }
+          if (options?.changeMode !== "direct") {
+            setTrackedChangesView("markup");
+            instance.setViewingOptions({
+              comments: true,
+              trackedChanges: "markup",
+            });
+          }
+          hasUnstagedUserEditsRef.current = false;
+          markDirty();
+        } finally {
+          isProgrammaticMutationRef.current = false;
         }
-        if (options?.changeMode !== "direct") {
-          setTrackedChangesView("markup");
-          instance.setViewingOptions({
-            comments: true,
-            trackedChanges: "markup",
-          });
-        }
-        markDirty();
       },
       pushStreamText: (toolCallId, args, targetChangeMode, isFinal) => {
         const manager = streamManagerRef.current;
         if (!manager || !isValidStreamTextInput(args)) return;
         manager.pushUpdate(toolCallId, args, targetChangeMode, isFinal);
       },
-      waitForPendingStreams: async () => {
+      pushPerformAction: (toolCallId, args, targetChangeMode) => {
+        const manager = streamManagerRef.current;
+        if (!manager) return false;
+        return manager.pushPerformAction(toolCallId, args, targetChangeMode);
+      },
+      waitForPendingStreams: async (options) => {
         const manager = streamManagerRef.current;
         if (!manager) {
           return { anyLiveSucceeded: false, anyFailed: false };
         }
-        return manager.waitForAll();
+        return manager.waitForAll(options);
       },
       acceptAllChanges: async () => {
         const instance = superdocInstanceRef.current;
@@ -436,9 +471,46 @@ function DocumentWordWorkspace({
     setFatalEditorError(null);
     setTransientNotice(null);
 
+    const useCollab = Boolean(
+      !compactReaderMode &&
+        collaborationSession?.enabled &&
+        collaborationSession.collaborationUrl,
+    );
+    let pendingInitialToken: string | null = useCollab
+      ? (collaborationSession?.token ?? null)
+      : null;
+    collabSyncedRef.current = false;
+    setCollabConnectionState(useCollab ? "connecting" : "idle");
+
+    const documentConfig: Config["document"] = useCollab
+      ? {
+          id: document.id,
+          type: DOCX_MIME_TYPE,
+          data: documentBlob,
+          collaboration: {
+            providerType: "hocuspocus",
+            documentId: document.id,
+            serverUrl: collaborationSession!.collaborationUrl,
+            token: async () => {
+              if (pendingInitialToken) {
+                const token = pendingInitialToken;
+                pendingInitialToken = null;
+                return token;
+              }
+              const refreshed = await documentsApi.refreshCollaborationToken(
+                document.id,
+              );
+              return refreshed.token;
+            },
+            roomMode: "join",
+            syncTimeoutMs: 30_000,
+          },
+        }
+      : documentBlob;
+
     const instance = new SuperDoc({
       selector: mountEl,
-      document: documentBlob,
+      document: documentConfig,
       documentMode: compactReaderMode ? "viewing" : initialModeRef.current,
       viewing: compactReaderMode
         ? COMPACT_VIEWING
@@ -457,27 +529,45 @@ function DocumentWordWorkspace({
           !compactReaderMode && rulerEl ? { container: rulerEl } : false,
         contentControls: true,
       },
+      onCollaborationConnectionChange: ({ state }) => {
+        if (disposed) return;
+        const synced = state === "synced";
+        collabSyncedRef.current = synced;
+        if (synced) {
+          setCollabConnectionState("synced");
+        } else if (state === "connecting") {
+          setCollabConnectionState("connecting");
+        } else {
+          setCollabConnectionState("disconnected");
+        }
+      },
       onReady: ({ superdoc: readySuperDoc }) => {
         if (disposed) return;
         superdocInstanceRef.current = readySuperDoc;
+        hasUnstagedUserEditsRef.current = false;
         void streamManagerRef.current?.dispose();
         const docApi = readySuperDoc.activeEditor?.doc;
         streamManagerRef.current =
-          !compactReaderMode && docApi
+          !compactReaderMode && !useCollab && docApi
             ? new BrowserTextStreamManager({
                 doc: docApi,
                 onMutated: markDirty,
                 onCursorMove: (cursor) => {
-                  setAgentCursorTarget(cursor);
+                  liveCaretRef.current?.updateCursor(cursor);
+                },
+                onStreamTargetResolved: (target) => {
+                  liveCaretRef.current?.updateCursor(target);
+                },
+                onError: (err, toolCallId) => {
+                  console.error(
+                    `[DocumentWordEditor] Lỗi stream live (${toolCallId}):`,
+                    err,
+                  );
                 },
                 onStreamingChange: (streaming) => {
                   isAiStreamingTextRef.current = streaming;
                   setIsAiStreamingText(streaming);
-
-                  if (cursorClearTimerRef.current !== null) {
-                    window.clearTimeout(cursorClearTimerRef.current);
-                    cursorClearTimerRef.current = null;
-                  }
+                  liveCaretRef.current?.setStreaming(streaming);
 
                   const stageEl = stageRef.current;
                   const hostEl = mountRef.current;
@@ -502,11 +592,7 @@ function DocumentWordWorkspace({
                     }
                   } else {
                     hostEl?.classList.remove("studymate-ai-streaming-active");
-                    cursorClearTimerRef.current = window.setTimeout(() => {
-                      setAgentCursorTarget(null);
-                      lockedScrollTopRef.current = null;
-                      cursorClearTimerRef.current = null;
-                    }, 700);
+                    lockedScrollTopRef.current = null;
                   }
                 },
                 runWithScrollGuard: async (fn) => {
@@ -522,26 +608,13 @@ function DocumentWordWorkspace({
                     if (
                       stageEl &&
                       beforeTop !== null &&
-                      beforeTop > 24 &&
-                      (stageEl.scrollTop < 12 ||
-                        beforeTop - stageEl.scrollTop > 120)
+                      beforeTop > 80 &&
+                      stageEl.scrollTop < 8 &&
+                      Date.now() - lastManualScrollAtRef.current > 1200
                     ) {
                       stageEl.scrollTop = beforeTop;
                     }
-                    window.requestAnimationFrame(() => {
-                      const locked = lockedScrollTopRef.current;
-                      if (
-                        stageEl &&
-                        locked !== null &&
-                        locked > 24 &&
-                        Date.now() - lastManualScrollAtRef.current > 200 &&
-                        (stageEl.scrollTop < 12 ||
-                          locked - stageEl.scrollTop > 120)
-                      ) {
-                        stageEl.scrollTop = locked;
-                      }
-                      isProgrammaticMutationRef.current = false;
-                    });
+                    isProgrammaticMutationRef.current = false;
                   }
                 },
               })
@@ -551,6 +624,16 @@ function DocumentWordWorkspace({
         setFatalEditorError(null);
         setSuperDoc(readySuperDoc);
         attachRef.current(readySuperDoc);
+      },
+      onEditorUpdate: () => {
+        if (
+          !disposed &&
+          isReadyRef.current &&
+          !isAiStreamingTextRef.current &&
+          !isProgrammaticMutationRef.current
+        ) {
+          hasUnstagedUserEditsRef.current = true;
+        }
       },
       onContentError: (event) => {
         if (disposed) return;
@@ -613,13 +696,13 @@ function DocumentWordWorkspace({
     return () => {
       disposed = true;
       isReadyRef.current = false;
+      collabSyncedRef.current = false;
+      setCollabConnectionState("idle");
       isAiStreamingTextRef.current = false;
       isProgrammaticMutationRef.current = false;
+      hasUnstagedUserEditsRef.current = false;
       lockedScrollTopRef.current = null;
-      if (cursorClearTimerRef.current !== null) {
-        window.clearTimeout(cursorClearTimerRef.current);
-        cursorClearTimerRef.current = null;
-      }
+      liveCaretRef.current?.updateCursor(null);
       mountEl.classList.remove("studymate-ai-streaming-active");
       void streamManagerRef.current?.dispose();
       streamManagerRef.current = null;
@@ -630,6 +713,7 @@ function DocumentWordWorkspace({
       rulerEl?.replaceChildren();
     };
   }, [
+    collaborationSession,
     compactReaderMode,
     document.id,
     documentBlob,
@@ -674,44 +758,38 @@ function DocumentWordWorkspace({
     [],
   );
 
-  // Khóa chống giật cuộn trang lên đầu tài liệu khi AI đang bơm ký tự vào Editor
+  // Ghi nhận thao tác cuộn thủ công của người dùng để tôn trọng quán tính cuộn
   useEffect(() => {
     const stageEl = stageRef.current;
     if (!stageEl) return undefined;
 
     const markManualInput = () => {
       lastManualScrollAtRef.current = Date.now();
-      if (isAiStreamingTextRef.current) {
-        lockedScrollTopRef.current = stageEl.scrollTop;
-      }
     };
 
-    const handleScroll = () => {
-      if (Date.now() - lastManualScrollAtRef.current <= 200) {
-        lockedScrollTopRef.current = stageEl.scrollTop;
-        return;
-      }
-      const locked = lockedScrollTopRef.current;
+    const markScrollKey = (e: KeyboardEvent) => {
       if (
-        (isProgrammaticMutationRef.current || isAiStreamingTextRef.current) &&
-        locked !== null &&
-        locked > 24 &&
-        (stageEl.scrollTop < 12 || locked - stageEl.scrollTop > 120)
+        e.key === "PageUp" ||
+        e.key === "PageDown" ||
+        e.key === "ArrowUp" ||
+        e.key === "ArrowDown" ||
+        e.key === "Home" ||
+        e.key === "End"
       ) {
-        stageEl.scrollTop = locked;
+        lastManualScrollAtRef.current = Date.now();
       }
     };
 
     stageEl.addEventListener("wheel", markManualInput, { passive: true });
     stageEl.addEventListener("touchmove", markManualInput, { passive: true });
     stageEl.addEventListener("pointerdown", markManualInput, { passive: true });
-    stageEl.addEventListener("scroll", handleScroll, { passive: true });
+    stageEl.addEventListener("keydown", markScrollKey, { passive: true });
 
     return () => {
       stageEl.removeEventListener("wheel", markManualInput);
       stageEl.removeEventListener("touchmove", markManualInput);
       stageEl.removeEventListener("pointerdown", markManualInput);
-      stageEl.removeEventListener("scroll", handleScroll);
+      stageEl.removeEventListener("keydown", markScrollKey);
     };
   }, [isEditorReady]);
 
@@ -1056,6 +1134,21 @@ function DocumentWordWorkspace({
         <div className="flex shrink-0 items-center gap-1.5">
           {!compactReaderMode && (
             <div className="hidden xl:flex items-center gap-1.5 mr-1">
+              {collabConnectionState === "synced" ? (
+                <span
+                  title="Đang đồng bộ thời gian thực qua phòng cộng tác Hocuspocus"
+                  className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2.5 py-1 text-[11px] font-medium text-indigo-600 dark:text-indigo-300"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live
+                </span>
+              ) : collabConnectionState === "connecting" ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 dark:bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                  Đang kết nối…
+                </span>
+              ) : null}
+
               {isSaving ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400">
                   <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -1413,10 +1506,9 @@ function DocumentWordWorkspace({
               />
               {!compactReaderMode && (
                 <LiveAgentTypingCaret
+                  ref={liveCaretRef}
                   overlayContainerRef={editorOverlayRef}
                   stageContainerRef={stageRef}
-                  cursorTarget={agentCursorTarget}
-                  isStreaming={isAiStreamingText}
                   onAutoFollowScroll={(nextTop) => {
                     lockedScrollTopRef.current = nextTop;
                   }}
