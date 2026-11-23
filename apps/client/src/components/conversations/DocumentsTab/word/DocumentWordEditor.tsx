@@ -37,6 +37,7 @@ import {
   X,
 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useFocusMode } from "@/components/layout";
 import { documentsApi } from "@/services/documents.api";
 import { CitationEvidenceBanner } from "../editor/CitationEvidenceBanner";
 import type {
@@ -285,7 +286,6 @@ function DocumentWordWorkspace({
   const [isExporting, setIsExporting] = useState(false);
   const [showTocSidebar, setShowTocSidebar] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-  const [internalFullscreen, setInternalFullscreen] = useState(false);
   const [resolvedCitationTier, setResolvedCitationTier] =
     useState<CitationResolutionTier>(2);
 
@@ -437,16 +437,19 @@ function DocumentWordWorkspace({
     });
   }, [compactReaderMode, document, isEditorReady, markDirty, registerEditor]);
 
+  const { isFocusMode, toggleFocusMode, setFocusMode } = useFocusMode();
   const isFullscreen =
-    isExternalFullscreen !== undefined ? isExternalFullscreen : internalFullscreen;
+    compactReaderMode
+      ? Boolean(isExternalFullscreen)
+      : isFocusMode;
 
   const handleToggleFullscreen = useCallback(() => {
-    if (onToggleExternalFullscreen) {
-      onToggleExternalFullscreen();
+    if (compactReaderMode) {
+      onToggleExternalFullscreen?.();
       return;
     }
-    setInternalFullscreen((prev) => !prev);
-  }, [onToggleExternalFullscreen]);
+    toggleFocusMode();
+  }, [compactReaderMode, onToggleExternalFullscreen, toggleFocusMode]);
 
   const superdocUser = useMemo(
     () => buildSuperDocUser(user),
@@ -831,6 +834,10 @@ function DocumentWordWorkspace({
         }
         if (citationTarget) {
           onCitationDismiss?.();
+          return;
+        }
+        if (!compactReaderMode && isFocusMode) {
+          setFocusMode(false);
         }
       }
     };
@@ -844,6 +851,9 @@ function DocumentWordWorkspace({
     showExportMenu,
     citationTarget,
     onCitationDismiss,
+    compactReaderMode,
+    isFocusMode,
+    setFocusMode,
   ]);
 
   const scrollToQueries = useCallback(
@@ -1015,7 +1025,7 @@ function DocumentWordWorkspace({
 
   const containerClass =
     compactReaderMode || isFullscreen
-      ? `flex h-full min-h-0 flex-1 flex-col bg-neutral-100/75 dark:bg-[#0F1218] ${isFullscreen && isExternalFullscreen === undefined ? "fixed inset-0 z-50" : ""} ${className}`
+      ? `flex h-full min-h-0 flex-1 flex-col bg-neutral-100/75 dark:bg-[#0F1218] ${className}`
       : `flex h-[calc(100vh-140px)] min-h-[580px] w-full flex-col overflow-hidden rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/75 dark:bg-[#0F1218] shadow-sm ${className}`;
 
   const showEditorSurface =

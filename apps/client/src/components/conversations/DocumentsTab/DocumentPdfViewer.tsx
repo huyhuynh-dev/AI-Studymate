@@ -1143,7 +1143,7 @@ export default function DocumentPdfViewer({
         compactReaderMode
           ? "h-full flex-1 rounded-none border-none"
           : effectiveFullscreen
-            ? "h-screen flex-1 rounded-none border-none"
+            ? "h-full flex-1 rounded-none border-none"
             : "h-[calc(100vh-185px)] min-h-[580px] flex-1 rounded-[24px] border border-black/[0.06] dark:border-white/[0.08]"
       } ${className}`}
     >

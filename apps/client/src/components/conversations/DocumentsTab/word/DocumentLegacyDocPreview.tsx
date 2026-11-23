@@ -15,6 +15,7 @@ import {
   Info,
 } from "lucide-react";
 import { documentsApi, extractDocumentApiError } from "@/services/documents.api";
+import { useFocusMode } from "@/components/layout";
 import type { DocumentItem, DocumentPreviewData } from "@/types";
 
 export interface DocumentLegacyDocPreviewProps {
@@ -40,18 +41,33 @@ export default function DocumentLegacyDocPreview({
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
-  const [internalFullscreen, setInternalFullscreen] = useState(false);
+  const { isFocusMode, toggleFocusMode, setFocusMode } = useFocusMode();
 
   const isFullscreen =
-    isExternalFullscreen !== undefined ? isExternalFullscreen : internalFullscreen;
+    compactReaderMode
+      ? Boolean(isExternalFullscreen)
+      : isFocusMode;
 
   const handleToggleFullscreen = () => {
-    if (onToggleExternalFullscreen) {
-      onToggleExternalFullscreen();
+    if (compactReaderMode) {
+      onToggleExternalFullscreen?.();
       return;
     }
-    setInternalFullscreen((prev) => !prev);
+    toggleFocusMode();
   };
+
+  useEffect(() => {
+    if (compactReaderMode) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isFocusMode) {
+        setFocusMode(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [compactReaderMode, isFocusMode, setFocusMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,7 +117,7 @@ export default function DocumentLegacyDocPreview({
 
   const containerClass =
     compactReaderMode || isFullscreen
-      ? `flex h-full min-h-0 flex-1 flex-col bg-neutral-100/70 dark:bg-[#0F1218] ${isFullscreen && isExternalFullscreen === undefined ? "fixed inset-0 z-50" : ""} ${className}`
+      ? `flex h-full min-h-0 flex-1 flex-col bg-neutral-100/70 dark:bg-[#0F1218] ${className}`
       : `flex h-[calc(100vh-140px)] min-h-[540px] w-full flex-col overflow-hidden rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/70 dark:bg-[#0F1218] shadow-sm ${className}`;
 
   return (
