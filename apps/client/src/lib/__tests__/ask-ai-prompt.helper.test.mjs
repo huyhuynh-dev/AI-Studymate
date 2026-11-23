@@ -41,6 +41,22 @@ describe('ask-ai-prompt.helper', () => {
       prompt: 'Dịch sang Tiếng Anh',
     });
     assert.ok(noFileResult.startsWith('> **Trích đoạn đang chọn:**\n> Một câu ngắn'));
+
+    const pdfPageResult = formatSelectionAskPrompt({
+      selectedText: 'Định lý Bayes liên hệ xác suất có điều kiện.',
+      prompt: 'Giải thích công thức này',
+      fileName: 'probability.pdf',
+      pageNo: 4,
+    });
+    assert.equal(
+      pdfPageResult,
+      [
+        '> **Trích đoạn từ `probability.pdf` (Trang 4):**',
+        '> Định lý Bayes liên hệ xác suất có điều kiện.',
+        '',
+        'Giải thích công thức này',
+      ].join('\n'),
+    );
   });
 
   it('cung cấp đầy đủ danh sách gợi ý nhanh hợp lệ', () => {

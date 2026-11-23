@@ -84,6 +84,7 @@ import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useDocumentMastery } from "@/hooks/useLearningAnalytics";
 import { calcBoxPixels } from "@/lib/pdf-coordinates";
 import TocMasterySidebar from "./TocMasterySidebar";
+import { PdfSelectionMenu } from "./pdf/PdfSelectionMenu";
 
 export interface DocumentPdfViewerProps {
   document: DocumentItem;
@@ -1114,7 +1115,9 @@ export default function DocumentPdfViewer({
       createPluginRegistration(ScrollPluginPackage),
       createPluginRegistration(RenderPluginPackage),
       createPluginRegistration(InteractionManagerPluginPackage),
-      createPluginRegistration(SelectionPluginPackage),
+      createPluginRegistration(SelectionPluginPackage, {
+        menuHeight: 44,
+      }),
       createPluginRegistration(HistoryPluginPackage),
       createPluginRegistration(AnnotationPluginPackage, {
         annotationAuthor: "StudyMate User",
@@ -1315,22 +1318,42 @@ export default function DocumentPdfViewer({
                                         WebkitUserSelect: "none",
                                         backgroundColor: "#ffffff",
                                         borderRadius: "8px",
-                                        overflow: "hidden",
+                                        overflow: "visible",
                                         boxShadow:
                                           "0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                                       }}
                                     >
-                                      {/* Lớp 1: Hiển thị đồ hoạ trang PDF */}
-                                      <RenderLayer
-                                        documentId={activeDocumentId}
-                                        pageIndex={pageIndex}
-                                        style={{ pointerEvents: "none" }}
-                                      />
+                                      {/* Lớp 1: Hiển thị đồ hoạ trang PDF (bo góc riêng để không cắt SelectionMenu) */}
+                                      <div
+                                        style={{
+                                          position: "absolute",
+                                          inset: 0,
+                                          borderRadius: "8px",
+                                          overflow: "hidden",
+                                          pointerEvents: "none",
+                                        }}
+                                      >
+                                        <RenderLayer
+                                          documentId={activeDocumentId}
+                                          pageIndex={pageIndex}
+                                          style={{ pointerEvents: "none" }}
+                                        />
+                                      </div>
 
-                                      {/* Lớp 2: Bôi đen & Sao chép văn bản */}
+                                      {/* Lớp 2: Bôi đen, Hỏi Studymate & Sao chép văn bản */}
                                       <SelectionLayer
                                         documentId={activeDocumentId}
                                         pageIndex={pageIndex}
+                                        selectionMenu={(menuProps) => (
+                                          <PdfSelectionMenu
+                                            {...menuProps}
+                                            documentId={activeDocumentId}
+                                            backendDocumentId={document.id}
+                                            fileName={document.file_name}
+                                            pageWidth={width}
+                                            compactReaderMode={compactReaderMode}
+                                          />
+                                        )}
                                       />
 
                                       {/* Lớp 3: Highlight & Ghi chú */}

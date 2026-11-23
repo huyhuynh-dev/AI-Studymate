@@ -65,6 +65,7 @@ export interface FormatSelectionAskPromptInput {
   selectedText: string;
   prompt: string;
   fileName?: string | null;
+  pageNo?: number | null;
 }
 
 /**
@@ -81,9 +82,21 @@ export function formatSelectionAskPrompt(
   }
 
   const safeFileName = input.fileName?.trim();
-  const headerLine = safeFileName
-    ? `> **Trích đoạn từ \`${safeFileName}\`:**`
-    : '> **Trích đoạn đang chọn:**';
+  const validPageNo =
+    typeof input.pageNo === 'number' &&
+    Number.isFinite(input.pageNo) &&
+    input.pageNo >= 1
+      ? Math.floor(input.pageNo)
+      : null;
+
+  let headerLine = '> **Trích đoạn đang chọn:**';
+  if (safeFileName && validPageNo !== null) {
+    headerLine = `> **Trích đoạn từ \`${safeFileName}\` (Trang ${validPageNo}):**`;
+  } else if (safeFileName) {
+    headerLine = `> **Trích đoạn từ \`${safeFileName}\`:**`;
+  } else if (validPageNo !== null) {
+    headerLine = `> **Trích đoạn đang chọn (Trang ${validPageNo}):**`;
+  }
 
   const quotedBody = cleanSelection
     .split('\n')

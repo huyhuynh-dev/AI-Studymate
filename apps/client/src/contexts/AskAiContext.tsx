@@ -11,6 +11,7 @@ import React, {
 export interface AskAiSelectionSource {
   documentId?: string;
   fileName?: string;
+  pageNo?: number;
   mode?: string;
 }
 

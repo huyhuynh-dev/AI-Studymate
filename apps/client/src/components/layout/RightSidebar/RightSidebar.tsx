@@ -1069,6 +1069,7 @@ export default function RightSidebar({
       selectedText: pendingAskRequest.selectedText,
       prompt: pendingAskRequest.prompt,
       fileName: pendingAskRequest.source?.fileName,
+      pageNo: pendingAskRequest.source?.pageNo,
     });
 
     consumeAskRequest();
