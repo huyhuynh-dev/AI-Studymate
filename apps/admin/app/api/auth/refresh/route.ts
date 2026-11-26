@@ -5,9 +5,13 @@ import {
   applyAdminAuthCookies,
   clearAdminAuthCookies,
 } from '@/lib/auth-cookies';
+import { verifyAdminCsrfRequest } from '@/lib/csrf-guard';
 import { refreshAdminTokensWithDedupe } from '@/lib/proxy-auth';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const csrfError = verifyAdminCsrfRequest(request, { checkSafeMethods: true });
+  if (csrfError) return csrfError;
+
   try {
     const cookieStore = await cookies();
     const refreshToken = cookieStore.get(ADMIN_REFRESH_TOKEN_COOKIE)?.value;

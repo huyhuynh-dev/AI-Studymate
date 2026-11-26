@@ -6,6 +6,7 @@ import {
   applyAuthCookies,
   clearAuthCookies,
 } from '@/lib/auth-cookies';
+import { verifyCsrfRequest } from '@/lib/csrf-guard';
 import { fetchBackendWithAuthRefresh } from '@/lib/proxy-auth';
 
 const BACKEND_URL =
@@ -17,6 +18,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const csrfError = verifyCsrfRequest(request);
+  if (csrfError) return csrfError;
   const { id } = await params;
   const requestPath = `/summaries/${id}/ai-actions`;
   const cookieStore = await cookies();

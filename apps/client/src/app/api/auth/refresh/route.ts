@@ -5,9 +5,13 @@ import {
   clearAuthCookies,
   REFRESH_TOKEN_COOKIE,
 } from '@/lib/auth-cookies';
+import { verifyCsrfRequest } from '@/lib/csrf-guard';
 import { refreshTokensWithDedupe } from '@/lib/proxy-auth';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const csrfError = verifyCsrfRequest(request, { checkSafeMethods: true });
+  if (csrfError) return csrfError;
+
   try {
     const cookieStore = await cookies();
     const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value;

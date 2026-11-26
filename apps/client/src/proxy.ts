@@ -16,8 +16,8 @@ const AUTH_ROUTES = [
 
 /**
  * Next.js Proxy / Middleware (Next.js 16 convention)
- * Tự động chặn và bảo vệ các Private Routes, điều hướng người dùng chưa đăng nhập,
- * xử lý OAuth tokens và ngăn người dùng đã đăng nhập truy cập lại các trang Auth.
+ * Tự động chặn và bảo vệ các Private Routes, điều hướng người dùng chưa đăng nhập
+ * và ngăn người dùng đã đăng nhập truy cập lại các trang Auth.
  */
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -30,49 +30,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(`/auth/register${search}`, request.url));
   }
 
-  // 2. Tự động chặn và trích xuất OAuth token từ URL query parameter (ví dụ Google OAuth callback)
-  const token = request.nextUrl.searchParams.get('token');
-  const refreshToken = request.nextUrl.searchParams.get('refresh_token');
-
-  if (token && refreshToken) {
-    const redirectParam = request.nextUrl.searchParams.get('redirect');
-    const cleanUrl = request.nextUrl.clone();
-    cleanUrl.searchParams.delete('token');
-    cleanUrl.searchParams.delete('refresh_token');
-    cleanUrl.searchParams.delete('redirect');
-
-    // Chuyển hướng người dùng sau khi nhận token OAuth:
-    // Nếu có query redirect hợp lệ thì ưu tiên, nếu là root '/' hoặc '/auth/*' thì đưa vào '/home'
-    if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
-      cleanUrl.pathname = redirectParam;
-    } else if (cleanUrl.pathname === '/' || cleanUrl.pathname.startsWith('/auth')) {
-      cleanUrl.pathname = '/home';
-    }
-
-    const response = NextResponse.redirect(cleanUrl);
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    // Lưu token vào HttpOnly Secure Cookies
-    response.cookies.set('access_token', token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24, // 1 ngày
-    });
-
-    response.cookies.set('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 ngày
-    });
-
-    return response;
-  }
-
-  // 3. Kiểm tra trạng thái đăng nhập dựa trên Cookies
+  // 2. Kiểm tra trạng thái đăng nhập dựa trên HttpOnly Cookies
   const accessToken = request.cookies.get('access_token')?.value;
   const refreshTokenCookie = request.cookies.get('refresh_token')?.value;
   const isAuthenticated = Boolean(accessToken || refreshTokenCookie);
@@ -80,7 +38,7 @@ export function proxy(request: NextRequest) {
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route));
   const isLandingPage = pathname === '/';
 
-  // 4. Trường hợp người dùng ĐÃ ĐĂNG NHẬP:
+  // 3. Trường hợp người dùng ĐÃ ĐĂNG NHẬP:
   // Nếu đã đăng nhập mà cố gắng truy cập lại vào các trang Auth (trừ khi vừa bị session_expired)
   // thì tự động chuyển hướng về /home
   if (isAuthenticated && isAuthRoute) {
@@ -90,7 +48,7 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // 5. Trường hợp người dùng CHƯA ĐĂNG NHẬP:
+  // 4. Trường hợp người dùng CHƯA ĐĂNG NHẬP:
   // Nếu chưa đăng nhập và truy cập vào các Protected Route (không phải landing page '/' và không phải auth routes)
   // thì chuyển hướng về trang đăng nhập kèm tham số redirect
   if (!isAuthenticated && !isLandingPage && !isAuthRoute) {

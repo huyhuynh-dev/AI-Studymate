@@ -12,6 +12,9 @@ describe('AuthController', () => {
     refreshTokens: ReturnType<typeof vi.fn>;
     exchangeGoogleAuthCode: ReturnType<typeof vi.fn>;
     logoutByTokens: ReturnType<typeof vi.fn>;
+    validateGoogleOAuthState: ReturnType<typeof vi.fn>;
+    getAuthClientData: ReturnType<typeof vi.fn>;
+    createGoogleAuthCode: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -28,6 +31,16 @@ describe('AuthController', () => {
         message: 'Logged out successfully',
         revoked: true,
       }),
+      validateGoogleOAuthState: vi.fn().mockResolvedValue({
+        codeVerifier: 'pkce-verifier-xyz',
+      }),
+      getAuthClientData: vi.fn().mockResolvedValue({
+        email: 'user@gmail.com',
+        name: 'Google User',
+        avatar_url: 'https://pic',
+        email_verified: true,
+      }),
+      createGoogleAuthCode: vi.fn().mockResolvedValue('one-time-auth-code'),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -106,6 +119,31 @@ describe('AuthController', () => {
     expect(authServiceMock.logoutByTokens).toHaveBeenCalledWith({
       accessToken: 'access-123',
       refreshToken: 'refresh-456',
+    });
+  });
+
+  it('googleAuthCallback dùng PKCE codeVerifier và chuyển hướng về /api/auth/google server-side', async () => {
+    const result = await controller.googleAuthCallback(
+      'google-code-1',
+      'state-1',
+      '',
+    );
+
+    expect(authServiceMock.validateGoogleOAuthState).toHaveBeenCalledWith(
+      'state-1',
+    );
+    expect(authServiceMock.getAuthClientData).toHaveBeenCalledWith(
+      'google-code-1',
+      'pkce-verifier-xyz',
+    );
+    expect(authServiceMock.createGoogleAuthCode).toHaveBeenCalledWith({
+      email: 'user@gmail.com',
+      name: 'Google User',
+      avatar_url: 'https://pic',
+      email_verified: true,
+    });
+    expect(result).toEqual({
+      url: 'http://localhost:3000/api/auth/google?authCode=one-time-auth-code',
     });
   });
 });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { applyAdminAuthCookies } from '@/lib/auth-cookies';
+import { verifyAdminCsrfRequest } from '@/lib/csrf-guard';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -43,6 +44,9 @@ async function safeParseJson<T>(res: Response): Promise<T | null> {
 }
 
 export async function POST(request: Request) {
+  const csrfError = verifyAdminCsrfRequest(request);
+  if (csrfError) return csrfError;
+
   try {
     const body = (await request.json().catch(() => null)) as {
       email?: string;

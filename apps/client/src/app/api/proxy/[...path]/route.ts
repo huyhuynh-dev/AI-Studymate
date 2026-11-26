@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { applyAuthCookies, clearAuthCookies } from '@/lib/auth-cookies';
+import { verifyCsrfRequest } from '@/lib/csrf-guard';
 import { fetchBackendWithAuthRefresh } from '@/lib/proxy-auth';
 
 const BACKEND_URL =
@@ -17,6 +18,9 @@ async function handleProxy(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const csrfError = verifyCsrfRequest(req);
+  if (csrfError) return csrfError;
+
   try {
     const resolvedParams = await params;
     const pathArray = resolvedParams.path || [];

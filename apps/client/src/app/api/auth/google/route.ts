@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
 import { applyAuthCookies } from '@/lib/auth-cookies';
+import { verifyCsrfRequest } from '@/lib/csrf-guard';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -104,6 +105,9 @@ export async function GET(request: Request) {
  * Exchanges authCode for access and refresh tokens, setting HttpOnly cookies.
  */
 export async function POST(request: Request) {
+  const csrfError = verifyCsrfRequest(request);
+  if (csrfError) return csrfError;
+
   try {
     const body = await request.json();
     const { authCode } = body;

@@ -5,46 +5,34 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import axios from 'axios';
 
 /**
- * Client-side Google OAuth Callback Handler.
+ * Fallback Client-side Google OAuth Callback Handler.
  *
- * Flow:
- * 1. Backend redirects the user back with `?authCode=...` (single-use authorization code).
- * 2. This component extracts `authCode` and sends it to `/api/auth/exchange-code`
- *    (or `/api/auth/set-tokens`), which exchanges the code with the backend Redis store
- *    and writes HttpOnly Secure cookies (`access_token`, `refresh_token`).
- * 3. Immediately scrubs the sensitive `authCode` from the browser address bar
- *    using `window.history.replaceState` to prevent replay attacks or re-triggering upon refresh.
- * 4. Refreshes the router or redirects away from auth pages to home/dashboard.
- * 5. Uses a Set ref to prevent duplicate executions caused by React 18+ StrictMode.
+ * Luồng chính đã được xử lý hoàn toàn ở server-side tại GET /api/auth/google.
+ * Component này giữ vai trò tương thích nếu một cấu hình REDIRECT_TO_LOGIN cũ
+ * điều hướng thẳng kèm ?authCode=... về trang client; không còn xử lý token trực tiếp từ URL.
  */
 export function OAuthCallbackHandler() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
 
-  // Track processed codes to avoid double-firing in React 18+ Strict Mode
   const processedCodesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const authCode = searchParams.get('authCode') || searchParams.get('code');
-    const token = searchParams.get('token');
-    const refreshToken = searchParams.get('refresh_token');
 
-    // Case 1: Primary flow - Received single-use authCode from Backend
     if (authCode) {
       if (processedCodesRef.current.has(authCode)) {
         return;
       }
       processedCodesRef.current.add(authCode);
 
-      // Clean browser address bar immediately to prevent duplicate requests on page reload
       const cleanUrl = removeAuthParams(searchParams, pathname);
       window.history.replaceState(null, '', cleanUrl);
 
       axios
         .post('/api/auth/exchange-code', { authCode })
         .then(() => {
-          // Lấy tham số redirect nếu có, mặc định chuyển hướng vào /home
           const rawRedirect = searchParams.get('redirect');
           const target =
             rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
@@ -58,51 +46,23 @@ export function OAuthCallbackHandler() {
           const data = err.response?.data;
           const msg = data?.message || data?.error || 'oauth_failed';
           console.error('Failed to exchange OAuth authCode:', data || err.message);
-          
+
           router.replace(`/auth/login?error=${encodeURIComponent(msg)}`);
         });
 
       return;
     }
 
-    // Case 2: Legacy fallback - Direct tokens in URL params
-    if (token && refreshToken) {
-      const fallbackKey = `${token.slice(0, 10)}_${refreshToken.slice(0, 10)}`;
-      if (processedCodesRef.current.has(fallbackKey)) {
-        return;
-      }
-      processedCodesRef.current.add(fallbackKey);
-
+    // Dọn dẹp nếu có tham số token legacy vô tình xuất hiện trên URL (không lưu cookie)
+    if (searchParams.get('token') || searchParams.get('refresh_token')) {
       const cleanUrl = removeAuthParams(searchParams, pathname);
       window.history.replaceState(null, '', cleanUrl);
-
-      axios
-        .post('/api/auth/set-tokens', {
-          token,
-          refresh_token: refreshToken,
-        })
-        .then(() => {
-          const rawRedirect = searchParams.get('redirect');
-          const target =
-            rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
-              ? rawRedirect
-              : '/home';
-
-          router.replace(target);
-          router.refresh();
-        })
-        .catch((err) => {
-          console.error('Failed to store OAuth tokens via API fallback:', err);
-        });
     }
   }, [searchParams, router, pathname]);
 
   return null;
 }
 
-/**
- * Remove OAuth-related query parameters from searchParams string.
- */
 function removeAuthParams(searchParams: URLSearchParams, pathname: string): string {
   const params = new URLSearchParams(searchParams.toString());
   params.delete('authCode');

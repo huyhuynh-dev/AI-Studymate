@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios, { isAxiosError } from 'axios';
+import { verifyCsrfRequest } from '@/lib/csrf-guard';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -7,6 +8,9 @@ const BACKEND_URL =
   'http://localhost:3001';
 
 export async function POST(request: Request) {
+  const csrfError = verifyCsrfRequest(request);
+  if (csrfError) return csrfError;
+
   try {
     const body = await request.json();
     const { email, otp } = body;

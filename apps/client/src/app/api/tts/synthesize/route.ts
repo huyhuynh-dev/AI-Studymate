@@ -6,6 +6,7 @@ import {
   applyAuthCookies,
   clearAuthCookies,
 } from '@/lib/auth-cookies';
+import { verifyCsrfRequest } from '@/lib/csrf-guard';
 import { fetchBackendWithAuthRefresh } from '@/lib/proxy-auth';
 
 const BACKEND_URL =
@@ -14,6 +15,8 @@ const BACKEND_URL =
   'http://localhost:3001';
 
 export async function POST(request: NextRequest) {
+  const csrfError = verifyCsrfRequest(request);
+  if (csrfError) return csrfError;
   const cookieStore = await cookies();
   const hasAnyAuthCookie =
     Boolean(cookieStore.get(ACCESS_TOKEN_COOKIE)?.value) ||

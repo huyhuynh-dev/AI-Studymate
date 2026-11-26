@@ -7,11 +7,11 @@ import {
 } from '@nestjs/common';
 import { google } from 'googleapis';
 import { ConfigService } from '@nestjs/config';
-import { OAuth2Client } from 'google-auth-library';
+import { CodeChallengeMethod, OAuth2Client } from 'google-auth-library';
 import * as fs from 'fs';
 import * as path from 'path';
 import { RedisService } from '../redis/redis.service.js';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 
 const OAUTH_STATE_TTL_SECONDS = 600; // 10 phút
 
@@ -73,11 +73,20 @@ export class GoogleService implements OnModuleInit {
         return this.oauthClient;
     }
 
-    // SEC-03: Thêm state parameter ngẫu nhiên để chống CSRF
+    // SEC-03 + RFC 9700 PKCE: Thêm state parameter ngẫu nhiên và code_challenge (S256)
     async getOAuth2ClientUrl(): Promise<{ url: string }> {
         const authClient = this.getAuthClient();
         const state = randomBytes(32).toString('hex');
-        await this.redisService.set(`oauth_state:${state}`, '1', OAUTH_STATE_TTL_SECONDS);
+        const codeVerifier = randomBytes(32).toString('base64url');
+        const codeChallenge = createHash('sha256')
+            .update(codeVerifier)
+            .digest('base64url');
+
+        await this.redisService.set(
+            `oauth_state:${state}`,
+            JSON.stringify({ codeVerifier }),
+            OAUTH_STATE_TTL_SECONDS,
+        );
 
         const authorizeUrl = authClient.generateAuthUrl({
             access_type: 'offline',
@@ -85,25 +94,42 @@ export class GoogleService implements OnModuleInit {
             prompt: 'consent',
             include_granted_scopes: true,
             state,
+            code_challenge: codeChallenge,
+            code_challenge_method: CodeChallengeMethod.S256,
         });
         return { url: authorizeUrl };
     }
 
-    // SEC-03: Validate state parameter từ OAuth callback (single-use)
-    async validateOAuthState(state: string | undefined): Promise<void> {
+    // SEC-03: Validate state parameter từ OAuth callback (single-use) và trả về codeVerifier PKCE
+    async validateOAuthState(
+        state: string | undefined,
+    ): Promise<{ codeVerifier?: string }> {
         if (!state) {
             throw new UnauthorizedException('Missing OAuth state parameter');
         }
-        const isValid = await this.redisService.getAndDelete(`oauth_state:${state}`);
-        if (!isValid) {
+        const rawValue = await this.redisService.getAndDelete(`oauth_state:${state}`);
+        if (!rawValue) {
             throw new UnauthorizedException('Invalid or expired OAuth state');
         }
+        try {
+            const parsed = JSON.parse(rawValue) as { codeVerifier?: unknown };
+            if (
+                typeof parsed?.codeVerifier === 'string' &&
+                parsed.codeVerifier.length > 0
+            ) {
+                return { codeVerifier: parsed.codeVerifier };
+            }
+        } catch {
+            // Giữ tương thích với state dạng chuỗi cũ nếu còn tồn đọng ngắn hạn
+        }
+        return {};
     }
 
     // CQ-09: Thêm try/catch đầy đủ, validate email không rỗng
     // SEC-04: Trả thêm email_verified để AuthService kiểm tra
     async getAuthClientData(
         code: string,
+        codeVerifier?: string,
     ): Promise<{ email: string; name: string; avatar_url: string; email_verified: boolean }> {
         try {
             // Tạo instance mới cho mỗi request vì cần set user credentials riêng
@@ -114,7 +140,10 @@ export class GoogleService implements OnModuleInit {
                 keys.web.redirect_uris[0],
             );
 
-            const tokenData = await requestClient.getToken(code);
+            const tokenData = await requestClient.getToken({
+                code,
+                ...(codeVerifier ? { codeVerifier } : {}),
+            });
             const tokens = tokenData.tokens;
             requestClient.setCredentials(tokens);
 

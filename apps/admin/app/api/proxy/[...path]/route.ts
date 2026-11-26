@@ -3,6 +3,7 @@ import {
   applyAdminAuthCookies,
   clearAdminAuthCookies,
 } from '@/lib/auth-cookies';
+import { verifyAdminCsrfRequest } from '@/lib/csrf-guard';
 import { fetchBackendWithAdminAuthRefresh } from '@/lib/proxy-auth';
 
 const BACKEND_URL =
@@ -14,6 +15,9 @@ async function handleAdminProxy(
   req: NextRequest,
   context: { params: Promise<{ path: string[] }> },
 ) {
+  const csrfError = verifyAdminCsrfRequest(req);
+  if (csrfError) return csrfError;
+
   try {
     const resolvedParams = await context.params;
     const pathArray = resolvedParams.path || [];

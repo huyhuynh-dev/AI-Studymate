@@ -411,12 +411,17 @@ export class AuthService {
     }
 
     // Delegate state validation sang GoogleService
-    async validateGoogleOAuthState(state: string): Promise<void> {
+    async validateGoogleOAuthState(
+        state: string,
+    ): Promise<{ codeVerifier?: string }> {
         return this.googleService.validateOAuthState(state);
     }
 
-    async getAuthClientData(code: string): Promise<{ email: string; name: string; avatar_url: string; email_verified: boolean }> {
-        return this.googleService.getAuthClientData(code);
+    async getAuthClientData(
+        code: string,
+        codeVerifier?: string,
+    ): Promise<{ email: string; name: string; avatar_url: string; email_verified: boolean }> {
+        return this.googleService.getAuthClientData(code, codeVerifier);
     }
 
 

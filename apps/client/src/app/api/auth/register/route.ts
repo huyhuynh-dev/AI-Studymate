@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
+import { verifyCsrfRequest } from '@/lib/csrf-guard';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -11,6 +12,9 @@ interface SignUpBackendResponse {
 }
 
 export async function POST(request: Request) {
+  const csrfError = verifyCsrfRequest(request);
+  if (csrfError) return csrfError;
+
   try {
     const body = await request.json();
     const { name, email, password } = body;

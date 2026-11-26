@@ -140,25 +140,59 @@ export class AuthController {
         @Query('state') state: string,
         @Query('error') error: string,
     ): Promise<{ url: string }> {
-        const baseUrl = this.configService.get<string>('REDIRECT_TO_LOGIN') ?? 'http://localhost:3000';
+        const rawBaseUrl =
+            this.configService.get<string>('REDIRECT_TO_LOGIN') ??
+            'http://localhost:3000';
+
+        let clientOrigin = 'http://localhost:3000';
+        let configuredRedirectPath: string | undefined;
+        try {
+            const parsed = new URL(rawBaseUrl);
+            clientOrigin = parsed.origin;
+            if (
+                parsed.pathname &&
+                parsed.pathname !== '/' &&
+                !parsed.pathname.startsWith('/api/auth/google') &&
+                !parsed.pathname.startsWith('/auth')
+            ) {
+                configuredRedirectPath = `${parsed.pathname}${parsed.search}`;
+            }
+        } catch {
+            clientOrigin =
+                rawBaseUrl.replace(/\/+$/, '') || 'http://localhost:3000';
+        }
 
         // SEC-07: Xử lý lỗi OAuth hoặc thiếu code param
         if (error || !code) {
-            return { url: `${baseUrl}?error=oauth_failed` };
+            return { url: `${clientOrigin}/auth/login?error=oauth_failed` };
         }
 
         try {
-            // SEC-03: Validate state parameter để chống CSRF
-            await this.authService.validateGoogleOAuthState(state);
+            // SEC-03 + PKCE: Validate state parameter và lấy codeVerifier từ Redis
+            const { codeVerifier } =
+                await this.authService.validateGoogleOAuthState(state);
 
-            const { email, name, avatar_url } = await this.authService.getAuthClientData(code);
-            const authCode = await this.authService.createGoogleAuthCode({ email, name, avatar_url });
+            const { email, name, avatar_url, email_verified } =
+                await this.authService.getAuthClientData(code, codeVerifier);
+            const authCode = await this.authService.createGoogleAuthCode({
+                email,
+                name,
+                avatar_url,
+                email_verified,
+            });
+
+            // Đổi authCode phía server-side tại Next.js /api/auth/google để không lộ code lên URL client
+            const callbackUrl = new URL('/api/auth/google', clientOrigin);
+            callbackUrl.searchParams.set('authCode', authCode);
+            if (configuredRedirectPath) {
+                callbackUrl.searchParams.set('redirect', configuredRedirectPath);
+            }
 
             return {
-                url: `${baseUrl}?authCode=${encodeURIComponent(authCode)}`,
+                url: callbackUrl.toString(),
             };
         } catch {
-            return { url: `${baseUrl}?error=oauth_failed` };
+            return { url: `${clientOrigin}/auth/login?error=oauth_failed` };
         }
     }
 

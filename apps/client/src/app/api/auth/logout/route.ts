@@ -5,13 +5,17 @@ import {
   REFRESH_TOKEN_COOKIE,
   clearAuthCookies,
 } from '@/lib/auth-cookies';
+import { verifyCsrfRequest } from '@/lib/csrf-guard';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   'http://localhost:3001';
 
-export async function POST() {
+export async function POST(request: Request) {
+  const csrfError = verifyCsrfRequest(request);
+  if (csrfError) return csrfError;
+
   let serverRevoked = false;
 
   try {
