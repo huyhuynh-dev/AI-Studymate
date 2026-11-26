@@ -48,6 +48,60 @@ export class DocumentsRepoService {
         return doc ? serializeDocument(doc) : null;
     }
 
+    async searchDocumentsForUser(params: {
+        userId: string;
+        conversationId?: string;
+        subjectId?: string;
+        query?: string;
+        limit?: number;
+    }) {
+        const keyword = params.query?.trim();
+        return await this.prisma.document.findMany({
+            where: {
+                user_id: params.userId,
+                ...(params.conversationId ? { conversation_id: params.conversationId } : {}),
+                ...(params.subjectId
+                    ? {
+                          conversation: {
+                              subject_id: params.subjectId,
+                          },
+                      }
+                    : {}),
+                ...(keyword
+                    ? {
+                          file_name: {
+                              contains: keyword,
+                              mode: 'insensitive',
+                          },
+                      }
+                    : {}),
+            },
+            orderBy: { uploaded_at: 'desc' },
+            take: params.limit ?? 5,
+            select: {
+                id: true,
+                file_name: true,
+                mime_type: true,
+                page_count: true,
+                ocr_status: true,
+                embed_status: true,
+                conversation_id: true,
+                uploaded_at: true,
+                conversation: {
+                    select: {
+                        id: true,
+                        title: true,
+                        subject: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
     async findRawDocumentById(documentId: string): Promise<Document | null> {
         return await this.prisma.document.findUnique({
             where: { id: documentId },

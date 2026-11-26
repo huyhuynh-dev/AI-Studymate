@@ -37,7 +37,7 @@ export const createQuizInputSchema = z.object({
     .optional()
     .default(['single_choice', 'essay'])
     .describe(
-      'Allowed question types: "single_choice" (1 correct answer + 3 distractors), "multiple_choice" (2-4 correct answers), "true_false" (declarative statement), "short_answer" (short exact phrase <= 5 words), "essay" (long-form with sample answer & grading rubric). Default: ["single_choice", "essay"].',
+      'Allowed question types: "single_choice" (1 correct answer + 3 distractors), "multiple_choice" (2-4 correct answers), "true_false" (declarative statement), "short_answer" (short exact phrase <= 5 words), "essay" (long-form with sample answer & grading rubric). Note: when converting a flashcard deck via deckId, only "single_choice", "true_false", and "short_answer" are supported. Default: ["single_choice", "essay"].',
     ),
   difficulty: z
     .enum(['basic', 'applied', 'advanced'])
@@ -56,7 +56,7 @@ export const createQuizInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      'Optional flashcard deck UUID ONLY when the student explicitly asks to convert an existing flashcard deck into a quiz. Omit when generating a quiz from study documents.',
+      'Optional flashcard deck UUID ONLY when converting an existing flashcard deck into a quiz (ignores documentIds and restricts types to single_choice/true_false/short_answer). Omit when generating from study documents.',
     ),
 });
 
@@ -84,7 +84,7 @@ export function createCreateQuizTool(
 ) {
   return tool({
     description:
-      'Generate an AI assessment quiz from workspace study documents (or from an existing flashcard deck) and save it directly to the Quiz tab. Use ONLY when the student explicitly requests creating/generating a quiz, test, or practice exam (not for regular chat Q&A). If the request is generic or missing key preferences (e.g., which document among multiple files, question count, question types, or difficulty), call askUserQuestion first to clarify.',
+      'CREATES and SAVES a NEW AI assessment quiz from workspace study documents (or from an existing flashcard deckId) into the Quiz tab. Use ONLY when the student explicitly requests creating/generating a new quiz, test, or practice exam. To READ questions or review attempt results of an existing quiz, call getQuizContent instead. If the request is generic or missing key preferences (e.g., which document among multiple files, question count, question types, or difficulty), call askUserQuestion first to clarify.',
     inputSchema: createQuizInputSchema,
     execute: async (
       input,

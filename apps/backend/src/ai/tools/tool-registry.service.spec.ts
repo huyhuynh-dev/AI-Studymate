@@ -913,4 +913,172 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
       );
     });
   });
+
+  describe('Phase 2 L2 Read Tools & ACI Tool Count Guard (< 20 tools)', () => {
+    it('đăng ký đủ 4 L2 Read Tools trong cả getChatValidationTools và createChatSessionToolset (< 20 tools)', async () => {
+      const registry = new ToolRegistryService();
+      const validationTools = registry.getChatValidationTools();
+
+      expect(validationTools.getNoteContent).toBeDefined();
+      expect(validationTools.getQuizContent).toBeDefined();
+      expect(validationTools.getDeckCards).toBeDefined();
+      expect(validationTools.searchWorkspaceResources).toBeDefined();
+
+      const onGetNoteContent = vi.fn().mockResolvedValue({
+        found: true,
+        summaryId: 'sum-1',
+        title: 'Ôn tập chương 2',
+        sectionOutline: ['H1: Tổng quan'],
+        matchedSection: null,
+        contentMarkdown: '# Tổng quan\n\nNội dung ghi chú.',
+        totalChars: 31,
+        charOffset: 0,
+        truncated: false,
+      });
+      const onGetQuizContent = vi.fn().mockResolvedValue({
+        found: true,
+        quizId: 'quiz-1',
+        quizTitle: 'Quiz Kiểm Tra',
+        examIntegrityEnforced: true,
+        totalQuestions: 5,
+        filteredCount: 1,
+        returnedCount: 1,
+        offset: 0,
+        hasMore: false,
+        questions: [
+          {
+            questionId: 'q-1',
+            displayNumber: 1,
+            questionType: 'single_choice',
+            questionText: '2 + 2 bằng mấy?',
+            points: 1,
+            options: [
+              { label: 'A', id: 'o1', text: '3' },
+              { label: 'B', id: 'o2', text: '4' },
+            ],
+          },
+        ],
+      });
+      const onGetDeckCards = vi.fn().mockResolvedValue({
+        found: true,
+        deckId: 'deck-1',
+        deckName: 'Deck AVL',
+        totalCards: 1,
+        dueCount: 1,
+        filteredCount: 1,
+        returnedCount: 1,
+        offset: 0,
+        hasMore: false,
+        cards: [
+          {
+            cardId: 'card-1',
+            cardType: 'basic',
+            state: 'learning',
+            intervalDays: 1,
+            frontText: 'Hệ số cân bằng?',
+            backText: '[ANSWER_HIDDEN_BY_STUDY_GUARD]',
+            answerHidden: true,
+          },
+        ],
+      });
+      const onSearchWorkspaceResources = vi.fn().mockResolvedValue({
+        scope: 'subject',
+        query: 'AVL',
+        totalResults: 1,
+        items: [
+          {
+            id: 'sum-1',
+            type: 'note',
+            title: 'Ghi chú Cây AVL',
+            conversationTitle: 'Chương 2',
+            subjectName: 'CTDL',
+          },
+        ],
+      });
+
+      const { tools } = registry.createChatSessionToolset({
+        onSearchDocumentChunks: vi.fn().mockResolvedValue([]),
+        onGetDocumentSectionOrPages: vi.fn(),
+        onCreateDocumentSummary: vi.fn(),
+        onCreateFlashcards: vi.fn(),
+        onCreateQuiz: vi.fn(),
+        onGetNoteContent,
+        onGetQuizContent,
+        onGetDeckCards,
+        onSearchWorkspaceResources,
+        onSearchInternet: vi.fn(),
+        onExtractWebPage: vi.fn(),
+        onSuperDocInspect: vi.fn(),
+        onSuperDocStreamText: vi.fn(),
+        onSuperDocPerformAction: vi.fn(),
+        onSuperDocApiSearch: vi.fn(),
+        onSuperDocApiCall: vi.fn(),
+      });
+
+      const activeToolNames = Object.keys(tools);
+      // Tối đa 17 tools kể cả 5 SuperDoc tools (luôn < 20 tools theo chuẩn Production)
+      expect(activeToolNames.length).toBe(17);
+      expect(activeToolNames.length).toBeLessThan(20);
+
+      const noteOutput = await tools.getNoteContent.execute(
+        { summaryId: 'sum-1' },
+        { toolCallId: 'tc-note-1' },
+      );
+      const noteModelOut = tools.getNoteContent.toModelOutput({
+        output: noteOutput,
+      });
+      expect(noteModelOut.value).toContain('Ôn tập chương 2');
+      expect(noteModelOut.value).toContain('Nội dung ghi chú.');
+
+      const quizOutput = await tools.getQuizContent.execute(
+        { quizId: 'quiz-1' },
+        { toolCallId: 'tc-quiz-1' },
+      );
+      const quizModelOut = tools.getQuizContent.toModelOutput({
+        output: quizOutput,
+      });
+      expect(quizModelOut.value).toContain('EXAM_INTEGRITY_MODE_ACTIVE');
+      expect(quizModelOut.value).toContain('2 + 2 bằng mấy?');
+
+      const deckOutput = await tools.getDeckCards.execute(
+        { deckId: 'deck-1' },
+        { toolCallId: 'tc-deck-1' },
+      );
+      const deckModelOut = tools.getDeckCards.toModelOutput({
+        output: deckOutput,
+      });
+      expect(deckModelOut.value).toContain('ĐÃ ẨN BỞI STUDY GUARD');
+
+      const searchOutput = await tools.searchWorkspaceResources.execute(
+        { query: 'AVL', scope: 'subject' },
+        { toolCallId: 'tc-ws-1' },
+      );
+      const searchModelOut = tools.searchWorkspaceResources.toModelOutput({
+        output: searchOutput,
+      });
+      expect(searchModelOut.value).toContain('[NOTE] "Ghi chú Cây AVL"');
+    });
+
+    it('searchDocumentChunks chuyển tiếp documentIds khi LLM lọc theo tài liệu cụ thể', async () => {
+      const onSearchDocumentChunks = vi.fn().mockResolvedValue([]);
+      const toolInstance = createSearchDocumentChunksTool(
+        onSearchDocumentChunks,
+      );
+
+      await toolInstance.execute(
+        {
+          semanticQuery: 'cây cân bằng',
+          keywords: ['AVL'],
+          documentIds: ['doc-specific-1'],
+        },
+        { toolCallId: 'tc-scoped-1' } as any,
+      );
+
+      expect(onSearchDocumentChunks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentIds: ['doc-specific-1'],
+        }),
+      );
+    });
+  });
 });

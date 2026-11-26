@@ -19,6 +19,7 @@ import {
   HelpCircle,
   Layers,
   Loader2,
+  Lock,
   Search,
   Send,
   Sparkles,
@@ -684,6 +685,359 @@ export const AiMessage = React.memo(function AiMessage({
                           “{headingKeyword}”
                         </span>
                       </div>
+                    )}
+                  </div>
+                </details>
+              );
+            }
+
+            // 1b2. Tool: Đọc nội dung Ghi chú / Tóm tắt (getNoteContent)
+            if (
+              part.type === "tool-getNoteContent" ||
+              (part.type === "dynamic-tool" && part.toolName === "getNoteContent")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isError = state === "output-error";
+              const isDone = state === "output-available";
+
+              const found: boolean = Boolean(part.output?.found);
+              const noteTitle: string =
+                part.output?.title || part.input?.titleQuery || "";
+              const matchedSection: string =
+                part.output?.matchedSection || part.input?.sectionKeyword || "";
+              const truncated: boolean = Boolean(part.output?.truncated);
+
+              return (
+                <details
+                  key={index}
+                  className="group my-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.03] p-2.5 text-xs text-[#464555] dark:text-[#EFF0F6] shadow-2xs"
+                >
+                  <summary className="flex cursor-pointer items-center gap-2 font-semibold select-none">
+                    {isRunning && (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#4F46E5]" />
+                        <span className="text-[#4F46E5] dark:text-[#818CF8]">
+                          Đang đọc nội dung ghi chú…
+                        </span>
+                      </>
+                    )}
+                    {isDone && (
+                      <>
+                        <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[#0B1C30] dark:text-white">
+                          {found
+                            ? `Đã đọc ghi chú "${noteTitle || "Không tên"}"`
+                            : "Không tìm thấy ghi chú phù hợp"}
+                        </span>
+                      </>
+                    )}
+                    {isError && (
+                      <>
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                        <span className="text-rose-600 dark:text-rose-400">
+                          Lỗi khi đọc nội dung ghi chú
+                        </span>
+                      </>
+                    )}
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-[#777587] transition-transform group-open:rotate-180" />
+                  </summary>
+
+                  <div className="mt-2.5 space-y-1.5 border-t border-[#E5EEFF] dark:border-white/[0.08] pt-2 text-[11px]">
+                    {noteTitle && (
+                      <div>
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Ghi chú:{" "}
+                        </span>
+                        <span className="font-medium text-[#0B1C30] dark:text-neutral-200">
+                          {noteTitle}
+                        </span>
+                      </div>
+                    )}
+                    {matchedSection && (
+                      <div>
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Mục đang xem:{" "}
+                        </span>
+                        <span className="italic text-[#0B1C30] dark:text-neutral-200">
+                          “{matchedSection}”
+                        </span>
+                      </div>
+                    )}
+                    {isDone && truncated && (
+                      <div className="text-[#777587] dark:text-neutral-400">
+                        Đang nạp một phần ghi chú dài (hỗ trợ đọc tiếp theo phân đoạn).
+                      </div>
+                    )}
+                  </div>
+                </details>
+              );
+            }
+
+            // 1b3. Tool: Đọc đề kiểm tra & kết quả làm bài (getQuizContent)
+            if (
+              part.type === "tool-getQuizContent" ||
+              (part.type === "dynamic-tool" && part.toolName === "getQuizContent")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isError = state === "output-error";
+              const isDone = state === "output-available";
+
+              const found: boolean = Boolean(part.output?.found);
+              const quizTitle: string = part.output?.quizTitle || "";
+              const returnedCount: number = part.output?.returnedCount ?? 0;
+              const totalQuestions: number = part.output?.totalQuestions ?? 0;
+              const examIntegrityEnforced: boolean = Boolean(
+                part.output?.examIntegrityEnforced
+              );
+
+              return (
+                <details
+                  key={index}
+                  className="group my-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.03] p-2.5 text-xs text-[#464555] dark:text-[#EFF0F6] shadow-2xs"
+                >
+                  <summary className="flex cursor-pointer flex-wrap items-center gap-2 font-semibold select-none">
+                    {isRunning && (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#4F46E5]" />
+                        <span className="text-[#4F46E5] dark:text-[#818CF8]">
+                          Đang tải nội dung bài kiểm tra…
+                        </span>
+                      </>
+                    )}
+                    {isDone && (
+                      <>
+                        <FileQuestion className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[#0B1C30] dark:text-white">
+                          {found
+                            ? `Đã đọc ${returnedCount}/${totalQuestions} câu hỏi từ "${quizTitle || "Bài kiểm tra"}"`
+                            : "Không tìm thấy bài kiểm tra"}
+                        </span>
+                        {examIntegrityEnforced && (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                            <Lock className="h-2.5 w-2.5" />
+                            Chế độ thi · Đã ẩn đáp án
+                          </span>
+                        )}
+                      </>
+                    )}
+                    {isError && (
+                      <>
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                        <span className="text-rose-600 dark:text-rose-400">
+                          Lỗi khi tải bài kiểm tra
+                        </span>
+                      </>
+                    )}
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-[#777587] transition-transform group-open:rotate-180" />
+                  </summary>
+
+                  <div className="mt-2.5 space-y-1.5 border-t border-[#E5EEFF] dark:border-white/[0.08] pt-2 text-[11px]">
+                    {quizTitle && (
+                      <div>
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Đề kiểm tra:{" "}
+                        </span>
+                        <span className="font-medium text-[#0B1C30] dark:text-neutral-200">
+                          {quizTitle}
+                        </span>
+                      </div>
+                    )}
+                    {part.input?.evaluationFilter &&
+                      part.input.evaluationFilter !== "all" && (
+                        <div>
+                          <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                            Bộ lọc:{" "}
+                          </span>
+                          <span className="text-[#0B1C30] dark:text-neutral-200">
+                            {part.input.evaluationFilter}
+                          </span>
+                        </div>
+                      )}
+                  </div>
+                </details>
+              );
+            }
+
+            // 1b4. Tool: Đọc danh sách thẻ Flashcard (getDeckCards)
+            if (
+              part.type === "tool-getDeckCards" ||
+              (part.type === "dynamic-tool" && part.toolName === "getDeckCards")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isError = state === "output-error";
+              const isDone = state === "output-available";
+
+              const found: boolean = Boolean(part.output?.found);
+              const deckName: string = part.output?.deckName || "";
+              const returnedCount: number = part.output?.returnedCount ?? 0;
+              const totalCards: number = part.output?.totalCards ?? 0;
+              const answerHidden: boolean = Boolean(part.output?.answerHidden);
+
+              return (
+                <details
+                  key={index}
+                  className="group my-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.03] p-2.5 text-xs text-[#464555] dark:text-[#EFF0F6] shadow-2xs"
+                >
+                  <summary className="flex cursor-pointer flex-wrap items-center gap-2 font-semibold select-none">
+                    {isRunning && (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#4F46E5]" />
+                        <span className="text-[#4F46E5] dark:text-[#818CF8]">
+                          Đang đọc bộ thẻ Flashcard…
+                        </span>
+                      </>
+                    )}
+                    {isDone && (
+                      <>
+                        <Layers className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[#0B1C30] dark:text-white">
+                          {found
+                            ? `Đã đọc ${returnedCount}/${totalCards} thẻ từ "${deckName || "Bộ thẻ"}"`
+                            : "Không tìm thấy bộ thẻ Flashcard"}
+                        </span>
+                        {answerHidden && (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300">
+                            <Lock className="h-2.5 w-2.5" />
+                            Đang giữ bí mật mặt sau
+                          </span>
+                        )}
+                      </>
+                    )}
+                    {isError && (
+                      <>
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                        <span className="text-rose-600 dark:text-rose-400">
+                          Lỗi khi đọc bộ thẻ Flashcard
+                        </span>
+                      </>
+                    )}
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-[#777587] transition-transform group-open:rotate-180" />
+                  </summary>
+
+                  <div className="mt-2.5 space-y-1.5 border-t border-[#E5EEFF] dark:border-white/[0.08] pt-2 text-[11px]">
+                    {deckName && (
+                      <div>
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Bộ thẻ:{" "}
+                        </span>
+                        <span className="font-medium text-[#0B1C30] dark:text-neutral-200">
+                          {deckName}
+                        </span>
+                      </div>
+                    )}
+                    {part.input?.stateFilter && part.input.stateFilter !== "all" && (
+                      <div>
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Trạng thái lọc:{" "}
+                        </span>
+                        <span className="text-[#0B1C30] dark:text-neutral-200">
+                          {part.input.stateFilter}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              );
+            }
+
+            // 1b5. Tool: Tìm kiếm tài nguyên trong StudyMate (searchWorkspaceResources)
+            if (
+              part.type === "tool-searchWorkspaceResources" ||
+              (part.type === "dynamic-tool" &&
+                part.toolName === "searchWorkspaceResources")
+            ) {
+              const state: string = part.state || "input-available";
+              const isRunning =
+                state === "input-streaming" || state === "input-available";
+              const isError = state === "output-error";
+              const isDone = state === "output-available";
+
+              const query: string =
+                part.input?.query || part.output?.query || "";
+              const scope: string =
+                part.output?.scope || part.input?.scope || "conversation";
+              const scopeLabel =
+                scope === "all"
+                  ? "toàn bộ workspace"
+                  : scope === "subject"
+                    ? "môn học hiện tại"
+                    : "phiên học hiện tại";
+              const totalResults: number = part.output?.totalResults ?? 0;
+              const items: Array<{
+                id: string;
+                type: string;
+                title: string;
+                conversationTitle?: string;
+              }> = Array.isArray(part.output?.items) ? part.output.items : [];
+
+              return (
+                <details
+                  key={index}
+                  className="group my-2 rounded-xl border border-[#E5EEFF] dark:border-white/[0.08] bg-[#F8F9FF] dark:bg-white/[0.03] p-2.5 text-xs text-[#464555] dark:text-[#EFF0F6] shadow-2xs"
+                >
+                  <summary className="flex cursor-pointer items-center gap-2 font-semibold select-none">
+                    {isRunning && (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#4F46E5]" />
+                        <span className="text-[#4F46E5] dark:text-[#818CF8]">
+                          Đang tìm tài nguyên trong StudyMate…
+                        </span>
+                      </>
+                    )}
+                    {isDone && (
+                      <>
+                        <FolderSearch className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[#0B1C30] dark:text-white">
+                          {`Tìm thấy ${totalResults} tài nguyên trong ${scopeLabel}`}
+                        </span>
+                      </>
+                    )}
+                    {isError && (
+                      <>
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                        <span className="text-rose-600 dark:text-rose-400">
+                          Lỗi khi tìm tài nguyên workspace
+                        </span>
+                      </>
+                    )}
+                    <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-[#777587] transition-transform group-open:rotate-180" />
+                  </summary>
+
+                  <div className="mt-2.5 space-y-1.5 border-t border-[#E5EEFF] dark:border-white/[0.08] pt-2 text-[11px]">
+                    {query && (
+                      <div>
+                        <span className="font-semibold text-[#777587] dark:text-neutral-400">
+                          Từ khóa:{" "}
+                        </span>
+                        <span className="italic text-[#0B1C30] dark:text-neutral-200">
+                          “{query}”
+                        </span>
+                      </div>
+                    )}
+                    {isDone && items.length > 0 && (
+                      <ul className="space-y-1">
+                        {items.slice(0, 6).map((item) => (
+                          <li
+                            key={`${item.type}-${item.id}`}
+                            className="flex items-center justify-between gap-2 rounded-lg border border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#12151C] px-2 py-1 text-[#464555] dark:text-neutral-300"
+                          >
+                            <span className="truncate font-medium">
+                              [{item.type}] {item.title}
+                            </span>
+                            {item.conversationTitle && (
+                              <span className="shrink-0 text-[10px] text-[#777587] truncate max-w-[110px]">
+                                {item.conversationTitle}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 </details>

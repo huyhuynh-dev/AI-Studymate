@@ -52,6 +52,18 @@ import {
   type CreateQuizToolInput,
   type CreateQuizToolOutput,
   type CreateQuizCallback,
+  type GetNoteContentToolInput,
+  type GetNoteContentToolOutput,
+  type GetNoteContentCallback,
+  type GetQuizContentToolInput,
+  type GetQuizContentToolOutput,
+  type GetQuizContentCallback,
+  type GetDeckCardsToolInput,
+  type GetDeckCardsToolOutput,
+  type GetDeckCardsCallback,
+  type SearchWorkspaceResourcesToolInput,
+  type SearchWorkspaceResourcesToolOutput,
+  type SearchWorkspaceResourcesCallback,
   type SearchInternetToolInput,
   type SearchInternetToolOutput,
   type SearchInternetCallback,
@@ -101,6 +113,18 @@ export {
   type CreateQuizToolInput,
   type CreateQuizToolOutput,
   type CreateQuizCallback,
+  type GetNoteContentToolInput,
+  type GetNoteContentToolOutput,
+  type GetNoteContentCallback,
+  type GetQuizContentToolInput,
+  type GetQuizContentToolOutput,
+  type GetQuizContentCallback,
+  type GetDeckCardsToolInput,
+  type GetDeckCardsToolOutput,
+  type GetDeckCardsCallback,
+  type SearchWorkspaceResourcesToolInput,
+  type SearchWorkspaceResourcesToolOutput,
+  type SearchWorkspaceResourcesCallback,
   type SearchInternetToolInput,
   type SearchInternetToolOutput,
   type SearchInternetCallback,
@@ -281,6 +305,10 @@ export class ChatAgentAiService {
       onCreateDocumentSummary?: CreateDocumentSummaryCallback;
       onCreateFlashcards?: CreateFlashcardsCallback;
       onCreateQuiz?: CreateQuizCallback;
+      onGetNoteContent?: GetNoteContentCallback;
+      onGetQuizContent?: GetQuizContentCallback;
+      onGetDeckCards?: GetDeckCardsCallback;
+      onSearchWorkspaceResources?: SearchWorkspaceResourcesCallback;
       onSearchInternet?: SearchInternetCallback;
       onExtractWebPage?: ExtractWebPageCallback;
       activeWordDocument?: ActiveWordDocumentPromptContext;

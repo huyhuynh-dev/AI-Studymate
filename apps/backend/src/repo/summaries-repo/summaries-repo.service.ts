@@ -58,6 +58,95 @@ export class SummariesRepoService {
         });
     }
 
+    async getSummaryByIdForUser(summaryId: string, userId: string) {
+        return await this.prisma.summary.findFirst({
+            where: {
+                id: summaryId,
+                conversation: {
+                    user_id: userId,
+                },
+            },
+            select: {
+                id: true,
+                title: true,
+                conversation_id: true,
+                document_id: true,
+                content_json: true,
+                updated_at: true,
+                document: {
+                    select: {
+                        id: true,
+                        file_name: true,
+                    },
+                },
+                conversation: {
+                    select: {
+                        id: true,
+                        title: true,
+                        subject_id: true,
+                        subject: {
+                            select: {
+                                id: true,
+                                name: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    async searchSummariesForUser(params: {
+        userId: string;
+        conversationId?: string;
+        subjectId?: string;
+        query?: string;
+        limit?: number;
+    }) {
+        const keyword = params.query?.trim();
+        return await this.prisma.summary.findMany({
+            where: {
+                conversation: {
+                    user_id: params.userId,
+                    ...(params.subjectId ? { subject_id: params.subjectId } : {}),
+                },
+                ...(params.conversationId ? { conversation_id: params.conversationId } : {}),
+                ...(keyword
+                    ? {
+                          title: {
+                              contains: keyword,
+                              mode: 'insensitive',
+                          },
+                      }
+                    : {}),
+            },
+            orderBy: [{ updated_at: 'desc' }, { created_at: 'desc' }],
+            take: params.limit ?? 5,
+            select: {
+                id: true,
+                title: true,
+                conversation_id: true,
+                updated_at: true,
+                document: {
+                    select: {
+                        file_name: true,
+                    },
+                },
+                conversation: {
+                    select: {
+                        id: true,
+                        title: true,
+                        subject: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
     async getSummaryById(id: string): Promise<Summary | null> {
         return await this.prisma.summary.findUnique({
             where: { id },

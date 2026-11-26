@@ -36,7 +36,7 @@ export const createFlashcardsInputSchema = z.object({
     .max(255)
     .optional()
     .describe(
-      'Optional custom title for the new flashcard deck. If omitted, an appropriate title is generated automatically based on the documents.',
+      'Optional custom title for a NEW flashcard deck (ignored when deckId is provided). If omitted, an appropriate title is generated automatically based on the documents.',
     ),
   instructions: z
     .string()
@@ -49,7 +49,7 @@ export const createFlashcardsInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      'Optional existing deck UUID ONLY when the student explicitly asks to add cards into an existing deck. Omit when creating a new deck.',
+      'Optional existing deck UUID ONLY when appending cards into an existing deck (takes precedence over deckName). Omit when creating a new deck.',
     ),
 });
 
@@ -77,7 +77,7 @@ export function createCreateFlashcardsTool(
 ) {
   return tool({
     description:
-      'Generate AI spaced-repetition flashcards from workspace study documents and save them directly to the Flashcards tab. Use ONLY when the student explicitly requests creating/generating a flashcard deck or flashcards (not for regular chat explanations). If the request is generic or missing key preferences (e.g., which document among multiple files, card count, or card types), call askUserQuestion first to clarify.',
+      'CREATES and SAVES new AI spaced-repetition flashcards into the Flashcards tab (new deck or appended to deckId). Use ONLY when the student explicitly requests creating/adding flashcards (not for regular explanations). To READ or inspect existing flashcards in a deck, call getDeckCards instead. If the request is generic or missing key preferences (e.g., which document among multiple files, card count, or card types), call askUserQuestion first to clarify.',
     inputSchema: createFlashcardsInputSchema,
     execute: async (
       input,

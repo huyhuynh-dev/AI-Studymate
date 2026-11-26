@@ -23,6 +23,13 @@ export const searchDocumentChunksInputSchema = z.object({
     .describe(
       'Up to 5 important keywords, technical terms, or exact phrases for full-text PGRoonga search.',
     ),
+  documentIds: z
+    .array(z.string())
+    .max(10)
+    .optional()
+    .describe(
+      'Optional list of document UUIDs (from <workspace_documents> or <current_ui_context> viewingDocument) to restrict search to specific file(s) such as the currently open PDF.',
+    ),
   pageNumbers: z
     .array(z.number().int())
     .optional()
@@ -71,10 +78,18 @@ export function createSearchDocumentChunksTool(
   maxChunks: number = 8,
 ) {
   return tool({
-    description: `Search relevant passages (chunks) in workspace study documents using Hybrid Search (pgvector + PGRoonga RRF). Use for specific questions about concepts, definitions, formulas, code, or details in the student's materials. Do NOT call for casual greetings or follow-up questions already answered by prior conversation context. Supports page filtering (pageNumbers/pageRange) and adjacent context expansion (includeNeighbors). Returns up to ${maxChunks} chunks with citation IDs [cX].`,
+    description: `Search relevant passages (chunks) inside uploaded study documents (PDF/DOCX/TXT/Images) using Hybrid Search (pgvector + PGRoonga RRF). Use for specific questions about concepts, definitions, formulas, code, or details in uploaded documents. NEVER use this tool to read Notes/Summaries (use getNoteContent), Quiz questions/results (use getQuizContent), Flashcards (use getDeckCards), or to list workspace resources (use searchWorkspaceResources). Do NOT call for casual greetings or follow-up questions already answered by prior context. Supports scoping by documentIds, page filtering (pageNumbers/pageRange), and adjacent context expansion (includeNeighbors). Returns up to ${maxChunks} chunks with citation IDs [cX].`,
     inputSchema: searchDocumentChunksInputSchema,
     execute: async (
-      { semanticQuery, keywords, pageNumbers, pageRange, includeNeighbors, topK },
+      {
+        semanticQuery,
+        keywords,
+        documentIds,
+        pageNumbers,
+        pageRange,
+        includeNeighbors,
+        topK,
+      },
       { toolCallId },
     ): Promise<SearchDocumentChunksToolOutput> => {
       const safeKeywords = Array.isArray(keywords)
@@ -84,10 +99,20 @@ export function createSearchDocumentChunksTool(
             .slice(0, 5)
         : [];
 
+      const safeDocumentIds = Array.isArray(documentIds)
+        ? documentIds
+            .filter((id) => typeof id === 'string' && id.trim().length > 0)
+            .map((id) => id.trim())
+            .slice(0, 10)
+        : undefined;
+
       const limit = Math.min(topK || maxChunks, 12);
       const retrievedChunks = await callback({
         semanticQuery: semanticQuery || '',
         keywords: safeKeywords,
+        ...(safeDocumentIds && safeDocumentIds.length > 0
+          ? { documentIds: safeDocumentIds }
+          : {}),
         pageNumbers,
         pageRange,
         includeNeighbors,

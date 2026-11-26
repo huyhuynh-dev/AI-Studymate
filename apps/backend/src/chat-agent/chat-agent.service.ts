@@ -43,6 +43,10 @@ import { GenerateSuggestionsDto } from './dto/generate-suggestions.dto.js';
 import type { WorkspaceUiContextDto } from './dto/ui-context.dto.js';
 import { WorkspaceContextHydratorService } from './workspace-context-hydrator.service.js';
 import {
+  WorkspaceL2ReadService,
+  type WorkspaceL2ReadContext,
+} from './workspace-l2-read.service.js';
+import {
   WorkspaceSyncChannel,
   pipeWorkspaceSyncIntoUIMessageStream,
 } from './workspace-sync.channel.js';
@@ -106,6 +110,7 @@ export class ChatAgentService {
     @Optional() private readonly superdocRuntimeService?: SuperDocRuntimeService,
     @Optional() private readonly superdocCollaborationService?: SuperDocCollaborationService,
     @Optional() private readonly workspaceContextHydrator?: WorkspaceContextHydratorService,
+    @Optional() private readonly workspaceL2ReadService?: WorkspaceL2ReadService,
   ) {}
 
   async createChatSession(
@@ -1069,18 +1074,65 @@ export class ChatAgentService {
             ...webCallbacks,
             ...superdocBindings,
             onSearchDocumentChunks: async (input) => {
+              const catalogIds = new Set(
+                (availableDocuments ?? []).map((d) => d.documentId),
+              );
+              const requestedDocIds = Array.isArray(input.documentIds)
+                ? [
+                    ...new Set(
+                      input.documentIds.filter((id) => catalogIds.has(id)),
+                    ),
+                  ]
+                : [];
+              const preferredDocumentIds =
+                requestedDocIds.length > 0
+                  ? requestedDocIds
+                  : ragContext.attachedDocumentIds;
+
               return this.retrievalService.searchRelevantChunks({
                 userId: ragContext.userId,
                 conversationId: ragContext.conversationId,
                 semanticQuery: input.semanticQuery,
                 keywords: input.keywords,
-                preferredDocumentIds: ragContext.attachedDocumentIds,
+                preferredDocumentIds,
                 pageNumbers: input.pageNumbers,
                 pageRange: input.pageRange,
                 includeNeighbors: input.includeNeighbors,
                 topK: input.topK || config.topK,
               });
             },
+            ...(this.workspaceL2ReadService
+              ? (() => {
+                  const l2ReadCtx: WorkspaceL2ReadContext = {
+                    userId: ragContext.userId,
+                    conversationId: ragContext.conversationId,
+                    subjectId: workspaceContext?.location.subjectId,
+                    workspaceContext,
+                  };
+                  return {
+                    onGetNoteContent: (input: any) =>
+                      this.workspaceL2ReadService!.readNoteContent(
+                        l2ReadCtx,
+                        input,
+                      ),
+                    onGetQuizContent: (input: any) =>
+                      this.workspaceL2ReadService!.readQuizContent(
+                        l2ReadCtx,
+                        input,
+                      ),
+                    onGetDeckCards: (input: any) =>
+                      this.workspaceL2ReadService!.readDeckCards(
+                        l2ReadCtx,
+                        input,
+                      ),
+                    onSearchWorkspaceResources: (input: any) =>
+                      this.workspaceL2ReadService!.searchWorkspaceResources(
+                        l2ReadCtx,
+                        input,
+                      ),
+                  };
+                })()
+              : {}),
             onGetDocumentSectionOrPages: async (input) => {
               return this.retrievalService.getDocumentSectionOrPages({
                 userId: ragContext.userId,
@@ -1169,15 +1221,22 @@ export class ChatAgentService {
                 throw new Error('SummariesService chưa được khởi tạo');
               }
 
+              const viewingDocId =
+                workspaceContext?.documentsView?.viewMode === 'viewer'
+                  ? workspaceContext.documentsView.viewingDocument?.documentId
+                  : undefined;
+
               const requestedDocIds =
                 Array.isArray(input.documentIds) && input.documentIds.length > 0
                   ? input.documentIds
                   : ragContext.attachedDocumentIds &&
                       ragContext.attachedDocumentIds.length > 0
                     ? ragContext.attachedDocumentIds
-                    : availableDocuments && availableDocuments.length === 1
-                      ? [availableDocuments[0].documentId]
-                      : [];
+                    : input.scope !== 'conversation' && viewingDocId
+                      ? [viewingDocId]
+                      : availableDocuments && availableDocuments.length === 1
+                        ? [availableDocuments[0].documentId]
+                        : [];
 
               const scopeEnum =
                 input.scope === 'document'

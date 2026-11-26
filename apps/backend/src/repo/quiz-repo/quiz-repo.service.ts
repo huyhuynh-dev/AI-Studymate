@@ -259,6 +259,113 @@ export class QuizRepoService {
         });
     }
 
+    async findActiveInProgressExamAttempt(quizId: string, userId: string) {
+        const attempts = await this.prisma.quizAttempt.findMany({
+            where: {
+                quiz_id: quizId,
+                user_id: userId,
+                status: AttemptStatusEnum.in_progress,
+            },
+            orderBy: { started_at: 'desc' },
+            take: 5,
+            select: {
+                id: true,
+                status: true,
+                config: true,
+            },
+        });
+
+        return (
+            attempts.find((attempt) => {
+                const cfg =
+                    attempt.config &&
+                    typeof attempt.config === 'object' &&
+                    !Array.isArray(attempt.config)
+                        ? (attempt.config as { mode?: unknown })
+                        : null;
+                return cfg?.mode !== 'practice';
+            }) ?? null
+        );
+    }
+
+    async getLatestSubmittedAttemptByQuizId(quizId: string, userId: string) {
+        return await this.prisma.quizAttempt.findFirst({
+            where: {
+                quiz_id: quizId,
+                user_id: userId,
+                status: AttemptStatusEnum.submitted,
+            },
+            orderBy: [{ completed_at: 'desc' }, { started_at: 'desc' }],
+            include: {
+                answers: true,
+                quiz: {
+                    include: {
+                        questions: {
+                            orderBy: { order_index: 'asc' },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    async searchQuizzesForUser(params: {
+        userId: string;
+        conversationId?: string;
+        subjectId?: string;
+        query?: string;
+        limit?: number;
+    }) {
+        const keyword = params.query?.trim();
+        return await this.prisma.quiz.findMany({
+            where: {
+                user_id: params.userId,
+                ...(params.conversationId ? { conversation_id: params.conversationId } : {}),
+                ...(params.subjectId
+                    ? {
+                          conversation: {
+                              subject_id: params.subjectId,
+                          },
+                      }
+                    : {}),
+                ...(keyword
+                    ? {
+                          OR: [
+                              { title: { contains: keyword, mode: 'insensitive' } },
+                              { description: { contains: keyword, mode: 'insensitive' } },
+                          ],
+                      }
+                    : {}),
+            },
+            orderBy: [{ updated_at: 'desc' }, { created_at: 'desc' }],
+            take: params.limit ?? 5,
+            select: {
+                id: true,
+                title: true,
+                source: true,
+                conversation_id: true,
+                updated_at: true,
+                _count: {
+                    select: {
+                        questions: true,
+                        attempts: true,
+                    },
+                },
+                conversation: {
+                    select: {
+                        id: true,
+                        title: true,
+                        subject: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
     async createQuizWithQuestions(
         userId: string,
         conversationId: string,

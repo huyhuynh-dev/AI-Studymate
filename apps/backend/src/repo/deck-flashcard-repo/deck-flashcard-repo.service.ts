@@ -289,6 +289,172 @@ export class DeckFlashcardRepoService {
         });
     }
 
+    async getDeckCardsPaginated(params: {
+        deckId?: string;
+        cardId?: string;
+        userId: string;
+        stateFilter?: 'all' | 'due' | 'new' | 'learning' | 'review' | 'relearning';
+        searchKeyword?: string;
+        excludeBackTextForCardId?: string;
+        offset?: number;
+        limit?: number;
+    }) {
+        let deckRecord: {
+            id: string;
+            name: string;
+            description: string | null;
+            conversation_id: string;
+        } | null = null;
+
+        if (params.deckId) {
+            deckRecord = await this.prisma.flashcardDeck.findFirst({
+                where: {
+                    id: params.deckId,
+                    user_id: params.userId,
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    conversation_id: true,
+                },
+            });
+        } else if (params.cardId) {
+            const cardWithDeck = await this.prisma.flashcard.findFirst({
+                where: {
+                    id: params.cardId,
+                    deck: {
+                        user_id: params.userId,
+                    },
+                },
+                select: {
+                    deck: {
+                        select: {
+                            id: true,
+                            name: true,
+                            description: true,
+                            conversation_id: true,
+                        },
+                    },
+                },
+            });
+            deckRecord = cardWithDeck?.deck ?? null;
+        }
+
+        if (!deckRecord) {
+            return null;
+        }
+
+        const allCards = await this.prisma.flashcard.findMany({
+            where: { deck_id: deckRecord.id },
+            orderBy: { created_at: 'asc' },
+            select: {
+                id: true,
+                card_type: true,
+                front_text: true,
+                back_text: true,
+                state: true,
+                interval: true,
+                due_date: true,
+            },
+        });
+
+        const now = new Date();
+        const totalCards = allCards.length;
+        const dueCount = allCards.filter((c) => !c.due_date || c.due_date <= now).length;
+
+        const keyword = params.searchKeyword?.trim().toLowerCase() ?? '';
+        const stateFilter = params.stateFilter ?? 'all';
+
+        const filtered = allCards.filter((card) => {
+            if (params.cardId && card.id !== params.cardId) {
+                return false;
+            }
+            if (stateFilter === 'due') {
+                if (card.due_date && card.due_date > now) return false;
+            } else if (stateFilter !== 'all') {
+                if (card.state !== stateFilter) return false;
+            }
+            if (keyword) {
+                const frontMatches = (card.front_text || '').toLowerCase().includes(keyword);
+                const canSearchBack = card.id !== params.excludeBackTextForCardId;
+                const backMatches = canSearchBack
+                    ? (card.back_text || '').toLowerCase().includes(keyword)
+                    : false;
+                if (!frontMatches && !backMatches) return false;
+            }
+            return true;
+        });
+
+        const safeOffset = Math.max(0, Math.floor(params.offset ?? 0));
+        const safeLimit = Math.min(25, Math.max(1, Math.floor(params.limit ?? 15)));
+        const paged = filtered.slice(safeOffset, safeOffset + safeLimit);
+
+        return {
+            deck: deckRecord,
+            totalCards,
+            dueCount,
+            filteredCount: filtered.length,
+            cards: paged,
+        };
+    }
+
+    async searchDecksForUser(params: {
+        userId: string;
+        conversationId?: string;
+        subjectId?: string;
+        query?: string;
+        limit?: number;
+    }) {
+        const keyword = params.query?.trim();
+        return await this.prisma.flashcardDeck.findMany({
+            where: {
+                user_id: params.userId,
+                ...(params.conversationId ? { conversation_id: params.conversationId } : {}),
+                ...(params.subjectId
+                    ? {
+                          conversation: {
+                              subject_id: params.subjectId,
+                          },
+                      }
+                    : {}),
+                ...(keyword
+                    ? {
+                          OR: [
+                              { name: { contains: keyword, mode: 'insensitive' } },
+                              { description: { contains: keyword, mode: 'insensitive' } },
+                          ],
+                      }
+                    : {}),
+            },
+            orderBy: [{ updated_at: 'desc' }, { created_at: 'desc' }],
+            take: params.limit ?? 5,
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                conversation_id: true,
+                updated_at: true,
+                _count: {
+                    select: {
+                        flashcards: true,
+                    },
+                },
+                conversation: {
+                    select: {
+                        id: true,
+                        title: true,
+                        subject: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
     async getFlashcardById(
         flashcardId: string,
         userId: string

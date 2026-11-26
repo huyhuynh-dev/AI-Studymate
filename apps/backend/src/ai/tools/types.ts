@@ -47,6 +47,7 @@ export type CitationItem = DocumentCitationItem | WebCitationItem;
 export interface SearchDocumentChunksToolInput {
   semanticQuery: string;
   keywords: string[];
+  documentIds?: string[];
   pageNumbers?: number[];
   pageRange?: { start: number; end: number };
   includeNeighbors?: boolean;
@@ -375,6 +376,199 @@ export type CreateQuizCallback = (
   input: CreateQuizToolInput,
 ) => Promise<CreateQuizToolOutput>;
 
+// ── Tool L2-1: getNoteContent ──
+export interface GetNoteContentToolInput {
+  summaryId?: string;
+  titleQuery?: string;
+  sectionKeyword?: string;
+  charOffset?: number;
+}
+
+export interface GetNoteContentToolOutput {
+  found: boolean;
+  summaryId?: string;
+  title?: string;
+  conversationId?: string;
+  sourceDocumentName?: string | null;
+  updatedAt?: string;
+  sectionOutline: string[];
+  matchedSection?: string | null;
+  contentMarkdown: string;
+  totalChars: number;
+  charOffset: number;
+  truncated: boolean;
+  nextCharOffset?: number;
+  candidates?: Array<{ summaryId: string; title: string }>;
+  message?: string;
+}
+
+export type GetNoteContentCallback = (
+  input: GetNoteContentToolInput,
+) => Promise<GetNoteContentToolOutput>;
+
+// ── Tool L2-2: getQuizContent ──
+export type QuizEvaluationFilter =
+  | 'all'
+  | 'incorrect'
+  | 'partial'
+  | 'correct'
+  | 'flagged'
+  | 'unanswered'
+  | 'essay';
+
+export interface GetQuizContentToolInput {
+  quizId?: string;
+  attemptId?: string;
+  mode?: 'questions_only' | 'attempt_review';
+  evaluationFilter?: QuizEvaluationFilter;
+  questionNumbers?: number[];
+  offset?: number;
+  limit?: number;
+}
+
+export interface GetQuizContentOptionItem {
+  label: string;
+  id: string;
+  text: string;
+  isCorrect?: boolean;
+}
+
+export interface GetQuizContentQuestionItem {
+  questionId: string;
+  displayNumber: number;
+  questionType: string;
+  questionText: string;
+  points: number;
+  options?: GetQuizContentOptionItem[];
+  sampleAnswer?: string | null;
+  gradingCriteria?: string[];
+  explanation?: string | null;
+  bloomLevel?: string | null;
+  studentSelectedLabels?: string[];
+  studentTextAnswer?: string | null;
+  isFlagged?: boolean;
+  evaluationStatus?: string;
+  pointsEarned?: number;
+  matchedPoints?: string[];
+  missingPoints?: string[];
+  aiFeedback?: string | null;
+}
+
+export interface GetQuizContentToolOutput {
+  found: boolean;
+  quizId?: string;
+  quizTitle?: string;
+  attemptId?: string;
+  attemptStatus?: string;
+  attemptMode?: 'exam' | 'practice';
+  examIntegrityEnforced: boolean;
+  score?: number;
+  maxScore?: number;
+  totalQuestions: number;
+  filteredCount: number;
+  returnedCount: number;
+  offset: number;
+  hasMore: boolean;
+  nextOffset?: number;
+  questions: GetQuizContentQuestionItem[];
+  message?: string;
+}
+
+export type GetQuizContentCallback = (
+  input: GetQuizContentToolInput,
+) => Promise<GetQuizContentToolOutput>;
+
+// ── Tool L2-3: getDeckCards ──
+export type FlashcardStateFilter =
+  | 'all'
+  | 'due'
+  | 'new'
+  | 'learning'
+  | 'review'
+  | 'relearning';
+
+export interface GetDeckCardsToolInput {
+  deckId?: string;
+  cardId?: string;
+  stateFilter?: FlashcardStateFilter;
+  searchKeyword?: string;
+  allowRevealCurrentCard?: boolean;
+  offset?: number;
+  limit?: number;
+}
+
+export interface GetDeckCardsItem {
+  cardId: string;
+  cardType: string;
+  state: string;
+  dueDate?: string;
+  intervalDays: number;
+  frontText: string;
+  backText: string;
+  answerHidden: boolean;
+  answerRevealedOnRequest?: boolean;
+}
+
+export interface GetDeckCardsToolOutput {
+  found: boolean;
+  deckId?: string;
+  deckName?: string;
+  deckDescription?: string | null;
+  totalCards: number;
+  dueCount: number;
+  filteredCount: number;
+  returnedCount: number;
+  offset: number;
+  hasMore: boolean;
+  nextOffset?: number;
+  cards: GetDeckCardsItem[];
+  message?: string;
+}
+
+export type GetDeckCardsCallback = (
+  input: GetDeckCardsToolInput,
+) => Promise<GetDeckCardsToolOutput>;
+
+// ── Tool L2-4: searchWorkspaceResources ──
+export type WorkspaceSearchResourceType =
+  | 'document'
+  | 'note'
+  | 'deck'
+  | 'quiz'
+  | 'conversation';
+
+export type WorkspaceSearchScope = 'conversation' | 'subject' | 'all';
+
+export interface SearchWorkspaceResourcesToolInput {
+  query?: string;
+  resourceTypes?: WorkspaceSearchResourceType[];
+  scope?: WorkspaceSearchScope;
+  limitPerType?: number;
+}
+
+export interface WorkspaceResourceSearchItem {
+  id: string;
+  type: WorkspaceSearchResourceType;
+  title: string;
+  conversationId?: string;
+  conversationTitle?: string;
+  subjectName?: string;
+  updatedAt?: string;
+  meta?: string;
+}
+
+export interface SearchWorkspaceResourcesToolOutput {
+  scope: WorkspaceSearchScope;
+  query?: string;
+  totalResults: number;
+  items: WorkspaceResourceSearchItem[];
+  message?: string;
+}
+
+export type SearchWorkspaceResourcesCallback = (
+  input: SearchWorkspaceResourcesToolInput,
+) => Promise<SearchWorkspaceResourcesToolOutput>;
+
 // ── Tool 9..13: SuperDocs Word Editor Tools (full preset + streaming) ──
 export type SuperDocInspectToolInput = Record<string, unknown>;
 export type SuperDocInspectToolOutput = unknown;
@@ -459,6 +653,10 @@ export type ChatAgentToolName =
   | 'createDocumentSummary'
   | 'createFlashcards'
   | 'createQuiz'
+  | 'getNoteContent'
+  | 'getQuizContent'
+  | 'getDeckCards'
+  | 'searchWorkspaceResources'
   | 'searchInternet'
   | 'extractWebPage'
   | 'superdoc_inspect'
@@ -497,6 +695,10 @@ export interface ChatSessionToolCallbacks {
   onCreateDocumentSummary?: CreateDocumentSummaryCallback;
   onCreateFlashcards?: CreateFlashcardsCallback;
   onCreateQuiz?: CreateQuizCallback;
+  onGetNoteContent?: GetNoteContentCallback;
+  onGetQuizContent?: GetQuizContentCallback;
+  onGetDeckCards?: GetDeckCardsCallback;
+  onSearchWorkspaceResources?: SearchWorkspaceResourcesCallback;
   onSearchInternet?: SearchInternetCallback;
   onExtractWebPage?: ExtractWebPageCallback;
   onSuperDocInspect?: SuperDocInspectCallback;

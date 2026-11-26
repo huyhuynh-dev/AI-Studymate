@@ -37,6 +37,51 @@ export class ConversationsRepoService {
         });
     }
 
+    async searchConversationsForUser(params: {
+        userId: string;
+        subjectId?: string;
+        query?: string;
+        limit?: number;
+    }) {
+        const keyword = params.query?.trim();
+        return await this.prisma.conversation.findMany({
+            where: {
+                user_id: params.userId,
+                ...(params.subjectId ? { subject_id: params.subjectId } : {}),
+                ...(keyword
+                    ? {
+                          title: {
+                              contains: keyword,
+                              mode: 'insensitive',
+                          },
+                      }
+                    : {}),
+            },
+            orderBy: { updated_at: 'desc' },
+            take: params.limit ?? 5,
+            select: {
+                id: true,
+                title: true,
+                subject_id: true,
+                updated_at: true,
+                subject: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        documents: true,
+                        summaries: true,
+                        flashcard_decks: true,
+                        quizzes: true,
+                    },
+                },
+            },
+        });
+    }
+
     async updateConversationTitle(
         conversationId: string,
         title: string,

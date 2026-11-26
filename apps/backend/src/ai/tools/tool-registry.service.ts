@@ -11,6 +11,8 @@ import type {
 } from './types.js';
 import {
   createAskUserQuestionTool,
+  createSearchWorkspaceResourcesTool,
+  searchWorkspaceResourcesInputSchema,
 } from './definitions/common/index.js';
 import {
   createSearchDocumentChunksTool,
@@ -24,14 +26,20 @@ import {
 import {
   createCreateDocumentSummaryTool,
   createDocumentSummaryInputSchema,
+  createGetNoteContentTool,
+  getNoteContentInputSchema,
 } from './definitions/summaries/index.js';
 import {
   createCreateFlashcardsTool,
   createFlashcardsInputSchema,
+  createGetDeckCardsTool,
+  getDeckCardsInputSchema,
 } from './definitions/flashcards/index.js';
 import {
   createCreateQuizTool,
   createQuizInputSchema,
+  createGetQuizContentTool,
+  getQuizContentInputSchema,
 } from './definitions/quiz/index.js';
 import {
   createSearchInternetTool,
@@ -235,6 +243,22 @@ export class ToolRegistryService {
         description: 'Khởi tạo bài kiểm tra Quiz từ tài liệu học tập hoặc bộ thẻ Flashcard',
         inputSchema: createQuizInputSchema,
       }),
+      getNoteContent: tool({
+        description: 'Đọc nội dung chi tiết và mục lục của một Ghi chú / Tóm tắt',
+        inputSchema: getNoteContentInputSchema,
+      }),
+      getQuizContent: tool({
+        description: 'Đọc nội dung câu hỏi và kết quả lượt làm bài của một Quiz',
+        inputSchema: getQuizContentInputSchema,
+      }),
+      getDeckCards: tool({
+        description: 'Đọc danh sách thẻ ghi nhớ trong một bộ Flashcard Deck',
+        inputSchema: getDeckCardsInputSchema,
+      }),
+      searchWorkspaceResources: tool({
+        description: 'Tìm kiếm tài nguyên học tập (tài liệu, ghi chú, bộ thẻ, quiz, phiên học) trong workspace',
+        inputSchema: searchWorkspaceResourcesInputSchema,
+      }),
       searchInternet: tool({
         description: 'Tìm kiếm thông tin trên Internet qua Tavily Search API',
         inputSchema: searchInternetInputSchema,
@@ -325,6 +349,34 @@ export class ToolRegistryService {
     if (callbacks?.onCreateQuiz) {
       tools.createQuiz = createCreateQuizTool(
         callbacks.onCreateQuiz,
+        tracker,
+      );
+    }
+
+    if (callbacks?.onGetNoteContent) {
+      tools.getNoteContent = createGetNoteContentTool(
+        callbacks.onGetNoteContent,
+        tracker,
+      );
+    }
+
+    if (callbacks?.onGetQuizContent) {
+      tools.getQuizContent = createGetQuizContentTool(
+        callbacks.onGetQuizContent,
+        tracker,
+      );
+    }
+
+    if (callbacks?.onGetDeckCards) {
+      tools.getDeckCards = createGetDeckCardsTool(
+        callbacks.onGetDeckCards,
+        tracker,
+      );
+    }
+
+    if (callbacks?.onSearchWorkspaceResources) {
+      tools.searchWorkspaceResources = createSearchWorkspaceResourcesTool(
+        callbacks.onSearchWorkspaceResources,
         tracker,
       );
     }

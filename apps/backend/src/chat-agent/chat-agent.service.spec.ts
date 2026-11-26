@@ -15,6 +15,7 @@ import { QuestionTypeEnum } from '../generated/prisma/client.js';
 import { TavilyService } from '../search/tavily.service.js';
 import { SuperDocRuntimeService } from '../documents/services/superdoc-runtime.service.js';
 import { WorkspaceContextHydratorService } from './workspace-context-hydrator.service.js';
+import { WorkspaceL2ReadService } from './workspace-l2-read.service.js';
 
 describe('ChatAgentService', () => {
   let service: ChatAgentService;
@@ -59,6 +60,12 @@ describe('ChatAgentService', () => {
   };
   let hydratorMock: {
     hydrate: ReturnType<typeof vi.fn>;
+  };
+  let l2ReadMock: {
+    readNoteContent: ReturnType<typeof vi.fn>;
+    readQuizContent: ReturnType<typeof vi.fn>;
+    readDeckCards: ReturnType<typeof vi.fn>;
+    searchWorkspaceResources: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -324,6 +331,48 @@ describe('ChatAgentService', () => {
                 examIntegrityGuard: false,
                 hideFlashcardAnswerGuard: false,
               },
+            }),
+          }),
+        },
+        {
+          provide: WorkspaceL2ReadService,
+          useValue: (l2ReadMock = {
+            readNoteContent: vi.fn().mockResolvedValue({
+              found: true,
+              summaryId: 'sum-1',
+              title: 'Ghi chú AVL',
+              sectionOutline: [],
+              contentMarkdown: 'Nội dung ghi chú',
+              totalChars: 16,
+              charOffset: 0,
+              truncated: false,
+            }),
+            readQuizContent: vi.fn().mockResolvedValue({
+              found: true,
+              quizId: 'quiz-1',
+              examIntegrityEnforced: false,
+              totalQuestions: 1,
+              filteredCount: 1,
+              returnedCount: 1,
+              offset: 0,
+              hasMore: false,
+              questions: [],
+            }),
+            readDeckCards: vi.fn().mockResolvedValue({
+              found: true,
+              deckId: 'deck-1',
+              totalCards: 0,
+              dueCount: 0,
+              filteredCount: 0,
+              returnedCount: 0,
+              offset: 0,
+              hasMore: false,
+              cards: [],
+            }),
+            searchWorkspaceResources: vi.fn().mockResolvedValue({
+              scope: 'conversation',
+              totalResults: 0,
+              items: [],
             }),
           }),
         },
@@ -1274,6 +1323,58 @@ describe('ChatAgentService', () => {
     };
     expect(savedPayload.message_json?.parts?.[0]?.text).toBe(
       'Giải thích trang này giúp mình',
+    );
+  });
+
+  it('nối đủ 4 L2 Read Tool callbacks và xác thực documentIds theo catalog trong onSearchDocumentChunks', async () => {
+    await service.handleChatStream(
+      'user-1',
+      'session-1',
+      [
+        {
+          id: 'u-l2-1',
+          role: 'user' as const,
+          parts: [{ type: 'text' as const, text: 'Kiểm tra ghi chú và đề thi' }],
+        },
+      ],
+      undefined,
+      ['doc-attached-1'],
+    );
+
+    const aiOptions = aiMock.executeChatStream.mock.calls[0]?.[3] as {
+      onSearchDocumentChunks?: (input: any) => Promise<unknown>;
+      onGetNoteContent?: (input: any) => Promise<unknown>;
+      onGetQuizContent?: (input: any) => Promise<unknown>;
+      onGetDeckCards?: (input: any) => Promise<unknown>;
+      onSearchWorkspaceResources?: (input: any) => Promise<unknown>;
+    };
+
+    await aiOptions.onGetNoteContent?.({ summaryId: 'sum-1' });
+    await aiOptions.onGetQuizContent?.({ quizId: 'quiz-1' });
+    await aiOptions.onGetDeckCards?.({ deckId: 'deck-1' });
+    await aiOptions.onSearchWorkspaceResources?.({ query: 'AVL' });
+
+    expect(l2ReadMock.readNoteContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        conversationId: 'conv-1',
+      }),
+      { summaryId: 'sum-1' },
+    );
+    expect(l2ReadMock.readQuizContent).toHaveBeenCalledTimes(1);
+    expect(l2ReadMock.readDeckCards).toHaveBeenCalledTimes(1);
+    expect(l2ReadMock.searchWorkspaceResources).toHaveBeenCalledTimes(1);
+
+    // Chỉ giữ ID hợp lệ thuộc catalog (loại bỏ foreign-doc-id)
+    await aiOptions.onSearchDocumentChunks?.({
+      semanticQuery: 'AVL',
+      keywords: ['AVL'],
+      documentIds: ['doc-attached-1', 'foreign-doc-id'],
+    });
+    expect(retrievalMock.searchRelevantChunks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preferredDocumentIds: ['doc-attached-1'],
+      }),
     );
   });
 });

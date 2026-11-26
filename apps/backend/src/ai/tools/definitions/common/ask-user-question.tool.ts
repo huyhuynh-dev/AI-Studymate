@@ -50,7 +50,7 @@ export const askUserQuestionInputSchema = z.object({
 export function createAskUserQuestionTool() {
   return tool({
     description:
-      'Render an interactive question widget (1–3 quick-select questions) when clarifying complex, multi-choice, or parameter-missing requests (e.g., choosing which documents to process, summary scope/style, or depth of explanation). For a single, short, simple clarification (like asking for a page number or missing code snippet), ask naturally in plain text instead of calling this tool. Always write user-facing questions and options in the user’s language (default Vietnamese).',
+      'Render an interactive question widget (1–3 quick-select questions) when clarifying complex, multi-choice, or parameter-missing requests (e.g., choosing which documents to process, summary scope/style, or depth of explanation). Do NOT ask the student for resource IDs, titles, or content already visible in <current_ui_context> or readable via getNoteContent, getQuizContent, getDeckCards, or searchWorkspaceResources. For a single, short, simple clarification (like asking for a page number or missing code snippet), ask naturally in plain text instead of calling this tool. Always write user-facing questions and options in the user’s language (default Vietnamese).',
     inputSchema: askUserQuestionInputSchema,
   });
 }

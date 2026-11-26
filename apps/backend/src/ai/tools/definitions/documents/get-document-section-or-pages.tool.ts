@@ -48,7 +48,7 @@ export function createGetDocumentSectionOrPagesTool(
 ) {
   return tool({
     description:
-      'Read document text by specific pages, section, or chapter. Use when the student asks to read/explain/summarize by page range or heading (e.g., "pages 1-3", "Chapter 2"), when reviewing an entire short document (<= 15 pages), or as a fallback when searchDocumentChunks returns no matches but the Table of Contents shows a relevant section. Specify pageNumbers or headingKeyword for long documents.',
+      'Read uploaded document text by specific pages, section, or chapter. Use when the student asks to read/explain/summarize by page range or heading (e.g., "trang này" using documentId and currentPage from <current_ui_context>, "pages 1-3", "Chapter 2"), when reviewing an entire short document (<= 15 pages), or as a fallback when searchDocumentChunks returns no matches. NEVER use for Notes/Summaries (use getNoteContent instead). For editing an open Word (.docx) file in SuperDoc, use superdoc_inspect.',
     inputSchema: getDocumentSectionOrPagesInputSchema,
     execute: async (
       { documentId, pageNumbers, headingKeyword },

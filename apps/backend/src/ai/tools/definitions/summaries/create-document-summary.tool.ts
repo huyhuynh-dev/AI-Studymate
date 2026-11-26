@@ -40,12 +40,16 @@ export const createDocumentSummaryInputSchema = z.object({
     ),
   fromPage: z
     .number()
+    .int()
+    .min(1)
     .optional()
-    .describe('Start page number (only when scope="section").'),
+    .describe('Start page number >= 1 (only when scope="section").'),
   toPage: z
     .number()
+    .int()
+    .min(1)
     .optional()
-    .describe('End page number (only when scope="section").'),
+    .describe('End page number >= 1 (only when scope="section").'),
 });
 
 export function toSummaryLightweightOutput(
@@ -69,7 +73,7 @@ export function createCreateDocumentSummaryTool(
 ) {
   return tool({
     description:
-      'Generate an AI study summary and save it directly to the Summaries tab. Use ONLY when the student explicitly wants to create and save a formal summary (not for regular chat Q&A). If multiple documents exist and the target document or style is ambiguous, clarify first using askUserQuestion (unless only one document exists or is clearly attached).',
+      'CREATES and SAVES a NEW AI study summary into the Summaries tab. Use ONLY when the student explicitly wants to generate and save a new formal summary (not for regular chat Q&A). To READ or explain an existing Note/Summary, call getNoteContent instead. If multiple documents exist and the target document or style is ambiguous, clarify first using askUserQuestion (unless only one document exists, one is attached, or one is actively open in <current_ui_context>).',
     inputSchema: createDocumentSummaryInputSchema,
     execute: async (
       input,

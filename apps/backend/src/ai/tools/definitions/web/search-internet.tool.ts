@@ -58,7 +58,7 @@ export function createSearchInternetTool(
 ) {
   return tool({
     description:
-      'Search the Internet via Tavily Search API for factual information, academic papers, technical docs, or recent developments not covered in the user’s workspace documents. NEVER use this for private user data, grades, or unpublished internal coursework. Returns snippets with web citation IDs [wX].',
+      'Search the public Internet via Tavily Search API for factual information, academic papers, technical docs, or recent developments not covered in the user’s workspace documents. NEVER use this for private user data, grades, unpublished internal coursework, or searching the student\'s own StudyMate notes/decks/quizzes/past conversations (use searchWorkspaceResources instead). Returns snippets with web citation IDs [wX].',
     inputSchema: searchInternetInputSchema,
     execute: async (input): Promise<SearchInternetToolOutput> => {
       console.log(
