@@ -265,6 +265,48 @@ export class WorkspaceContextStore {
             }
           : null,
       };
+    } else if (tab === "flashcard" && slice) {
+      const fcSlice = slice as FlashcardTabContextSlice;
+      const existingFc = this.slices.flashcard;
+      if (
+        fcSlice.viewMode === "study" &&
+        fcSlice.studyState &&
+        existingFc?.studyState &&
+        existingFc.activeDeck?.deckId === fcSlice.activeDeck?.deckId &&
+        existingFc.studyState.currentCardId &&
+        !fcSlice.studyState.currentCardId
+      ) {
+        this.slices.flashcard = {
+          ...fcSlice,
+          studyState: {
+            mode: fcSlice.studyState.mode,
+            progress: existingFc.studyState.progress,
+            remaining: existingFc.studyState.remaining,
+            currentCardId: existingFc.studyState.currentCardId,
+            isCardRevealed: existingFc.studyState.isCardRevealed,
+          },
+        };
+      } else {
+        this.slices.flashcard = fcSlice;
+      }
+    } else if (tab === "quiz" && slice) {
+      const quizSlice = slice as QuizTabContextSlice;
+      const existingQuiz = this.slices.quiz;
+      if (
+        quizSlice.activeAttempt?.attemptId &&
+        existingQuiz?.activeAttempt?.attemptId ===
+          quizSlice.activeAttempt.attemptId
+      ) {
+        this.slices.quiz = {
+          ...quizSlice,
+          activeAttempt: {
+            ...existingQuiz.activeAttempt,
+            ...quizSlice.activeAttempt,
+          },
+        };
+      } else {
+        this.slices.quiz = quizSlice;
+      }
     } else {
       this.slices[tab] = slice;
     }

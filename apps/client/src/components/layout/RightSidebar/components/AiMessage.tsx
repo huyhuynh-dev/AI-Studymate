@@ -877,7 +877,12 @@ export const AiMessage = React.memo(function AiMessage({
               const deckName: string = part.output?.deckName || "";
               const returnedCount: number = part.output?.returnedCount ?? 0;
               const totalCards: number = part.output?.totalCards ?? 0;
-              const answerHidden: boolean = Boolean(part.output?.answerHidden);
+              const answerHidden: boolean =
+                Boolean(part.output?.answerHidden) ||
+                (Array.isArray(part.output?.cards) &&
+                  part.output.cards.some(
+                    (c: { answerHidden?: boolean }) => Boolean(c?.answerHidden)
+                  ));
 
               return (
                 <details

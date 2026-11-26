@@ -19,7 +19,7 @@ export const getDeckCardsInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      'Optional specific Flashcard UUID (e.g., currentCardId from <current_ui_context> studyState) to inspect only that single card.',
+      'Specific Flashcard UUID to inspect ONLY that single card. ALWAYS pass cardId from <current_ui_context> studyState when the student asks about the card currently shown on screen (e.g., "thẻ này").',
     ),
   stateFilter: z
     .enum(['all', 'due', 'new', 'learning', 'review', 'relearning'])
