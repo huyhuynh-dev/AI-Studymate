@@ -211,6 +211,51 @@ describe('AuthSessionService', () => {
         tokenVersion: 2,
       }),
     ).resolves.toBeUndefined();
+
+    redisMock.get
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(JSON.stringify({ isActive: false, tokenVersion: 2 }));
+    await expect(
+      service.validateAccessTokenSession({
+        userId: 'user-1',
+        sessionId: 'sid-active',
+        tokenVersion: 2,
+      }),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('revokeOtherUserSessions chỉ thu hồi các phiên khác và giữ nguyên phiên hiện tại', async () => {
+    prismaMock.userSession.findMany.mockResolvedValueOnce([
+      { id: 'sid-other-1' },
+      { id: 'sid-other-2' },
+    ]);
+
+    await service.revokeOtherUserSessions(
+      'user-1',
+      'sid-current',
+      'password_change',
+    );
+
+    expect(prismaMock.userSession.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          user_id: 'user-1',
+          id: { not: 'sid-current' },
+          revoked_at: null,
+        },
+        data: expect.objectContaining({ revoke_reason: 'password_change' }),
+      }),
+    );
+    expect(redisMock.set).toHaveBeenCalledWith(
+      'auth:revoked-session:sid-other-1',
+      '1',
+      3600,
+    );
+    expect(redisMock.set).toHaveBeenCalledWith(
+      'auth:revoked-session:sid-other-2',
+      '1',
+      3600,
+    );
   });
 
   it('revokeAllUserSessions tăng token_version, thu hồi toàn bộ phiên và đánh dấu Redis', async () => {

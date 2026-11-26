@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import bcrypt from 'bcrypt';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AuthSessionService } from '../auth/auth-session.service.js';
 import { UsersRepoService } from '../repo/users-repo/users-repo.service.js';
 import type { StorageService } from '../storage/storage.service.js';
 import { UsersService } from './users.service.js';
@@ -25,6 +26,10 @@ describe('UsersService', () => {
     getSignedUrlForDownload: ReturnType<typeof vi.fn>;
     headObject: ReturnType<typeof vi.fn>;
     deleteObject: ReturnType<typeof vi.fn>;
+  };
+  let authSessionMock: {
+    revokeOtherUserSessions: ReturnType<typeof vi.fn>;
+    revokeAllUserSessions: ReturnType<typeof vi.fn>;
   };
 
   const userId = '11111111-1111-4111-8111-111111111111';
@@ -54,9 +59,15 @@ describe('UsersService', () => {
       deleteObject: vi.fn().mockResolvedValue(undefined),
     };
 
+    authSessionMock = {
+      revokeOtherUserSessions: vi.fn().mockResolvedValue(undefined),
+      revokeAllUserSessions: vi.fn().mockResolvedValue(undefined),
+    };
+
     service = new UsersService(
       repoMock as unknown as UsersRepoService,
       storageMock as unknown as StorageService,
+      authSessionMock as unknown as AuthSessionService,
     );
   });
 
@@ -248,6 +259,35 @@ describe('UsersService', () => {
           password_hash: expect.any(String),
         }),
       );
+      expect(authSessionMock.revokeAllUserSessions).toHaveBeenCalledWith(
+        userId,
+        'password_change',
+      );
+    });
+
+    it('nên thu hồi các phiên khác và giữ phiên hiện tại khi đổi mật khẩu có currentSessionId', async () => {
+      const currentHash = await bcrypt.hash('OldPass123', 4);
+      repoMock.findUserById.mockResolvedValueOnce({
+        id: userId,
+        password_hash: currentHash,
+      });
+
+      const res = await service.changePassword(
+        userId,
+        {
+          currentPassword: 'OldPass123',
+          newPassword: 'NewPass456',
+        },
+        'sid-current',
+      );
+
+      expect(res.message).toContain('Đổi mật khẩu thành công');
+      expect(authSessionMock.revokeOtherUserSessions).toHaveBeenCalledWith(
+        userId,
+        'sid-current',
+        'password_change',
+      );
+      expect(authSessionMock.revokeAllUserSessions).not.toHaveBeenCalled();
     });
   });
 

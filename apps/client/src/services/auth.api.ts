@@ -45,6 +45,7 @@ export interface VerifyOtpResponse {
 export interface ResetPasswordCredentials {
   reset_token: string;
   new_password: string;
+  logoutAll?: boolean;
 }
 
 export interface ResetPasswordResponse {

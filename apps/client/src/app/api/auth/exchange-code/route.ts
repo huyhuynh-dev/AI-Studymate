@@ -27,6 +27,11 @@ export async function POST(request: Request) {
     const effectiveRememberMe =
       typeof rememberMe === 'boolean' ? rememberMe : true;
 
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    const realIp = request.headers.get('x-real-ip');
+    const clientIpHeader = forwardedFor || realIp;
+    const userAgent = request.headers.get('user-agent');
+
     // Call Backend exchange-code endpoint
     const backendResponse = await axios.post<TokenPairResponse>(
       `${BACKEND_URL}/auth/exchange-code`,
@@ -34,6 +39,8 @@ export async function POST(request: Request) {
       {
         headers: {
           'Content-Type': 'application/json',
+          ...(clientIpHeader ? { 'X-Forwarded-For': clientIpHeader } : {}),
+          ...(userAgent ? { 'User-Agent': userAgent } : {}),
         },
       }
     );

@@ -30,6 +30,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    const realIp = request.headers.get('x-real-ip');
+    const clientIpHeader = forwardedFor || realIp;
+
     // Call Backend sign-up endpoint
     const backendResponse = await axios.post<SignUpBackendResponse>(
       `${BACKEND_URL}/auth/sign-up`,
@@ -41,6 +45,7 @@ export async function POST(request: Request) {
       {
         headers: {
           'Content-Type': 'application/json',
+          ...(clientIpHeader ? { 'X-Forwarded-For': clientIpHeader } : {}),
         },
       }
     );

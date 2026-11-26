@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { AuthSessionService } from '../auth/auth-session.service.js';
 import { DocumentsQueueService } from '../documents/services/documents-queue.service.js';
 import { RagBenchmarkService } from '../rag-benchmark/rag-benchmark.service.js';
 import type { RagBenchmarkReport } from '../rag-benchmark/rag-benchmark.types.js';
@@ -26,6 +28,7 @@ export class AdminService {
     private readonly documentsQueueService: DocumentsQueueService,
     private readonly ragBenchmarkService: RagBenchmarkService,
     private readonly redisService: RedisService,
+    @Optional() private readonly authSessionService?: AuthSessionService,
   ) {}
 
   private async pingRedis(): Promise<boolean> {
@@ -126,10 +129,23 @@ export class AdminService {
       throw new NotFoundException('Không tìm thấy tài khoản người dùng');
     }
 
-    return this.adminRepo.updateUserStatus(targetUserId, {
+    const updated = await this.adminRepo.updateUserStatus(targetUserId, {
       ...(dto.isActive !== undefined ? { is_active: dto.isActive } : {}),
       ...(dto.role !== undefined ? { role: dto.role } : {}),
     });
+
+    if (this.authSessionService) {
+      if (dto.isActive === false) {
+        await this.authSessionService.revokeAllUserSessions(
+          targetUserId,
+          'account_disabled',
+        );
+      } else if (dto.isActive === true) {
+        await this.authSessionService.invalidateUserStateCache(targetUserId);
+      }
+    }
+
+    return updated;
   }
 
   getRagBenchmarkLatest(): RagBenchmarkReport {

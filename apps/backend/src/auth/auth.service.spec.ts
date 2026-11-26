@@ -1,3 +1,8 @@
+import {
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -25,7 +30,10 @@ describe('AuthService', () => {
   let redisServiceMock: {
     getAndDelete: ReturnType<typeof vi.fn>;
     get: ReturnType<typeof vi.fn>;
+    set: ReturnType<typeof vi.fn>;
     del: ReturnType<typeof vi.fn>;
+    incr: ReturnType<typeof vi.fn>;
+    expire: ReturnType<typeof vi.fn>;
   };
   let authSessionServiceMock: {
     createSession: ReturnType<typeof vi.fn>;
@@ -59,8 +67,11 @@ describe('AuthService', () => {
 
     redisServiceMock = {
       getAndDelete: vi.fn(),
-      get: vi.fn(),
+      get: vi.fn().mockResolvedValue(null),
+      set: vi.fn().mockResolvedValue(undefined),
       del: vi.fn().mockResolvedValue(undefined),
+      incr: vi.fn().mockResolvedValue(1),
+      expire: vi.fn().mockResolvedValue(undefined),
     };
 
     authSessionServiceMock = {
@@ -109,6 +120,7 @@ describe('AuthService', () => {
       id: 'user-1',
       email: 'student@studymate.vn',
       password_hash: passwordHash,
+      is_active: true,
       is_verified: true,
       token_version: 2,
     });
@@ -164,6 +176,7 @@ describe('AuthService', () => {
       id: 'user-1',
       email: 'student@studymate.vn',
       password_hash: passwordHash,
+      is_active: true,
       is_verified: true,
       token_version: 0,
     });
@@ -181,6 +194,82 @@ describe('AuthService', () => {
     );
   });
 
+  it('chặn đăng nhập, refresh và Google exchange khi tài khoản is_active=false', async () => {
+    const passwordHash = await bcrypt.hash('Password@123', 4);
+    usersServiceMock.findUserByEmail.mockResolvedValueOnce({
+      id: 'user-disabled',
+      email: 'disabled@studymate.vn',
+      password_hash: passwordHash,
+      is_active: false,
+      is_verified: true,
+    });
+
+    await expect(
+      service.signInWithEmailAndPassword({
+        email: 'disabled@studymate.vn',
+        password: 'Password@123',
+      }),
+    ).rejects.toThrow(ForbiddenException);
+
+    usersServiceMock.findUserById.mockResolvedValueOnce({
+      id: 'user-disabled',
+      email: 'disabled@studymate.vn',
+      is_active: false,
+    });
+    await expect(
+      service.refreshTokens('user-disabled', 'rt', false, 'sid-1'),
+    ).rejects.toThrow(ForbiddenException);
+
+    redisServiceMock.getAndDelete.mockResolvedValueOnce('user-disabled');
+    usersServiceMock.findUserById.mockResolvedValueOnce({
+      id: 'user-disabled',
+      email: 'disabled@studymate.vn',
+      is_active: false,
+    });
+    await expect(service.exchangeGoogleAuthCode('code-1')).rejects.toThrow(
+      ForbiddenException,
+    );
+  });
+
+  it('khóa tạm đăng nhập (429) khi sai mật khẩu đạt ngưỡng 5 lần và chặn khi lock key tồn tại', async () => {
+    const passwordHash = await bcrypt.hash('CorrectPass@1', 4);
+    usersServiceMock.findUserByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'student@studymate.vn',
+      password_hash: passwordHash,
+      is_active: true,
+      is_verified: true,
+    });
+
+    redisServiceMock.incr.mockResolvedValueOnce(5);
+    await expect(
+      service.signInWithEmailAndPassword(
+        { email: 'student@studymate.vn', password: 'WrongPass@1' },
+        { ipAddress: '1.2.3.4' },
+      ),
+    ).rejects.toThrow();
+
+    expect(redisServiceMock.set).toHaveBeenCalledWith(
+      'auth:login-lock:student@studymate.vn:1.2.3.4',
+      '1',
+      900,
+    );
+
+    redisServiceMock.get.mockResolvedValueOnce('1');
+    try {
+      await service.signInWithEmailAndPassword(
+        { email: 'student@studymate.vn', password: 'CorrectPass@1' },
+        { ipAddress: '1.2.3.4' },
+      );
+      expect.unreachable('Phải ném HttpException 429');
+    } catch (err) {
+      expect(err).toBeInstanceOf(HttpException);
+      expect((err as HttpException).getStatus()).toBe(
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  });
+
   it('xử lý JWT_REFRESH_EXPIRES_IN dạng chuỗi số thuần túy là giây (không bị hiểu nhầm ms)', async () => {
     configValues.JWT_REFRESH_EXPIRES_IN = '604800';
     const passwordHash = await bcrypt.hash('Password@123', 4);
@@ -188,6 +277,7 @@ describe('AuthService', () => {
       id: 'user-1',
       email: 'student@studymate.vn',
       password_hash: passwordHash,
+      is_active: true,
       is_verified: true,
       token_version: 0,
     });
@@ -209,6 +299,7 @@ describe('AuthService', () => {
     usersServiceMock.findUserById.mockResolvedValueOnce({
       id: 'user-1',
       email: 'student@studymate.vn',
+      is_active: true,
       token_version: 1,
     });
 
@@ -245,6 +336,7 @@ describe('AuthService', () => {
     usersServiceMock.findUserById.mockResolvedValueOnce({
       id: 'user-1',
       email: 'student@studymate.vn',
+      is_active: true,
       refresh_token: refreshHash,
       token_version: 0,
     });
@@ -266,6 +358,7 @@ describe('AuthService', () => {
     usersServiceMock.findUserById.mockResolvedValueOnce({
       id: 'user-google-1',
       email: 'google@studymate.vn',
+      is_active: true,
       token_version: 0,
     });
 
@@ -303,15 +396,14 @@ describe('AuthService', () => {
     );
   });
 
-  it('resetPassword gọi revokeAllUserSessions để thu hồi cả refresh session và access token', async () => {
+  it('resetPassword tuân thủ logoutAll=true (thu hồi toàn bộ) và logoutAll=false (giữ phiên)', async () => {
     redisServiceMock.get.mockResolvedValueOnce('user-1');
     usersServiceMock.findUserById.mockResolvedValueOnce({
       id: 'user-1',
       email: 'student@studymate.vn',
     });
 
-    await service.resetPassword('valid-reset-token', 'NewPass@123');
-
+    await service.resetPassword('valid-reset-token', 'NewPass@123', true);
     expect(authSessionServiceMock.revokeAllUserSessions).toHaveBeenCalledWith(
       'user-1',
       'password_reset',
@@ -319,5 +411,15 @@ describe('AuthService', () => {
     expect(redisServiceMock.del).toHaveBeenCalledWith(
       'reset_token:valid-reset-token',
     );
+
+    authSessionServiceMock.revokeAllUserSessions.mockClear();
+    redisServiceMock.get.mockResolvedValueOnce('user-1');
+    usersServiceMock.findUserById.mockResolvedValueOnce({
+      id: 'user-1',
+      email: 'student@studymate.vn',
+    });
+
+    await service.resetPassword('keep-session-token', 'NewPass@123', false);
+    expect(authSessionServiceMock.revokeAllUserSessions).not.toHaveBeenCalled();
   });
 });

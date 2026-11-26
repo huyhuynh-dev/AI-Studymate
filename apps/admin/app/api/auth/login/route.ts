@@ -64,10 +64,19 @@ export async function POST(request: Request) {
       );
     }
 
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    const realIp = request.headers.get('x-real-ip');
+    const clientIpHeader = forwardedFor || realIp;
+    const userAgent = request.headers.get('user-agent');
+
     // 1. Xác thực thông tin đăng nhập qua Backend
     const signInRes = await fetch(`${BACKEND_URL}/auth/sign-in`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(clientIpHeader ? { 'X-Forwarded-For': clientIpHeader } : {}),
+        ...(userAgent ? { 'User-Agent': userAgent } : {}),
+      },
       body: JSON.stringify({ email, password, rememberMe }),
       cache: 'no-store',
     });

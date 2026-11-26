@@ -31,6 +31,11 @@ export class UsersController {
     return userId;
   }
 
+  private getUserSessionId(req: Request): string | undefined {
+    const user = req.user as { sessionId?: string } | undefined;
+    return user?.sessionId;
+  }
+
   @Get('me')
   async getMe(@Req() req: Request): Promise<UserProfileResponse> {
     return this.usersService.getProfile(this.getUserId(req));
@@ -57,7 +62,11 @@ export class UsersController {
     @Req() req: Request,
     @Body() dto: ChangePasswordDto,
   ): Promise<{ message: string }> {
-    return this.usersService.changePassword(this.getUserId(req), dto);
+    return this.usersService.changePassword(
+      this.getUserId(req),
+      dto,
+      this.getUserSessionId(req),
+    );
   }
 
   @Delete('me')

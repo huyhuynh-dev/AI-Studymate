@@ -1,12 +1,15 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   Optional,
+  forwardRef,
 } from '@nestjs/common';
 import bcrypt from 'bcrypt';
+import { AuthSessionService } from '../auth/auth-session.service.js';
 import {
   UsersRepoService,
   type UserProfileRecord,
@@ -46,6 +49,9 @@ export class UsersService {
   constructor(
     private readonly usersRepo: UsersRepoService,
     @Optional() private readonly storageService?: StorageService,
+    @Optional()
+    @Inject(forwardRef(() => AuthSessionService))
+    private readonly authSessionService?: AuthSessionService,
   ) {}
 
   async createUser(data: Prisma.UserCreateInput): Promise<User | null> {
@@ -248,6 +254,7 @@ export class UsersService {
   async changePassword(
     userId: string,
     dto: ChangePasswordDto,
+    currentSessionId?: string,
   ): Promise<{ message: string }> {
     const user = await this.usersRepo.findUserById(userId);
     if (!user) {
@@ -277,7 +284,23 @@ export class UsersService {
     const hashedNewPassword = await bcrypt.hash(dto.newPassword, 10);
     await this.usersRepo.updateUser(userId, {
       password_hash: hashedNewPassword,
+      refresh_token: null,
     });
+
+    if (this.authSessionService) {
+      if (currentSessionId) {
+        await this.authSessionService.revokeOtherUserSessions(
+          userId,
+          currentSessionId,
+          'password_change',
+        );
+      } else {
+        await this.authSessionService.revokeAllUserSessions(
+          userId,
+          'password_change',
+        );
+      }
+    }
 
     return {
       message: user.password_hash

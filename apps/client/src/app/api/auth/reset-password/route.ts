@@ -13,7 +13,7 @@ interface ResetPasswordBackendResponse {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { reset_token, new_password } = body;
+    const { reset_token, new_password, logoutAll } = body;
 
     // Validate request body
     if (!reset_token || typeof reset_token !== 'string') {
@@ -36,6 +36,7 @@ export async function POST(request: Request) {
       {
         reset_token: reset_token.trim(),
         new_password,
+        ...(typeof logoutAll === 'boolean' ? { logoutAll } : {}),
       },
       {
         headers: {

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module.js';
 import { AdminGuard } from '../auth/guards/admin.guard.js';
 import { DocumentsModule } from '../documents/documents.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
@@ -16,6 +17,7 @@ import { AdminService } from './admin.service.js';
     UsersModule,
     DocumentsModule,
     RagBenchmarkModule,
+    AuthModule,
   ],
   controllers: [AdminController],
   providers: [AdminRepoService, AdminService, AdminGuard],

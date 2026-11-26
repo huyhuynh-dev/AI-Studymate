@@ -35,6 +35,8 @@ export class AuthController {
     }
 
     @Public()
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 5, ttl: 60000 } })
     @Post('sign-up')
     async signUp(
         @Body() registerDto: RegisterDto,
@@ -43,6 +45,8 @@ export class AuthController {
     }
 
     @Public()
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 10, ttl: 60000 } })
     @Post('sign-in')
     async signIn(
         @Body() loginDto: LoginDto,
@@ -55,7 +59,8 @@ export class AuthController {
     }
 
     @Public()
-    @UseGuards(RefreshTokenGuard)
+    @UseGuards(ThrottlerGuard, RefreshTokenGuard)
+    @Throttle({ default: { limit: 30, ttl: 60000 } })
     @Get('refresh')
     @HttpCode(HttpStatus.OK)
     async refreshTokens(@Req() req: Request): Promise<TokenPair> {
@@ -159,6 +164,8 @@ export class AuthController {
 
 
     @Public()
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 15, ttl: 60000 } })
     @Post('exchange-code')
     @HttpCode(HttpStatus.OK)
     async exchangeCode(
@@ -201,6 +208,7 @@ export class AuthController {
         return await this.authService.resetPassword(
             resetPasswordDto.reset_token,
             resetPasswordDto.new_password,
+            resetPasswordDto.logoutAll ?? true,
         );
     }
 }

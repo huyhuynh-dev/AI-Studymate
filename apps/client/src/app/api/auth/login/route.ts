@@ -25,6 +25,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    const realIp = request.headers.get('x-real-ip');
+    const clientIpHeader = forwardedFor || realIp;
+    const userAgent = request.headers.get('user-agent');
+
     // Call Backend sign-in endpoint
     const backendResponse = await axios.post<SignInBackendResponse>(
       `${BACKEND_URL}/auth/sign-in`,
@@ -32,6 +37,8 @@ export async function POST(request: Request) {
       {
         headers: {
           'Content-Type': 'application/json',
+          ...(clientIpHeader ? { 'X-Forwarded-For': clientIpHeader } : {}),
+          ...(userAgent ? { 'User-Agent': userAgent } : {}),
         },
       }
     );
@@ -83,7 +90,10 @@ export async function POST(request: Request) {
 
     let errorMessage = 'Đăng nhập thất bại. Vui lòng thử lại sau.';
 
-    if (backendData?.message) {
+    if (statusCode === 429 && !backendData?.message) {
+      errorMessage =
+        'Bạn đã thử đăng nhập quá nhiều lần. Vui lòng đợi ít phút rồi thử lại.';
+    } else if (backendData?.message) {
       if (Array.isArray(backendData.message)) {
         errorMessage = backendData.message.join(', ');
       } else if (typeof backendData.message === 'string') {

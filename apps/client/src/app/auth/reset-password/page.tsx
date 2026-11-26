@@ -769,6 +769,7 @@ export default function ResetPasswordPage() {
       const response = await handleResetPassword({
         reset_token: resetToken,
         new_password: newPassword,
+        logoutAll,
       });
 
       if (!response.success) {
@@ -795,7 +796,7 @@ export default function ResetPasswordPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [resetToken, newPassword, confirmPassword, router]);
+  }, [resetToken, newPassword, confirmPassword, logoutAll, router]);
 
   return (
     <>

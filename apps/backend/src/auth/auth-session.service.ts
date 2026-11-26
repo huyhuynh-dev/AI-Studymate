@@ -299,6 +299,44 @@ export class AuthSessionService {
     );
   }
 
+  async revokeOtherUserSessions(
+    userId: string,
+    keepSessionId: string,
+    reason: string,
+  ): Promise<void> {
+    const now = new Date();
+    const otherSessions = await this.prisma.userSession.findMany({
+      where: {
+        user_id: userId,
+        id: { not: keepSessionId },
+        revoked_at: null,
+      },
+      select: { id: true },
+    });
+
+    if (otherSessions.length === 0) {
+      return;
+    }
+
+    await this.prisma.userSession.updateMany({
+      where: {
+        user_id: userId,
+        id: { not: keepSessionId },
+        revoked_at: null,
+      },
+      data: {
+        revoked_at: now,
+        revoke_reason: reason,
+      },
+    });
+
+    await Promise.all(
+      otherSessions.map((session) =>
+        this.markSessionRevokedInRedis(session.id),
+      ),
+    );
+  }
+
   async validateAccessTokenSession(params: {
     userId: string;
     sessionId?: string;
@@ -372,6 +410,10 @@ export class AuthSessionService {
       } catch {
         // Bỏ qua lỗi ghi cache Redis
       }
+    }
+
+    if (!userState.isActive) {
+      throw new UnauthorizedException('Tài khoản đã bị vô hiệu hóa');
     }
 
     if (

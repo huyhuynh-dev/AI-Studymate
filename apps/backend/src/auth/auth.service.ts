@@ -25,6 +25,9 @@ import { AuthSessionService } from './auth-session.service.js';
 import { parseExpiresInSeconds } from './utils/token-duration.util.js';
 
 const GOOGLE_AUTH_CODE_TTL_SECONDS = 60;
+const LOGIN_MAX_FAILED_ATTEMPTS = 5;
+const LOGIN_ATTEMPT_WINDOW_SECONDS = 15 * 60;
+const LOGIN_LOCKOUT_SECONDS = 15 * 60;
 const DEFAULT_ACCESS_EXPIRES_IN_SECONDS = 60 * 60; // 1 giờ
 const DEFAULT_REFRESH_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7; // 7 ngày
 const DEFAULT_REMEMBER_REFRESH_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 30; // 30 ngày
@@ -191,27 +194,125 @@ export class AuthService {
         return { message: SIGN_UP_RESPONSE_MESSAGE };
     }
 
+    private getLoginAttemptKey(email: string, ipAddress?: string): string {
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedIp = (ipAddress || 'unknown').trim().toLowerCase();
+        return `auth:login-fail:${normalizedEmail}:${normalizedIp}`;
+    }
+
+    private getLoginLockKey(email: string, ipAddress?: string): string {
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedIp = (ipAddress || 'unknown').trim().toLowerCase();
+        return `auth:login-lock:${normalizedEmail}:${normalizedIp}`;
+    }
+
+    private async assertLoginNotLocked(
+        email: string,
+        ipAddress?: string,
+    ): Promise<void> {
+        try {
+            const isLocked = await this.redisService.get?.(
+                this.getLoginLockKey(email, ipAddress),
+            );
+            if (isLocked) {
+                throw new HttpException(
+                    'Bạn đã nhập sai thông tin đăng nhập quá nhiều lần. Vui lòng thử lại sau 15 phút.',
+                    HttpStatus.TOO_MANY_REQUESTS,
+                );
+            }
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            this.logger.warn(
+                `Không thể kiểm tra khóa đăng nhập trong Redis: ${String(error)}`,
+            );
+        }
+    }
+
+    private async recordFailedLoginAttempt(
+        email: string,
+        ipAddress?: string,
+    ): Promise<void> {
+        try {
+            if (!this.redisService.incr) return;
+            const attemptKey = this.getLoginAttemptKey(email, ipAddress);
+            const attempts = await this.redisService.incr(attemptKey);
+            if (attempts === 1) {
+                await this.redisService.expire?.(
+                    attemptKey,
+                    LOGIN_ATTEMPT_WINDOW_SECONDS,
+                );
+            }
+            if (attempts >= LOGIN_MAX_FAILED_ATTEMPTS) {
+                await this.redisService.set?.(
+                    this.getLoginLockKey(email, ipAddress),
+                    '1',
+                    LOGIN_LOCKOUT_SECONDS,
+                );
+                await this.redisService.del?.(attemptKey);
+            }
+        } catch (error) {
+            this.logger.warn(
+                `Không thể ghi nhận lần đăng nhập thất bại trong Redis: ${String(error)}`,
+            );
+        }
+    }
+
+    private async clearFailedLoginAttempts(
+        email: string,
+        ipAddress?: string,
+    ): Promise<void> {
+        try {
+            await this.redisService.del?.(
+                this.getLoginAttemptKey(email, ipAddress),
+            );
+            await this.redisService.del?.(
+                this.getLoginLockKey(email, ipAddress),
+            );
+        } catch {
+            // Không chặn luồng đăng nhập nếu dọn dẹp Redis thất bại
+        }
+    }
+
     async signInWithEmailAndPassword(
         loginDto: LoginDto,
         metadata?: SessionClientMetadata,
     ): Promise<TokenPair> {
         const { email, password } = loginDto;
+        const normalizedEmail = email.trim().toLowerCase();
 
-        const user = await this.usersService.findUserByEmail(email);
+        await this.assertLoginNotLocked(normalizedEmail, metadata?.ipAddress);
+
+        const user = await this.usersService.findUserByEmail(normalizedEmail);
 
         if (!user || !user.password_hash) {
+            await this.recordFailedLoginAttempt(
+                normalizedEmail,
+                metadata?.ipAddress,
+            );
             throw new UnauthorizedException('Invalid credentials');
         }
 
         const isMatch = await bcrypt.compare(password, user.password_hash);
 
         if (!isMatch) {
+            await this.recordFailedLoginAttempt(
+                normalizedEmail,
+                metadata?.ipAddress,
+            );
             throw new UnauthorizedException('Invalid credentials');
+        }
+
+        if (!user.is_active) {
+            throw new ForbiddenException('Tài khoản đã bị vô hiệu hóa.');
         }
 
         if (!user.is_verified) {
             throw new ForbiddenException('Email is not verified');
         }
+
+        await this.clearFailedLoginAttempts(normalizedEmail, metadata?.ipAddress);
 
         return this.issueNewSessionTokens(
             user,
@@ -261,6 +362,10 @@ export class AuthService {
             throw new UnauthorizedException('Invalid or expired auth code');
         }
 
+        if (!user.is_active) {
+            throw new ForbiddenException('Tài khoản đã bị vô hiệu hóa.');
+        }
+
         return this.issueNewSessionTokens(user, rememberMe, metadata);
     }
 
@@ -276,6 +381,9 @@ export class AuthService {
         let user: User | null = await this.usersService.findUserByEmail(email);
 
         if (user) {
+            if (!user.is_active) {
+                throw new ForbiddenException('Tài khoản đã bị vô hiệu hóa.');
+            }
             // Nếu user đã tồn tại với provider khác (local email/password), yêu cầu link account rõ ràng
             if (user.provider && user.provider !== 'google') {
                 throw new ConflictException(
@@ -326,6 +434,10 @@ export class AuthService {
 
         if (!user) {
             throw new ForbiddenException('Access denied');
+        }
+
+        if (!user.is_active) {
+            throw new ForbiddenException('Tài khoản đã bị vô hiệu hóa.');
         }
 
         if (sessionId) {
@@ -629,7 +741,11 @@ export class AuthService {
         }
     }
 
-    async resetPassword(resetToken: string, newPassword: string): Promise<{ message: string }> {
+    async resetPassword(
+        resetToken: string,
+        newPassword: string,
+        logoutAll = true,
+    ): Promise<{ message: string }> {
         const cleanToken = resetToken.trim();
         const resetTokenKey = `reset_token:${cleanToken}`;
 
@@ -647,16 +763,18 @@ export class AuthService {
                 throw new NotFoundException('Người dùng không tồn tại trong hệ thống.');
             }
 
-            // 3. Hash mật khẩu mới, cập nhật Database và thu hồi mọi phiên đăng nhập + access token cũ
+            // 3. Hash mật khẩu mới, cập nhật Database và thu hồi phiên đăng nhập theo chính sách logoutAll
             const password_hash = await this.hashPassword(newPassword);
             await this.usersService.updateUser(userId, {
                 password_hash,
-                refresh_token: null,
+                ...(logoutAll ? { refresh_token: null } : {}),
             });
-            await this.authSessionService.revokeAllUserSessions(
-                userId,
-                'password_reset',
-            );
+            if (logoutAll) {
+                await this.authSessionService.revokeAllUserSessions(
+                    userId,
+                    'password_reset',
+                );
+            }
 
             // 4. Xóa ngay Token khỏi Redis để đảm bảo tính chất Single-use
             await this.redisService.del(resetTokenKey);

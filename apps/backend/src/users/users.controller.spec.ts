@@ -58,9 +58,11 @@ describe('UsersController', () => {
     });
 
     await controller.changePassword(authReq, { newPassword: 'NewPass123' });
-    expect(serviceMock.changePassword).toHaveBeenCalledWith(userId, {
-      newPassword: 'NewPass123',
-    });
+    expect(serviceMock.changePassword).toHaveBeenCalledWith(
+      userId,
+      { newPassword: 'NewPass123' },
+      undefined,
+    );
 
     await controller.deleteMe(authReq, { confirmEmail: 'test@example.com' });
     expect(serviceMock.deleteAccount).toHaveBeenCalledWith(userId, {

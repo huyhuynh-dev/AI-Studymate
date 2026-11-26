@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AuthSessionService } from '../auth/auth-session.service.js';
 import type { DocumentsQueueService } from '../documents/services/documents-queue.service.js';
 import type { RagBenchmarkService } from '../rag-benchmark/rag-benchmark.service.js';
 import type { RedisService } from '../redis/redis.service.js';
@@ -28,6 +29,10 @@ describe('AdminService', () => {
   };
   let redisMock: {
     getRedisClient: ReturnType<typeof vi.fn>;
+  };
+  let authSessionMock: {
+    revokeAllUserSessions: ReturnType<typeof vi.fn>;
+    invalidateUserStateCache: ReturnType<typeof vi.fn>;
   };
 
   const adminId = '11111111-1111-4111-8111-111111111111';
@@ -66,11 +71,17 @@ describe('AdminService', () => {
       }),
     };
 
+    authSessionMock = {
+      revokeAllUserSessions: vi.fn().mockResolvedValue(undefined),
+      invalidateUserStateCache: vi.fn().mockResolvedValue(undefined),
+    };
+
     service = new AdminService(
       repoMock as unknown as AdminRepoService,
       queueMock as unknown as DocumentsQueueService,
       ragMock as unknown as RagBenchmarkService,
       redisMock as unknown as RedisService,
+      authSessionMock as unknown as AuthSessionService,
     );
   });
 
@@ -95,6 +106,23 @@ describe('AdminService', () => {
     await expect(
       service.updateUserStatus(adminId, targetId, { isActive: false }),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  it('nên thu hồi toàn bộ phiên và xóa cache Redis khi khóa hoặc mở khóa tài khoản user', async () => {
+    await service.updateUserStatus(adminId, targetId, { isActive: false });
+    expect(authSessionMock.revokeAllUserSessions).toHaveBeenCalledWith(
+      targetId,
+      'account_disabled',
+    );
+
+    repoMock.updateUserStatus.mockResolvedValueOnce({
+      id: targetId,
+      is_active: true,
+    });
+    await service.updateUserStatus(adminId, targetId, { isActive: true });
+    expect(authSessionMock.invalidateUserStateCache).toHaveBeenCalledWith(
+      targetId,
+    );
   });
 
   it('nên ủy quyền điều khiển queue retry/remove và fallback chạy RAG benchmark nếu chưa có cache', async () => {
