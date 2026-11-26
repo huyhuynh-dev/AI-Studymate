@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
+import { applyAuthCookies } from '@/lib/auth-cookies';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
       try {
         const backendResponse = await axios.post<TokenPairResponse>(
           `${BACKEND_URL}/auth/exchange-code`,
-          { authCode: String(authCode).trim() },
+          { authCode: String(authCode).trim(), rememberMe: true },
           {
             headers: {
               'Content-Type': 'application/json',
@@ -69,22 +70,9 @@ export async function POST(request: Request) {
       message: 'Tokens saved to HttpOnly cookies successfully',
     });
 
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    response.cookies.set('access_token', accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24, // 1 day
-    });
-
-    response.cookies.set('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+    applyAuthCookies(response, {
+      access_token: accessToken,
+      refresh_token: refreshToken,
     });
 
     return response;

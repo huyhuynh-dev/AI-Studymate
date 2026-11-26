@@ -1,5 +1,9 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  applyAdminAuthCookies,
+  clearAdminAuthCookies,
+} from '@/lib/auth-cookies';
+import { fetchBackendWithAdminAuthRefresh } from '@/lib/proxy-auth';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -15,16 +19,9 @@ async function handleAdminProxy(
     const pathArray = resolvedParams.path || [];
     const targetPath = pathArray.join('/');
 
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('admin_access_token')?.value;
-
     const headers: Record<string, string> = {
       'Content-Type': req.headers.get('Content-Type') || 'application/json',
     };
-
-    if (accessToken) {
-      headers.Authorization = `Bearer ${accessToken}`;
-    }
 
     const searchParams = req.nextUrl.searchParams.toString();
     const queryString = searchParams ? `?${searchParams}` : '';
@@ -38,26 +35,46 @@ async function handleAdminProxy(
       }
     }
 
-    const backendRes = await fetch(targetUrl, {
-      method: req.method,
-      headers,
-      body: bodyText,
-      cache: 'no-store',
-    });
+    const { backendRes, refreshedTokens, shouldClearCookies } =
+      await fetchBackendWithAdminAuthRefresh({
+        url: targetUrl,
+        method: req.method,
+        headers,
+        body: bodyText,
+      });
+
+    const attachCookies = (res: NextResponse) => {
+      if (refreshedTokens) {
+        applyAdminAuthCookies(res, refreshedTokens);
+      } else if (shouldClearCookies) {
+        clearAdminAuthCookies(res);
+      }
+      return res;
+    };
+
+    if (backendRes.status === 204 || backendRes.status === 304) {
+      return attachCookies(
+        new NextResponse(null, { status: backendRes.status }),
+      );
+    }
 
     const contentType = backendRes.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       const jsonData = (await backendRes.json().catch(() => null)) as unknown;
-      return NextResponse.json(jsonData ?? {}, { status: backendRes.status });
+      return attachCookies(
+        NextResponse.json(jsonData ?? {}, { status: backendRes.status }),
+      );
     }
 
     const textData = await backendRes.text();
-    return new NextResponse(textData, {
-      status: backendRes.status,
-      headers: {
-        'Content-Type': contentType || 'text/plain; charset=utf-8',
-      },
-    });
+    return attachCookies(
+      new NextResponse(textData, {
+        status: backendRes.status,
+        headers: {
+          'Content-Type': contentType || 'text/plain; charset=utf-8',
+        },
+      }),
+    );
   } catch (error: unknown) {
     const message =
       error instanceof Error

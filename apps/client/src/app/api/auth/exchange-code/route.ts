@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
+import { applyAuthCookies } from '@/lib/auth-cookies';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -14,7 +15,7 @@ interface TokenPairResponse {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { authCode } = body;
+    const { authCode, rememberMe } = body;
 
     if (!authCode || typeof authCode !== 'string' || !authCode.trim()) {
       return NextResponse.json(
@@ -23,10 +24,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const effectiveRememberMe =
+      typeof rememberMe === 'boolean' ? rememberMe : true;
+
     // Call Backend exchange-code endpoint
     const backendResponse = await axios.post<TokenPairResponse>(
       `${BACKEND_URL}/auth/exchange-code`,
-      { authCode: authCode.trim() },
+      { authCode: authCode.trim(), rememberMe: effectiveRememberMe },
       {
         headers: {
           'Content-Type': 'application/json',
@@ -48,24 +52,11 @@ export async function POST(request: Request) {
       message: 'Đăng nhập Google thành công.',
     });
 
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    // Set HttpOnly Secure Cookies for access_token and refresh_token
-    response.cookies.set('access_token', access_token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24, // 1 day
-    });
-
-    response.cookies.set('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
+    applyAuthCookies(
+      response,
+      { access_token, refresh_token },
+      { rememberMe: effectiveRememberMe }
+    );
 
     return response;
   } catch (error: any) {

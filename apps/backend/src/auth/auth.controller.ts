@@ -42,8 +42,17 @@ export class AuthController {
     @Get('refresh')
     @HttpCode(HttpStatus.OK)
     async refreshTokens(@Req() req: Request): Promise<TokenPair> {
-        const user = req.user as { userId: string; email: string; refreshToken: string };
-        return this.authService.refreshTokens(user.userId, user.refreshToken);
+        const user = req.user as {
+            userId: string;
+            email: string;
+            refreshToken: string;
+            rememberMe?: boolean;
+        };
+        return this.authService.refreshTokens(
+            user.userId,
+            user.refreshToken,
+            Boolean(user.rememberMe),
+        );
     }
 
     @Post('logout')
@@ -120,7 +129,10 @@ export class AuthController {
     @Post('exchange-code')
     @HttpCode(HttpStatus.OK)
     async exchangeCode(@Body() exchangeCodeDto: ExchangeCodeDto): Promise<TokenPair> {
-        return this.authService.exchangeGoogleAuthCode(exchangeCodeDto.authCode);
+        return this.authService.exchangeGoogleAuthCode(
+            exchangeCodeDto.authCode,
+            exchangeCodeDto.rememberMe ?? true,
+        );
     }
 
     // ─── Reset Password Flow ────────────────────────────────

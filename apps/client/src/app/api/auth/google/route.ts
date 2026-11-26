@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
+import { applyAuthCookies } from '@/lib/auth-cookies';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
       try {
         const backendResponse = await axios.post<TokenPairResponse>(
           `${BACKEND_URL}/auth/exchange-code`,
-          { authCode: authCode.trim() },
+          { authCode: authCode.trim(), rememberMe: true },
           {
             headers: {
               'Content-Type': 'application/json',
@@ -43,22 +44,11 @@ export async function GET(request: Request) {
         const redirectUrl = new URL(targetPath, origin);
         const response = NextResponse.redirect(redirectUrl);
 
-        const isProduction = process.env.NODE_ENV === 'production';
-        response.cookies.set('access_token', access_token, {
-          httpOnly: true,
-          secure: isProduction,
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 60 * 60 * 24, // 1 day
-        });
-
-        response.cookies.set('refresh_token', refresh_token, {
-          httpOnly: true,
-          secure: isProduction,
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 60 * 60 * 24 * 7, // 7 days
-        });
+        applyAuthCookies(
+          response,
+          { access_token, refresh_token },
+          { rememberMe: true }
+        );
 
         return response;
       } catch (exchangeError: any) {
@@ -127,7 +117,7 @@ export async function POST(request: Request) {
 
     const backendResponse = await axios.post<TokenPairResponse>(
       `${BACKEND_URL}/auth/exchange-code`,
-      { authCode: authCode.trim() },
+      { authCode: authCode.trim(), rememberMe: true },
       {
         headers: {
           'Content-Type': 'application/json',
@@ -149,23 +139,11 @@ export async function POST(request: Request) {
       message: 'Xác thực Google thành công.',
     });
 
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    response.cookies.set('access_token', access_token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24, // 1 day
-    });
-
-    response.cookies.set('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
+    applyAuthCookies(
+      response,
+      { access_token, refresh_token },
+      { rememberMe: true }
+    );
 
     return response;
   } catch (error: any) {

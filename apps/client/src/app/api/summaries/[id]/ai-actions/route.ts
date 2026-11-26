@@ -1,5 +1,12 @@
 import { cookies } from 'next/headers';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+  applyAuthCookies,
+  clearAuthCookies,
+} from '@/lib/auth-cookies';
+import { fetchBackendWithAuthRefresh } from '@/lib/proxy-auth';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -12,30 +19,32 @@ export async function POST(
 ) {
   const { id } = await params;
   const requestPath = `/summaries/${id}/ai-actions`;
-  const accessToken = (await cookies()).get('access_token')?.value;
+  const cookieStore = await cookies();
+  const hasAnyAuthCookie =
+    Boolean(cookieStore.get(ACCESS_TOKEN_COOKIE)?.value) ||
+    Boolean(cookieStore.get(REFRESH_TOKEN_COOKIE)?.value);
 
-  if (!accessToken) {
-    console.warn(`[BlockNote AI proxy] Missing access token: ${requestPath}`);
-    return Response.json(
+  if (!hasAnyAuthCookie) {
+    console.warn(`[BlockNote AI proxy] Missing auth cookies: ${requestPath}`);
+    return NextResponse.json(
       { error: 'Người dùng chưa được xác thực' },
       { status: 401 },
     );
   }
 
   try {
-    const backendResponse = await fetch(
-      `${BACKEND_URL}/summaries/${encodeURIComponent(id)}/ai-actions`,
-      {
+    const bodyText = await request.text();
+    const { backendResponse, refreshedTokens, shouldClearCookies } =
+      await fetchBackendWithAuthRefresh({
+        url: `${BACKEND_URL}/summaries/${encodeURIComponent(id)}/ai-actions`,
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': request.headers.get('content-type') ?? 'application/json',
+          'Content-Type':
+            request.headers.get('content-type') ?? 'application/json',
         },
-        body: await request.text(),
-        cache: 'no-store',
+        body: bodyText,
         signal: request.signal,
-      },
-    );
+      });
 
     if (!backendResponse.ok) {
       const errorBody = await backendResponse.clone().text();
@@ -45,13 +54,28 @@ export async function POST(
       );
     }
 
-    return new Response(backendResponse.body, {
-      status: backendResponse.status,
-      headers: backendResponse.headers,
+    const responseHeaders = new Headers();
+    backendResponse.headers.forEach((val, key) => {
+      if (key.toLowerCase() !== 'set-cookie') {
+        responseHeaders.set(key, val);
+      }
     });
+
+    const response = new NextResponse(backendResponse.body, {
+      status: backendResponse.status,
+      headers: responseHeaders,
+    });
+
+    if (refreshedTokens) {
+      applyAuthCookies(response, refreshedTokens);
+    } else if (shouldClearCookies) {
+      clearAuthCookies(response);
+    }
+
+    return response;
   } catch (error) {
     console.error(`[BlockNote AI proxy] Request failed: ${requestPath}`, error);
-    return Response.json(
+    return NextResponse.json(
       { error: 'Không thể kết nối tới AI backend' },
       { status: 502 },
     );

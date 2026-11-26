@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
+import { applyAuthCookies } from '@/lib/auth-cookies';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
     // Call Backend sign-in endpoint
     const backendResponse = await axios.post<SignInBackendResponse>(
       `${BACKEND_URL}/auth/sign-in`,
-      { email, password },
+      { email, password, rememberMe: Boolean(rememberMe) },
       {
         headers: {
           'Content-Type': 'application/json',
@@ -50,30 +51,11 @@ export async function POST(request: Request) {
       message: 'Đăng nhập thành công',
     });
 
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    // Set HttpOnly Secure Cookies
-    // access_token: short/medium term (e.g. 1 day = 86400 seconds)
-    response.cookies.set('access_token', access_token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60, // 1 hour
-    });
-
-    // refresh_token: long term (30 days if rememberMe, otherwise 7 days)
-    const refreshMaxAge = rememberMe
-      ? 60 * 60 * 24 * 30 // 30 days
-      : 60 * 60 * 24 * 7; // 7 days
-
-    response.cookies.set('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: refreshMaxAge,
-    });
+    applyAuthCookies(
+      response,
+      { access_token, refresh_token },
+      { rememberMe: Boolean(rememberMe) }
+    );
 
     return response;
   } catch (error: any) {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { applyAdminAuthCookies } from '@/lib/auth-cookies';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
     const signInRes = await fetch(`${BACKEND_URL}/auth/sign-in`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, rememberMe }),
       cache: 'no-store',
     });
 
@@ -165,23 +166,11 @@ export async function POST(request: Request) {
       },
     });
 
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    response.cookies.set('admin_access_token', accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60, // 1 giờ
-    });
-
-    response.cookies.set('admin_refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7,
-    });
+    applyAdminAuthCookies(
+      response,
+      { access_token: accessToken, refresh_token: refreshToken },
+      { rememberMe },
+    );
 
     return response;
   } catch (error: unknown) {

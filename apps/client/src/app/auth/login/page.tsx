@@ -31,10 +31,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     const errorParam = searchParams.get('error');
+    const sessionExpiredParam = searchParams.get('session_expired');
+
     if (errorParam === 'oauth_failed' || errorParam === 'access_denied') {
       setErrorMessage('Xác thực bằng Google thất bại hoặc đã bị hủy.');
     } else if (errorParam) {
       setErrorMessage(decodeURIComponent(errorParam));
+    } else if (sessionExpiredParam === 'true') {
+      setErrorMessage(
+        'Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.'
+      );
     }
   }, [searchParams]);
 

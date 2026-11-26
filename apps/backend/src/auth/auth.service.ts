@@ -21,8 +21,12 @@ import { User } from '../generated/prisma/client.js';
 import { createHash, randomBytes, randomInt } from 'crypto';
 import { RedisService } from '../redis/redis.service.js';
 import { MailService } from '../mail/mail.service.js';
+import { parseExpiresInSeconds } from './utils/token-duration.util.js';
 
 const GOOGLE_AUTH_CODE_TTL_SECONDS = 60;
+const DEFAULT_ACCESS_EXPIRES_IN_SECONDS = 60 * 60; // 1 giờ
+const DEFAULT_REFRESH_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7; // 7 ngày
+const DEFAULT_REMEMBER_REFRESH_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 30; // 30 ngày
 const SIGN_UP_RESPONSE_MESSAGE = 'Vui lòng kiểm tra hộp thư để xác thực email.';
 const EMAIL_VERIFICATION_RESPONSE_MESSAGE = 'Nếu email hợp lệ, mã OTP sẽ được gửi đến hộp thư.';
 
@@ -46,17 +50,42 @@ export class AuthService {
 
     // ─── Token Generation ───────────────────────────────────
 
-    private async generateTokens(userId: string, email: string): Promise<TokenPair> {
-        const payload = { sub: userId, email };
+    private async generateTokens(
+        userId: string,
+        email: string,
+        options?: { rememberMe?: boolean },
+    ): Promise<TokenPair> {
+        const rememberMe = Boolean(options?.rememberMe);
+        const accessExpiresInSeconds = parseExpiresInSeconds(
+            this.configService.get<string>('JWT_EXPIRES_IN'),
+            DEFAULT_ACCESS_EXPIRES_IN_SECONDS,
+        );
+        const baseRefreshSeconds = parseExpiresInSeconds(
+            this.configService.get<string>('JWT_REFRESH_EXPIRES_IN'),
+            DEFAULT_REFRESH_EXPIRES_IN_SECONDS,
+        );
+        const rememberRefreshSeconds = Math.max(
+            baseRefreshSeconds,
+            parseExpiresInSeconds(
+                this.configService.get<string>('JWT_REFRESH_REMEMBER_EXPIRES_IN'),
+                DEFAULT_REMEMBER_REFRESH_EXPIRES_IN_SECONDS,
+            ),
+        );
+        const refreshExpiresInSeconds = rememberMe
+            ? rememberRefreshSeconds
+            : baseRefreshSeconds;
+
+        const accessPayload = { sub: userId, email };
+        const refreshPayload = { sub: userId, email, rem: rememberMe };
 
         const [access_token, refresh_token] = await Promise.all([
-            this.jwtService.signAsync(payload, {
+            this.jwtService.signAsync(accessPayload, {
                 secret: this.configService.getOrThrow<string>('JWT_SECRET'),
-                expiresIn: Number(this.configService.get<string>('JWT_EXPIRES_IN') ?? '3600'),
+                expiresIn: accessExpiresInSeconds,
             }),
-            this.jwtService.signAsync(payload, {
+            this.jwtService.signAsync(refreshPayload, {
                 secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-                expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d') as any,
+                expiresIn: refreshExpiresInSeconds,
             }),
         ]);
 
@@ -131,7 +160,9 @@ export class AuthService {
             throw new ForbiddenException('Email is not verified');
         }
 
-        const tokens = await this.generateTokens(user.id, user.email);
+        const tokens = await this.generateTokens(user.id, user.email, {
+            rememberMe: Boolean(loginDto.rememberMe),
+        });
         await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
 
         return tokens;
@@ -142,7 +173,9 @@ export class AuthService {
     async createUserFromGoogleData(googleData: { email: string; name: string; avatar_url: string; email_verified: boolean }): Promise<TokenPair> {
         const user = await this.getOrCreateGoogleUser(googleData);
 
-        const tokens = await this.generateTokens(user.id, user.email);
+        const tokens = await this.generateTokens(user.id, user.email, {
+            rememberMe: true,
+        });
         await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
 
         return tokens;
@@ -161,7 +194,7 @@ export class AuthService {
         return authCode;
     }
 
-    async exchangeGoogleAuthCode(authCode: string): Promise<TokenPair> {
+    async exchangeGoogleAuthCode(authCode: string, rememberMe = true): Promise<TokenPair> {
         const userId = await this.redisService.getAndDelete(this.getGoogleAuthCodeKey(authCode));
 
         if (!userId) {
@@ -174,7 +207,9 @@ export class AuthService {
             throw new UnauthorizedException('Invalid or expired auth code');
         }
 
-        const tokens = await this.generateTokens(user.id, user.email);
+        const tokens = await this.generateTokens(user.id, user.email, {
+            rememberMe,
+        });
         await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
 
         return tokens;
@@ -231,7 +266,11 @@ export class AuthService {
 
 
 
-    async refreshTokens(userId: string, refreshToken: string): Promise<TokenPair> {
+    async refreshTokens(
+        userId: string,
+        refreshToken: string,
+        rememberMe = false,
+    ): Promise<TokenPair> {
         const user = await this.usersService.findUserById(userId);
 
         if (!user || !user.refresh_token) {
@@ -244,7 +283,9 @@ export class AuthService {
             throw new ForbiddenException('Access denied');
         }
 
-        const tokens = await this.generateTokens(user.id, user.email);
+        const tokens = await this.generateTokens(user.id, user.email, {
+            rememberMe,
+        });
         await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
 
         return tokens;

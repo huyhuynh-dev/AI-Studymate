@@ -9,31 +9,67 @@ export const axiosClient = axios.create({
   },
 });
 
-// Trạng thái khóa (lock) để tránh gọi Refresh Token nhiều lần cùng lúc
+const AUTH_REFRESH_CHANNEL_NAME = 'studymate_auth_refresh_channel';
+const AUTH_REFRESH_LOCK_NAME = 'studymate_auth_refresh_lock';
+const CROSS_TAB_REFRESH_GRACE_MS = 4000;
+
+// Trạng thái khóa (lock) trong tab hiện tại
 let isRefreshing = false;
+let lastCrossTabRefreshAt = 0;
+
+const authChannel =
+  typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'
+    ? new BroadcastChannel(AUTH_REFRESH_CHANNEL_NAME)
+    : null;
+
+if (authChannel) {
+  authChannel.onmessage = (event: MessageEvent<{ type?: string; timestamp?: number }>) => {
+    if (event.data?.type === 'REFRESH_SUCCESS' && typeof event.data.timestamp === 'number') {
+      lastCrossTabRefreshAt = Math.max(lastCrossTabRefreshAt, event.data.timestamp);
+    }
+  };
+}
 
 // Hàng đợi In-memory: Lưu giữ các request bị lỗi 401 tạm thời trong lúc chờ token mới
 let failedQueue: Array<{
   resolve: (value?: unknown) => void;
-  reject: (reason?: any) => void;
+  reject: (reason?: unknown) => void;
 }> = [];
 
-// Hàm xử lý hàng đợi sau khi Refresh Token xong (thành công hoặc thất bại)
-const processQueue = (error: Error | null) => {
+const processQueue = (error: unknown) => {
   failedQueue.forEach((prom) => {
     if (error) {
-      prom.reject(error); // Báo lỗi cho các request đang chờ
+      prom.reject(error);
     } else {
-      prom.resolve(); // Báo thành công, cho phép request tiếp tục chạy
+      prom.resolve();
     }
   });
-  // Xóa trắng hàng đợi
   failedQueue = [];
 };
 
+async function executeCoordinatedRefresh(): Promise<void> {
+  const performRefresh = async () => {
+    if (Date.now() - lastCrossTabRefreshAt < CROSS_TAB_REFRESH_GRACE_MS) {
+      return;
+    }
+
+    await axios.get('/api/auth/refresh');
+    const now = Date.now();
+    lastCrossTabRefreshAt = now;
+    authChannel?.postMessage({ type: 'REFRESH_SUCCESS', timestamp: now });
+  };
+
+  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+    await navigator.locks.request(AUTH_REFRESH_LOCK_NAME, performRefresh);
+    return;
+  }
+
+  await performRefresh();
+}
+
 // Response Interceptor: Tự động chặn và xử lý mọi response trả về
 axiosClient.interceptors.response.use(
-  (response) => response, // Nếu gọi thành công (200), trả về dữ liệu bình thường
+  (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
@@ -46,41 +82,34 @@ axiosClient.interceptors.response.use(
       !originalRequest._retry
     ) {
       if (isRefreshing) {
-        // Đang có 1 tiến trình xin cấp lại Token chạy rồi, các request 401 khác phải vào Hàng đợi (Queue)
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then(() => {
-            // Khi Refresh thành công, tiến trình báo resolve() -> Gọi lại request gốc
-            return axiosClient(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
+          .then(() => axiosClient(originalRequest))
+          .catch((err) => Promise.reject(err));
       }
 
-      // Đánh dấu request này đang được retry để không lặp vô hạn
       originalRequest._retry = true;
       isRefreshing = true;
 
       try {
-        // Kích hoạt API xin cấp lại Token
-        // Chú ý: Gọi thẳng route /api/auth/refresh (không gọi qua /api/proxy)
-        await axios.get('/api/auth/refresh');
-
-        // Lấy token thành công -> Mở khóa và cho phép các request trong hàng đợi chạy lại
+        await executeCoordinatedRefresh();
         isRefreshing = false;
         processQueue(null);
-
-        // Chạy lại chính request ban đầu vừa bị lỗi
         return axiosClient(originalRequest);
-      } catch (refreshError) {
-        // Lấy token thất bại (refresh_token cũng hết hạn luôn)
+      } catch (refreshError: unknown) {
         isRefreshing = false;
-        processQueue(refreshError as Error); // Đánh sập tất cả các request trong hàng đợi
+        processQueue(refreshError);
 
-        // Chuyển hướng người dùng về trang Đăng nhập
-        if (typeof window !== 'undefined') {
+        const refreshStatus = axios.isAxiosError(refreshError)
+          ? refreshError.response?.status
+          : undefined;
+
+        // Chỉ chuyển hướng về trang Đăng nhập khi refresh token thực sự hết hạn/không hợp lệ
+        if (
+          typeof window !== 'undefined' &&
+          (refreshStatus === 401 || refreshStatus === 403)
+        ) {
           window.location.href = '/auth/login?session_expired=true';
         }
 
@@ -88,7 +117,6 @@ axiosClient.interceptors.response.use(
       }
     }
 
-    // Các lỗi khác (400, 403, 500...) không phải 401 thì cứ báo lỗi bình thường
     return Promise.reject(error);
   }
 );

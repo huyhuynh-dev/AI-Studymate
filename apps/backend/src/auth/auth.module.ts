@@ -10,6 +10,7 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy.js';
 import { MailModule } from '../mail/mail.module.js';
 import { RedisModule } from '../redis/redis.module.js';
+import { parseExpiresInSeconds } from './utils/token-duration.util.js';
 
 @Module({
   imports: [
@@ -24,8 +25,9 @@ import { RedisModule } from '../redis/redis.module.js';
       useFactory: (configService: ConfigService): JwtModuleOptions => ({
         secret: configService.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: Number(
-            configService.get<string>('JWT_EXPIRES_IN') ?? '3600',
+          expiresIn: parseExpiresInSeconds(
+            configService.get<string>('JWT_EXPIRES_IN'),
+            3600,
           ),
         },
       }),
