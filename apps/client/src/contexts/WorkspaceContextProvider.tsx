@@ -76,7 +76,7 @@ export class WorkspaceContextStore {
   private recomputeBadge(): boolean {
     const next = this.buildBadge();
     const nextKey = next
-      ? `${next.enabled ? 1 : 0}|${next.tab}|${next.label}|${next.title}|${next.isExamGuard ? 1 : 0}|${next.isWordActive ? 1 : 0}`
+      ? `${next.enabled ? 1 : 0}|${next.tab}|${next.label}|${next.pageLabel ?? ""}|${next.title}|${next.isExamGuard ? 1 : 0}|${next.isWordActive ? 1 : 0}`
       : "null";
 
     if (nextKey === this.cachedBadgeKey) {
@@ -95,6 +95,7 @@ export class WorkspaceContextStore {
 
     const tab = this.location.activeTab ?? "documents";
     let label = "Không gian học tập";
+    let pageLabel: string | undefined;
     let title = "Trợ lý AI nhận biết ngữ cảnh màn hình hiện tại";
     let isExamGuard = false;
     let isWordActive = false;
@@ -108,6 +109,10 @@ export class WorkspaceContextStore {
           typeof doc.currentPage === "number"
             ? ` · Tr. ${doc.currentPage}${doc.totalPages ? `/${doc.totalPages}` : ""}`
             : "";
+        pageLabel =
+          typeof doc.currentPage === "number"
+            ? `Tr. ${doc.currentPage}${doc.totalPages ? `/${doc.totalPages}` : ""}`
+            : undefined;
         label = `${doc.fileName}${pageStr}`;
         title = `Đang mở tài liệu ${doc.fileName}${pageStr}`;
       } else {
@@ -172,13 +177,15 @@ export class WorkspaceContextStore {
     }
 
     if (this.sidePanel?.fileName) {
-      title = `${title} · Đang đối chiếu nguồn: ${this.sidePanel.fileName}`;
+      const sidePage = this.sidePanel.pageNo ? ` (Tr. ${this.sidePanel.pageNo})` : "";
+      title = `${title} · Đang đối chiếu nguồn: ${this.sidePanel.fileName}${sidePage}`;
     }
 
     return {
       enabled: this.enabled,
       tab,
       label,
+      ...(pageLabel ? { pageLabel } : {}),
       title,
       isExamGuard,
       isWordActive,
@@ -225,7 +232,7 @@ export class WorkspaceContextStore {
                   currentPage:
                     incomingViewing.currentPage ?? existingViewing.currentPage,
                   totalPages:
-                    incomingViewing.totalPages ?? existingViewing.totalPages,
+                    existingViewing.totalPages ?? incomingViewing.totalPages,
                   wordChangeMode:
                     incomingViewing.wordChangeMode ??
                     existingViewing.wordChangeMode,
@@ -349,11 +356,18 @@ export class WorkspaceContextStore {
   };
 
   patchSidePanelPage = (documentId: string, pageNo: number): void => {
-    if (!this.sidePanel || this.sidePanel.documentId !== documentId) return;
+    if (
+      !this.sidePanel ||
+      this.sidePanel.documentId !== documentId ||
+      this.sidePanel.pageNo === pageNo
+    ) {
+      return;
+    }
     this.sidePanel = {
       ...this.sidePanel,
       pageNo,
     };
+    this.emitIfBadgeChanged();
   };
 
   getSnapshot = (): WorkspaceUiContextSnapshot | null => {

@@ -118,6 +118,7 @@ export interface WorkspaceContextBadge {
   enabled: boolean;
   tab: ConversationTabId | "global";
   label: string;
+  pageLabel?: string;
   title: string;
   isExamGuard: boolean;
   isWordActive: boolean;

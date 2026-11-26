@@ -12,11 +12,13 @@ import {
   Viewport,
   ViewportPluginPackage,
   useViewportCapability,
+  useViewportElement,
 } from "@embedpdf/plugin-viewport/react";
 import {
   Scroller,
   ScrollPluginPackage,
   useScroll,
+  useScrollCapability,
 } from "@embedpdf/plugin-scroll/react";
 import {
   RenderLayer,
@@ -84,6 +86,10 @@ import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import { useDocumentMastery } from "@/hooks/useLearningAnalytics";
 import { calcBoxPixels } from "@/lib/pdf-coordinates";
+import {
+  resolveVisiblePageFromOffsets,
+  resolveVisiblePageFromRects,
+} from "./shared/page-viewport-tracker.helper";
 import TocMasterySidebar from "./TocMasterySidebar";
 import { PdfSelectionMenu } from "./pdf/PdfSelectionMenu";
 
@@ -988,48 +994,293 @@ function PdfWorkspaceContextBridge({
   documentId,
   backendDocumentId,
   fileName,
+  initialPageCount,
   compactReaderMode,
 }: {
   documentId: string;
   backendDocumentId: string;
   fileName: string;
+  initialPageCount?: number | null;
   compactReaderMode?: boolean;
 }) {
-  const { state: scrollState } = useScroll(documentId);
+  const viewportElementRef = useViewportElement();
+  const { state: scrollState, provides: scrollScope } = useScroll(documentId);
+  const { provides: scrollProvides } = useScrollCapability();
+  const docState = useDocumentState(documentId);
   const workspaceStore = useWorkspaceContextStore();
-  const currentPage = scrollState?.currentPage;
-  const totalPages = scrollState?.totalPages;
+
+  const lastReportedRef = useRef<{
+    docId: string;
+    page: number;
+    total?: number;
+  } | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const latestDepsRef = useRef({
+    scrollState,
+    scrollScope,
+    docState,
+    workspaceStore,
+    backendDocumentId,
+    fileName,
+    initialPageCount,
+    compactReaderMode,
+  });
 
   useEffect(() => {
-    if (!workspaceStore || typeof currentPage !== "number" || currentPage < 1) {
+    latestDepsRef.current = {
+      scrollState,
+      scrollScope,
+      docState,
+      workspaceStore,
+      backendDocumentId,
+      fileName,
+      initialPageCount,
+      compactReaderMode,
+    };
+  });
+
+  useEffect(() => {
+    lastReportedRef.current = null;
+  }, [backendDocumentId, documentId]);
+
+  const syncPageNow = useCallback(() => {
+    const {
+      scrollState: curScrollState,
+      scrollScope: curScrollScope,
+      docState: curDocState,
+      workspaceStore: curStore,
+      backendDocumentId: curBackendDocId,
+      fileName: curFileName,
+      initialPageCount: curInitialPageCount,
+      compactReaderMode: isCompact,
+    } = latestDepsRef.current;
+
+    if (!curStore) return;
+
+    const toPositiveInt = (val: unknown): number | undefined => {
+      if (typeof val !== "number" || !Number.isFinite(val) || val < 1) {
+        return undefined;
+      }
+      return Math.trunc(val);
+    };
+
+    let scopeTotalPages: number | undefined;
+    let scopeCurrentPage: number | undefined;
+    if (curScrollScope) {
+      try {
+        scopeTotalPages = toPositiveInt(curScrollScope.getTotalPages());
+      } catch {
+        // Bỏ qua nếu plugin state chưa khởi tạo xong
+      }
+      try {
+        scopeCurrentPage = toPositiveInt(curScrollScope.getCurrentPage());
+      } catch {
+        // Bỏ qua nếu plugin state chưa khởi tạo xong
+      }
+    }
+
+    const resolvedTotalPages =
+      toPositiveInt(curDocState?.document?.pageCount) ??
+      scopeTotalPages ??
+      toPositiveInt(curScrollState?.totalPages) ??
+      toPositiveInt(curInitialPageCount);
+
+    const viewportEl = viewportElementRef?.current ?? null;
+    let resolvedCurrentPage: number | null = null;
+
+    // 1. Ưu tiên đo vị trí thực tế của các trang PDF đang render trong Viewport
+    if (viewportEl) {
+      const pageNodes = viewportEl.querySelectorAll<HTMLElement>(
+        "[data-pdf-page-index]",
+      );
+      if (pageNodes.length > 0) {
+        const pageRects: Array<{
+          pageNumber: number;
+          top: number;
+          bottom: number;
+        }> = [];
+        pageNodes.forEach((node) => {
+          const rawIdx = node.dataset.pdfPageIndex;
+          const idx = rawIdx !== undefined ? Number.parseInt(rawIdx, 10) : Number.NaN;
+          if (!Number.isFinite(idx) || idx < 0) return;
+          const rect = node.getBoundingClientRect();
+          if (rect.height <= 0) return;
+          pageRects.push({
+            pageNumber: idx + 1,
+            top: rect.top,
+            bottom: rect.bottom,
+          });
+        });
+
+        const vpRect = viewportEl.getBoundingClientRect();
+        resolvedCurrentPage = resolveVisiblePageFromRects(
+          { top: vpRect.top, bottom: vpRect.bottom },
+          pageRects,
+          typeof window !== "undefined" ? window.innerHeight : undefined,
+        );
+      }
+
+      // 2. Fallback qua virtualItems của ScrollPlugin khi DOM page chưa kịp gắn
+      if (resolvedCurrentPage === null && curScrollScope) {
+        try {
+          const layout = curScrollScope.getLayout();
+          const scale =
+            typeof curDocState?.scale === "number" && curDocState.scale > 0
+              ? curDocState.scale
+              : 1;
+          const offsetPages = (layout?.virtualItems ?? [])
+            .map((item) => ({
+              pageNumber: item.pageNumbers?.[0] ?? 0,
+              top: item.y * scale,
+              height: item.height * scale,
+            }))
+            .filter((p) => p.pageNumber >= 1 && p.height > 0);
+          resolvedCurrentPage = resolveVisiblePageFromOffsets(
+            viewportEl.scrollTop,
+            viewportEl.clientHeight,
+            offsetPages,
+          );
+        } catch {
+          // Tiếp tục fallback cuối bên dưới
+        }
+      }
+    }
+
+    // 3. Fallback cuối qua trạng thái ScrollPlugin
+    if (resolvedCurrentPage === null) {
+      resolvedCurrentPage =
+        scopeCurrentPage ?? toPositiveInt(curScrollState?.currentPage) ?? null;
+    }
+
+    if (resolvedCurrentPage === null || resolvedCurrentPage < 1) {
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      if (compactReaderMode) {
-        workspaceStore.patchSidePanelPage(backendDocumentId, currentPage);
-      } else {
-        workspaceStore.patchDocumentsViewingDoc({
-          documentId: backendDocumentId,
-          fileName,
-          viewerKind: "pdf",
-          currentPage,
-          totalPages:
-            typeof totalPages === "number" && totalPages > 0
-              ? totalPages
-              : undefined,
-        });
-      }
-    }, 200);
+    const clampedPage = resolvedTotalPages
+      ? Math.min(Math.max(1, Math.trunc(resolvedCurrentPage)), resolvedTotalPages)
+      : Math.trunc(resolvedCurrentPage);
 
-    return () => window.clearTimeout(timer);
+    const prev = lastReportedRef.current;
+    if (
+      prev &&
+      prev.docId === curBackendDocId &&
+      prev.page === clampedPage &&
+      prev.total === resolvedTotalPages
+    ) {
+      return;
+    }
+
+    lastReportedRef.current = {
+      docId: curBackendDocId,
+      page: clampedPage,
+      total: resolvedTotalPages,
+    };
+
+    if (isCompact) {
+      curStore.patchSidePanelPage(curBackendDocId, clampedPage);
+    } else {
+      curStore.patchDocumentsViewingDoc({
+        documentId: curBackendDocId,
+        fileName: curFileName,
+        viewerKind: "pdf",
+        currentPage: clampedPage,
+        totalPages: resolvedTotalPages,
+      });
+    }
+  }, [viewportElementRef]);
+
+  const scheduleSync = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (rafIdRef.current !== null) return;
+    rafIdRef.current = window.requestAnimationFrame(() => {
+      rafIdRef.current = null;
+      syncPageNow();
+    });
+  }, [syncPageNow]);
+
+  useEffect(() => {
+    scheduleSync();
   }, [
-    workspaceStore,
-    compactReaderMode,
-    backendDocumentId,
-    fileName,
-    currentPage,
-    totalPages,
+    scheduleSync,
+    scrollState?.currentPage,
+    scrollState?.totalPages,
+    docState?.scale,
+    docState?.document?.pageCount,
+  ]);
+
+  useEffect(() => {
+    const viewportEl = viewportElementRef?.current ?? null;
+    const unsubs: Array<() => void> = [];
+
+    const handleDomEvent = () => scheduleSync();
+
+    if (viewportEl) {
+      viewportEl.addEventListener("scroll", handleDomEvent, { passive: true });
+      viewportEl.addEventListener("scrollend", handleDomEvent, {
+        passive: true,
+      });
+      unsubs.push(() => {
+        viewportEl.removeEventListener("scroll", handleDomEvent);
+        viewportEl.removeEventListener("scrollend", handleDomEvent);
+      });
+
+      if (typeof ResizeObserver !== "undefined") {
+        const ro = new ResizeObserver(handleDomEvent);
+        ro.observe(viewportEl);
+        unsubs.push(() => ro.disconnect());
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("scroll", handleDomEvent, {
+        passive: true,
+        capture: true,
+      });
+      window.addEventListener("resize", handleDomEvent, { passive: true });
+      unsubs.push(() => {
+        window.removeEventListener("scroll", handleDomEvent, { capture: true });
+        window.removeEventListener("resize", handleDomEvent);
+      });
+    }
+
+    if (scrollScope) {
+      unsubs.push(scrollScope.onPageChange(handleDomEvent));
+      unsubs.push(scrollScope.onScroll(handleDomEvent));
+    }
+
+    if (scrollProvides?.onLayoutReady) {
+      unsubs.push(
+        scrollProvides.onLayoutReady((event) => {
+          if (event.documentId === documentId) {
+            scheduleSync();
+          }
+        }),
+      );
+    }
+
+    const immediateTimer = window.setTimeout(syncPageNow, 0);
+    const settleTimer1 = window.setTimeout(syncPageNow, 150);
+    const settleTimer2 = window.setTimeout(syncPageNow, 450);
+
+    return () => {
+      window.clearTimeout(immediateTimer);
+      window.clearTimeout(settleTimer1);
+      window.clearTimeout(settleTimer2);
+      if (rafIdRef.current !== null) {
+        window.cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      for (const unsub of unsubs) {
+        unsub();
+      }
+    };
+  }, [
+    documentId,
+    viewportElementRef,
+    scrollScope,
+    scrollProvides,
+    scheduleSync,
+    syncPageNow,
   ]);
 
   return null;
@@ -1192,11 +1443,9 @@ export default function DocumentPdfViewer({
   return (
     <div
       className={`flex w-full flex-col overflow-hidden bg-neutral-100 dark:bg-[#0B0D12] transition-all duration-300 ease-in-out ${
-        compactReaderMode
-          ? "h-full flex-1 rounded-none border-none"
-          : effectiveFullscreen
-            ? "h-full flex-1 rounded-none border-none"
-            : "h-[calc(100vh-185px)] min-h-[580px] flex-1 rounded-[24px] border border-black/[0.06] dark:border-white/[0.08]"
+        compactReaderMode || effectiveFullscreen
+          ? "h-full min-h-0 flex-1 rounded-none border-none"
+          : "h-[max(580px,calc(100vh-185px))] flex-none rounded-[24px] border border-black/[0.06] dark:border-white/[0.08]"
       } ${className}`}
     >
       {/* Thanh Header phụ trợ khi đang tải hoặc gặp lỗi (trước khi PdfToolbar được mount) */}
@@ -1315,12 +1564,6 @@ export default function DocumentPdfViewer({
                           documentId={activeDocumentId}
                           backendDocumentId={document.id}
                         />
-                        <PdfWorkspaceContextBridge
-                          documentId={activeDocumentId}
-                          backendDocumentId={document.id}
-                          fileName={document.file_name}
-                          compactReaderMode={compactReaderMode}
-                        />
 
                         {/* Thanh công cụ hợp nhất duy nhất ở trên cùng */}
                         <PdfToolbar
@@ -1350,7 +1593,7 @@ export default function DocumentPdfViewer({
                               onClose={() => setIsTocOpen(false)}
                             />
                           )}
-                          <div className="relative flex-1 min-w-0 min-h-0 overflow-hidden">
+                          <div className="relative h-full flex-1 min-w-0 min-h-0 overflow-hidden">
                           <Viewport
                             documentId={activeDocumentId}
                             style={{
@@ -1359,6 +1602,13 @@ export default function DocumentPdfViewer({
                               backgroundColor: "transparent",
                             }}
                           >
+                            <PdfWorkspaceContextBridge
+                              documentId={activeDocumentId}
+                              backendDocumentId={document.id}
+                              fileName={document.file_name}
+                              initialPageCount={document.page_count}
+                              compactReaderMode={compactReaderMode}
+                            />
                             <ZoomGestureWrapper documentId={activeDocumentId}>
                               <Scroller
                                 documentId={activeDocumentId}
@@ -1368,6 +1618,7 @@ export default function DocumentPdfViewer({
                                     pageIndex={pageIndex}
                                   >
                                     <div
+                                      data-pdf-page-index={pageIndex}
                                       style={{
                                         width,
                                         height,

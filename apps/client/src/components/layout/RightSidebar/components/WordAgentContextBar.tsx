@@ -3,6 +3,7 @@
 import React from "react";
 import { FileEdit, FileText, GitPullRequest, Sparkles, X } from "lucide-react";
 import type { WordAgentChangeMode } from "@/contexts/WordAgentContext";
+import { useWorkspaceContextBadge } from "@/contexts/WorkspaceContextProvider";
 import type { DocumentItem } from "@/types/document";
 
 interface WordAgentContextBarProps {
@@ -20,6 +21,7 @@ export function WordAgentContextBar({
   selectedText,
   onClearSelection,
 }: WordAgentContextBarProps) {
+  const badge = useWorkspaceContextBadge();
   const clippedSelection = selectedText?.trim() ?? "";
 
   return (
@@ -39,6 +41,11 @@ export function WordAgentContextBar({
           >
             {document.file_name}
           </span>
+          {badge?.isWordActive && badge.pageLabel && (
+            <span className="shrink-0 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-700 dark:text-indigo-300">
+              {badge.pageLabel}
+            </span>
+          )}
         </div>
 
         <div

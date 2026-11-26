@@ -443,7 +443,7 @@ export default function DocumentsTab({
           onClose={handleCloseViewer}
           onDocumentUpdated={onDocumentUpdated}
           onCreateTargetedQuiz={onCreateTargetedQuiz}
-          className={className}
+          className="w-full"
         />
       );
     }
@@ -462,7 +462,7 @@ export default function DocumentsTab({
           onCreateTargetedQuiz={onCreateTargetedQuiz}
           citationTarget={pendingCitationTarget}
           onCitationDismiss={() => setPendingCitationTarget(null)}
-          className={className}
+          className="w-full"
         />
       );
     }

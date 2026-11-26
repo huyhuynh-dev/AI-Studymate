@@ -46,6 +46,11 @@ import type {
 } from "../editor/text-anchor-resolver";
 import TocMasterySidebar from "../TocMasterySidebar";
 import { useWordAgent } from "@/contexts/WordAgentContext";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
+import {
+  resolveVisiblePageFromOffsets,
+  resolveVisiblePageFromRects,
+} from "../shared/page-viewport-tracker.helper";
 import { WordDocumentToolbar } from "./toolbar/WordDocumentToolbar";
 import { WordAiReviewBanner } from "./review/WordAiReviewBanner";
 import { WordSelectionAiPill } from "./review/WordSelectionAiPill";
@@ -211,6 +216,286 @@ function WordRulerPositioner({
   return null;
 }
 
+/** Theo dõi trang đang xem trong SuperDoc v2 và đồng bộ sang Context Engine Store. */
+function WordWorkspaceContextBridge({
+  documentId,
+  fileName,
+  stageRef,
+  superdocInstanceRef,
+  isEditorReady,
+  totalPages,
+  initialPageCount,
+  compactReaderMode,
+}: {
+  documentId: string;
+  fileName: string;
+  stageRef: React.RefObject<HTMLDivElement | null>;
+  superdocInstanceRef: React.RefObject<SuperDoc | null>;
+  isEditorReady: boolean;
+  totalPages?: number;
+  initialPageCount?: number | null;
+  compactReaderMode?: boolean;
+}) {
+  const ui = useSuperDocUI();
+  const workspaceStore = useWorkspaceContextStore();
+  const lastReportedRef = useRef<{
+    docId: string;
+    page: number;
+    total?: number;
+  } | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const latestDepsRef = useRef({
+    documentId,
+    fileName,
+    isEditorReady,
+    totalPages,
+    initialPageCount,
+    compactReaderMode,
+    workspaceStore,
+  });
+
+  useEffect(() => {
+    latestDepsRef.current = {
+      documentId,
+      fileName,
+      isEditorReady,
+      totalPages,
+      initialPageCount,
+      compactReaderMode,
+      workspaceStore,
+    };
+  });
+
+  useEffect(() => {
+    lastReportedRef.current = null;
+  }, [documentId]);
+
+  const syncPageNow = useCallback(() => {
+    const {
+      documentId: curDocId,
+      fileName: curFileName,
+      isEditorReady: curReady,
+      totalPages: curTotalPagesProp,
+      initialPageCount: curInitialPageCount,
+      compactReaderMode: isCompact,
+      workspaceStore: curStore,
+    } = latestDepsRef.current;
+
+    if (!curStore) return;
+
+    const toPositiveInt = (val: unknown): number | undefined => {
+      if (typeof val !== "number" || !Number.isFinite(val) || val < 1) {
+        return undefined;
+      }
+      return Math.trunc(val);
+    };
+
+    const stageEl = stageRef.current;
+    const snapshot =
+      superdocInstanceRef.current?.activeEditor?.pageMetrics?.getSnapshot?.() ??
+      null;
+
+    const pageNodes = stageEl
+      ? Array.from(
+          stageEl.querySelectorAll<HTMLElement>(
+            ".superdoc-page[data-page-index], [data-page-index]",
+          ),
+        )
+      : [];
+
+    let maxMountedPageIndex = -1;
+    const domPageRects: Array<{
+      pageNumber: number;
+      top: number;
+      bottom: number;
+    }> = [];
+    const seenPageNumbers = new Set<number>();
+
+    for (const node of pageNodes) {
+      const rawIdx = node.dataset.pageIndex;
+      const idx = rawIdx !== undefined ? Number.parseInt(rawIdx, 10) : Number.NaN;
+      if (!Number.isFinite(idx) || idx < 0) continue;
+      if (idx > maxMountedPageIndex) {
+        maxMountedPageIndex = idx;
+      }
+      const pageNumber = idx + 1;
+      if (seenPageNumbers.has(pageNumber)) continue;
+      const rect = node.getBoundingClientRect();
+      if (rect.height <= 0) continue;
+      seenPageNumbers.add(pageNumber);
+      domPageRects.push({
+        pageNumber,
+        top: rect.top,
+        bottom: rect.bottom,
+      });
+    }
+
+    const metricsPagesCount =
+      snapshot && Array.isArray(snapshot.pages) && snapshot.pages.length > 0
+        ? snapshot.pages.length
+        : undefined;
+    const resolvedTotalPages =
+      metricsPagesCount ??
+      toPositiveInt(curTotalPagesProp) ??
+      (maxMountedPageIndex >= 0 ? maxMountedPageIndex + 1 : undefined) ??
+      toPositiveInt(curInitialPageCount);
+
+    let resolvedCurrentPage: number | null = null;
+
+    if (stageEl && domPageRects.length > 0) {
+      const stageRect = stageEl.getBoundingClientRect();
+      resolvedCurrentPage = resolveVisiblePageFromRects(
+        { top: stageRect.top, bottom: stageRect.bottom },
+        domPageRects,
+        typeof window !== "undefined" ? window.innerHeight : undefined,
+      );
+    }
+
+    if (
+      resolvedCurrentPage === null &&
+      stageEl &&
+      snapshot &&
+      Array.isArray(snapshot.pages) &&
+      snapshot.pages.length > 0
+    ) {
+      const offsetPages = snapshot.pages
+        .map((page) => ({
+          pageNumber: page.pageIndex + 1,
+          top: page.viewport.yPx,
+          height: page.viewport.heightPx,
+        }))
+        .filter((p) => p.pageNumber >= 1 && p.height > 0);
+      resolvedCurrentPage = resolveVisiblePageFromOffsets(
+        stageEl.scrollTop,
+        stageEl.clientHeight,
+        offsetPages,
+      );
+    }
+
+    if (resolvedCurrentPage === null && curReady) {
+      resolvedCurrentPage = 1;
+    }
+
+    if (resolvedCurrentPage === null || resolvedCurrentPage < 1) {
+      return;
+    }
+
+    const clampedPage = resolvedTotalPages
+      ? Math.min(Math.max(1, Math.trunc(resolvedCurrentPage)), resolvedTotalPages)
+      : Math.trunc(resolvedCurrentPage);
+
+    const prev = lastReportedRef.current;
+    if (
+      prev &&
+      prev.docId === curDocId &&
+      prev.page === clampedPage &&
+      prev.total === resolvedTotalPages
+    ) {
+      return;
+    }
+
+    lastReportedRef.current = {
+      docId: curDocId,
+      page: clampedPage,
+      total: resolvedTotalPages,
+    };
+
+    if (isCompact) {
+      curStore.patchSidePanelPage(curDocId, clampedPage);
+    } else {
+      curStore.patchDocumentsViewingDoc({
+        documentId: curDocId,
+        fileName: curFileName,
+        viewerKind: "word",
+        currentPage: clampedPage,
+        totalPages: resolvedTotalPages,
+      });
+    }
+  }, [stageRef, superdocInstanceRef]);
+
+  const scheduleSync = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (rafIdRef.current !== null) return;
+    rafIdRef.current = window.requestAnimationFrame(() => {
+      rafIdRef.current = null;
+      syncPageNow();
+    });
+  }, [syncPageNow]);
+
+  useEffect(() => {
+    scheduleSync();
+  }, [scheduleSync, isEditorReady, totalPages]);
+
+  useEffect(() => {
+    const stageEl = stageRef.current;
+    const unsubs: Array<() => void> = [];
+    const handleEvent = () => scheduleSync();
+
+    if (stageEl) {
+      stageEl.addEventListener("scroll", handleEvent, { passive: true });
+      stageEl.addEventListener("scrollend", handleEvent, { passive: true });
+      unsubs.push(() => {
+        stageEl.removeEventListener("scroll", handleEvent);
+        stageEl.removeEventListener("scrollend", handleEvent);
+      });
+
+      if (typeof ResizeObserver !== "undefined") {
+        const ro = new ResizeObserver(handleEvent);
+        ro.observe(stageEl);
+        unsubs.push(() => ro.disconnect());
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("scroll", handleEvent, {
+        passive: true,
+        capture: true,
+      });
+      window.addEventListener("resize", handleEvent, { passive: true });
+      unsubs.push(() => {
+        window.removeEventListener("scroll", handleEvent, { capture: true });
+        window.removeEventListener("resize", handleEvent);
+      });
+    }
+
+    if (ui?.viewport?.observe) {
+      unsubs.push(ui.viewport.observe(handleEvent));
+    }
+
+    const pageMetrics = superdocInstanceRef.current?.activeEditor?.pageMetrics;
+    if (isEditorReady && pageMetrics?.subscribe) {
+      unsubs.push(pageMetrics.subscribe(() => scheduleSync()));
+    }
+
+    const immediateTimer = window.setTimeout(syncPageNow, 0);
+    const settleTimer1 = window.setTimeout(syncPageNow, 150);
+    const settleTimer2 = window.setTimeout(syncPageNow, 450);
+
+    return () => {
+      window.clearTimeout(immediateTimer);
+      window.clearTimeout(settleTimer1);
+      window.clearTimeout(settleTimer2);
+      if (rafIdRef.current !== null) {
+        window.cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      for (const unsub of unsubs) {
+        unsub();
+      }
+    };
+  }, [
+    documentId,
+    isEditorReady,
+    stageRef,
+    superdocInstanceRef,
+    ui,
+    scheduleSync,
+    syncPageNow,
+  ]);
+
+  return null;
+}
+
 export default function DocumentWordEditor(props: DocumentWordEditorProps) {
   return (
     <SuperDocUIProvider key={props.document.id}>
@@ -286,6 +571,11 @@ function DocumentWordWorkspace({
   const [isExporting, setIsExporting] = useState(false);
   const [showTocSidebar, setShowTocSidebar] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [wordTotalPages, setWordTotalPages] = useState<number | undefined>(() =>
+    typeof document.page_count === "number" && document.page_count > 0
+      ? document.page_count
+      : undefined,
+  );
   const [resolvedCitationTier, setResolvedCitationTier] =
     useState<CitationResolutionTier>(2);
 
@@ -544,9 +834,28 @@ function DocumentWordWorkspace({
           setCollabConnectionState("disconnected");
         }
       },
+      onPaginationUpdate: ({ totalPages }) => {
+        if (!disposed && typeof totalPages === "number" && totalPages > 0) {
+          setWordTotalPages(totalPages);
+        }
+      },
+      onPageCountKnown: ({ pageCount }) => {
+        if (!disposed && typeof pageCount === "number" && pageCount > 0) {
+          setWordTotalPages(pageCount);
+        }
+      },
       onReady: ({ superdoc: readySuperDoc }) => {
         if (disposed) return;
         superdocInstanceRef.current = readySuperDoc;
+        const initialMetricsPages =
+          readySuperDoc.activeEditor?.pageMetrics?.getSnapshot?.()?.pages
+            ?.length;
+        if (
+          typeof initialMetricsPages === "number" &&
+          initialMetricsPages > 0
+        ) {
+          setWordTotalPages(initialMetricsPages);
+        }
         hasUnstagedUserEditsRef.current = false;
         void streamManagerRef.current?.dispose();
         const docApi = readySuperDoc.activeEditor?.doc;
@@ -1026,7 +1335,7 @@ function DocumentWordWorkspace({
   const containerClass =
     compactReaderMode || isFullscreen
       ? `flex h-full min-h-0 flex-1 flex-col bg-neutral-100/75 dark:bg-[#0F1218] ${className}`
-      : `flex h-[calc(100vh-140px)] min-h-[580px] w-full flex-col overflow-hidden rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/75 dark:bg-[#0F1218] shadow-sm ${className}`;
+      : `flex h-[max(580px,calc(100vh-140px))] w-full flex-none flex-col overflow-hidden rounded-[24px] border border-black/[0.06] dark:border-white/[0.08] bg-neutral-100/75 dark:bg-[#0F1218] shadow-sm ${className}`;
 
   const showEditorSurface =
     !isLoadingBlob && !loadError && !fatalEditorError && Boolean(documentBlob);
@@ -1507,6 +1816,16 @@ function DocumentWordWorkspace({
             {!compactReaderMode && (
               <WordRulerPositioner rulerRef={rulerRef} stageRef={stageRef} />
             )}
+            <WordWorkspaceContextBridge
+              documentId={document.id}
+              fileName={document.file_name}
+              stageRef={stageRef}
+              superdocInstanceRef={superdocInstanceRef}
+              isEditorReady={isEditorReady}
+              totalPages={wordTotalPages}
+              initialPageCount={document.page_count}
+              compactReaderMode={compactReaderMode}
+            />
 
             <div ref={editorOverlayRef} className="relative w-full min-h-full">
               <div

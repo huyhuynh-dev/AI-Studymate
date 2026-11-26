@@ -3,6 +3,7 @@ import {
   WorkspaceContextHydratorService,
   extractBlockNoteHeadings,
 } from './workspace-context-hydrator.service.js';
+import { renderEphemeralUiContextBlock } from '../ai/prompts/templates/workspace-context.formatter.js';
 import type { AvailableDocumentItem } from '../documents/services/retrieval.service.js';
 
 describe('WorkspaceContextHydratorService', () => {
@@ -378,5 +379,83 @@ describe('WorkspaceContextHydratorService', () => {
     expect(res?.location.conversationId).toBe('conv-1');
     expect(res?.analyticsView?.windowDays).toBe(30);
     expect(res?.inventory.notesCount).toBe(0);
+  });
+
+  it('preserves Word currentPage/totalPages and omits Page info for PlainText documents', async () => {
+    const wordDocId = '22222222-2222-4222-8222-222222222222';
+    const textDocId = '33333333-3333-4333-8333-333333333333';
+    const multiDocs: AvailableDocumentItem[] = [
+      ...docs,
+      {
+        documentId: wordDocId,
+        fileName: 'DeCuong.docx',
+        uploadedAt: new Date('2026-11-21T00:00:00Z'),
+        pageCount: null,
+        toc: [],
+      },
+      {
+        documentId: textDocId,
+        fileName: 'notes.md',
+        uploadedAt: new Date('2026-11-22T00:00:00Z'),
+        pageCount: null,
+        toc: [],
+      },
+    ];
+
+    const wordRes = await service.hydrate({
+      userId: 'user-1',
+      conversationId: 'conv-1',
+      availableDocuments: multiDocs,
+      uiContext: {
+        schemaVersion: 1,
+        location: { pageType: 'conversation', activeTab: 'documents' },
+        documents: {
+          viewMode: 'viewer',
+          filterType: 'all',
+          totalCount: 3,
+          visibleCount: 3,
+          viewingDocument: {
+            documentId: wordDocId,
+            fileName: 'DeCuong.docx',
+            viewerKind: 'word',
+            currentPage: 3,
+            totalPages: 7,
+          },
+        },
+      },
+    });
+
+    expect(wordRes?.documentsView?.viewingDocument?.currentPage).toBe(3);
+    expect(wordRes?.documentsView?.viewingDocument?.totalPages).toBe(7);
+    const wordRendered = renderEphemeralUiContextBlock(wordRes!);
+    expect(wordRendered).toContain('Viewing WORD "DeCuong.docx"');
+    expect(wordRendered).toContain('| Page 3 of 7');
+
+    const textRes = await service.hydrate({
+      userId: 'user-1',
+      conversationId: 'conv-1',
+      availableDocuments: multiDocs,
+      uiContext: {
+        schemaVersion: 1,
+        location: { pageType: 'conversation', activeTab: 'documents' },
+        documents: {
+          viewMode: 'viewer',
+          filterType: 'all',
+          totalCount: 3,
+          visibleCount: 3,
+          viewingDocument: {
+            documentId: textDocId,
+            fileName: 'notes.md',
+            viewerKind: 'text',
+          },
+        },
+      },
+    });
+
+    expect(textRes?.documentsView?.viewingDocument?.currentPage).toBeUndefined();
+    expect(textRes?.documentsView?.viewingDocument?.totalPages).toBeUndefined();
+    const textRendered = renderEphemeralUiContextBlock(textRes!);
+    expect(textRendered).toContain('Viewing TEXT "notes.md"');
+    expect(textRendered).not.toMatch(/\| Page \d/);
   });
 });
