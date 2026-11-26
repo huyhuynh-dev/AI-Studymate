@@ -12,6 +12,7 @@ import { MailModule } from '../mail/mail.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { RedisModule } from '../redis/redis.module.js';
 import { AuthSessionService } from './auth-session.service.js';
+import { resolveJwtClaimsConfig } from './utils/jwt-config.util.js';
 import { parseExpiresInSeconds } from './utils/token-duration.util.js';
 
 @Module({
@@ -25,15 +26,21 @@ import { parseExpiresInSeconds } from './utils/token-duration.util.js';
       global: true,
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService): JwtModuleOptions => ({
-        secret: configService.getOrThrow<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: parseExpiresInSeconds(
-            configService.get<string>('JWT_EXPIRES_IN'),
-            3600,
-          ),
-        },
-      }),
+      useFactory: (configService: ConfigService): JwtModuleOptions => {
+        const claims = resolveJwtClaimsConfig(configService);
+        return {
+          secret: configService.getOrThrow<string>('JWT_SECRET'),
+          signOptions: {
+            expiresIn: parseExpiresInSeconds(
+              configService.get<string>('JWT_EXPIRES_IN'),
+              3600,
+            ),
+            issuer: claims.issuer,
+            audience: claims.accessAudience,
+            algorithm: claims.algorithm,
+          },
+        };
+      },
     }),
   ],
   providers: [

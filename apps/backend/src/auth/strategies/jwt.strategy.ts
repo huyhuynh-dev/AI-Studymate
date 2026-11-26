@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AuthSessionService } from '../auth-session.service.js';
+import { resolveJwtClaimsConfig } from '../utils/jwt-config.util.js';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -10,10 +11,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly configService: ConfigService,
     private readonly authSessionService: AuthSessionService,
   ) {
+    const claims = resolveJwtClaimsConfig(configService);
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
+      issuer: claims.issuer,
+      audience: claims.accessAudience,
+      algorithms: [claims.algorithm],
     });
   }
 

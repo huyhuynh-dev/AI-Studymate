@@ -145,8 +145,15 @@ describe('AuthService', () => {
         email: 'student@studymate.vn',
         ver: 2,
         sid: expect.any(String),
+        jti: expect.any(String),
       }),
-      { secret: 'test-access-secret', expiresIn: 3600 },
+      {
+        secret: 'test-access-secret',
+        expiresIn: 3600,
+        issuer: 'ai-studymate-api',
+        audience: 'ai-studymate-access',
+        algorithm: 'HS256',
+      },
     );
     expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
       2,
@@ -157,7 +164,13 @@ describe('AuthService', () => {
         sid: expect.any(String),
         jti: expect.any(String),
       }),
-      { secret: 'test-refresh-secret', expiresIn: 604800 },
+      {
+        secret: 'test-refresh-secret',
+        expiresIn: 604800,
+        issuer: 'ai-studymate-api',
+        audience: 'ai-studymate-refresh',
+        algorithm: 'HS256',
+      },
     );
     expect(authSessionServiceMock.createSession).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -190,7 +203,10 @@ describe('AuthService', () => {
     expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ rem: true }),
-      { secret: 'test-refresh-secret', expiresIn: 2592000 },
+      expect.objectContaining({
+        secret: 'test-refresh-secret',
+        expiresIn: 2592000,
+      }),
     );
   });
 
@@ -291,7 +307,10 @@ describe('AuthService', () => {
     expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ rem: false }),
-      { secret: 'test-refresh-secret', expiresIn: 604800 },
+      expect.objectContaining({
+        secret: 'test-refresh-secret',
+        expiresIn: 604800,
+      }),
     );
   });
 
@@ -327,7 +346,10 @@ describe('AuthService', () => {
     expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ sid: 'sid-123', rem: true }),
-      { secret: 'test-refresh-secret', expiresIn: 2592000 },
+      expect.objectContaining({
+        secret: 'test-refresh-secret',
+        expiresIn: 2592000,
+      }),
     );
   });
 
@@ -371,7 +393,10 @@ describe('AuthService', () => {
         email: 'google@studymate.vn',
         rem: true,
       }),
-      { secret: 'test-refresh-secret', expiresIn: 2592000 },
+      expect.objectContaining({
+        secret: 'test-refresh-secret',
+        expiresIn: 2592000,
+      }),
     );
     expect(authSessionServiceMock.createSession).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user-google-1', rememberMe: true }),

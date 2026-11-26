@@ -21,6 +21,10 @@ import AuthSwitchLink from '@/components/auth/AuthSwitchLink';
 import AuthCheckbox from '@/components/auth/AuthCheckbox';
 import PasswordStrength from '@/components/auth/PasswordStrength';
 import { handleGoogleLogin, handleRegister } from '@/services/auth.api';
+import {
+  evaluatePasswordStrength,
+  validatePasswordPolicy,
+} from '@/lib/password-policy';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -39,28 +43,7 @@ export default function RegisterPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Dynamic Password Strength Calculation
-  const getPasswordStrength = (): {
-    text: string;
-    level: 'empty' | 'weak' | 'medium' | 'strong';
-  } => {
-    if (!password) return { text: 'Chưa nhập', level: 'empty' };
-    if (password.length < 8)
-      return { text: 'Yếu (tối thiểu 8 ký tự)', level: 'weak' };
-    if (password.length > 64)
-      return { text: 'Lỗi (tối đa 64 ký tự)', level: 'weak' };
-
-    let score = 0;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-    if (/\d/.test(password)) score++;
-    if (/[@$!%*?&]/.test(password)) score++;
-
-    if (score === 3)
-      return { text: 'Mạnh', level: 'strong' };
-    if (score >= 1) return { text: 'Trung bình', level: 'medium' };
-    return { text: 'Yếu', level: 'weak' };
-  };
-
-  const passwordStrength = getPasswordStrength();
+  const passwordStrength = evaluatePasswordStrength(password);
 
   // Handle Google OAuth Click
   const onGoogleClick = async () => {
@@ -98,20 +81,12 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!password) {
-      setErrorMessage('Vui lòng nhập mật khẩu.');
-      return;
-    }
-
-    if (password.length < 8 || password.length > 64) {
-      setErrorMessage('Mật khẩu phải từ 8 đến 64 ký tự.');
-      return;
-    }
-
-    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(password)) {
-      setErrorMessage(
-        'Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&).'
-      );
+    const passwordError = validatePasswordPolicy(password, {
+      email: trimmedEmail,
+      name: trimmedName,
+    });
+    if (passwordError) {
+      setErrorMessage(passwordError);
       return;
     }
 

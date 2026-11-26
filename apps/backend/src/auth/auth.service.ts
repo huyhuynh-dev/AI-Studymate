@@ -22,7 +22,9 @@ import { createHash, randomBytes, randomInt, randomUUID } from 'crypto';
 import { RedisService } from '../redis/redis.service.js';
 import { MailService } from '../mail/mail.service.js';
 import { AuthSessionService } from './auth-session.service.js';
+import { resolveJwtClaimsConfig } from './utils/jwt-config.util.js';
 import { parseExpiresInSeconds } from './utils/token-duration.util.js';
+import { assertPasswordNotContainingUserInfo } from './validators/password-policy.js';
 
 const GOOGLE_AUTH_CODE_TTL_SECONDS = 60;
 const LOGIN_MAX_FAILED_ATTEMPTS = 5;
@@ -92,11 +94,14 @@ export class AuthService {
             ? rememberRefreshSeconds
             : baseRefreshSeconds;
 
+        const claims = resolveJwtClaimsConfig(this.configService);
+
         const accessPayload = {
             sub: userId,
             email,
             sid: sessionId,
             ver: tokenVersion,
+            jti: randomUUID(),
         };
         const refreshPayload = {
             sub: userId,
@@ -110,10 +115,16 @@ export class AuthService {
             this.jwtService.signAsync(accessPayload, {
                 secret: this.configService.getOrThrow<string>('JWT_SECRET'),
                 expiresIn: accessExpiresInSeconds,
+                issuer: claims.issuer,
+                audience: claims.accessAudience,
+                algorithm: claims.algorithm,
             }),
             this.jwtService.signAsync(refreshPayload, {
                 secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
                 expiresIn: refreshExpiresInSeconds,
+                issuer: claims.issuer,
+                audience: claims.refreshAudience,
+                algorithm: claims.algorithm,
             }),
         ]);
 
@@ -154,6 +165,8 @@ export class AuthService {
 
     async signUpWithEmailAndPassword(registerDto: RegisterDto): Promise<{ message: string }> {
         const { name, email, password } = registerDto;
+
+        assertPasswordNotContainingUserInfo(password, { email, name });
 
         const isUserExist: User | null = await this.usersService.findUserByEmail(email);
 
@@ -494,16 +507,34 @@ export class AuthService {
     }): Promise<{ message: string; revoked: boolean }> {
         let resolvedUserId: string | undefined;
         let resolvedSessionId: string | undefined;
+        const claims = resolveJwtClaimsConfig(this.configService);
 
         if (params.accessToken) {
             try {
-                const payload = await this.jwtService.verifyAsync<{
-                    sub?: string;
-                    sid?: string;
-                }>(params.accessToken, {
-                    secret: this.configService.getOrThrow<string>('JWT_SECRET'),
-                    ignoreExpiration: true,
-                });
+                const accessSecret =
+                    this.configService.getOrThrow<string>('JWT_SECRET');
+                let payload: { sub?: string; sid?: string };
+                try {
+                    payload = await this.jwtService.verifyAsync<{
+                        sub?: string;
+                        sid?: string;
+                    }>(params.accessToken, {
+                        secret: accessSecret,
+                        issuer: claims.issuer,
+                        audience: claims.accessAudience,
+                        algorithms: [claims.algorithm],
+                        ignoreExpiration: true,
+                    });
+                } catch {
+                    payload = await this.jwtService.verifyAsync<{
+                        sub?: string;
+                        sid?: string;
+                    }>(params.accessToken, {
+                        secret: accessSecret,
+                        algorithms: [claims.algorithm],
+                        ignoreExpiration: true,
+                    });
+                }
                 if (payload?.sub) {
                     resolvedUserId = payload.sub;
                 }
@@ -517,13 +548,30 @@ export class AuthService {
 
         if ((!resolvedSessionId || !resolvedUserId) && params.refreshToken) {
             try {
-                const payload = await this.jwtService.verifyAsync<{
-                    sub?: string;
-                    sid?: string;
-                }>(params.refreshToken, {
-                    secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-                    ignoreExpiration: true,
-                });
+                const refreshSecret =
+                    this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
+                let payload: { sub?: string; sid?: string };
+                try {
+                    payload = await this.jwtService.verifyAsync<{
+                        sub?: string;
+                        sid?: string;
+                    }>(params.refreshToken, {
+                        secret: refreshSecret,
+                        issuer: claims.issuer,
+                        audience: claims.refreshAudience,
+                        algorithms: [claims.algorithm],
+                        ignoreExpiration: true,
+                    });
+                } catch {
+                    payload = await this.jwtService.verifyAsync<{
+                        sub?: string;
+                        sid?: string;
+                    }>(params.refreshToken, {
+                        secret: refreshSecret,
+                        algorithms: [claims.algorithm],
+                        ignoreExpiration: true,
+                    });
+                }
                 if (payload?.sub && !resolvedUserId) {
                     resolvedUserId = payload.sub;
                 }
@@ -767,6 +815,11 @@ export class AuthService {
                 await this.redisService.del(resetTokenKey);
                 throw new NotFoundException('Người dùng không tồn tại trong hệ thống.');
             }
+
+            assertPasswordNotContainingUserInfo(newPassword, {
+                email: user.email,
+                name: user.name,
+            });
 
             // 3. Hash mật khẩu mới, cập nhật Database và thu hồi phiên đăng nhập theo chính sách logoutAll
             const password_hash = await this.hashPassword(newPassword);

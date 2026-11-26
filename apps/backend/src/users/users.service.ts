@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import bcrypt from 'bcrypt';
 import { AuthSessionService } from '../auth/auth-session.service.js';
+import { assertPasswordNotContainingUserInfo } from '../auth/validators/password-policy.js';
 import {
   UsersRepoService,
   type UserProfileRecord,
@@ -280,6 +281,11 @@ export class UsersService {
         );
       }
     }
+
+    assertPasswordNotContainingUserInfo(dto.newPassword, {
+      email: user.email,
+      name: user.name,
+    });
 
     const hashedNewPassword = await bcrypt.hash(dto.newPassword, 10);
     await this.usersRepo.updateUser(userId, {

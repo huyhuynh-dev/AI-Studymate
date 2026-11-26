@@ -1,4 +1,5 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsStrongAppPassword } from '../validators/password-policy.js';
 
 export class ResetPasswordDto {
     @IsNotEmpty({ message: 'Reset token không được để trống' })
@@ -7,7 +8,7 @@ export class ResetPasswordDto {
 
     @IsNotEmpty({ message: 'Mật khẩu mới không được để trống' })
     @IsString({ message: 'Mật khẩu mới phải là chuỗi' })
-    @MinLength(8, { message: 'Mật khẩu mới phải có ít nhất 8 ký tự' })
+    @IsStrongAppPassword()
     readonly new_password: string;
 
     @IsOptional()

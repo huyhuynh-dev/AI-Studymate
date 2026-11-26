@@ -28,6 +28,13 @@ import {
   handleVerifyOtp,
   handleResetPassword,
 } from '@/services/auth.api';
+import {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  PASSPHRASE_LENGTH_THRESHOLD,
+  evaluatePasswordStrength,
+  validatePasswordPolicy,
+} from '@/lib/password-policy';
 
 // ─────────────────────────────────────────────
 // Apple Step Indicator
@@ -336,6 +343,7 @@ function StepOtp({
 // Step 3 — New password
 // ─────────────────────────────────────────────
 function StepNewPassword({
+  email,
   password,
   setPassword,
   confirmPassword,
@@ -347,6 +355,7 @@ function StepNewPassword({
   errorMessage,
   successMessage,
 }: {
+  email: string;
   password: string;
   setPassword: (v: string) => void;
   confirmPassword: string;
@@ -358,43 +367,29 @@ function StepNewPassword({
   errorMessage?: string | null;
   successMessage?: string | null;
 }) {
-  // Password strength calculation
-  const getPasswordStrength = (): {
-    text: string;
-    level: 'empty' | 'weak' | 'medium' | 'strong';
-  } => {
-    if (!password) return { text: 'Chưa nhập', level: 'empty' };
-    if (password.length < 8)
-      return { text: 'Yếu (tối thiểu 8 ký tự)', level: 'weak' };
-    if (password.length > 64)
-      return { text: 'Lỗi (tối đa 64 ký tự)', level: 'weak' };
-
-    let score = 0;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-    if (/\d/.test(password)) score++;
-    if (/[@$!%*?&]/.test(password)) score++;
-
-    if (score === 3)
-      return { text: 'Mạnh', level: 'strong' };
-    if (score >= 1) return { text: 'Trung bình', level: 'medium' };
-    return { text: 'Yếu', level: 'weak' };
-  };
-
-  const passwordStrength = getPasswordStrength();
+  const passwordStrength = evaluatePasswordStrength(password);
+  const policyError = validatePasswordPolicy(password, { email });
 
   const passwordChecks = [
     {
-      label: '8 đến 64 ký tự',
-      valid: password.length >= 8 && password.length <= 64,
+      label: `${PASSWORD_MIN_LENGTH} đến ${PASSWORD_MAX_LENGTH} ký tự`,
+      valid:
+        password.length >= PASSWORD_MIN_LENGTH &&
+        password.length <= PASSWORD_MAX_LENGTH,
     },
     {
-      label: 'Chữ hoa & chữ thường',
-      valid: /[a-z]/.test(password) && /[A-Z]/.test(password),
+      label: 'Chữ cái & chữ số (hoặc passphrase 15+ ký tự)',
+      valid:
+        password.length >= PASSPHRASE_LENGTH_THRESHOLD ||
+        (/[A-Za-z]/.test(password) && /\d/.test(password)),
     },
-    { label: 'Ít nhất 1 chữ số', valid: /[0-9]/.test(password) },
     {
-      label: 'Ký tự đặc biệt (@$!%*?&)',
-      valid: /[@$!%*?&]/.test(password),
+      label: 'Không dễ đoán / không trùng email',
+      valid: password.length >= PASSWORD_MIN_LENGTH && !policyError,
+    },
+    {
+      label: 'Ký tự đặc biệt (tùy chọn tăng độ mạnh)',
+      valid: /[^A-Za-z0-9\s]/.test(password),
     },
   ];
 
@@ -569,12 +564,7 @@ function StepNewPassword({
             isLoading={isLoading}
             loadingLabel="Đang cập nhật..."
             onClick={onSubmit}
-            disabled={
-              !passwordsMatch ||
-              password.length < 8 ||
-              password.length > 64 ||
-              !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(password)
-            }
+            disabled={!passwordsMatch || Boolean(policyError)}
           />
         </div>
       </div>
@@ -746,15 +736,9 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (newPassword.length < 8 || newPassword.length > 64) {
-      setErrorMessage('Mật khẩu mới phải từ 8 đến 64 ký tự.');
-      return;
-    }
-
-    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(newPassword)) {
-      setErrorMessage(
-        'Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&).'
-      );
+    const passwordError = validatePasswordPolicy(newPassword, { email });
+    if (passwordError) {
+      setErrorMessage(passwordError);
       return;
     }
 
@@ -839,6 +823,7 @@ export default function ResetPasswordPage() {
 
       {step === 3 && (
         <StepNewPassword
+          email={email}
           password={newPassword}
           setPassword={setNewPassword}
           confirmPassword={confirmPassword}

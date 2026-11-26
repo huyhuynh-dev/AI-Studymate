@@ -10,6 +10,7 @@ import {
   Mail,
   Loader2,
 } from 'lucide-react';
+import { validatePasswordPolicy } from '@/lib/password-policy';
 
 export interface SecuritySectionProps {
   provider?: string | null;
@@ -21,8 +22,6 @@ export interface SecuritySectionProps {
     newPassword: string;
   }) => Promise<void>;
 }
-
-const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{8,128}$/;
 
 export default function SecuritySection({
   provider = 'local',
@@ -50,10 +49,9 @@ export default function SecuritySection({
       return;
     }
 
-    if (!PASSWORD_REGEX.test(newPassword)) {
-      setValidationError(
-        'Mật khẩu mới phải có tối thiểu 8 ký tự, bao gồm cả chữ cái và chữ số.',
-      );
+    const passwordError = validatePasswordPolicy(newPassword, { email });
+    if (passwordError) {
+      setValidationError(passwordError);
       return;
     }
 
