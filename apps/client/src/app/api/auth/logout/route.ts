@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import axios from 'axios';
+import {
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+  clearAuthCookies,
+} from '@/lib/auth-cookies';
 
 const BACKEND_URL =
   process.env.BACKEND_URL ||
@@ -8,48 +12,49 @@ const BACKEND_URL =
   'http://localhost:3001';
 
 export async function POST() {
+  let serverRevoked = false;
+
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access_token')?.value;
+    const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
+    const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value;
 
-    if (accessToken) {
-      try {
-        await axios.post(
-          `${BACKEND_URL}/auth/logout`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            timeout: 5000,
-          },
-        );
-      } catch {
-        // Bỏ qua lỗi từ backend (ví dụ token đã hết hạn hoặc tài khoản vừa bị xóa) để luôn xóa sạch cookie
+    if (accessToken || refreshToken) {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
       }
+
+      try {
+        const backendRes = await fetch(`${BACKEND_URL}/auth/logout`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(refreshToken ? { refreshToken } : {}),
+          cache: 'no-store',
+          signal: AbortSignal.timeout(5000),
+        });
+        serverRevoked = backendRes.ok;
+      } catch {
+        // Vẫn xóa sạch cookie trên trình duyệt dù không kết nối được Backend
+        serverRevoked = false;
+      }
+    } else {
+      serverRevoked = true;
     }
   } catch {
-    // Vẫn tiếp tục xóa cookies phía client
+    serverRevoked = false;
   }
 
   const response = NextResponse.json({
     success: true,
-    message: 'Đã đăng xuất tài khoản',
+    serverRevoked,
+    message: serverRevoked
+      ? 'Đã đăng xuất tài khoản'
+      : 'Đã đăng xuất trên thiết bị này (chưa thể xác nhận thu hồi phiên phía máy chủ).',
   });
 
-  response.cookies.set('access_token', '', {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 0,
-  });
-  response.cookies.set('refresh_token', '', {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 0,
-  });
-
+  clearAuthCookies(response);
   return response;
 }

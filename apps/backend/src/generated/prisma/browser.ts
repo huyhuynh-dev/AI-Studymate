@@ -102,3 +102,8 @@ export type Summary = Prisma.SummaryModel
  * 
  */
 export type AiUsageLog = Prisma.AiUsageLogModel
+/**
+ * Model UserSession
+ * 
+ */
+export type UserSession = Prisma.UserSessionModel

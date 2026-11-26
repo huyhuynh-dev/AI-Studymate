@@ -18,9 +18,10 @@ import { JwtService } from '@nestjs/jwt';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { User } from '../generated/prisma/client.js';
-import { createHash, randomBytes, randomInt } from 'crypto';
+import { createHash, randomBytes, randomInt, randomUUID } from 'crypto';
 import { RedisService } from '../redis/redis.service.js';
 import { MailService } from '../mail/mail.service.js';
+import { AuthSessionService } from './auth-session.service.js';
 import { parseExpiresInSeconds } from './utils/token-duration.util.js';
 
 const GOOGLE_AUTH_CODE_TTL_SECONDS = 60;
@@ -35,6 +36,11 @@ export interface TokenPair {
     refresh_token: string;
 }
 
+export interface SessionClientMetadata {
+    userAgent?: string;
+    ipAddress?: string;
+}
+
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
@@ -45,7 +51,8 @@ export class AuthService {
         private readonly jwtService: JwtService,
         private readonly usersService: UsersService,
         private readonly redisService: RedisService,
-        private readonly mailService: MailService
+        private readonly mailService: MailService,
+        private readonly authSessionService: AuthSessionService,
     ) { }
 
     // ─── Token Generation ───────────────────────────────────
@@ -53,9 +60,16 @@ export class AuthService {
     private async generateTokens(
         userId: string,
         email: string,
-        options?: { rememberMe?: boolean },
-    ): Promise<TokenPair> {
+        options?: {
+            rememberMe?: boolean;
+            sessionId?: string;
+            tokenVersion?: number;
+        },
+    ): Promise<TokenPair & { refreshExpiresAt: Date }> {
         const rememberMe = Boolean(options?.rememberMe);
+        const sessionId = options?.sessionId ?? randomUUID();
+        const tokenVersion = options?.tokenVersion ?? 0;
+
         const accessExpiresInSeconds = parseExpiresInSeconds(
             this.configService.get<string>('JWT_EXPIRES_IN'),
             DEFAULT_ACCESS_EXPIRES_IN_SECONDS,
@@ -75,8 +89,19 @@ export class AuthService {
             ? rememberRefreshSeconds
             : baseRefreshSeconds;
 
-        const accessPayload = { sub: userId, email };
-        const refreshPayload = { sub: userId, email, rem: rememberMe };
+        const accessPayload = {
+            sub: userId,
+            email,
+            sid: sessionId,
+            ver: tokenVersion,
+        };
+        const refreshPayload = {
+            sub: userId,
+            email,
+            sid: sessionId,
+            rem: rememberMe,
+            jti: randomUUID(),
+        };
 
         const [access_token, refresh_token] = await Promise.all([
             this.jwtService.signAsync(accessPayload, {
@@ -89,12 +114,37 @@ export class AuthService {
             }),
         ]);
 
-        return { access_token, refresh_token };
+        const refreshExpiresAt = new Date(
+            Date.now() + refreshExpiresInSeconds * 1000,
+        );
+
+        return { access_token, refresh_token, refreshExpiresAt };
     }
 
-    private async updateRefreshTokenHash(userId: string, refreshToken: string): Promise<void> {
-        const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-        await this.usersService.updateUser(userId, { refresh_token: hashedRefreshToken });
+    private async issueNewSessionTokens(
+        user: Pick<User, 'id' | 'email' | 'token_version'>,
+        rememberMe: boolean,
+        metadata?: SessionClientMetadata,
+    ): Promise<TokenPair> {
+        const sessionId = randomUUID();
+        const { access_token, refresh_token, refreshExpiresAt } =
+            await this.generateTokens(user.id, user.email, {
+                rememberMe,
+                sessionId,
+                tokenVersion: user.token_version ?? 0,
+            });
+
+        await this.authSessionService.createSession({
+            sessionId,
+            userId: user.id,
+            refreshToken: refresh_token,
+            rememberMe,
+            expiresAt: refreshExpiresAt,
+            userAgent: metadata?.userAgent,
+            ipAddress: metadata?.ipAddress,
+        });
+
+        return { access_token, refresh_token };
     }
 
     // ─── Email/Password Auth ────────────────────────────────
@@ -141,7 +191,10 @@ export class AuthService {
         return { message: SIGN_UP_RESPONSE_MESSAGE };
     }
 
-    async signInWithEmailAndPassword(loginDto: LoginDto): Promise<TokenPair> {
+    async signInWithEmailAndPassword(
+        loginDto: LoginDto,
+        metadata?: SessionClientMetadata,
+    ): Promise<TokenPair> {
         const { email, password } = loginDto;
 
         const user = await this.usersService.findUserByEmail(email);
@@ -160,25 +213,22 @@ export class AuthService {
             throw new ForbiddenException('Email is not verified');
         }
 
-        const tokens = await this.generateTokens(user.id, user.email, {
-            rememberMe: Boolean(loginDto.rememberMe),
-        });
-        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
-
-        return tokens;
+        return this.issueNewSessionTokens(
+            user,
+            Boolean(loginDto.rememberMe),
+            metadata,
+        );
     }
 
     // ─── Google OAuth ───────────────────────────────────────
 
-    async createUserFromGoogleData(googleData: { email: string; name: string; avatar_url: string; email_verified: boolean }): Promise<TokenPair> {
+    async createUserFromGoogleData(
+        googleData: { email: string; name: string; avatar_url: string; email_verified: boolean },
+        metadata?: SessionClientMetadata,
+    ): Promise<TokenPair> {
         const user = await this.getOrCreateGoogleUser(googleData);
 
-        const tokens = await this.generateTokens(user.id, user.email, {
-            rememberMe: true,
-        });
-        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
-
-        return tokens;
+        return this.issueNewSessionTokens(user, true, metadata);
     }
 
     async createGoogleAuthCode(googleData: { email: string; name: string; avatar_url: string; email_verified?: boolean }): Promise<string> {
@@ -194,7 +244,11 @@ export class AuthService {
         return authCode;
     }
 
-    async exchangeGoogleAuthCode(authCode: string, rememberMe = true): Promise<TokenPair> {
+    async exchangeGoogleAuthCode(
+        authCode: string,
+        rememberMe = true,
+        metadata?: SessionClientMetadata,
+    ): Promise<TokenPair> {
         const userId = await this.redisService.getAndDelete(this.getGoogleAuthCodeKey(authCode));
 
         if (!userId) {
@@ -207,12 +261,7 @@ export class AuthService {
             throw new UnauthorizedException('Invalid or expired auth code');
         }
 
-        const tokens = await this.generateTokens(user.id, user.email, {
-            rememberMe,
-        });
-        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
-
-        return tokens;
+        return this.issueNewSessionTokens(user, rememberMe, metadata);
     }
 
     // SEC-04: Kiểm tra email_verified và xử lý account linking an toàn
@@ -270,23 +319,48 @@ export class AuthService {
         userId: string,
         refreshToken: string,
         rememberMe = false,
+        sessionId?: string,
+        metadata?: SessionClientMetadata,
     ): Promise<TokenPair> {
         const user = await this.usersService.findUserById(userId);
 
-        if (!user || !user.refresh_token) {
+        if (!user) {
+            throw new ForbiddenException('Access denied');
+        }
+
+        if (sessionId) {
+            return this.authSessionService.rotateSession({
+                sessionId,
+                userId: user.id,
+                incomingRefreshToken: refreshToken,
+                generateNextPair: async () => {
+                    const { access_token, refresh_token, refreshExpiresAt } =
+                        await this.generateTokens(user.id, user.email, {
+                            rememberMe,
+                            sessionId,
+                            tokenVersion: user.token_version ?? 0,
+                        });
+                    return {
+                        access_token,
+                        refresh_token,
+                        expiresAt: refreshExpiresAt,
+                    };
+                },
+            });
+        }
+
+        // Tương thích ngược cho token cũ chưa gắn sid: kiểm tra hash legacy rồi nâng cấp lên UserSession
+        if (!user.refresh_token) {
             throw new ForbiddenException('Access denied');
         }
 
         const isRefreshTokenValid = await bcrypt.compare(refreshToken, user.refresh_token);
-
         if (!isRefreshTokenValid) {
             throw new ForbiddenException('Access denied');
         }
 
-        const tokens = await this.generateTokens(user.id, user.email, {
-            rememberMe,
-        });
-        await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
+        const tokens = await this.issueNewSessionTokens(user, rememberMe, metadata);
+        await this.usersService.updateUser(user.id, { refresh_token: null });
 
         return tokens;
     }
@@ -294,7 +368,77 @@ export class AuthService {
     // ─── Logout ─────────────────────────────────────────────
 
     async logout(userId: string): Promise<void> {
-        await this.usersService.updateUser(userId, { refresh_token: null });
+        await this.authSessionService.revokeAllUserSessions(userId, 'user_logout');
+    }
+
+    async logoutByTokens(params: {
+        accessToken?: string;
+        refreshToken?: string;
+    }): Promise<{ message: string; revoked: boolean }> {
+        let resolvedUserId: string | undefined;
+        let resolvedSessionId: string | undefined;
+
+        if (params.accessToken) {
+            try {
+                const payload = await this.jwtService.verifyAsync<{
+                    sub?: string;
+                    sid?: string;
+                }>(params.accessToken, {
+                    secret: this.configService.getOrThrow<string>('JWT_SECRET'),
+                    ignoreExpiration: true,
+                });
+                if (payload?.sub) {
+                    resolvedUserId = payload.sub;
+                }
+                if (payload?.sid) {
+                    resolvedSessionId = payload.sid;
+                }
+            } catch {
+                // Access token không hợp lệ -> thử xác minh qua refresh token
+            }
+        }
+
+        if ((!resolvedSessionId || !resolvedUserId) && params.refreshToken) {
+            try {
+                const payload = await this.jwtService.verifyAsync<{
+                    sub?: string;
+                    sid?: string;
+                }>(params.refreshToken, {
+                    secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+                    ignoreExpiration: true,
+                });
+                if (payload?.sub && !resolvedUserId) {
+                    resolvedUserId = payload.sub;
+                }
+                if (payload?.sid && !resolvedSessionId) {
+                    resolvedSessionId = payload.sid;
+                }
+            } catch {
+                // Refresh token cũng không hợp lệ
+            }
+        }
+
+        if (!resolvedUserId && !resolvedSessionId) {
+            throw new UnauthorizedException('Không tìm thấy phiên đăng nhập hợp lệ');
+        }
+
+        if (resolvedSessionId) {
+            await this.authSessionService.revokeSession(
+                resolvedSessionId,
+                'user_logout',
+                resolvedUserId,
+            );
+            return { message: 'Logged out successfully', revoked: true };
+        }
+
+        if (resolvedUserId) {
+            await this.authSessionService.revokeAllUserSessions(
+                resolvedUserId,
+                'user_logout',
+            );
+        }
+
+        return { message: 'Logged out successfully', revoked: true };
     }
 
     async requestEmailVerificationOtp(email: string): Promise<{ message: string }> {
@@ -503,12 +647,16 @@ export class AuthService {
                 throw new NotFoundException('Người dùng không tồn tại trong hệ thống.');
             }
 
-            // 3. Hash mật khẩu mới và cập nhật Database (thu hồi luôn phiên đăng nhập cũ)
+            // 3. Hash mật khẩu mới, cập nhật Database và thu hồi mọi phiên đăng nhập + access token cũ
             const password_hash = await this.hashPassword(newPassword);
             await this.usersService.updateUser(userId, {
                 password_hash,
-                refresh_token: null, // Đăng xuất khỏi mọi phiên đăng nhập cũ
+                refresh_token: null,
             });
+            await this.authSessionService.revokeAllUserSessions(
+                userId,
+                'password_reset',
+            );
 
             // 4. Xóa ngay Token khỏi Redis để đảm bảo tính chất Single-use
             await this.redisService.del(resetTokenKey);

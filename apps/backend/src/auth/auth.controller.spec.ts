@@ -11,6 +11,7 @@ describe('AuthController', () => {
   let authServiceMock: {
     refreshTokens: ReturnType<typeof vi.fn>;
     exchangeGoogleAuthCode: ReturnType<typeof vi.fn>;
+    logoutByTokens: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -22,6 +23,10 @@ describe('AuthController', () => {
       exchangeGoogleAuthCode: vi.fn().mockResolvedValue({
         access_token: 'google-access',
         refresh_token: 'google-refresh',
+      }),
+      logoutByTokens: vi.fn().mockResolvedValue({
+        message: 'Logged out successfully',
+        revoked: true,
       }),
     };
 
@@ -43,14 +48,17 @@ describe('AuthController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('refreshTokens truyền rememberMe từ RefreshTokenStrategy sang AuthService', async () => {
+  it('refreshTokens truyền rememberMe và sessionId từ RefreshTokenStrategy sang AuthService', async () => {
     const req = {
       user: {
         userId: 'user-1',
         email: 'a@b.com',
         refreshToken: 'rt-1',
         rememberMe: true,
+        sessionId: 'sid-99',
       },
+      ip: '127.0.0.1',
+      get: () => undefined,
     } as unknown as Request;
 
     await controller.refreshTokens(req);
@@ -58,20 +66,46 @@ describe('AuthController', () => {
       'user-1',
       'rt-1',
       true,
+      'sid-99',
+      { userAgent: undefined, ipAddress: '127.0.0.1' },
     );
   });
 
   it('exchangeCode mặc định rememberMe=true khi không truyền', async () => {
-    await controller.exchangeCode({ authCode: 'code-123' });
+    const req = {
+      ip: '10.0.0.1',
+      get: (name: string) =>
+        name.toLowerCase() === 'user-agent' ? 'Edge' : undefined,
+    } as unknown as Request;
+
+    await controller.exchangeCode({ authCode: 'code-123' }, req);
     expect(authServiceMock.exchangeGoogleAuthCode).toHaveBeenCalledWith(
       'code-123',
       true,
+      { userAgent: 'Edge', ipAddress: '10.0.0.1' },
     );
 
-    await controller.exchangeCode({ authCode: 'code-456', rememberMe: false });
+    await controller.exchangeCode(
+      { authCode: 'code-456', rememberMe: false },
+      req,
+    );
     expect(authServiceMock.exchangeGoogleAuthCode).toHaveBeenCalledWith(
       'code-456',
       false,
+      { userAgent: 'Edge', ipAddress: '10.0.0.1' },
     );
+  });
+
+  it('logout nhận cả Bearer access token lẫn refreshToken trong body', async () => {
+    const req = {
+      get: (name: string) =>
+        name === 'Authorization' ? 'Bearer access-123' : undefined,
+    } as unknown as Request;
+
+    await controller.logout(req, { refreshToken: 'refresh-456' });
+    expect(authServiceMock.logoutByTokens).toHaveBeenCalledWith({
+      accessToken: 'access-123',
+      refreshToken: 'refresh-456',
+    });
   });
 });

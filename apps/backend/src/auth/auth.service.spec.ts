@@ -6,13 +6,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MailService } from '../mail/mail.service.js';
 import { RedisService } from '../redis/redis.service.js';
 import { UsersService } from '../users/users.service.js';
+import { AuthSessionService } from './auth-session.service.js';
 import { AuthService } from './auth.service.js';
 import { GoogleService } from './google.service.js';
 
 describe('AuthService', () => {
   let service: AuthService;
   let configValues: Record<string, string | undefined>;
-  let jwtServiceMock: { signAsync: ReturnType<typeof vi.fn> };
+  let jwtServiceMock: {
+    signAsync: ReturnType<typeof vi.fn>;
+    verifyAsync: ReturnType<typeof vi.fn>;
+  };
   let usersServiceMock: {
     findUserByEmail: ReturnType<typeof vi.fn>;
     findUserById: ReturnType<typeof vi.fn>;
@@ -20,6 +24,14 @@ describe('AuthService', () => {
   };
   let redisServiceMock: {
     getAndDelete: ReturnType<typeof vi.fn>;
+    get: ReturnType<typeof vi.fn>;
+    del: ReturnType<typeof vi.fn>;
+  };
+  let authSessionServiceMock: {
+    createSession: ReturnType<typeof vi.fn>;
+    rotateSession: ReturnType<typeof vi.fn>;
+    revokeSession: ReturnType<typeof vi.fn>;
+    revokeAllUserSessions: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -36,6 +48,7 @@ describe('AuthService', () => {
         .fn()
         .mockResolvedValueOnce('signed-access-jwt')
         .mockResolvedValueOnce('signed-refresh-jwt'),
+      verifyAsync: vi.fn(),
     };
 
     usersServiceMock = {
@@ -46,6 +59,18 @@ describe('AuthService', () => {
 
     redisServiceMock = {
       getAndDelete: vi.fn(),
+      get: vi.fn(),
+      del: vi.fn().mockResolvedValue(undefined),
+    };
+
+    authSessionServiceMock = {
+      createSession: vi.fn().mockResolvedValue(undefined),
+      rotateSession: vi.fn().mockResolvedValue({
+        access_token: 'rotated-access-jwt',
+        refresh_token: 'rotated-refresh-jwt',
+      }),
+      revokeSession: vi.fn().mockResolvedValue(true),
+      revokeAllUserSessions: vi.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -67,6 +92,7 @@ describe('AuthService', () => {
         { provide: UsersService, useValue: usersServiceMock },
         { provide: RedisService, useValue: redisServiceMock },
         { provide: MailService, useValue: {} },
+        { provide: AuthSessionService, useValue: authSessionServiceMock },
       ],
     }).compile();
 
@@ -77,20 +103,24 @@ describe('AuthService', () => {
     expect(service).toBeDefined();
   });
 
-  it('signInWithEmailAndPassword cấp refresh token 7 ngày khi rememberMe=false', async () => {
+  it('signInWithEmailAndPassword tạo UserSession 7 ngày khi rememberMe=false', async () => {
     const passwordHash = await bcrypt.hash('Password@123', 4);
     usersServiceMock.findUserByEmail.mockResolvedValueOnce({
       id: 'user-1',
       email: 'student@studymate.vn',
       password_hash: passwordHash,
       is_verified: true,
+      token_version: 2,
     });
 
-    const result = await service.signInWithEmailAndPassword({
-      email: 'student@studymate.vn',
-      password: 'Password@123',
-      rememberMe: false,
-    });
+    const result = await service.signInWithEmailAndPassword(
+      {
+        email: 'student@studymate.vn',
+        password: 'Password@123',
+        rememberMe: false,
+      },
+      { userAgent: 'Chrome', ipAddress: '127.0.0.1' },
+    );
 
     expect(result).toEqual({
       access_token: 'signed-access-jwt',
@@ -98,23 +128,44 @@ describe('AuthService', () => {
     });
     expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
       1,
-      { sub: 'user-1', email: 'student@studymate.vn' },
+      expect.objectContaining({
+        sub: 'user-1',
+        email: 'student@studymate.vn',
+        ver: 2,
+        sid: expect.any(String),
+      }),
       { secret: 'test-access-secret', expiresIn: 3600 },
     );
     expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
       2,
-      { sub: 'user-1', email: 'student@studymate.vn', rem: false },
+      expect.objectContaining({
+        sub: 'user-1',
+        email: 'student@studymate.vn',
+        rem: false,
+        sid: expect.any(String),
+        jti: expect.any(String),
+      }),
       { secret: 'test-refresh-secret', expiresIn: 604800 },
+    );
+    expect(authSessionServiceMock.createSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        refreshToken: 'signed-refresh-jwt',
+        rememberMe: false,
+        userAgent: 'Chrome',
+        ipAddress: '127.0.0.1',
+      }),
     );
   });
 
-  it('signInWithEmailAndPassword cấp refresh token 30 ngày khi rememberMe=true', async () => {
+  it('signInWithEmailAndPassword tạo UserSession 30 ngày khi rememberMe=true', async () => {
     const passwordHash = await bcrypt.hash('Password@123', 4);
     usersServiceMock.findUserByEmail.mockResolvedValueOnce({
       id: 'user-1',
       email: 'student@studymate.vn',
       password_hash: passwordHash,
       is_verified: true,
+      token_version: 0,
     });
 
     await service.signInWithEmailAndPassword({
@@ -125,7 +176,7 @@ describe('AuthService', () => {
 
     expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
       2,
-      { sub: 'user-1', email: 'student@studymate.vn', rem: true },
+      expect.objectContaining({ rem: true }),
       { secret: 'test-refresh-secret', expiresIn: 2592000 },
     );
   });
@@ -138,6 +189,7 @@ describe('AuthService', () => {
       email: 'student@studymate.vn',
       password_hash: passwordHash,
       is_verified: true,
+      token_version: 0,
     });
 
     await service.signInWithEmailAndPassword({
@@ -148,41 +200,124 @@ describe('AuthService', () => {
 
     expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
       2,
-      { sub: 'user-1', email: 'student@studymate.vn', rem: false },
+      expect.objectContaining({ rem: false }),
       { secret: 'test-refresh-secret', expiresIn: 604800 },
     );
   });
 
-  it('refreshTokens bảo toàn thời hạn 30 ngày khi rememberMe=true và 7 ngày khi false', async () => {
-    const refreshHash = await bcrypt.hash('old-refresh-token', 4);
-    usersServiceMock.findUserById.mockResolvedValue({
+  it('refreshTokens có sessionId gọi rotateSession nguyên tử và bảo toàn rememberMe', async () => {
+    usersServiceMock.findUserById.mockResolvedValueOnce({
       id: 'user-1',
       email: 'student@studymate.vn',
-      refresh_token: refreshHash,
+      token_version: 1,
     });
 
-    await service.refreshTokens('user-1', 'old-refresh-token', true);
+    authSessionServiceMock.rotateSession.mockImplementationOnce(
+      async ({ generateNextPair }) => {
+        const next = await generateNextPair();
+        return {
+          access_token: next.access_token,
+          refresh_token: next.refresh_token,
+        };
+      },
+    );
 
+    const result = await service.refreshTokens(
+      'user-1',
+      'old-refresh-token',
+      true,
+      'sid-123',
+    );
+
+    expect(result).toEqual({
+      access_token: 'signed-access-jwt',
+      refresh_token: 'signed-refresh-jwt',
+    });
     expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
       2,
-      { sub: 'user-1', email: 'student@studymate.vn', rem: true },
+      expect.objectContaining({ sid: 'sid-123', rem: true }),
       { secret: 'test-refresh-secret', expiresIn: 2592000 },
     );
   });
 
-  it('exchangeGoogleAuthCode mặc định cấp phiên 30 ngày (rememberMe=true)', async () => {
+  it('refreshTokens tương thích ngược nâng cấp token legacy (không có sid) lên UserSession', async () => {
+    const refreshHash = await bcrypt.hash('legacy-rt', 4);
+    usersServiceMock.findUserById.mockResolvedValueOnce({
+      id: 'user-1',
+      email: 'student@studymate.vn',
+      refresh_token: refreshHash,
+      token_version: 0,
+    });
+
+    const result = await service.refreshTokens('user-1', 'legacy-rt', false);
+
+    expect(result).toEqual({
+      access_token: 'signed-access-jwt',
+      refresh_token: 'signed-refresh-jwt',
+    });
+    expect(authSessionServiceMock.createSession).toHaveBeenCalledTimes(1);
+    expect(usersServiceMock.updateUser).toHaveBeenCalledWith('user-1', {
+      refresh_token: null,
+    });
+  });
+
+  it('exchangeGoogleAuthCode mặc định cấp UserSession 30 ngày (rememberMe=true)', async () => {
     redisServiceMock.getAndDelete.mockResolvedValueOnce('user-google-1');
     usersServiceMock.findUserById.mockResolvedValueOnce({
       id: 'user-google-1',
       email: 'google@studymate.vn',
+      token_version: 0,
     });
 
     await service.exchangeGoogleAuthCode('valid-auth-code');
 
     expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
       2,
-      { sub: 'user-google-1', email: 'google@studymate.vn', rem: true },
+      expect.objectContaining({
+        sub: 'user-google-1',
+        email: 'google@studymate.vn',
+        rem: true,
+      }),
       { secret: 'test-refresh-secret', expiresIn: 2592000 },
+    );
+    expect(authSessionServiceMock.createSession).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-google-1', rememberMe: true }),
+    );
+  });
+
+  it('logoutByTokens thu hồi được đúng session ngay cả khi chỉ có refreshToken (accessToken đã hết hạn/vắng mặt)', async () => {
+    jwtServiceMock.verifyAsync.mockResolvedValueOnce({
+      sub: 'user-1',
+      sid: 'sid-only-rt',
+    });
+
+    const result = await service.logoutByTokens({
+      refreshToken: 'valid-rt',
+    });
+
+    expect(result).toEqual({ message: 'Logged out successfully', revoked: true });
+    expect(authSessionServiceMock.revokeSession).toHaveBeenCalledWith(
+      'sid-only-rt',
+      'user_logout',
+      'user-1',
+    );
+  });
+
+  it('resetPassword gọi revokeAllUserSessions để thu hồi cả refresh session và access token', async () => {
+    redisServiceMock.get.mockResolvedValueOnce('user-1');
+    usersServiceMock.findUserById.mockResolvedValueOnce({
+      id: 'user-1',
+      email: 'student@studymate.vn',
+    });
+
+    await service.resetPassword('valid-reset-token', 'NewPass@123');
+
+    expect(authSessionServiceMock.revokeAllUserSessions).toHaveBeenCalledWith(
+      'user-1',
+      'password_reset',
+    );
+    expect(redisServiceMock.del).toHaveBeenCalledWith(
+      'reset_token:valid-reset-token',
     );
   });
 });

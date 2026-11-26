@@ -9,7 +9,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy.js';
 import { MailModule } from '../mail/mail.module.js';
+import { PrismaModule } from '../prisma/prisma.module.js';
 import { RedisModule } from '../redis/redis.module.js';
+import { AuthSessionService } from './auth-session.service.js';
 import { parseExpiresInSeconds } from './utils/token-duration.util.js';
 
 @Module({
@@ -17,6 +19,7 @@ import { parseExpiresInSeconds } from './utils/token-duration.util.js';
     UsersModule,
     MailModule,
     PassportModule,
+    PrismaModule,
     RedisModule, // CQ-06: Import module thay vì khai báo provider trực tiếp để dùng chung 1 Redis connection
     JwtModule.registerAsync({
       global: true,
@@ -33,8 +36,14 @@ import { parseExpiresInSeconds } from './utils/token-duration.util.js';
       }),
     }),
   ],
-  providers: [GoogleService, AuthService, JwtStrategy, RefreshTokenStrategy],
+  providers: [
+    GoogleService,
+    AuthService,
+    AuthSessionService,
+    JwtStrategy,
+    RefreshTokenStrategy,
+  ],
   controllers: [AuthController],
-  exports: [AuthService],
+  exports: [AuthService, AuthSessionService],
 })
 export class AuthModule { }

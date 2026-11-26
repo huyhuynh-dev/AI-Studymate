@@ -28,10 +28,12 @@ export type AggregateUser = {
 
 export type UserAvgAggregateOutputType = {
   daily_goal_minutes: number | null
+  token_version: number | null
 }
 
 export type UserSumAggregateOutputType = {
   daily_goal_minutes: number | null
+  token_version: number | null
 }
 
 export type UserMinAggregateOutputType = {
@@ -49,6 +51,7 @@ export type UserMinAggregateOutputType = {
   provider: string | null
   provider_id: string | null
   refresh_token: string | null
+  token_version: number | null
 }
 
 export type UserMaxAggregateOutputType = {
@@ -66,6 +69,7 @@ export type UserMaxAggregateOutputType = {
   provider: string | null
   provider_id: string | null
   refresh_token: string | null
+  token_version: number | null
 }
 
 export type UserCountAggregateOutputType = {
@@ -83,16 +87,19 @@ export type UserCountAggregateOutputType = {
   provider: number
   provider_id: number
   refresh_token: number
+  token_version: number
   _all: number
 }
 
 
 export type UserAvgAggregateInputType = {
   daily_goal_minutes?: true
+  token_version?: true
 }
 
 export type UserSumAggregateInputType = {
   daily_goal_minutes?: true
+  token_version?: true
 }
 
 export type UserMinAggregateInputType = {
@@ -110,6 +117,7 @@ export type UserMinAggregateInputType = {
   provider?: true
   provider_id?: true
   refresh_token?: true
+  token_version?: true
 }
 
 export type UserMaxAggregateInputType = {
@@ -127,6 +135,7 @@ export type UserMaxAggregateInputType = {
   provider?: true
   provider_id?: true
   refresh_token?: true
+  token_version?: true
 }
 
 export type UserCountAggregateInputType = {
@@ -144,6 +153,7 @@ export type UserCountAggregateInputType = {
   provider?: true
   provider_id?: true
   refresh_token?: true
+  token_version?: true
   _all?: true
 }
 
@@ -248,6 +258,7 @@ export type UserGroupByOutputType = {
   provider: string | null
   provider_id: string | null
   refresh_token: string | null
+  token_version: number
   _count: UserCountAggregateOutputType | null
   _avg: UserAvgAggregateOutputType | null
   _sum: UserSumAggregateOutputType | null
@@ -288,6 +299,8 @@ export type UserWhereInput = {
   provider?: Prisma.StringNullableFilter<"User"> | string | null
   provider_id?: Prisma.StringNullableFilter<"User"> | string | null
   refresh_token?: Prisma.StringNullableFilter<"User"> | string | null
+  token_version?: Prisma.IntFilter<"User"> | number
+  user_sessions?: Prisma.UserSessionListRelationFilter
   subjects?: Prisma.SubjectListRelationFilter
   conversations?: Prisma.ConversationListRelationFilter
   documents?: Prisma.DocumentListRelationFilter
@@ -313,6 +326,8 @@ export type UserOrderByWithRelationInput = {
   provider?: Prisma.SortOrderInput | Prisma.SortOrder
   provider_id?: Prisma.SortOrderInput | Prisma.SortOrder
   refresh_token?: Prisma.SortOrderInput | Prisma.SortOrder
+  token_version?: Prisma.SortOrder
+  user_sessions?: Prisma.UserSessionOrderByRelationAggregateInput
   subjects?: Prisma.SubjectOrderByRelationAggregateInput
   conversations?: Prisma.ConversationOrderByRelationAggregateInput
   documents?: Prisma.DocumentOrderByRelationAggregateInput
@@ -341,6 +356,8 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   provider?: Prisma.StringNullableFilter<"User"> | string | null
   provider_id?: Prisma.StringNullableFilter<"User"> | string | null
   refresh_token?: Prisma.StringNullableFilter<"User"> | string | null
+  token_version?: Prisma.IntFilter<"User"> | number
+  user_sessions?: Prisma.UserSessionListRelationFilter
   subjects?: Prisma.SubjectListRelationFilter
   conversations?: Prisma.ConversationListRelationFilter
   documents?: Prisma.DocumentListRelationFilter
@@ -366,6 +383,7 @@ export type UserOrderByWithAggregationInput = {
   provider?: Prisma.SortOrderInput | Prisma.SortOrder
   provider_id?: Prisma.SortOrderInput | Prisma.SortOrder
   refresh_token?: Prisma.SortOrderInput | Prisma.SortOrder
+  token_version?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
   _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
@@ -391,6 +409,7 @@ export type UserScalarWhereWithAggregatesInput = {
   provider?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   provider_id?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   refresh_token?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  token_version?: Prisma.IntWithAggregatesFilter<"User"> | number
 }
 
 export type UserCreateInput = {
@@ -408,6 +427,8 @@ export type UserCreateInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
@@ -433,6 +454,8 @@ export type UserUncheckedCreateInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
@@ -458,6 +481,8 @@ export type UserUpdateInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
@@ -483,6 +508,8 @@ export type UserUncheckedUpdateInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
@@ -508,6 +535,7 @@ export type UserCreateManyInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
 }
 
 export type UserUpdateManyMutationInput = {
@@ -525,6 +553,7 @@ export type UserUpdateManyMutationInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type UserUncheckedUpdateManyInput = {
@@ -542,6 +571,7 @@ export type UserUncheckedUpdateManyInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type UserCountOrderByAggregateInput = {
@@ -559,10 +589,12 @@ export type UserCountOrderByAggregateInput = {
   provider?: Prisma.SortOrder
   provider_id?: Prisma.SortOrder
   refresh_token?: Prisma.SortOrder
+  token_version?: Prisma.SortOrder
 }
 
 export type UserAvgOrderByAggregateInput = {
   daily_goal_minutes?: Prisma.SortOrder
+  token_version?: Prisma.SortOrder
 }
 
 export type UserMaxOrderByAggregateInput = {
@@ -580,6 +612,7 @@ export type UserMaxOrderByAggregateInput = {
   provider?: Prisma.SortOrder
   provider_id?: Prisma.SortOrder
   refresh_token?: Prisma.SortOrder
+  token_version?: Prisma.SortOrder
 }
 
 export type UserMinOrderByAggregateInput = {
@@ -597,10 +630,12 @@ export type UserMinOrderByAggregateInput = {
   provider?: Prisma.SortOrder
   provider_id?: Prisma.SortOrder
   refresh_token?: Prisma.SortOrder
+  token_version?: Prisma.SortOrder
 }
 
 export type UserSumOrderByAggregateInput = {
   daily_goal_minutes?: Prisma.SortOrder
+  token_version?: Prisma.SortOrder
 }
 
 export type UserScalarRelationFilter = {
@@ -751,6 +786,20 @@ export type UserUpdateOneWithoutAi_usage_logsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAi_usage_logsInput, Prisma.UserUpdateWithoutAi_usage_logsInput>, Prisma.UserUncheckedUpdateWithoutAi_usage_logsInput>
 }
 
+export type UserCreateNestedOneWithoutUser_sessionsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutUser_sessionsInput, Prisma.UserUncheckedCreateWithoutUser_sessionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutUser_sessionsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutUser_sessionsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutUser_sessionsInput, Prisma.UserUncheckedCreateWithoutUser_sessionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutUser_sessionsInput
+  upsert?: Prisma.UserUpsertWithoutUser_sessionsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutUser_sessionsInput, Prisma.UserUpdateWithoutUser_sessionsInput>, Prisma.UserUncheckedUpdateWithoutUser_sessionsInput>
+}
+
 export type UserCreateWithoutSubjectsInput = {
   id?: string
   email: string
@@ -766,6 +815,8 @@ export type UserCreateWithoutSubjectsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
   flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
@@ -790,6 +841,8 @@ export type UserUncheckedCreateWithoutSubjectsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
   flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
@@ -830,6 +883,8 @@ export type UserUpdateWithoutSubjectsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
   flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
@@ -854,6 +909,8 @@ export type UserUncheckedUpdateWithoutSubjectsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
   flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
@@ -878,6 +935,8 @@ export type UserCreateWithoutConversationsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
   flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
@@ -902,6 +961,8 @@ export type UserUncheckedCreateWithoutConversationsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
   flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
@@ -942,6 +1003,8 @@ export type UserUpdateWithoutConversationsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
   flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
@@ -966,6 +1029,8 @@ export type UserUncheckedUpdateWithoutConversationsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
   flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
@@ -990,6 +1055,8 @@ export type UserCreateWithoutFlashcard_decksInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
@@ -1014,6 +1081,8 @@ export type UserUncheckedCreateWithoutFlashcard_decksInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
@@ -1054,6 +1123,8 @@ export type UserUpdateWithoutFlashcard_decksInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
@@ -1078,6 +1149,8 @@ export type UserUncheckedUpdateWithoutFlashcard_decksInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
@@ -1102,6 +1175,8 @@ export type UserCreateWithoutFlashcard_reviewsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
@@ -1126,6 +1201,8 @@ export type UserUncheckedCreateWithoutFlashcard_reviewsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
@@ -1166,6 +1243,8 @@ export type UserUpdateWithoutFlashcard_reviewsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
@@ -1190,6 +1269,8 @@ export type UserUncheckedUpdateWithoutFlashcard_reviewsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
@@ -1214,6 +1295,8 @@ export type UserCreateWithoutQuizzesInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
@@ -1238,6 +1321,8 @@ export type UserUncheckedCreateWithoutQuizzesInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
@@ -1278,6 +1363,8 @@ export type UserUpdateWithoutQuizzesInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
@@ -1302,6 +1389,8 @@ export type UserUncheckedUpdateWithoutQuizzesInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
@@ -1326,6 +1415,8 @@ export type UserCreateWithoutQuiz_attemptsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
@@ -1350,6 +1441,8 @@ export type UserUncheckedCreateWithoutQuiz_attemptsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
@@ -1390,6 +1483,8 @@ export type UserUpdateWithoutQuiz_attemptsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
@@ -1414,6 +1509,8 @@ export type UserUncheckedUpdateWithoutQuiz_attemptsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
@@ -1438,6 +1535,8 @@ export type UserCreateWithoutDocumentsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
   flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
@@ -1462,6 +1561,8 @@ export type UserUncheckedCreateWithoutDocumentsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
   flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
@@ -1502,6 +1603,8 @@ export type UserUpdateWithoutDocumentsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
   flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
@@ -1526,6 +1629,8 @@ export type UserUncheckedUpdateWithoutDocumentsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
   flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
@@ -1550,6 +1655,8 @@ export type UserCreateWithoutAi_usage_logsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
@@ -1574,6 +1681,8 @@ export type UserUncheckedCreateWithoutAi_usage_logsInput = {
   provider?: string | null
   provider_id?: string | null
   refresh_token?: string | null
+  token_version?: number
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
@@ -1614,6 +1723,8 @@ export type UserUpdateWithoutAi_usage_logsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
@@ -1638,6 +1749,8 @@ export type UserUncheckedUpdateWithoutAi_usage_logsInput = {
   provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
@@ -1647,12 +1760,133 @@ export type UserUncheckedUpdateWithoutAi_usage_logsInput = {
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
 }
 
+export type UserCreateWithoutUser_sessionsInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  daily_goal_minutes?: number
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  token_version?: number
+  subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutUser_sessionsInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  daily_goal_minutes?: number
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  token_version?: number
+  subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutUser_sessionsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutUser_sessionsInput, Prisma.UserUncheckedCreateWithoutUser_sessionsInput>
+}
+
+export type UserUpsertWithoutUser_sessionsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutUser_sessionsInput, Prisma.UserUncheckedUpdateWithoutUser_sessionsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutUser_sessionsInput, Prisma.UserUncheckedCreateWithoutUser_sessionsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutUser_sessionsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutUser_sessionsInput, Prisma.UserUncheckedUpdateWithoutUser_sessionsInput>
+}
+
+export type UserUpdateWithoutUser_sessionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutUser_sessionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+}
+
 
 /**
  * Count Type UserCountOutputType
  */
 
 export type UserCountOutputType = {
+  user_sessions: number
   subjects: number
   conversations: number
   documents: number
@@ -1664,6 +1898,7 @@ export type UserCountOutputType = {
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  user_sessions?: boolean | UserCountOutputTypeCountUser_sessionsArgs
   subjects?: boolean | UserCountOutputTypeCountSubjectsArgs
   conversations?: boolean | UserCountOutputTypeCountConversationsArgs
   documents?: boolean | UserCountOutputTypeCountDocumentsArgs
@@ -1682,6 +1917,13 @@ export type UserCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensi
    * Select specific fields to fetch from the UserCountOutputType
    */
   select?: Prisma.UserCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountUser_sessionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.UserSessionWhereInput
 }
 
 /**
@@ -1756,6 +1998,8 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   provider?: boolean
   provider_id?: boolean
   refresh_token?: boolean
+  token_version?: boolean
+  user_sessions?: boolean | Prisma.User$user_sessionsArgs<ExtArgs>
   subjects?: boolean | Prisma.User$subjectsArgs<ExtArgs>
   conversations?: boolean | Prisma.User$conversationsArgs<ExtArgs>
   documents?: boolean | Prisma.User$documentsArgs<ExtArgs>
@@ -1782,6 +2026,7 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   provider?: boolean
   provider_id?: boolean
   refresh_token?: boolean
+  token_version?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1799,6 +2044,7 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   provider?: boolean
   provider_id?: boolean
   refresh_token?: boolean
+  token_version?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectScalar = {
@@ -1816,10 +2062,12 @@ export type UserSelectScalar = {
   provider?: boolean
   provider_id?: boolean
   refresh_token?: boolean
+  token_version?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "password_hash" | "name" | "avatar_url" | "role" | "is_active" | "is_verified" | "daily_goal_minutes" | "created_at" | "updated_at" | "provider" | "provider_id" | "refresh_token", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "password_hash" | "name" | "avatar_url" | "role" | "is_active" | "is_verified" | "daily_goal_minutes" | "created_at" | "updated_at" | "provider" | "provider_id" | "refresh_token" | "token_version", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  user_sessions?: boolean | Prisma.User$user_sessionsArgs<ExtArgs>
   subjects?: boolean | Prisma.User$subjectsArgs<ExtArgs>
   conversations?: boolean | Prisma.User$conversationsArgs<ExtArgs>
   documents?: boolean | Prisma.User$documentsArgs<ExtArgs>
@@ -1836,6 +2084,7 @@ export type UserIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
 export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "User"
   objects: {
+    user_sessions: Prisma.$UserSessionPayload<ExtArgs>[]
     subjects: Prisma.$SubjectPayload<ExtArgs>[]
     conversations: Prisma.$ConversationPayload<ExtArgs>[]
     documents: Prisma.$DocumentPayload<ExtArgs>[]
@@ -1860,6 +2109,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     provider: string | null
     provider_id: string | null
     refresh_token: string | null
+    token_version: number
   }, ExtArgs["result"]["user"]>
   composites: {}
 }
@@ -2254,6 +2504,7 @@ readonly fields: UserFieldRefs;
  */
 export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  user_sessions<T extends Prisma.User$user_sessionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$user_sessionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   subjects<T extends Prisma.User$subjectsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$subjectsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SubjectPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   conversations<T extends Prisma.User$conversationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$conversationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   documents<T extends Prisma.User$documentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$documentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -2305,6 +2556,7 @@ export interface UserFieldRefs {
   readonly provider: Prisma.FieldRef<"User", 'String'>
   readonly provider_id: Prisma.FieldRef<"User", 'String'>
   readonly refresh_token: Prisma.FieldRef<"User", 'String'>
+  readonly token_version: Prisma.FieldRef<"User", 'Int'>
 }
     
 
@@ -2695,6 +2947,30 @@ export type UserDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Limit how many Users to delete.
    */
   limit?: number
+}
+
+/**
+ * User.user_sessions
+ */
+export type User$user_sessionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the UserSession
+   */
+  select?: Prisma.UserSessionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the UserSession
+   */
+  omit?: Prisma.UserSessionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserSessionInclude<ExtArgs> | null
+  where?: Prisma.UserSessionWhereInput
+  orderBy?: Prisma.UserSessionOrderByWithRelationInput | Prisma.UserSessionOrderByWithRelationInput[]
+  cursor?: Prisma.UserSessionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.UserSessionScalarFieldEnum | Prisma.UserSessionScalarFieldEnum[]
 }
 
 /**

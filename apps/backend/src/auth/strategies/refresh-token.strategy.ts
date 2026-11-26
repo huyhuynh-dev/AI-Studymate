@@ -15,7 +15,10 @@ export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refres
         });
     }
 
-    validate(req: Request, payload: { sub: string; email: string; rem?: boolean }) {
+    validate(
+        req: Request,
+        payload: { sub: string; email: string; rem?: boolean; sid?: string },
+    ) {
         const authHeader = req.get('Authorization') ?? '';
         const refreshToken = authHeader.replace('Bearer', '').trim();
         return {
@@ -23,6 +26,7 @@ export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refres
             email: payload.email,
             refreshToken,
             rememberMe: Boolean(payload.rem),
+            sessionId: payload.sid,
         };
     }
 }

@@ -67,7 +67,8 @@ export const ModelName = {
   ChatSession: 'ChatSession',
   Message: 'Message',
   Summary: 'Summary',
-  AiUsageLog: 'AiUsageLog'
+  AiUsageLog: 'AiUsageLog',
+  UserSession: 'UserSession'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -100,7 +101,8 @@ export const UserScalarFieldEnum = {
   updated_at: 'updated_at',
   provider: 'provider',
   provider_id: 'provider_id',
-  refresh_token: 'refresh_token'
+  refresh_token: 'refresh_token',
+  token_version: 'token_version'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -371,6 +373,25 @@ export const AiUsageLogScalarFieldEnum = {
 } as const
 
 export type AiUsageLogScalarFieldEnum = (typeof AiUsageLogScalarFieldEnum)[keyof typeof AiUsageLogScalarFieldEnum]
+
+
+export const UserSessionScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  refresh_token_hash: 'refresh_token_hash',
+  prev_refresh_token_hash: 'prev_refresh_token_hash',
+  rotated_at: 'rotated_at',
+  remember_me: 'remember_me',
+  expires_at: 'expires_at',
+  revoked_at: 'revoked_at',
+  revoke_reason: 'revoke_reason',
+  user_agent: 'user_agent',
+  ip_address: 'ip_address',
+  last_used_at: 'last_used_at',
+  created_at: 'created_at'
+} as const
+
+export type UserSessionScalarFieldEnum = (typeof UserSessionScalarFieldEnum)[keyof typeof UserSessionScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -157,7 +157,16 @@ export const usersApi = {
     return res.data;
   },
 
-  logout: async (): Promise<void> => {
-    await axios.post('/api/auth/logout');
+  logout: async (): Promise<{
+    success: boolean;
+    serverRevoked?: boolean;
+    message?: string;
+  }> => {
+    const res = await axios.post<{
+      success: boolean;
+      serverRevoked?: boolean;
+      message?: string;
+    }>('/api/auth/logout');
+    return res.data;
   },
 };

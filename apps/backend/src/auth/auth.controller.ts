@@ -13,6 +13,7 @@ import { RequestEmailVerificationDto } from './dto/request-email-verification.dt
 import { VerifyEmailOtpDto } from './dto/verify-email-otp.dto.js';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { ExchangeCodeDto } from './dto/exchange-code.dto.js';
+import { LogoutDto } from './dto/logout.dto.js';
 
 @Controller('auth')
 export class AuthController {
@@ -20,6 +21,18 @@ export class AuthController {
         private readonly authService: AuthService,
         private readonly configService: ConfigService,
     ) { }
+
+    private extractClientMetadata(req: Request): {
+        userAgent?: string;
+        ipAddress?: string;
+    } {
+        const userAgent = req.get('user-agent') ?? undefined;
+        const forwardedFor = req.get('x-forwarded-for');
+        const ipAddress = forwardedFor
+            ? forwardedFor.split(',')[0]?.trim()
+            : req.ip;
+        return { userAgent, ipAddress };
+    }
 
     @Public()
     @Post('sign-up')
@@ -33,8 +46,12 @@ export class AuthController {
     @Post('sign-in')
     async signIn(
         @Body() loginDto: LoginDto,
+        @Req() req: Request,
     ): Promise<TokenPair> {
-        return this.authService.signInWithEmailAndPassword(loginDto);
+        return this.authService.signInWithEmailAndPassword(
+            loginDto,
+            this.extractClientMetadata(req),
+        );
     }
 
     @Public()
@@ -47,20 +64,36 @@ export class AuthController {
             email: string;
             refreshToken: string;
             rememberMe?: boolean;
+            sessionId?: string;
         };
         return this.authService.refreshTokens(
             user.userId,
             user.refreshToken,
             Boolean(user.rememberMe),
+            user.sessionId,
+            this.extractClientMetadata(req),
         );
     }
 
+    @Public()
     @Post('logout')
     @HttpCode(HttpStatus.OK)
-    async logout(@Req() req: Request): Promise<{ message: string }> {
-        const user = req.user as { userId: string; email: string };
-        await this.authService.logout(user.userId);
-        return { message: 'Logged out successfully' };
+    async logout(
+        @Req() req: Request,
+        @Body() logoutDto?: LogoutDto,
+    ): Promise<{ message: string; revoked: boolean }> {
+        const authHeader = req.get('Authorization') ?? '';
+        const accessToken = authHeader.startsWith('Bearer ')
+            ? authHeader.slice(7).trim()
+            : undefined;
+        const headerRefreshToken = req.get('x-refresh-token')?.trim();
+        const refreshToken =
+            logoutDto?.refreshToken?.trim() || headerRefreshToken || undefined;
+
+        return this.authService.logoutByTokens({
+            accessToken,
+            refreshToken,
+        });
     }
 
     @Public()
@@ -128,10 +161,14 @@ export class AuthController {
     @Public()
     @Post('exchange-code')
     @HttpCode(HttpStatus.OK)
-    async exchangeCode(@Body() exchangeCodeDto: ExchangeCodeDto): Promise<TokenPair> {
+    async exchangeCode(
+        @Body() exchangeCodeDto: ExchangeCodeDto,
+        @Req() req: Request,
+    ): Promise<TokenPair> {
         return this.authService.exchangeGoogleAuthCode(
             exchangeCodeDto.authCode,
             exchangeCodeDto.rememberMe ?? true,
+            this.extractClientMetadata(req),
         );
     }
 
