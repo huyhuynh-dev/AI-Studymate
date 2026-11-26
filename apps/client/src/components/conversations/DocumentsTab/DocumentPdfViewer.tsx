@@ -81,6 +81,7 @@ import type { DocumentItem, DocumentStatus } from "@/types";
 import { documentsApi } from "@/services/documents.api";
 import { useFocusMode } from "@/components/layout";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import { useDocumentMastery } from "@/hooks/useLearningAnalytics";
 import { calcBoxPixels } from "@/lib/pdf-coordinates";
 import TocMasterySidebar from "./TocMasterySidebar";
@@ -983,6 +984,57 @@ function CitationHighlightLayer({
   );
 }
 
+function PdfWorkspaceContextBridge({
+  documentId,
+  backendDocumentId,
+  fileName,
+  compactReaderMode,
+}: {
+  documentId: string;
+  backendDocumentId: string;
+  fileName: string;
+  compactReaderMode?: boolean;
+}) {
+  const { state: scrollState } = useScroll(documentId);
+  const workspaceStore = useWorkspaceContextStore();
+  const currentPage = scrollState?.currentPage;
+  const totalPages = scrollState?.totalPages;
+
+  useEffect(() => {
+    if (!workspaceStore || typeof currentPage !== "number" || currentPage < 1) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      if (compactReaderMode) {
+        workspaceStore.patchSidePanelPage(backendDocumentId, currentPage);
+      } else {
+        workspaceStore.patchDocumentsViewingDoc({
+          documentId: backendDocumentId,
+          fileName,
+          viewerKind: "pdf",
+          currentPage,
+          totalPages:
+            typeof totalPages === "number" && totalPages > 0
+              ? totalPages
+              : undefined,
+        });
+      }
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    workspaceStore,
+    compactReaderMode,
+    backendDocumentId,
+    fileName,
+    currentPage,
+    totalPages,
+  ]);
+
+  return null;
+}
+
 function PdfTocSidebarBridge({
   documentId,
   backendDocumentId,
@@ -1262,6 +1314,12 @@ export default function DocumentPdfViewer({
                         <PdfCitationManager
                           documentId={activeDocumentId}
                           backendDocumentId={document.id}
+                        />
+                        <PdfWorkspaceContextBridge
+                          documentId={activeDocumentId}
+                          backendDocumentId={document.id}
+                          fileName={document.file_name}
+                          compactReaderMode={compactReaderMode}
                         />
 
                         {/* Thanh công cụ hợp nhất duy nhất ở trên cùng */}

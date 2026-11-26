@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Flag, Lightbulb, X } from "lucide-react";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import type { AttemptAnswer, Quiz, QuizAttempt, QuizQuestion } from "../types";
 import { Badge, Button, Modal, ProgressBar, TextInput } from "../ui/primitives";
 import { RichTextInput } from "../ui/RichTextInput";
@@ -51,6 +52,7 @@ export function TestTakingView({ quiz, attempt, onAnswer, onSubmit, onExit }: {
   const [confirm, setConfirm] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
   const firstRender = useRef(true);
+  const workspaceStore = useWorkspaceContextStore();
 
   const { elapsed, remaining, getElapsed } = useQuizTimer({
     baseElapsedSec: attempt.timeSpentSec, limitSec: config?.timeLimitSec ?? null, running: true,
@@ -62,6 +64,17 @@ export function TestTakingView({ quiz, attempt, onAnswer, onSubmit, onExit }: {
   const locked = mode === "practice" && checked.has(q.id);
   const total = questions.length;
   const done = answeredCount(attempt, questions);
+
+  useEffect(() => {
+    if (!workspaceStore) return;
+    workspaceStore.patchQuizAttemptState({
+      attemptId: attempt.id,
+      mode: mode === "practice" ? "practice" : "exam",
+      currentQuestionIndex: idx + 1,
+      totalQuestions: total,
+      answeredCount: done,
+    });
+  }, [workspaceStore, attempt.id, mode, idx, total, done]);
   const flagged = questions.filter((x) => attempt.answers[x.id]?.isFlagged).length;
   const isLast = idx === total - 1;
   const update = (patch: Partial<AttemptAnswer>) => onAnswer({ ...answer, ...patch });

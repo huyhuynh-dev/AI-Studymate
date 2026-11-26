@@ -5,6 +5,11 @@ import { LeftSidebar, RightSidebar, FocusModeProvider, useFocusMode } from "@/co
 import { AskAiProvider } from "@/contexts/AskAiContext";
 import { CitationNavigationProvider, useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { WordAgentProvider } from "@/contexts/WordAgentContext";
+import {
+    WorkspaceContextProvider,
+    useWorkspaceContextStore,
+} from "@/contexts/WorkspaceContextProvider";
+import type { WorkspacePageType } from "@/contexts/workspace-context.types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { usePathname, useRouter } from "next/navigation";
 import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
@@ -23,6 +28,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         setIsRightSidebarCollapsed,
     } = useFocusMode();
     const { sidePanelTarget, closeSidePanelCitation } = useCitationNavigation();
+    const workspaceStore = useWorkspaceContextStore();
     const pathname = usePathname();
 
     // Trích xuất subjectId từ URL: /home/{subjectId}/...
@@ -32,6 +38,21 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         // parts: ['', 'home', '{subjectId}', ...]
         if (parts[1] === "home" && parts[2]) return parts[2];
         return null;
+    }, [pathname]);
+
+    const currentConversationId = useMemo(() => {
+        if (!pathname) return null;
+        const segments = pathname.split("/").filter(Boolean);
+        return segments[0] === "home" && segments.length >= 3 ? segments[2] : null;
+    }, [pathname]);
+
+    const currentPageType: WorkspacePageType = useMemo(() => {
+        if (!pathname) return "home";
+        const segments = pathname.split("/").filter(Boolean);
+        if (segments[0] === "profile") return "profile";
+        if (segments[0] === "home" && segments.length >= 3) return "conversation";
+        if (segments[0] === "home" && segments.length === 2) return "subject";
+        return "home";
     }, [pathname]);
 
     // RightSidebar chỉ xuất hiện ở cấp độ Conversation (/home/{subjectId}/{conversationId})
@@ -47,6 +68,38 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         setIsViewingDocument(false);
         closeSidePanelCitation();
     }, [pathname, setFocusMode, setIsViewingDocument, closeSidePanelCitation]);
+
+    // Đồng bộ Location & Side-panel vào Context Engine Store
+    useEffect(() => {
+        workspaceStore?.setLocation({
+            pathname: pathname ?? undefined,
+            pageType: currentPageType,
+            subjectId: currentSubjectId,
+            conversationId: currentConversationId,
+            isFocusMode,
+        });
+    }, [
+        workspaceStore,
+        pathname,
+        currentPageType,
+        currentSubjectId,
+        currentConversationId,
+        isFocusMode,
+    ]);
+
+    useEffect(() => {
+        if (!workspaceStore) return;
+        if (sidePanelTarget?.documentId) {
+            workspaceStore.setSidePanel({
+                documentId: sidePanelTarget.documentId,
+                fileName: sidePanelTarget.fileName,
+                pageNo: sidePanelTarget.pageNo,
+                citationId: sidePanelTarget.citationId,
+            });
+        } else {
+            workspaceStore.setSidePanel(null);
+        }
+    }, [workspaceStore, sidePanelTarget]);
 
     const effectiveRightCollapsed = sidePanelTarget
         ? !showRightSidebar
@@ -143,13 +196,15 @@ export default function MainLayout({
 }) {
     return (
         <FocusModeProvider>
-            <WordAgentProvider>
-                <AskAiProvider>
-                    <CitationNavigationProvider>
-                        <MainLayoutContent>{children}</MainLayoutContent>
-                    </CitationNavigationProvider>
-                </AskAiProvider>
-            </WordAgentProvider>
+            <WorkspaceContextProvider>
+                <WordAgentProvider>
+                    <AskAiProvider>
+                        <CitationNavigationProvider>
+                            <MainLayoutContent>{children}</MainLayoutContent>
+                        </CitationNavigationProvider>
+                    </AskAiProvider>
+                </WordAgentProvider>
+            </WorkspaceContextProvider>
         </FocusModeProvider>
     );
 }

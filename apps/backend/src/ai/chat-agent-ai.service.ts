@@ -6,7 +6,7 @@ import {
   validateUIMessages,
   TypeValidationError,
 } from 'ai';
-import type { UIMessage } from 'ai';
+import type { ModelMessage, UIMessage } from 'ai';
 import { AiService } from './ai.service.js';
 import type {
   AvailableDocumentItem,
@@ -17,6 +17,8 @@ import {
   FOLLOW_UP_SUGGESTIONS_SYSTEM_PROMPT,
   buildSystemPromptWithDocumentCatalog,
 } from './prompts/templates/chat-agent.prompt.js';
+import { renderEphemeralUiContextBlock } from './prompts/templates/workspace-context.formatter.js';
+import type { ResolvedWorkspaceContext } from './prompts/workspace-context.types.js';
 import {
   buildSystemPromptWithSuperDocAgent,
   type ActiveWordDocumentPromptContext,
@@ -110,6 +112,56 @@ export {
   type WebCitationItem,
 };
 
+/**
+ * Tiêm block `<current_ui_context>` tạm thời vào message user cuối cùng trong mảng `ModelMessage[]`
+ * (chỉ tồn tại trong RAM của lượt hiện tại, không làm thay đổi `UIMessage` lưu DB và giữ nguyên Prompt Cache prefix).
+ */
+export function injectEphemeralTurnContext(
+  modelMessages: ModelMessage[],
+  contextBlock: string,
+): ModelMessage[] {
+  if (!contextBlock || !Array.isArray(modelMessages) || modelMessages.length === 0) {
+    return modelMessages;
+  }
+
+  let lastUserIdx = -1;
+  for (let i = modelMessages.length - 1; i >= 0; i -= 1) {
+    if (modelMessages[i]?.role === 'user') {
+      lastUserIdx = i;
+      break;
+    }
+  }
+
+  if (lastUserIdx === -1) {
+    return modelMessages;
+  }
+
+  const target = modelMessages[lastUserIdx];
+  if (!target || target.role !== 'user') {
+    return modelMessages;
+  }
+
+  const nextMessages = [...modelMessages];
+
+  if (typeof target.content === 'string') {
+    nextMessages[lastUserIdx] = {
+      ...target,
+      content: `${contextBlock}\n\n${target.content}`,
+    };
+    return nextMessages;
+  }
+
+  if (Array.isArray(target.content)) {
+    nextMessages[lastUserIdx] = {
+      ...target,
+      content: [{ type: 'text' as const, text: contextBlock }, ...target.content],
+    };
+    return nextMessages;
+  }
+
+  return modelMessages;
+}
+
 @Injectable()
 export class ChatAgentAiService {
   private readonly logger = new Logger(ChatAgentAiService.name);
@@ -153,11 +205,13 @@ export class ChatAgentAiService {
     basePrompt: string,
     availableDocuments?: AvailableDocumentItem[],
     attachedDocumentIds?: string[],
+    options?: { omitAttachedTag?: boolean },
   ): string {
     return buildSystemPromptWithDocumentCatalog(
       basePrompt,
       availableDocuments,
       attachedDocumentIds,
+      options,
     );
   }
 
@@ -236,6 +290,7 @@ export class ChatAgentAiService {
       onSuperDocApiSearch?: SuperDocApiSearchCallback;
       onSuperDocApiCall?: SuperDocApiCallCallback;
       superdocToolkitMeta?: SuperDocToolkitToolMeta;
+      workspaceContext?: ResolvedWorkspaceContext;
       chatConfig?: {
         modelName: string;
         temperature: number;
@@ -256,6 +311,7 @@ export class ChatAgentAiService {
       basePrompt,
       options?.availableDocuments,
       options?.attachedDocumentIds,
+      { omitAttachedTag: Boolean(options?.workspaceContext) },
     );
     const finalSystemPrompt = buildSystemPromptWithSuperDocAgent(
       promptWithCatalog,
@@ -274,9 +330,15 @@ export class ChatAgentAiService {
         : 5;
 
     const sanitizedMessages = this.sanitizePendingToolCalls(messages);
-    const modelMessages = await convertToModelMessages(sanitizedMessages, {
+    const baseModelMessages = await convertToModelMessages(sanitizedMessages, {
       tools: activeTools,
     });
+    const ephemeralContextBlock = options?.workspaceContext
+      ? renderEphemeralUiContextBlock(options.workspaceContext)
+      : '';
+    const modelMessages = ephemeralContextBlock
+      ? injectEphemeralTurnContext(baseModelMessages, ephemeralContextBlock)
+      : baseModelMessages;
     this.logger.log(
       `[ChatAgentAiService] convertToModelMessages: input count=${messages.length}, output count=${modelMessages.length}, activeTools=${activeTools ? Object.keys(activeTools).join(',') : 'none'}, model=${chatConfig.modelName}, temp=${chatConfig.temperature}, maxTokens=${chatConfig.maxOutputTokens}, topK=${chatConfig.topK}`,
     );

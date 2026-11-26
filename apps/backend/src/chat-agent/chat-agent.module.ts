@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ChatAgentService } from './chat-agent.service.js';
 import { ChatAgentController } from './chat-agent.controller.js';
+import { WorkspaceContextHydratorService } from './workspace-context-hydrator.service.js';
 import { RepoModule } from '../repo/repo.module.js';
 import { AiModule } from '../ai/ai.module.js';
 import { DocumentsModule } from '../documents/documents.module.js';
@@ -19,7 +20,7 @@ import { QuizModule } from '../quiz/quiz.module.js';
     DeckFlashcardModule,
     QuizModule,
   ],
-  providers: [ChatAgentService],
+  providers: [ChatAgentService, WorkspaceContextHydratorService],
   controllers: [ChatAgentController],
 })
 export class ChatAgentModule {}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RATING_ORDER } from "../constants";
 import { useStudySession } from "../hooks/useStudySession";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import type { Flashcard, Rating } from "../types";
 import { Button } from "../ui";
 import { BasicCard } from "./cards/BasicCard";
@@ -24,8 +25,37 @@ interface Props {
 /** B3 — Chế độ học tập trung chuẩn Apple Focus Stage: header · sân khấu thẻ · khu nút đánh giá */
 export function StudyView({ initialIds, cards, onPersist, onEditCard, onExit, onStudyExtra }: Props) {
   const session = useStudySession(initialIds, cards, onPersist);
+  const workspaceStore = useWorkspaceContextStore();
   const [typed, setTyped] = useState("");
   const { current, revealed } = session;
+
+  const remainingTotal =
+    session.remaining.new +
+    session.remaining.learning +
+    session.remaining.review;
+  const completedCount = Math.max(
+    0,
+    Math.round(session.progress * initialIds.length),
+  );
+
+  useEffect(() => {
+    if (!workspaceStore) return;
+    const prevMode =
+      workspaceStore.getSnapshot()?.flashcard?.studyState?.mode ?? "due";
+    workspaceStore.patchFlashcardStudyState({
+      mode: prevMode,
+      progress: completedCount,
+      remaining: remainingTotal,
+      currentCardId: current?.id,
+      isCardRevealed: revealed,
+    });
+  }, [
+    workspaceStore,
+    completedCount,
+    remainingTotal,
+    current?.id,
+    revealed,
+  ]);
 
   const handleRate = (r: Rating) => {
     session.rate(r);

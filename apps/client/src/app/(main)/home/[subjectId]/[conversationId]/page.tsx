@@ -14,6 +14,7 @@ import QuizTab, { type TargetedQuizRequest } from "@/components/conversations/Qu
 import AnalyticsDashboardView from "@/components/analytics/AnalyticsDashboardView";
 import { useFocusMode } from "@/components/layout";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useConversations } from "@/hooks/useConversations";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -68,10 +69,32 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     Record<string, Partial<Record<TabKey, number>>>
   >({});
   const activeTabRef = useRef<TabKey>(activeTab);
+  const workspaceStore = useWorkspaceContextStore();
 
   useEffect(() => {
     activeTabRef.current = activeTab;
-  }, [activeTab]);
+    workspaceStore?.setLocation({
+      pageType: "conversation",
+      subjectId,
+      conversationId,
+      activeTab,
+    });
+  }, [activeTab, subjectId, conversationId, workspaceStore]);
+
+  useEffect(() => {
+    return () => {
+      workspaceStore?.setLocation({ activeTab: null });
+    };
+  }, [workspaceStore]);
+
+  useEffect(() => {
+    if (!workspaceStore) return;
+    if (activeTab === "analytics") {
+      workspaceStore.patchAnalyticsState({ windowDays: analyticsWindowDays });
+    } else {
+      workspaceStore.clearTabSlice("analytics");
+    }
+  }, [activeTab, analyticsWindowDays, workspaceStore]);
 
   const clearTabUnseen = useCallback(
     (tab: TabKey) => {

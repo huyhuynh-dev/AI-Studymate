@@ -40,6 +40,8 @@ import {
 import { CreateChatSessionDto } from './dto/create-chat-session.dto.js';
 import { UpdateChatSessionDto } from './dto/update-chat-session.dto.js';
 import { GenerateSuggestionsDto } from './dto/generate-suggestions.dto.js';
+import type { WorkspaceUiContextDto } from './dto/ui-context.dto.js';
+import { WorkspaceContextHydratorService } from './workspace-context-hydrator.service.js';
 import {
   WorkspaceSyncChannel,
   pipeWorkspaceSyncIntoUIMessageStream,
@@ -103,6 +105,7 @@ export class ChatAgentService {
     @Optional() private readonly quizService?: QuizService,
     @Optional() private readonly superdocRuntimeService?: SuperDocRuntimeService,
     @Optional() private readonly superdocCollaborationService?: SuperDocCollaborationService,
+    @Optional() private readonly workspaceContextHydrator?: WorkspaceContextHydratorService,
   ) {}
 
   async createChatSession(
@@ -349,6 +352,7 @@ export class ChatAgentService {
         changeMode?: 'tracked' | 'direct';
         selectedText?: string;
       };
+      uiContext?: WorkspaceUiContextDto;
     },
   ) {
     const config = resolveChatConfig(chatOptions?.modelId, chatOptions?.effort);
@@ -362,6 +366,25 @@ export class ChatAgentService {
           ragContext.conversationId,
         )
       : undefined;
+
+    const workspaceContext =
+      ragContext && this.workspaceContextHydrator
+        ? await this.workspaceContextHydrator
+            .hydrate({
+              userId: ragContext.userId,
+              conversationId: ragContext.conversationId,
+              uiContext: chatOptions?.uiContext,
+              availableDocuments,
+              attachedDocumentIds: ragContext.attachedDocumentIds,
+              activeWordContext: chatOptions?.activeWordContext,
+            })
+            .catch((err) => {
+              console.warn(
+                `[ChatAgentService] WorkspaceContextHydrator warning: ${err?.message}`,
+              );
+              return undefined;
+            })
+        : undefined;
 
     const webCallbacks = {
       onSearchInternet: async (input: any) => {
@@ -1041,6 +1064,7 @@ export class ChatAgentService {
         ? {
             availableDocuments,
             attachedDocumentIds: ragContext.attachedDocumentIds,
+            workspaceContext,
             chatConfig: config,
             ...webCallbacks,
             ...superdocBindings,
@@ -1543,6 +1567,7 @@ export class ChatAgentService {
         changeMode?: 'tracked' | 'direct';
         selectedText?: string;
       };
+      uiContext?: WorkspaceUiContextDto;
     },
   ) {
     console.log(

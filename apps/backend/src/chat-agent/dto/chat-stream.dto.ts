@@ -8,6 +8,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import type { UIMessage } from 'ai';
+import { WorkspaceUiContextDto } from './ui-context.dto.js';
 
 export class ActiveWordContextDto {
   @IsUUID('4', { message: 'documentId phải là UUID hợp lệ' })
@@ -43,4 +44,9 @@ export class ChatStreamDto {
   @ValidateNested()
   @Type(() => ActiveWordContextDto)
   activeWordContext?: ActiveWordContextDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WorkspaceUiContextDto)
+  uiContext?: WorkspaceUiContextDto;
 }

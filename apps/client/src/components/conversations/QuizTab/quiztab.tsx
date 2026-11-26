@@ -12,6 +12,7 @@ import "./quiztab.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { useFocusMode } from "@/components/layout";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import type { DeckOption, DocumentOption, FlashcardTarget, Quiz, QuizAttempt, QuizCreateMode, QuizDraft, TestSetup, EvaluationStatus } from "./types";
 import type { QuizApi } from "./data/quizApi";
 import { createMockQuizApi } from "./data/mockApi";
@@ -81,6 +82,7 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, targetedRequ
   const [toast, setToast] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const { setFocusMode } = useFocusMode();
+  const workspaceStore = useWorkspaceContextStore();
 
   const currentRequestKey = initialQuizId ? `${initialQuizId}:${openNonce ?? ""}` : null;
   if (currentRequestKey && currentRequestKey !== handledRequestKey && initialQuizId) {
@@ -188,6 +190,34 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, targetedRequ
   let content: React.ReactNode;
   const quizId = "quizId" in view ? view.quizId : null;
   const quiz = quizId ? quizOf(quizId) : null;
+  const viewAttemptId = "attemptId" in view ? view.attemptId : null;
+
+  // Đồng bộ trạng thái Tab Trắc nghiệm vào Context Engine Store
+  useEffect(() => {
+    if (!workspaceStore) return;
+    workspaceStore.setTabSlice("quiz", {
+      viewMode: view.name,
+      totalQuizzesCount: store.quizzes.length,
+      activeQuiz: quiz ? { quizId: quiz.id, title: quiz.title } : null,
+      activeAttempt: viewAttemptId
+        ? {
+            attemptId: viewAttemptId,
+          }
+        : null,
+    });
+  }, [
+    workspaceStore,
+    view.name,
+    store.quizzes.length,
+    quiz,
+    viewAttemptId,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      workspaceStore?.clearTabSlice("quiz");
+    };
+  }, [workspaceStore]);
 
   if (view.name === "list") {
     content = (

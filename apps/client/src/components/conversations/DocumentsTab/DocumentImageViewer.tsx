@@ -21,12 +21,14 @@ import {
 } from "lucide-react";
 import { DocumentItem } from "@/types";
 import { documentsApi } from "@/services/documents.api";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 
 export interface DocumentImageViewerProps {
   documents: DocumentItem[];
   initialDocumentId: string;
   onClose: () => void;
   onDownload?: (documentId: string, fileName: string) => void;
+  compactReaderMode?: boolean;
   className?: string;
 }
 
@@ -37,8 +39,10 @@ export default function DocumentImageViewer({
   initialDocumentId,
   onClose,
   onDownload,
+  compactReaderMode = false,
   className = "",
 }: DocumentImageViewerProps) {
+  const workspaceStore = useWorkspaceContextStore();
   // Lọc chỉ lấy các tài liệu ảnh
   const imageDocs = useMemo(() => {
     return documents.filter((doc) => doc.mime_type.startsWith("image/"));
@@ -69,6 +73,15 @@ export default function DocumentImageViewer({
   }, [initialDocumentId, imageDocs]);
 
   const currentDoc = imageDocs[currentIndex] || imageDocs[0];
+
+  useEffect(() => {
+    if (!workspaceStore || compactReaderMode || !currentDoc) return;
+    workspaceStore.patchDocumentsViewingDoc({
+      documentId: currentDoc.id,
+      fileName: currentDoc.file_name,
+      viewerKind: "image",
+    });
+  }, [workspaceStore, compactReaderMode, currentDoc]);
 
   // Fetch URL cho ảnh qua thao tác trực tiếp hoặc thử lại
   const fetchImageUrl = useCallback(async (docId: string, force = false) => {

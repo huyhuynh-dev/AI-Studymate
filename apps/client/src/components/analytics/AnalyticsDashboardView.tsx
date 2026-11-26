@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { useWorkspaceContextStore } from '@/contexts/WorkspaceContextProvider';
 import type {
   ConversationAnalyticsResponse,
   SourceReference,
@@ -88,6 +89,15 @@ export default function AnalyticsDashboardView({
   onGoToDocuments,
 }: AnalyticsDashboardViewProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const workspaceStore = useWorkspaceContextStore();
+
+  useEffect(() => {
+    if (!workspaceStore || mode !== 'conversation') return;
+    workspaceStore.patchAnalyticsState({
+      windowDays,
+      advancedOpen,
+    });
+  }, [workspaceStore, mode, windowDays, advancedOpen]);
 
   if (isLoading && !data) {
     return <AnalyticsSkeleton />;

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check } from "lucide-react";
 import { useFocusMode } from "@/components/layout";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import { AiGeneratorModal, type AiTarget } from "./ai/AiGeneratorModal";
 import { DeckFormModal } from "./decks/DeckFormModal";
 import { DecksEmptyState } from "./decks/DecksEmptyState";
@@ -99,7 +100,51 @@ export default function FlashcardsTab({
 
   const { setFocusMode } = useFocusMode();
   const { sidePanelTarget } = useCitationNavigation();
+  const workspaceStore = useWorkspaceContextStore();
   const activeDeck = view.name !== "decks" ? decks.find((d) => d.id === view.deckId) : undefined;
+  const activeDeckStats = activeDeck
+    ? statsByDeck[activeDeck.id] || activeDeck.stats
+    : undefined;
+
+  // Đồng bộ trạng thái Tab Flashcard vào Context Engine Store
+  useEffect(() => {
+    if (!workspaceStore) return;
+    workspaceStore.setTabSlice("flashcard", {
+      viewMode: view.name,
+      totalDecksCount: decks.length,
+      activeDeck: activeDeck
+        ? {
+            deckId: activeDeck.id,
+            deckName: activeDeck.name,
+            totalCards: activeDeckStats?.total ?? deckCards.length,
+            dueToday: activeDeckStats?.dueToday ?? 0,
+          }
+        : null,
+      studyState:
+        view.name === "study"
+          ? {
+              mode: view.mode,
+              progress: 0,
+              remaining: deckCards.length,
+              isCardRevealed: false,
+            }
+          : null,
+    });
+  }, [
+    workspaceStore,
+    view,
+    decks.length,
+    activeDeck,
+    activeDeckStats?.total,
+    activeDeckStats?.dueToday,
+    deckCards.length,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      workspaceStore?.clearTabSlice("flashcard");
+    };
+  }, [workspaceStore]);
 
   // Đồng bộ Focus Mode: Tự động ẩn thanh tab & header khi vào Chế độ học (study)
   useEffect(() => {

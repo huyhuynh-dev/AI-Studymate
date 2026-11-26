@@ -12,6 +12,7 @@ import {
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useAskAi } from "@/contexts/AskAiContext";
 import { useWordAgent } from "@/contexts/WordAgentContext";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import { useFocusMode } from "@/components/layout/FocusModeContext";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -25,6 +26,7 @@ import { ChatHeader } from "./components/ChatHeader";
 import { EmptyState } from "./components/EmptyState";
 import { MessageList } from "./components/MessageList";
 import { WordAgentContextBar } from "./components/WordAgentContextBar";
+import { WorkspaceContextPill } from "./components/WorkspaceContextPill";
 import { ChevronLeft, FileText, Loader2 } from "lucide-react";
 import {
   EDITABLE_TEXT_EXTENSIONS_ACCEPT,
@@ -225,12 +227,35 @@ export default function RightSidebar({
     syncAgentSnapshotFromServer,
   } = useWordAgent();
   const { setIsRightSidebarCollapsed } = useFocusMode();
+  const workspaceStore = useWorkspaceContextStore();
+  const workspaceStoreRef = useRef(workspaceStore);
+  workspaceStoreRef.current = workspaceStore;
 
   const isWordContextForConversation = Boolean(
     activeWordDocument &&
       conversationId &&
       activeConversationId === conversationId
   );
+
+  // Đồng bộ trạng thái Word Agent (changeMode & selectedText) vào WorkspaceContextStore
+  useEffect(() => {
+    if (!workspaceStore || !isWordContextForConversation || !activeWordDocument) {
+      return;
+    }
+    workspaceStore.patchDocumentsViewingDoc({
+      documentId: activeWordDocument.id,
+      fileName: activeWordDocument.file_name,
+      viewerKind: "word",
+      wordChangeMode,
+      selectedText: wordSelection?.text ?? "",
+    });
+  }, [
+    workspaceStore,
+    isWordContextForConversation,
+    activeWordDocument,
+    wordChangeMode,
+    wordSelection?.text,
+  ]);
 
   const activeWordContextRef = useRef<{
     documentId: string;
@@ -436,6 +461,7 @@ export default function RightSidebar({
         pendingAttachedDocIdsRef.current = [];
         const currentConfig = modelConfigRef.current;
         const currentWordContext = activeWordContextRef.current;
+        const uiContext = workspaceStoreRef.current?.getSnapshot() ?? null;
         const targetApi = `/api/proxy/chat-agent/sessions/${id}/chat`;
         console.log(
           "[RightSidebar] prepareSendMessagesRequest -> Target API:",
@@ -447,7 +473,9 @@ export default function RightSidebar({
           "ModelConfig:",
           currentConfig,
           "WordContext:",
-          currentWordContext
+          currentWordContext,
+          "UiContext:",
+          uiContext
         );
         return {
           api: targetApi,
@@ -455,6 +483,7 @@ export default function RightSidebar({
             messages,
             ...(attachedDocumentIds.length > 0 ? { attachedDocumentIds } : {}),
             ...(currentWordContext ? { activeWordContext: currentWordContext } : {}),
+            ...(uiContext ? { uiContext } : {}),
             modelId: currentConfig.modelId,
             effort: currentConfig.effort,
           },
@@ -1399,6 +1428,7 @@ export default function RightSidebar({
             <SidePanelImageViewer
               documents={[sidePanelDocument]}
               initialDocumentId={sidePanelDocument.id}
+              compactReaderMode
               onClose={() => {
                 if (isFullscreen) {
                   setIsFullscreen(false);
@@ -1580,6 +1610,12 @@ export default function RightSidebar({
               onClearSelection={clearWordSelection}
             />
           )}
+
+          <WorkspaceContextPill
+            hideWhenWordActive={Boolean(
+              isWordContextForConversation && activeWordDocument
+            )}
+          />
 
           <ChatComposer
             value={inputValue}

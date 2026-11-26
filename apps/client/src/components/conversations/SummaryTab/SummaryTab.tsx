@@ -14,6 +14,7 @@ import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import type { DocumentItem, CreateSummaryRequest } from "@/types";
 import { useSummaries } from "@/hooks/useSummaries";
 import { useFocusMode } from "@/components/layout";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import SummaryConfigModal from "./SummaryConfigModal";
 import SummarySkeleton from "./SummarySkeleton";
 import SummaryToolbar from "./SummaryToolbar";
@@ -60,6 +61,7 @@ export default function SummaryTab({
   // Focus Mode (Chế độ tập trung / Mở rộng không gian hiển thị)
   const { isFocusMode, toggleFocusMode, setFocusMode, setIsViewingDocument } =
     useFocusMode();
+  const workspaceStore = useWorkspaceContextStore();
 
   const {
     summaries,
@@ -108,6 +110,29 @@ export default function SummaryTab({
       setIsViewingDocument(false);
     };
   }, [viewMode, activeSummary, setIsViewingDocument]);
+
+  // Đồng bộ trạng thái Tab Ghi chú vào Context Engine Store
+  useEffect(() => {
+    if (!workspaceStore) return;
+    const isDetail = viewMode === "detail" && Boolean(activeSummary);
+    workspaceStore.setTabSlice("summary", {
+      viewMode: isDetail ? "detail" : "list",
+      totalCount: summaries.length,
+      activeSummary:
+        isDetail && activeSummary
+          ? {
+              summaryId: activeSummary.id,
+              title: getNoteDisplayTitle(activeSummary.title),
+            }
+          : null,
+    });
+  }, [workspaceStore, viewMode, activeSummary, summaries.length]);
+
+  useEffect(() => {
+    return () => {
+      workspaceStore?.clearTabSlice("summary");
+    };
+  }, [workspaceStore]);
 
   // Nhấn phím Escape để thoát Chế độ tập trung (Focus Mode)
   useEffect(() => {

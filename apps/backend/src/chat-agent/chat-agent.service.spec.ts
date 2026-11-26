@@ -14,6 +14,7 @@ import { QuizService } from '../quiz/quiz.service.js';
 import { QuestionTypeEnum } from '../generated/prisma/client.js';
 import { TavilyService } from '../search/tavily.service.js';
 import { SuperDocRuntimeService } from '../documents/services/superdoc-runtime.service.js';
+import { WorkspaceContextHydratorService } from './workspace-context-hydrator.service.js';
 
 describe('ChatAgentService', () => {
   let service: ChatAgentService;
@@ -55,6 +56,9 @@ describe('ChatAgentService', () => {
     getToolkit: ReturnType<typeof vi.fn>;
     validateToolCallPolicy: ReturnType<typeof vi.fn>;
     runWithDocumentSession: ReturnType<typeof vi.fn>;
+  };
+  let hydratorMock: {
+    hydrate: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -300,6 +304,29 @@ describe('ChatAgentService', () => {
         { provide: DocumentsRepoService, useValue: documentsRepoMock },
         { provide: TavilyService, useValue: tavilyMock },
         { provide: SuperDocRuntimeService, useValue: superdocRuntimeMock },
+        {
+          provide: WorkspaceContextHydratorService,
+          useValue: (hydratorMock = {
+            hydrate: vi.fn().mockResolvedValue({
+              location: {
+                pageType: 'conversation',
+                conversationId: 'conv-1',
+                activeTab: 'documents',
+              },
+              inventory: {
+                documentsCount: 1,
+                readyDocumentsCount: 1,
+                notesCount: 0,
+                decksCount: 0,
+                quizzesCount: 0,
+              },
+              guards: {
+                examIntegrityGuard: false,
+                hideFlashcardAnswerGuard: false,
+              },
+            }),
+          }),
+        },
       ],
     }).compile();
 
@@ -1189,5 +1216,64 @@ describe('ChatAgentService', () => {
     });
     expect(superdocRuntimeMock.runWithDocumentSession).not.toHaveBeenCalled();
     expect(emitted).toHaveLength(0);
+  });
+
+  it('nên hydrate uiContext và truyền workspaceContext sang ChatAgentAiService mà không làm bẩn UIMessage lưu DB', async () => {
+    const incomingMessages = [
+      {
+        id: 'u-ctx-1',
+        role: 'user' as const,
+        parts: [{ type: 'text' as const, text: 'Giải thích trang này giúp mình' }],
+      },
+    ];
+
+    await service.handleChatStream(
+      'user-1',
+      'session-1',
+      incomingMessages,
+      undefined,
+      [],
+      {
+        uiContext: {
+          schemaVersion: 1,
+          location: {
+            pageType: 'conversation',
+            conversationId: 'conv-1',
+            activeTab: 'documents',
+          },
+          documents: {
+            viewMode: 'viewer',
+            filterType: 'all',
+            totalCount: 1,
+            visibleCount: 1,
+            viewingDocument: {
+              documentId: 'doc-attached-1',
+              fileName: 'Giao_trinh_CTDL.pdf',
+              viewerKind: 'pdf',
+              currentPage: 5,
+            },
+          },
+        },
+      },
+    );
+
+    expect(hydratorMock.hydrate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        conversationId: 'conv-1',
+      }),
+    );
+
+    const aiOptions = aiMock.executeChatStream.mock.calls[0]?.[3] as {
+      workspaceContext?: { location?: { activeTab?: string } };
+    };
+    expect(aiOptions.workspaceContext?.location?.activeTab).toBe('documents');
+
+    const savedPayload = repoMock.createMessage.mock.calls[0]?.[0] as {
+      message_json?: { parts?: Array<{ text?: string }> };
+    };
+    expect(savedPayload.message_json?.parts?.[0]?.text).toBe(
+      'Giải thích trang này giúp mình',
+    );
   });
 });

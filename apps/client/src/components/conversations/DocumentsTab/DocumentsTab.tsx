@@ -20,6 +20,8 @@ import {
 import { DocumentItem, UploadProgressItem } from "@/types";
 import { useFocusMode } from "@/components/layout";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
+import type { DocumentViewerKind } from "@/contexts/workspace-context.types";
 import DocumentImageViewer from "./DocumentImageViewer";
 import DocumentPdfViewer from "./DocumentPdfViewer";
 import DocumentTextEditor from "./editor/DocumentTextEditor";
@@ -151,6 +153,7 @@ export default function DocumentsTab({
   const [filterType, setFilterType] = useState<"all" | "pdf" | "image">("all");
   const { setIsViewingDocument, setFocusMode } = useFocusMode();
   const { activeTarget, consumeActiveTarget } = useCitationNavigation();
+  const workspaceStore = useWorkspaceContextStore();
 
   // Tự động mở tài liệu tương ứng khi người dùng click vào trích dẫn từ Chatbox (bỏ qua nếu mở ở cột phải)
   useEffect(() => {
@@ -232,6 +235,62 @@ export default function DocumentsTab({
     }
     return documents;
   }, [documents, filterType]);
+
+  // Đồng bộ trạng thái Tab Tài liệu vào Context Engine Store
+  useEffect(() => {
+    if (!workspaceStore) return;
+
+    let viewingDocument: {
+      documentId: string;
+      fileName: string;
+      viewerKind: DocumentViewerKind;
+      totalPages?: number;
+    } | null = null;
+
+    if (viewingDocId && viewingDoc) {
+      let viewerKind: DocumentViewerKind = "pdf";
+      if (viewingDoc.mime_type.startsWith("image/")) {
+        viewerKind = "image";
+      } else if (isDocxDocument(viewingDoc)) {
+        viewerKind = "word";
+      } else if (isLegacyWordOrOdtDocument(viewingDoc)) {
+        viewerKind = "legacy_doc";
+      } else if (isEditableTextDocument(viewingDoc)) {
+        viewerKind = "text";
+      }
+
+      viewingDocument = {
+        documentId: viewingDoc.id,
+        fileName: viewingDoc.file_name,
+        viewerKind,
+        totalPages:
+          typeof viewingDoc.page_count === "number" && viewingDoc.page_count > 0
+            ? viewingDoc.page_count
+            : undefined,
+      };
+    }
+
+    workspaceStore.setTabSlice("documents", {
+      viewMode: viewingDocument ? "viewer" : "list",
+      filterType,
+      totalCount: documents.length,
+      visibleCount: filteredDocuments.length,
+      viewingDocument,
+    });
+  }, [
+    workspaceStore,
+    viewingDocId,
+    viewingDoc,
+    filterType,
+    documents.length,
+    filteredDocuments.length,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      workspaceStore?.clearTabSlice("documents");
+    };
+  }, [workspaceStore]);
 
   const handleCardClick = (doc: DocumentItem) => {
     if (

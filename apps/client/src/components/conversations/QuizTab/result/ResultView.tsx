@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Layers, RotateCcw, Target } from "lucide-react";
+import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import type { BloomLevel, DeckOption, EvaluationStatus, FlashcardTarget, Quiz, QuizAttempt } from "../types";
 import { Button, Card, ScoreRing } from "../ui/primitives";
 import { cx, formatDuration, scoreLabel, summarizeAttempt, toPct, toScale10, toneForPct, fmtPoints } from "../utils";
@@ -20,6 +21,15 @@ export function ResultView({ quiz, attempt, decks, onBack, onRetryAll, onRetryIn
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [bridge, setBridge] = useState(false);
+  const workspaceStore = useWorkspaceContextStore();
+
+  useEffect(() => {
+    if (!workspaceStore) return;
+    workspaceStore.patchQuizAttemptState({
+      attemptId: attempt.id,
+      resultFilter: filter,
+    });
+  }, [workspaceStore, attempt.id, filter]);
 
   const ids = attempt.config?.questionOrder ?? quiz.questions.map((q) => q.id);
   const questions = useMemo(() => quiz.questions.filter((q) => ids.includes(q.id)), [quiz.questions, ids]);

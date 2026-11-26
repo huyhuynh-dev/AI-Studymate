@@ -149,6 +149,116 @@ export class QuizRepoService {
         return await this.assertQuizOwnership(quizId, userId);
     }
 
+    async countQuizzesByConversation(
+        conversationId: string,
+        userId: string,
+    ): Promise<number> {
+        return await this.prisma.quiz.count({
+            where: {
+                conversation_id: conversationId,
+                user_id: userId,
+            },
+        });
+    }
+
+    async getQuizListL1ByConversation(
+        conversationId: string,
+        userId: string,
+        limit = 15,
+    ) {
+        return await this.prisma.quiz.findMany({
+            where: {
+                conversation_id: conversationId,
+                user_id: userId,
+            },
+            orderBy: { created_at: 'desc' },
+            take: limit,
+            select: {
+                id: true,
+                title: true,
+                source: true,
+                _count: {
+                    select: {
+                        questions: true,
+                        attempts: true,
+                    },
+                },
+            },
+        });
+    }
+
+    async getQuizL1ByIdInConversation(
+        quizId: string,
+        conversationId: string,
+        userId: string,
+    ) {
+        return await this.prisma.quiz.findFirst({
+            where: {
+                id: quizId,
+                conversation_id: conversationId,
+                user_id: userId,
+            },
+            select: {
+                id: true,
+                title: true,
+                source: true,
+                time_limit_sec: true,
+                _count: {
+                    select: {
+                        questions: true,
+                        attempts: true,
+                    },
+                },
+            },
+        });
+    }
+
+    async getAttemptL1Summary(
+        attemptId: string,
+        conversationId: string,
+        userId: string,
+    ) {
+        return await this.prisma.quizAttempt.findFirst({
+            where: {
+                id: attemptId,
+                user_id: userId,
+                quiz: {
+                    conversation_id: conversationId,
+                },
+            },
+            select: {
+                id: true,
+                quiz_id: true,
+                status: true,
+                score: true,
+                max_score: true,
+                time_spent_sec: true,
+                config: true,
+                quiz: {
+                    select: {
+                        id: true,
+                        title: true,
+                        _count: {
+                            select: {
+                                questions: true,
+                            },
+                        },
+                    },
+                },
+                answers: {
+                    select: {
+                        evaluation_status: true,
+                        question: {
+                            select: {
+                                question_type: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
     async createQuizWithQuestions(
         userId: string,
         conversationId: string,
