@@ -2,11 +2,12 @@ import {
     BadRequestException,
     Body,
     Controller,
+    HttpException,
+    HttpStatus,
     Logger,
     Post,
     Res,
     StreamableFile,
-    TooManyRequestsException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { SynthesizeTtsDto } from './dto/synthesize-tts.dto.js';
@@ -43,8 +44,9 @@ export class TtsController {
                 `TTS request failed | voice=${dto.voice} | textLength=${dto.text.trim().length} | error=${message}`,
             );
             if (message.includes('429') || message.includes('Unexpected server response')) {
-                throw new TooManyRequestsException(
+                throw new HttpException(
                     'Dịch vụ giọng đọc đang tạm thời quá tải. Vui lòng thử lại sau ít phút.',
+                    HttpStatus.TOO_MANY_REQUESTS,
                 );
             }
             throw error;
