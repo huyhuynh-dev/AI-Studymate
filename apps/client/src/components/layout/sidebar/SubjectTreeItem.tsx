@@ -4,13 +4,12 @@ import React, { useMemo, ViewTransition } from "react";
 import Link from "next/link";
 import {
   ChevronRight,
-  Folder,
-  FolderOpen,
   MoreVertical,
   Pin,
   Plus,
   MessageSquare,
 } from "lucide-react";
+import { SubjectIconBadge } from "@/components/ui/SubjectIconBadge";
 import { useConversations } from "@/hooks/useConversations";
 import type { Conversation, Subject } from "@/types";
 
@@ -24,6 +23,7 @@ export interface SubjectTreeItemProps {
   pinnedConversationIds: Set<string>;
   onToggleExpand: (subjectId: string) => void;
   onSelectSubject?: (subject: Subject) => void;
+  onNavigateItem?: () => void;
   onCreateConversation: (subject: Subject, e: React.MouseEvent) => void;
   onToggleSubjectMenu: (
     subject: Subject,
@@ -55,6 +55,7 @@ export default function SubjectTreeItem({
   pinnedConversationIds,
   onToggleExpand,
   onSelectSubject,
+  onNavigateItem,
   onCreateConversation,
   onToggleSubjectMenu,
   onTogglePinConversation,
@@ -106,11 +107,11 @@ export default function SubjectTreeItem({
                 ? `Thu gọn danh sách phiên học của ${subject.name}`
                 : `Mở rộng danh sách phiên học của ${subject.name}`
             }
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[#777587] dark:text-neutral-400 hover:bg-[#E5EEFF]/70 dark:hover:bg-white/[0.08] hover:text-[#0B1C30] dark:hover:text-white active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] focus-visible:outline-offset-1 transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
+            className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[#5E5C6E] dark:text-[#9DA3AF] hover:bg-[#E5EEFF]/70 dark:hover:bg-white/[0.08] hover:text-[#0B1C30] dark:hover:text-white active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] focus-visible:outline-offset-1 transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer after:content-[''] after:absolute after:-inset-1.5 [@media(pointer:fine)]:after:hidden"
           >
             <ChevronRight
               aria-hidden="true"
-              className={`h-3.5 w-3.5 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+              className={`h-3.5 w-3.5 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${
                 isExpanded ? "rotate-90 text-[#4F46E5] dark:text-[#818CF8]" : ""
               }`}
             />
@@ -118,27 +119,18 @@ export default function SubjectTreeItem({
 
           <Link
             href={`/home/${subject.id}`}
-            onClick={() => onSelectSubject?.(subject)}
+            onClick={() => {
+              onSelectSubject?.(subject);
+              onNavigateItem?.();
+            }}
             className="flex flex-1 items-center gap-2 min-w-0 py-0.5 pr-1 text-left rounded-lg focus-visible:outline-2 focus-visible:outline-[#4F46E5] focus-visible:outline-offset-1"
           >
-            <span
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-transform duration-150 group-hover:scale-105 motion-reduce:transition-none"
-              style={{ backgroundColor: `${subjectColor}18` }}
-            >
-              {isActive || isExpanded ? (
-                <FolderOpen
-                  aria-hidden="true"
-                  className="h-3.5 w-3.5"
-                  style={{ color: subjectColor }}
-                />
-              ) : (
-                <Folder
-                  aria-hidden="true"
-                  className="h-3.5 w-3.5"
-                  style={{ color: subjectColor }}
-                />
-              )}
-            </span>
+            <SubjectIconBadge
+              color={subjectColor}
+              isOpen={isActive || isExpanded}
+              size="sm"
+              className="border-0 shadow-none transition-transform duration-150 group-hover:scale-105 motion-reduce:transition-none"
+            />
             <span
               title={subject.name}
               className={`text-[0.8125rem] truncate leading-snug tracking-tight ${
@@ -160,7 +152,7 @@ export default function SubjectTreeItem({
             }}
             aria-label={`Tạo phiên học mới trong ${subject.name}`}
             title="Tạo phiên học mới"
-            className="flex h-6 w-6 items-center justify-center rounded-md text-[#777587] dark:text-neutral-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] hover:text-[#4F46E5] dark:hover:text-[#818CF8] active:scale-95 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,opacity,transform] duration-150 motion-reduce:transition-none cursor-pointer"
+            className="relative flex h-6 w-6 items-center justify-center rounded-md text-[#5E5C6E] dark:text-[#9DA3AF] opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] hover:text-[#4F46E5] dark:hover:text-[#818CF8] active:scale-95 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,opacity,transform] duration-150 motion-reduce:transition-none cursor-pointer after:content-[''] after:absolute after:-inset-1.5 [@media(pointer:fine)]:after:hidden"
           >
             <Plus aria-hidden="true" className="h-3.5 w-3.5" />
           </button>
@@ -171,10 +163,10 @@ export default function SubjectTreeItem({
             aria-label={`Tùy chọn cho ${subject.name}`}
             title="Tùy chọn môn học"
             onClick={(e) => onToggleSubjectMenu(subject, e)}
-            className={`flex h-6 w-6 items-center justify-center rounded-md transition-[color,background-color,opacity,transform] duration-150 motion-reduce:transition-none active:scale-95 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-[#4F46E5] cursor-pointer ${
+            className={`relative flex h-6 w-6 items-center justify-center rounded-md transition-[color,background-color,opacity,transform] duration-150 motion-reduce:transition-none active:scale-95 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-[#4F46E5] cursor-pointer after:content-[''] after:absolute after:-inset-1.5 [@media(pointer:fine)]:after:hidden ${
               isSubjectMenuOpen
                 ? "bg-[#E5EEFF] dark:bg-white/[0.12] text-[#0B1C30] dark:text-white opacity-100"
-                : "text-[#777587] dark:text-neutral-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] hover:text-[#0B1C30] dark:hover:text-white"
+                : "text-[#5E5C6E] dark:text-[#9DA3AF] opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] hover:text-[#0B1C30] dark:hover:text-white"
             }`}
           >
             <MoreVertical aria-hidden="true" className="h-3.5 w-3.5" />
@@ -206,7 +198,7 @@ export default function SubjectTreeItem({
                   e.stopPropagation();
                   onCreateConversation(subject, e);
                 }}
-                className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-[0.75rem] text-[#777587] dark:text-neutral-500 hover:text-[#4F46E5] dark:hover:text-[#818CF8] hover:bg-[#F8F9FF] dark:hover:bg-white/[0.03] focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-colors duration-150 motion-reduce:transition-none cursor-pointer"
+                className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-[0.75rem] text-[#5E5C6E] dark:text-[#9DA3AF] hover:text-[#4F46E5] dark:hover:text-[#818CF8] hover:bg-[#F8F9FF] dark:hover:bg-white/[0.03] focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-colors duration-150 motion-reduce:transition-none cursor-pointer"
               >
                 <Plus aria-hidden="true" className="h-3 w-3 shrink-0" />
                 <span className="truncate">Tạo phiên học đầu tiên</span>
@@ -223,11 +215,12 @@ export default function SubjectTreeItem({
                     className={`group/conv relative flex items-center justify-between rounded-lg px-2 py-1.5 transition-colors duration-150 motion-reduce:transition-none ${
                       isConvActive
                         ? "bg-[#EEF2FF]/90 dark:bg-white/[0.08] text-[#3525CD] dark:text-white font-medium"
-                        : "text-[#464555] dark:text-neutral-400 hover:bg-[#F8F9FF] dark:hover:bg-white/[0.04] hover:text-[#0B1C30] dark:hover:text-neutral-200"
+                        : "text-[#464555] dark:text-[#9DA3AF] hover:bg-[#F8F9FF] dark:hover:bg-white/[0.04] hover:text-[#0B1C30] dark:hover:text-neutral-200"
                     }`}
                   >
                       <Link
                         href={`/home/${subject.id}/${conv.id}`}
+                        onClick={() => onNavigateItem?.()}
                         className="flex flex-1 items-center gap-2 min-w-0 pr-1 text-left rounded focus-visible:outline-2 focus-visible:outline-[#4F46E5]"
                       >
                         <MessageSquare
@@ -235,7 +228,7 @@ export default function SubjectTreeItem({
                           className={`h-3 w-3 shrink-0 ${
                             isConvActive
                               ? "text-[#4F46E5] dark:text-[#818CF8]"
-                              : "text-[#777587]/70 dark:text-neutral-500"
+                              : "text-[#5E5C6E] dark:text-[#9DA3AF]"
                           }`}
                         />
                         <span
@@ -261,10 +254,10 @@ export default function SubjectTreeItem({
                           }
                           aria-pressed={isPinned}
                           title={isPinned ? "Bỏ ghim" : "Ghim lên đầu"}
-                          className={`flex h-5 w-5 items-center justify-center rounded transition-[color,background-color,opacity,transform] duration-150 motion-reduce:transition-none active:scale-95 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-[#4F46E5] cursor-pointer ${
+                          className={`relative flex h-5 w-5 items-center justify-center rounded transition-[color,background-color,opacity,transform] duration-150 motion-reduce:transition-none active:scale-95 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-[#4F46E5] cursor-pointer after:content-[''] after:absolute after:-inset-1.5 [@media(pointer:fine)]:after:hidden ${
                             isPinned
                               ? "text-[#4F46E5] dark:text-[#818CF8] opacity-100 hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1]"
-                              : "text-[#777587] dark:text-neutral-400 opacity-0 group-hover/conv:opacity-100 group-focus-within/conv:opacity-100 hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] hover:text-[#0B1C30] dark:hover:text-white"
+                              : "text-[#5E5C6E] dark:text-[#9DA3AF] opacity-100 md:opacity-0 md:group-hover/conv:opacity-100 md:group-focus-within/conv:opacity-100 hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] hover:text-[#0B1C30] dark:hover:text-white"
                           }`}
                         >
                           <Pin
@@ -283,10 +276,10 @@ export default function SubjectTreeItem({
                           }
                           aria-label={`Tùy chọn cho ${conv.title}`}
                           title="Tùy chọn phiên học"
-                          className={`flex h-5 w-5 items-center justify-center rounded transition-[color,background-color,opacity,transform] duration-150 motion-reduce:transition-none active:scale-95 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-[#4F46E5] cursor-pointer ${
+                          className={`relative flex h-5 w-5 items-center justify-center rounded transition-[color,background-color,opacity,transform] duration-150 motion-reduce:transition-none active:scale-95 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-[#4F46E5] cursor-pointer after:content-[''] after:absolute after:-inset-1.5 [@media(pointer:fine)]:after:hidden ${
                             isConvMenuOpen
                               ? "bg-[#E5EEFF] dark:bg-white/[0.12] text-[#0B1C30] dark:text-white opacity-100"
-                              : "text-[#777587] dark:text-neutral-400 opacity-0 group-hover/conv:opacity-100 group-focus-within/conv:opacity-100 hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] hover:text-[#0B1C30] dark:hover:text-white"
+                              : "text-[#5E5C6E] dark:text-[#9DA3AF] opacity-100 md:opacity-0 md:group-hover/conv:opacity-100 md:group-focus-within/conv:opacity-100 hover:bg-[#E5EEFF] dark:hover:bg-white/[0.1] hover:text-[#0B1C30] dark:hover:text-white"
                           }`}
                         >
                           <MoreVertical

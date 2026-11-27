@@ -35,6 +35,12 @@ import {
   ConversationUpsertModal,
   DeleteConversationModal,
 } from "@/components/conversations";
+import {
+  FloatingActionMenu,
+  FloatingActionMenuItem,
+  computeFloatingMenuPosition,
+  type FloatingMenuPosition,
+} from "@/components/ui/FloatingActionMenu";
 import SubjectTreeItem from "./sidebar/SubjectTreeItem";
 import UserProfileMenu from "./sidebar/UserProfileMenu";
 
@@ -44,15 +50,13 @@ type ContextMenuAnchor =
   | {
       type: "subject";
       subject: Subject;
-      top: number;
-      left: number;
+      position: FloatingMenuPosition;
     }
   | {
       type: "conversation";
       subjectId: string;
       conversation: Conversation;
-      top: number;
-      left: number;
+      position: FloatingMenuPosition;
     };
 
 export interface LeftSidebarProps {
@@ -90,6 +94,8 @@ export interface LeftSidebarProps {
   onCreateWorkspace?: (workspace: { name: string; color: string }) => void;
   /** Callback when settings icon is clicked */
   onSettingsClick?: () => void;
+  /** Callback invoked after navigating to a subject/conversation (e.g. close mobile drawer) */
+  onNavigateItem?: () => void;
   /** Additional container classes */
   className?: string;
 }
@@ -103,6 +109,7 @@ export default function LeftSidebar({
   onNewFolder,
   onCreateWorkspace,
   onSettingsClick,
+  onNavigateItem,
   className = "",
 }: LeftSidebarProps) {
   const router = useRouter();
@@ -231,60 +238,6 @@ export default function LeftSidebar({
   // State menu 3 chấm (Apple macOS Context Menu) cho cả Subject và Conversation
   const [menuAnchor, setMenuAnchor] = useState<ContextMenuAnchor | null>(null);
 
-  useEffect(() => {
-    if (!menuAnchor) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (
-        target?.closest('[data-menu-trigger="true"]') ||
-        target?.closest('[data-dropdown-menu="true"]')
-      ) {
-        return;
-      }
-      setMenuAnchor(null);
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setMenuAnchor(null);
-      }
-    };
-
-    const handleScrollOrResize = () => {
-      setMenuAnchor(null);
-    };
-
-    window.addEventListener("mousedown", handleClickOutside);
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("scroll", handleScrollOrResize, true);
-    window.addEventListener("resize", handleScrollOrResize);
-
-    return () => {
-      window.removeEventListener("mousedown", handleClickOutside);
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("scroll", handleScrollOrResize, true);
-      window.removeEventListener("resize", handleScrollOrResize);
-    };
-  }, [menuAnchor]);
-
-  const computeMenuPosition = (rect: DOMRect) => {
-    const menuHeight = 84;
-    const menuWidth = 148;
-
-    let top = rect.bottom + 4;
-    if (top + menuHeight > window.innerHeight) {
-      top = Math.max(8, rect.top - menuHeight - 4);
-    }
-
-    let left = rect.right - menuWidth;
-    if (left < 8) {
-      left = 8;
-    }
-
-    return { top, left };
-  };
-
   const handleToggleSubjectMenu = useCallback(
     (subject: Subject, e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
@@ -295,10 +248,11 @@ export default function LeftSidebar({
         setMenuAnchor(null);
         return;
       }
-      const { top, left } = computeMenuPosition(
-        e.currentTarget.getBoundingClientRect()
+      const position = computeFloatingMenuPosition(
+        e.currentTarget.getBoundingClientRect(),
+        { menuWidth: 148, menuHeight: 84 }
       );
-      setMenuAnchor({ type: "subject", subject, top, left });
+      setMenuAnchor({ type: "subject", subject, position });
     },
     [menuAnchor]
   );
@@ -317,15 +271,15 @@ export default function LeftSidebar({
         setMenuAnchor(null);
         return;
       }
-      const { top, left } = computeMenuPosition(
-        e.currentTarget.getBoundingClientRect()
+      const position = computeFloatingMenuPosition(
+        e.currentTarget.getBoundingClientRect(),
+        { menuWidth: 148, menuHeight: 84 }
       );
       setMenuAnchor({
         type: "conversation",
         subjectId,
         conversation,
-        top,
-        left,
+        position,
       });
     },
     [menuAnchor]
@@ -612,7 +566,7 @@ export default function LeftSidebar({
                 });
               }}
               onMouseLeave={() => setRailTooltip(null)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#777587] hover:text-[#4F46E5] hover:bg-[#EEF2FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
+              className="relative flex h-8 w-8 items-center justify-center rounded-lg text-[#5E5C6E] dark:text-[#9DA3AF] hover:text-[#4F46E5] hover:bg-[#EEF2FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
             >
               <Plus aria-hidden="true" className="h-4 w-4" />
             </button>
@@ -628,7 +582,10 @@ export default function LeftSidebar({
                 <Link
                   key={subject.id}
                   href={`/home/${subject.id}`}
-                  onClick={() => handleSelectSubject(subject)}
+                  onClick={() => {
+                    handleSelectSubject(subject);
+                    onNavigateItem?.();
+                  }}
                   aria-label={subject.name}
                   onMouseEnter={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
@@ -641,7 +598,7 @@ export default function LeftSidebar({
                   className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none ${
                     isActive
                       ? "bg-[#EEF2FF] dark:bg-white/[0.12] text-[#4F46E5] shadow-2xs ring-1 ring-[#C7D2FE] dark:ring-white/20"
-                      : "text-[#777587] hover:bg-[#F8F9FF] dark:hover:bg-white/[0.04] hover:text-[#0B1C30]"
+                      : "text-[#5E5C6E] dark:text-[#9DA3AF] hover:bg-[#F8F9FF] dark:hover:bg-white/[0.04] hover:text-[#0B1C30] dark:hover:text-white"
                   }`}
                 >
                   {isActive ? (
@@ -705,6 +662,7 @@ export default function LeftSidebar({
           <div className="flex items-center justify-between gap-2 pb-3 mb-2 border-b border-[#E5EEFF] dark:border-white/[0.08] shrink-0 px-1">
             <Link
               href="/home"
+              onClick={() => onNavigateItem?.()}
               className="flex items-center gap-2.5 min-w-0 group rounded-lg focus-visible:outline-2 focus-visible:outline-[#4F46E5] focus-visible:outline-offset-2"
             >
               <Image
@@ -729,7 +687,7 @@ export default function LeftSidebar({
                 onClick={handleToggleCollapse}
                 aria-label="Thu gọn thanh bên"
                 title="Thu gọn"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#777587] dark:text-neutral-400 hover:text-[#0B1C30] dark:hover:text-white hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#5E5C6E] dark:text-[#9DA3AF] hover:text-[#0B1C30] dark:hover:text-white hover:bg-[#F8F9FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
               >
                 <PanelLeftClose aria-hidden="true" className="h-4 w-4" />
               </button>
@@ -739,7 +697,7 @@ export default function LeftSidebar({
           {/* 2. Phần giữa: Danh sách Subject & tối đa 5 Conversation gần nhất */}
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-2 pb-2 shrink-0">
-              <span className="text-[0.6875rem] font-semibold font-heading tracking-wider text-[#777587] dark:text-neutral-400 uppercase">
+              <span className="text-[0.6875rem] font-semibold font-heading tracking-wider text-[#5E5C6E] dark:text-[#9DA3AF] uppercase">
                 Không gian học tập
               </span>
               <button
@@ -747,7 +705,7 @@ export default function LeftSidebar({
                 onClick={handleOpenCreateModal}
                 aria-label="Tạo không gian học tập mới"
                 title="Tạo không gian mới"
-                className="flex h-6 w-6 items-center justify-center rounded-lg text-[#777587] dark:text-neutral-400 hover:text-[#4F46E5] dark:hover:text-[#818CF8] hover:bg-[#EEF2FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
+                className="relative flex h-6 w-6 items-center justify-center rounded-lg text-[#5E5C6E] dark:text-[#9DA3AF] hover:text-[#4F46E5] dark:hover:text-[#818CF8] hover:bg-[#EEF2FF] dark:hover:bg-white/[0.06] active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[color,background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer after:content-[''] after:absolute after:-inset-1.5 [@media(pointer:fine)]:after:hidden"
               >
                 <Plus aria-hidden="true" className="h-4 w-4" />
               </button>
@@ -801,10 +759,10 @@ export default function LeftSidebar({
                     <Folder aria-hidden="true" className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold font-heading text-[#0B1C30] dark:text-neutral-300">
+                    <p className="text-xs font-semibold font-heading text-[#0B1C30] dark:text-neutral-200">
                       Chưa có không gian nào
                     </p>
-                    <p className="text-[0.6875rem] text-[#777587] dark:text-neutral-500 mt-0.5">
+                    <p className="text-[0.6875rem] text-[#5E5C6E] dark:text-[#9DA3AF] mt-0.5">
                       Tạo không gian để quản lý tài liệu
                     </p>
                   </div>
@@ -839,6 +797,7 @@ export default function LeftSidebar({
                   pinnedConversationIds={pinnedConversationIds}
                   onToggleExpand={handleToggleExpandSubject}
                   onSelectSubject={handleSelectSubject}
+                  onNavigateItem={onNavigateItem}
                   onCreateConversation={handleOpenCreateConversation}
                   onToggleSubjectMenu={handleToggleSubjectMenu}
                   onTogglePinConversation={handleTogglePinConversation}
@@ -861,58 +820,55 @@ export default function LeftSidebar({
       )}
 
       {/* ── Apple macOS Floating Context Menu (Subject & Conversation) ── */}
-      {menuAnchor && (
-        <div
-          data-dropdown-menu="true"
-          role="menu"
-          style={{
-            position: "fixed",
-            top: `${menuAnchor.top}px`,
-            left: `${menuAnchor.left}px`,
+      <FloatingActionMenu
+        isOpen={Boolean(menuAnchor)}
+        position={menuAnchor?.position ?? null}
+        onClose={() => setMenuAnchor(null)}
+        widthClass="w-36"
+        ariaLabel={
+          menuAnchor?.type === "subject"
+            ? `Tùy chọn cho ${menuAnchor.subject.name}`
+            : menuAnchor?.type === "conversation"
+              ? `Tùy chọn cho ${menuAnchor.conversation.title}`
+              : "Tùy chọn"
+        }
+      >
+        <FloatingActionMenuItem
+          icon={<Edit3 className="h-3.5 w-3.5" />}
+          onClick={(e) => {
+            if (!menuAnchor) return;
+            if (menuAnchor.type === "subject") {
+              handleOpenEditSubjectModal(menuAnchor.subject, e);
+            } else {
+              handleOpenEditConversation(
+                menuAnchor.subjectId,
+                menuAnchor.conversation,
+                e
+              );
+            }
           }}
-          className="z-50 w-36 rounded-xl border border-[#E5EEFF] dark:border-white/[0.12] bg-white/95 dark:bg-[#12151C]/95 backdrop-blur-xl p-1 shadow-lg shadow-[#0B1C30]/5 animate-in fade-in-50 zoom-in-95 duration-100 motion-reduce:animate-none select-none"
-          onClick={(e) => e.stopPropagation()}
         >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={(e) => {
-              if (menuAnchor.type === "subject") {
-                handleOpenEditSubjectModal(menuAnchor.subject, e);
-              } else {
-                handleOpenEditConversation(
-                  menuAnchor.subjectId,
-                  menuAnchor.conversation,
-                  e
-                );
-              }
-            }}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#464555] dark:text-neutral-200 hover:bg-[#4F46E5] hover:text-white focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-colors duration-150 cursor-pointer"
-          >
-            <Edit3 aria-hidden="true" className="h-3.5 w-3.5" />
-            <span>Chỉnh sửa</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={(e) => {
-              if (menuAnchor.type === "subject") {
-                handleOpenDeleteSubjectModal(menuAnchor.subject, e);
-              } else {
-                handleOpenDeleteConversation(
-                  menuAnchor.subjectId,
-                  menuAnchor.conversation,
-                  e
-                );
-              }
-            }}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white focus-visible:outline-2 focus-visible:outline-rose-500 transition-colors duration-150 cursor-pointer"
-          >
-            <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
-            <span>Xóa</span>
-          </button>
-        </div>
-      )}
+          Chỉnh sửa
+        </FloatingActionMenuItem>
+        <FloatingActionMenuItem
+          tone="danger"
+          icon={<Trash2 className="h-3.5 w-3.5" />}
+          onClick={(e) => {
+            if (!menuAnchor) return;
+            if (menuAnchor.type === "subject") {
+              handleOpenDeleteSubjectModal(menuAnchor.subject, e);
+            } else {
+              handleOpenDeleteConversation(
+                menuAnchor.subjectId,
+                menuAnchor.conversation,
+                e
+              );
+            }
+          }}
+        >
+          Xóa
+        </FloatingActionMenuItem>
+      </FloatingActionMenu>
 
       {/* ── Modal Tạo mới & Chỉnh sửa Không gian học tập ── */}
       <CreateWorkspaceModal

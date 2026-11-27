@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { Menu } from "lucide-react";
 import { LeftSidebar, RightSidebar, FocusModeProvider, useFocusMode } from "@/components/layout";
 import { AskAiProvider } from "@/contexts/AskAiContext";
 import { CitationNavigationProvider, useCitationNavigation } from "@/contexts/CitationNavigationContext";
@@ -23,6 +26,7 @@ import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
+    const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const router = useRouter();
     const { user: currentUser } = useCurrentUser();
     const { setTheme } = useThemePreference();
@@ -167,31 +171,113 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         currentConversationId,
     ]);
 
+    useEffect(() => {
+        if (!isMobileNavOpen) return;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setIsMobileNavOpen(false);
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [isMobileNavOpen]);
+
     const effectiveRightCollapsed = sidePanelTarget
         ? !showRightSidebar
         : isRightSidebarCollapsed || !showRightSidebar;
 
+    const sidebarUser = currentUser
+        ? {
+              name: currentUser.name,
+              email: currentUser.email,
+              avatarUrl: currentUser.avatarUrl ?? undefined,
+          }
+        : undefined;
+
     return (
-        <div className="flex h-screen w-full flex-col overflow-hidden bg-[#F8F9FF] dark:bg-[#090B10] select-none text-[#0B1C30] dark:text-[#EFF0F6]">
+        <div className="flex h-screen w-full flex-col overflow-hidden bg-[#F8F9FF] dark:bg-[#090B10] text-[#0B1C30] dark:text-[#EFF0F6]">
+            {/* Mobile Header Bar (< md) */}
+            {!isFocusMode ? (
+                <header className="flex md:hidden items-center justify-between gap-3 border-b border-[#E5EEFF] dark:border-white/[0.08] bg-white/95 dark:bg-[#12151C]/95 backdrop-blur-md px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] shrink-0 z-30">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <button
+                            type="button"
+                            onClick={() => setIsMobileNavOpen(true)}
+                            aria-label="Mở menu điều hướng"
+                            aria-expanded={isMobileNavOpen}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#464555] dark:text-[#EFF0F6] hover:bg-[#F8F9FF] dark:hover:bg-white/[0.08] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-[#4F46E5] transition-[background-color,transform] duration-150 motion-reduce:transition-none cursor-pointer"
+                        >
+                            <Menu aria-hidden="true" className="h-5 w-5" />
+                        </button>
+                        <Link
+                            href="/home"
+                            className="flex items-center gap-2 min-w-0 rounded-lg focus-visible:outline-2 focus-visible:outline-[#4F46E5]"
+                        >
+                            <Image
+                                src="/logo.svg"
+                                alt="Logo AI StudyMate"
+                                width={24}
+                                height={24}
+                                unoptimized
+                                className="h-6 w-6 shrink-0"
+                            />
+                            <span
+                                translate="no"
+                                className="text-sm font-bold font-heading tracking-tight text-[#0B1C30] dark:text-[#EFF0F6] truncate"
+                            >
+                                AI StudyMate
+                            </span>
+                        </Link>
+                    </div>
+                </header>
+            ) : null}
+
+            {/* Mobile Navigation Drawer (< md) */}
+            {isMobileNavOpen ? (
+                <div className="fixed inset-0 z-50 flex md:hidden overscroll-contain">
+                    <div
+                        className="fixed inset-0 bg-[#0B1C30]/40 backdrop-blur-sm transition-opacity duration-200 motion-reduce:transition-none"
+                        aria-hidden="true"
+                        onClick={() => setIsMobileNavOpen(false)}
+                    />
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Menu điều hướng"
+                        className="relative z-10 h-full w-[min(20rem,86vw)] shadow-2xl overscroll-contain animate-in slide-in-from-left duration-200 motion-reduce:animate-none"
+                    >
+                        <React.Suspense
+                            fallback={
+                                <div className="w-full h-full bg-white dark:bg-[#12151C] animate-pulse motion-reduce:animate-none" />
+                            }
+                        >
+                            <LeftSidebar
+                                user={sidebarUser}
+                                isCollapsed={false}
+                                className="w-full"
+                                onToggleCollapse={() => setIsMobileNavOpen(false)}
+                                onNavigateItem={() => setIsMobileNavOpen(false)}
+                                onSettingsClick={() => {
+                                    setIsMobileNavOpen(false);
+                                    router.push("/profile");
+                                }}
+                            />
+                        </React.Suspense>
+                    </div>
+                </div>
+            ) : null}
+
             {/* Main Split View Area */}
-            <div className="relative flex flex-1 overflow-hidden">
-                {/* Navigation Sidebar Area (macOS Split View style) */}
-                <aside className="z-20 shrink-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]">
+            <div className="relative flex flex-1 min-h-0 overflow-hidden">
+                {/* Desktop Navigation Sidebar Area (macOS Split View style) */}
+                <aside className="hidden md:block z-20 shrink-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none">
                     <React.Suspense
                         fallback={
-                            <div className="w-68 h-full bg-white dark:bg-[#12151C] border-r border-black/[0.06] dark:border-white/[0.08] animate-pulse" />
+                            <div className="w-68 h-full bg-white dark:bg-[#12151C] border-r border-black/[0.06] dark:border-white/[0.08] animate-pulse motion-reduce:animate-none" />
                         }
                     >
                         <LeftSidebar
-                            user={
-                                currentUser
-                                    ? {
-                                          name: currentUser.name,
-                                          email: currentUser.email,
-                                          avatarUrl: currentUser.avatarUrl ?? undefined,
-                                      }
-                                    : undefined
-                            }
+                            user={sidebarUser}
                             isCollapsed={isLeftCollapsed}
                             onToggleCollapse={() => {
                                 const nextLeft = !isLeftCollapsed;
@@ -208,14 +294,14 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 
                 {/* Center Content Area */}
                 <main
-                    className={`relative flex-1 transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                    className={`relative flex-1 transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
                         isFocusMode
                             ? "p-0 overflow-hidden bg-white dark:bg-[#090B10]"
                             : isViewingDocument
                               ? "p-2 sm:p-3 overflow-y-auto"
                               : showRightSidebar
                                 ? "p-3 sm:p-4 lg:p-5 overflow-y-auto"
-                                : "p-5 sm:p-8 lg:p-10 overflow-y-auto"
+                                : "px-4 py-5 sm:px-8 sm:py-8 lg:px-10 lg:py-10 overflow-y-auto"
                     }`}
                 >
                     {showRightSidebar && effectiveRightCollapsed && !sidePanelTarget && (
@@ -252,8 +338,8 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                         {shouldHoldHomeRender ? (
                             <div
                                 aria-busy="true"
-                                aria-label="Đang khôi phục không gian học tập"
-                                className="flex flex-1 flex-col gap-5 py-4 animate-pulse"
+                                aria-label="Đang khôi phục không gian học tập…"
+                                className="flex flex-1 flex-col gap-5 py-4 animate-pulse motion-reduce:animate-none"
                             >
                                 <div className="h-9 w-56 rounded-xl bg-neutral-200/70 dark:bg-white/[0.06]" />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

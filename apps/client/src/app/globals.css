@@ -8,6 +8,7 @@
   --surface-canvas: #f8f9ff;
   --surface-card: #ffffff;
   --on-surface-variant: #464555;
+  --on-surface-muted: #5e5c6e;
   --border-subtle: #e5eeff;
   --border-outline: #c7c4d8;
   --brand-primary: #4f46e5;
@@ -39,6 +40,7 @@
   --surface-canvas: #090b10;
   --surface-card: #12151c;
   --on-surface-variant: #9da3af;
+  --on-surface-muted: #9da3af;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-outline: rgba(255, 255, 255, 0.15);
   --brand-primary: #6366f1;
@@ -56,6 +58,7 @@
     --surface-canvas: #090b10;
     --surface-card: #12151c;
     --on-surface-variant: #9da3af;
+    --on-surface-muted: #9da3af;
     --border-subtle: rgba(255, 255, 255, 0.08);
     --border-outline: rgba(255, 255, 255, 0.15);
     --brand-primary: #6366f1;
@@ -89,15 +92,22 @@ body {
 
 /* Apple HIG Liquid Glass & Translucent Surfaces */
 .apple-liquid-glass {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid var(--border-subtle);
 }
 
+:root.dark .apple-liquid-glass {
+  background: rgba(22, 25, 34, 0.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 @media (prefers-color-scheme: dark) {
-  .apple-liquid-glass {
-    background: rgba(18, 21, 28, 0.8);
+  :root:not(.light) .apple-liquid-glass {
+    background: rgba(22, 25, 34, 0.88);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -106,7 +116,19 @@ body {
 
 /* Apple Spring Physics Transition Utility */
 .apple-spring {
-  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    transform 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apple-spring {
+    transition: none;
+  }
 }
 
 /* Hide scrollbar while preserving scrolling */
@@ -178,8 +200,14 @@ samp,
   /* Vùng lõm chứa mockup trong thẻ */
 }
 
+:root.dark {
+  --surface-raised: #1d212b;
+  /* sáng hơn card (#12151c) → Z cao hơn */
+  --surface-well: rgba(255, 255, 255, 0.035);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --surface-raised: #1d212b;
     /* sáng hơn card (#12151c) → Z cao hơn */
     --surface-well: rgba(255, 255, 255, 0.035);
@@ -188,6 +216,7 @@ samp,
 
 @theme inline {
   --color-muted: var(--on-surface-variant);
+  --color-text-muted: var(--on-surface-muted);
   --color-line: var(--border-subtle);
   --color-hairline: var(--specular-hairline);
   --color-raised: var(--surface-raised);
