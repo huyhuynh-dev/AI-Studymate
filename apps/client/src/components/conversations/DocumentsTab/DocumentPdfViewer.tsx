@@ -101,6 +101,10 @@ export interface DocumentPdfViewerProps {
     chunkIds: string[];
     sectionTitle: string;
   }) => void;
+  /** Trang ban đầu cần cuộn tới khi khôi phục trạng thái (1-based) */
+  initialPage?: number;
+  /** Callback báo cáo trang hiện tại (1-based) khi người dùng cuộn/lật trang */
+  onPageChange?: (page: number) => void;
   /** Chế độ đọc gọn nhẹ khi mượn chỗ RightSidebar để đối chiếu nguồn nhanh */
   compactReaderMode?: boolean;
   isExternalFullscreen?: boolean;
@@ -995,20 +999,26 @@ function PdfWorkspaceContextBridge({
   backendDocumentId,
   fileName,
   initialPageCount,
+  initialPage,
+  onPageChange,
   compactReaderMode,
 }: {
   documentId: string;
   backendDocumentId: string;
   fileName: string;
   initialPageCount?: number | null;
+  initialPage?: number;
+  onPageChange?: (page: number) => void;
   compactReaderMode?: boolean;
 }) {
   const viewportElementRef = useViewportElement();
   const { state: scrollState, provides: scrollScope } = useScroll(documentId);
   const { provides: scrollProvides } = useScrollCapability();
+  const { activeTarget } = useCitationNavigation();
   const docState = useDocumentState(documentId);
   const workspaceStore = useWorkspaceContextStore();
 
+  const initialPageAppliedRef = useRef(false);
   const lastReportedRef = useRef<{
     docId: string;
     page: number;
@@ -1023,6 +1033,8 @@ function PdfWorkspaceContextBridge({
     backendDocumentId,
     fileName,
     initialPageCount,
+    initialPage,
+    onPageChange,
     compactReaderMode,
   });
 
@@ -1035,13 +1047,74 @@ function PdfWorkspaceContextBridge({
       backendDocumentId,
       fileName,
       initialPageCount,
+      initialPage,
+      onPageChange,
       compactReaderMode,
     };
   });
 
   useEffect(() => {
     lastReportedRef.current = null;
+    initialPageAppliedRef.current = false;
   }, [backendDocumentId, documentId]);
+
+  // Cuộn một lần tới trang đã lưu (chỉ khi không có lệnh nhảy trích dẫn tường minh)
+  useEffect(() => {
+    if (
+      compactReaderMode ||
+      !initialPage ||
+      initialPage <= 1 ||
+      initialPageAppliedRef.current ||
+      activeTarget ||
+      !scrollScope
+    ) {
+      return;
+    }
+
+    const jumpOnce = (allowMarkWithoutLayout = false) => {
+      if (initialPageAppliedRef.current) return;
+      try {
+        const layout = scrollScope.getLayout();
+        const hasLayout = Boolean(layout?.virtualItems && layout.virtualItems.length > 0);
+        if (!hasLayout && !allowMarkWithoutLayout) {
+          return;
+        }
+        scrollScope.scrollToPage({
+          pageNumber: initialPage,
+          behavior: "auto",
+        });
+        initialPageAppliedRef.current = true;
+      } catch {
+        if (allowMarkWithoutLayout) {
+          initialPageAppliedRef.current = true;
+        }
+      }
+    };
+
+    jumpOnce(false);
+    const unsubLayout = scrollProvides?.onLayoutReady?.((event) => {
+      if (event.documentId === documentId) {
+        jumpOnce(true);
+      }
+    });
+    const t1 = window.setTimeout(() => jumpOnce(false), 100);
+    const t2 = window.setTimeout(() => jumpOnce(false), 280);
+    const t3 = window.setTimeout(() => jumpOnce(true), 600);
+
+    return () => {
+      unsubLayout?.();
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+  }, [
+    compactReaderMode,
+    initialPage,
+    activeTarget,
+    scrollScope,
+    scrollProvides,
+    documentId,
+  ]);
 
   const syncPageNow = useCallback(() => {
     const {
@@ -1052,6 +1125,8 @@ function PdfWorkspaceContextBridge({
       backendDocumentId: curBackendDocId,
       fileName: curFileName,
       initialPageCount: curInitialPageCount,
+      initialPage: curInitialPage,
+      onPageChange: curOnPageChange,
       compactReaderMode: isCompact,
     } = latestDepsRef.current;
 
@@ -1186,6 +1261,12 @@ function PdfWorkspaceContextBridge({
         currentPage: clampedPage,
         totalPages: resolvedTotalPages,
       });
+      const awaitingInitialJump = Boolean(
+        curInitialPage && curInitialPage > 1 && !initialPageAppliedRef.current,
+      );
+      if (!awaitingInitialJump) {
+        curOnPageChange?.(clampedPage);
+      }
     }
   }, [viewportElementRef]);
 
@@ -1341,6 +1422,8 @@ export default function DocumentPdfViewer({
   onClose,
   onDocumentUpdated,
   onCreateTargetedQuiz,
+  initialPage,
+  onPageChange,
   compactReaderMode = false,
   isExternalFullscreen = false,
   onToggleExternalFullscreen,
@@ -1607,6 +1690,8 @@ export default function DocumentPdfViewer({
                               backendDocumentId={document.id}
                               fileName={document.file_name}
                               initialPageCount={document.page_count}
+                              initialPage={initialPage}
+                              onPageChange={onPageChange}
                               compactReaderMode={compactReaderMode}
                             />
                             <ZoomGestureWrapper documentId={activeDocumentId}>

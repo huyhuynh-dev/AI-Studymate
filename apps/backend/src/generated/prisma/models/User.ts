@@ -316,6 +316,7 @@ export type UserWhereInput = {
   agent_action_logs?: Prisma.AgentActionLogListRelationFilter
   agent_jobs?: Prisma.AgentBackgroundJobListRelationFilter
   agent_traces?: Prisma.AgentTraceListRelationFilter
+  workspace_state?: Prisma.XOR<Prisma.UserWorkspaceStateNullableScalarRelationFilter, Prisma.UserWorkspaceStateWhereInput> | null
 }
 
 export type UserOrderByWithRelationInput = {
@@ -347,6 +348,7 @@ export type UserOrderByWithRelationInput = {
   agent_action_logs?: Prisma.AgentActionLogOrderByRelationAggregateInput
   agent_jobs?: Prisma.AgentBackgroundJobOrderByRelationAggregateInput
   agent_traces?: Prisma.AgentTraceOrderByRelationAggregateInput
+  workspace_state?: Prisma.UserWorkspaceStateOrderByWithRelationInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -381,6 +383,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   agent_action_logs?: Prisma.AgentActionLogListRelationFilter
   agent_jobs?: Prisma.AgentBackgroundJobListRelationFilter
   agent_traces?: Prisma.AgentTraceListRelationFilter
+  workspace_state?: Prisma.XOR<Prisma.UserWorkspaceStateNullableScalarRelationFilter, Prisma.UserWorkspaceStateWhereInput> | null
 }, "id" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -458,6 +461,7 @@ export type UserCreateInput = {
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -489,6 +493,7 @@ export type UserUncheckedCreateInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -520,6 +525,7 @@ export type UserUpdateInput = {
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -551,6 +557,7 @@ export type UserUncheckedUpdateInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -881,6 +888,20 @@ export type UserUpdateOneWithoutAgent_tracesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAgent_tracesInput, Prisma.UserUpdateWithoutAgent_tracesInput>, Prisma.UserUncheckedUpdateWithoutAgent_tracesInput>
 }
 
+export type UserCreateNestedOneWithoutWorkspace_stateInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutWorkspace_stateInput, Prisma.UserUncheckedCreateWithoutWorkspace_stateInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutWorkspace_stateInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutWorkspace_stateNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutWorkspace_stateInput, Prisma.UserUncheckedCreateWithoutWorkspace_stateInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutWorkspace_stateInput
+  upsert?: Prisma.UserUpsertWithoutWorkspace_stateInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutWorkspace_stateInput, Prisma.UserUpdateWithoutWorkspace_stateInput>, Prisma.UserUncheckedUpdateWithoutWorkspace_stateInput>
+}
+
 export type UserCreateWithoutSubjectsInput = {
   id?: string
   email: string
@@ -909,6 +930,7 @@ export type UserCreateWithoutSubjectsInput = {
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSubjectsInput = {
@@ -939,6 +961,7 @@ export type UserUncheckedCreateWithoutSubjectsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSubjectsInput = {
@@ -985,6 +1008,7 @@ export type UserUpdateWithoutSubjectsInput = {
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSubjectsInput = {
@@ -1015,6 +1039,7 @@ export type UserUncheckedUpdateWithoutSubjectsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutConversationsInput = {
@@ -1045,6 +1070,7 @@ export type UserCreateWithoutConversationsInput = {
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutConversationsInput = {
@@ -1075,6 +1101,7 @@ export type UserUncheckedCreateWithoutConversationsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutConversationsInput = {
@@ -1121,6 +1148,7 @@ export type UserUpdateWithoutConversationsInput = {
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutConversationsInput = {
@@ -1151,6 +1179,7 @@ export type UserUncheckedUpdateWithoutConversationsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutFlashcard_decksInput = {
@@ -1181,6 +1210,7 @@ export type UserCreateWithoutFlashcard_decksInput = {
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFlashcard_decksInput = {
@@ -1211,6 +1241,7 @@ export type UserUncheckedCreateWithoutFlashcard_decksInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFlashcard_decksInput = {
@@ -1257,6 +1288,7 @@ export type UserUpdateWithoutFlashcard_decksInput = {
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFlashcard_decksInput = {
@@ -1287,6 +1319,7 @@ export type UserUncheckedUpdateWithoutFlashcard_decksInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutFlashcard_reviewsInput = {
@@ -1317,6 +1350,7 @@ export type UserCreateWithoutFlashcard_reviewsInput = {
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFlashcard_reviewsInput = {
@@ -1347,6 +1381,7 @@ export type UserUncheckedCreateWithoutFlashcard_reviewsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFlashcard_reviewsInput = {
@@ -1393,6 +1428,7 @@ export type UserUpdateWithoutFlashcard_reviewsInput = {
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFlashcard_reviewsInput = {
@@ -1423,6 +1459,7 @@ export type UserUncheckedUpdateWithoutFlashcard_reviewsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutQuizzesInput = {
@@ -1453,6 +1490,7 @@ export type UserCreateWithoutQuizzesInput = {
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutQuizzesInput = {
@@ -1483,6 +1521,7 @@ export type UserUncheckedCreateWithoutQuizzesInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutQuizzesInput = {
@@ -1529,6 +1568,7 @@ export type UserUpdateWithoutQuizzesInput = {
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutQuizzesInput = {
@@ -1559,6 +1599,7 @@ export type UserUncheckedUpdateWithoutQuizzesInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutQuiz_attemptsInput = {
@@ -1589,6 +1630,7 @@ export type UserCreateWithoutQuiz_attemptsInput = {
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutQuiz_attemptsInput = {
@@ -1619,6 +1661,7 @@ export type UserUncheckedCreateWithoutQuiz_attemptsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutQuiz_attemptsInput = {
@@ -1665,6 +1708,7 @@ export type UserUpdateWithoutQuiz_attemptsInput = {
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutQuiz_attemptsInput = {
@@ -1695,6 +1739,7 @@ export type UserUncheckedUpdateWithoutQuiz_attemptsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutDocumentsInput = {
@@ -1725,6 +1770,7 @@ export type UserCreateWithoutDocumentsInput = {
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutDocumentsInput = {
@@ -1755,6 +1801,7 @@ export type UserUncheckedCreateWithoutDocumentsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutDocumentsInput = {
@@ -1801,6 +1848,7 @@ export type UserUpdateWithoutDocumentsInput = {
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutDocumentsInput = {
@@ -1831,6 +1879,7 @@ export type UserUncheckedUpdateWithoutDocumentsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAi_usage_logsInput = {
@@ -1861,6 +1910,7 @@ export type UserCreateWithoutAi_usage_logsInput = {
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAi_usage_logsInput = {
@@ -1891,6 +1941,7 @@ export type UserUncheckedCreateWithoutAi_usage_logsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAi_usage_logsInput = {
@@ -1937,6 +1988,7 @@ export type UserUpdateWithoutAi_usage_logsInput = {
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAi_usage_logsInput = {
@@ -1967,6 +2019,7 @@ export type UserUncheckedUpdateWithoutAi_usage_logsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutUser_sessionsInput = {
@@ -1997,6 +2050,7 @@ export type UserCreateWithoutUser_sessionsInput = {
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUser_sessionsInput = {
@@ -2027,6 +2081,7 @@ export type UserUncheckedCreateWithoutUser_sessionsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUser_sessionsInput = {
@@ -2073,6 +2128,7 @@ export type UserUpdateWithoutUser_sessionsInput = {
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUser_sessionsInput = {
@@ -2103,6 +2159,7 @@ export type UserUncheckedUpdateWithoutUser_sessionsInput = {
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAgent_action_logsInput = {
@@ -2133,6 +2190,7 @@ export type UserCreateWithoutAgent_action_logsInput = {
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAgent_action_logsInput = {
@@ -2163,6 +2221,7 @@ export type UserUncheckedCreateWithoutAgent_action_logsInput = {
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAgent_action_logsInput = {
@@ -2209,6 +2268,7 @@ export type UserUpdateWithoutAgent_action_logsInput = {
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAgent_action_logsInput = {
@@ -2239,6 +2299,7 @@ export type UserUncheckedUpdateWithoutAgent_action_logsInput = {
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAgent_jobsInput = {
@@ -2269,6 +2330,7 @@ export type UserCreateWithoutAgent_jobsInput = {
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAgent_jobsInput = {
@@ -2299,6 +2361,7 @@ export type UserUncheckedCreateWithoutAgent_jobsInput = {
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAgent_jobsInput = {
@@ -2345,6 +2408,7 @@ export type UserUpdateWithoutAgent_jobsInput = {
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAgent_jobsInput = {
@@ -2375,6 +2439,7 @@ export type UserUncheckedUpdateWithoutAgent_jobsInput = {
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAgent_tracesInput = {
@@ -2405,6 +2470,7 @@ export type UserCreateWithoutAgent_tracesInput = {
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
   agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAgent_tracesInput = {
@@ -2435,6 +2501,7 @@ export type UserUncheckedCreateWithoutAgent_tracesInput = {
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
   agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAgent_tracesInput = {
@@ -2481,6 +2548,7 @@ export type UserUpdateWithoutAgent_tracesInput = {
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
   agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAgent_tracesInput = {
@@ -2511,6 +2579,147 @@ export type UserUncheckedUpdateWithoutAgent_tracesInput = {
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
   agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
   agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  workspace_state?: Prisma.UserWorkspaceStateUncheckedUpdateOneWithoutUserNestedInput
+}
+
+export type UserCreateWithoutWorkspace_stateInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  daily_goal_minutes?: number
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
+  subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutWorkspace_stateInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  daily_goal_minutes?: number
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
+  subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutWorkspace_stateInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutWorkspace_stateInput, Prisma.UserUncheckedCreateWithoutWorkspace_stateInput>
+}
+
+export type UserUpsertWithoutWorkspace_stateInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutWorkspace_stateInput, Prisma.UserUncheckedUpdateWithoutWorkspace_stateInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutWorkspace_stateInput, Prisma.UserUncheckedCreateWithoutWorkspace_stateInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutWorkspace_stateInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutWorkspace_stateInput, Prisma.UserUncheckedUpdateWithoutWorkspace_stateInput>
+}
+
+export type UserUpdateWithoutWorkspace_stateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
+  subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutWorkspace_stateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
+  subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -2672,6 +2881,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   agent_action_logs?: boolean | Prisma.User$agent_action_logsArgs<ExtArgs>
   agent_jobs?: boolean | Prisma.User$agent_jobsArgs<ExtArgs>
   agent_traces?: boolean | Prisma.User$agent_tracesArgs<ExtArgs>
+  workspace_state?: boolean | Prisma.User$workspace_stateArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -2746,6 +2956,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   agent_action_logs?: boolean | Prisma.User$agent_action_logsArgs<ExtArgs>
   agent_jobs?: boolean | Prisma.User$agent_jobsArgs<ExtArgs>
   agent_traces?: boolean | Prisma.User$agent_tracesArgs<ExtArgs>
+  workspace_state?: boolean | Prisma.User$workspace_stateArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -2766,6 +2977,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     agent_action_logs: Prisma.$AgentActionLogPayload<ExtArgs>[]
     agent_jobs: Prisma.$AgentBackgroundJobPayload<ExtArgs>[]
     agent_traces: Prisma.$AgentTracePayload<ExtArgs>[]
+    workspace_state: Prisma.$UserWorkspaceStatePayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -3190,6 +3402,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   agent_action_logs<T extends Prisma.User$agent_action_logsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$agent_action_logsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentActionLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   agent_jobs<T extends Prisma.User$agent_jobsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$agent_jobsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentBackgroundJobPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   agent_traces<T extends Prisma.User$agent_tracesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$agent_tracesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentTracePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  workspace_state<T extends Prisma.User$workspace_stateArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$workspace_stateArgs<ExtArgs>>): Prisma.Prisma__UserWorkspaceStateClient<runtime.Types.Result.GetResult<Prisma.$UserWorkspaceStatePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3913,6 +4126,25 @@ export type User$agent_tracesArgs<ExtArgs extends runtime.Types.Extensions.Inter
   take?: number
   skip?: number
   distinct?: Prisma.AgentTraceScalarFieldEnum | Prisma.AgentTraceScalarFieldEnum[]
+}
+
+/**
+ * User.workspace_state
+ */
+export type User$workspace_stateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the UserWorkspaceState
+   */
+  select?: Prisma.UserWorkspaceStateSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the UserWorkspaceState
+   */
+  omit?: Prisma.UserWorkspaceStateOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserWorkspaceStateInclude<ExtArgs> | null
+  where?: Prisma.UserWorkspaceStateWhereInput
 }
 
 /**

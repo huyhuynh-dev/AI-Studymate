@@ -27,6 +27,7 @@ import { AnalyticsModule } from './analytics/analytics.module.js';
 import { RagBenchmarkModule } from './rag-benchmark/rag-benchmark.module.js';
 import { AdminModule } from './admin/admin.module.js';
 import { TtsModule } from './tts/tts.module.js';
+import { WorkspaceStateModule } from './workspace-state/workspace-state.module.js';
 
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -69,6 +70,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     RagBenchmarkModule,
     AdminModule,
     TtsModule,
+    WorkspaceStateModule,
   ],
   controllers: [AppController],
   providers: [

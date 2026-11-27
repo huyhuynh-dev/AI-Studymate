@@ -15,7 +15,10 @@ import { useAskAi } from "@/contexts/AskAiContext";
 import { useThemePreference } from "@/contexts/ThemePreferenceProvider";
 import { useWordAgent } from "@/contexts/WordAgentContext";
 import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
+import { useWorkspaceRestore } from "@/contexts/WorkspaceRestoreContext";
 import { useFocusMode } from "@/components/layout/FocusModeContext";
+import { isValidUuid } from "@/lib/workspace-state-rules";
+import { workspaceStateCoordinator } from "@/lib/workspace-state.singleton";
 import { useAgentJobs } from "@/hooks/useAgentJobs";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -178,6 +181,7 @@ export interface RightSidebarProps {
 
 export default function RightSidebar({
   conversationId: propConversationId,
+  subjectId: propSubjectId,
   contextTitle,
   isCollapsed = false,
   onToggleCollapse,
@@ -201,6 +205,12 @@ export default function RightSidebar({
         : null;
 
   const conversationId = propConversationId || routeConversationId;
+  const effectiveSubjectId = propSubjectId || routeSubjectId;
+  const {
+    status: restoreStatus,
+    peekConversationIntent,
+    clearChatSessionIntent,
+  } = useWorkspaceRestore();
   const { setTheme } = useThemePreference();
   const {
     jobs,
@@ -829,7 +839,7 @@ export default function RightSidebar({
     [isFullscreen]
   );
 
-  const handleNewChat = useCallback(() => {
+  const resetChatUiState = useCallback(() => {
     setActiveChatId(null);
     activeChatIdRef.current = null;
     pendingAttachedDocIdsRef.current = [];
@@ -849,11 +859,22 @@ export default function RightSidebar({
     }
   }, [setMessages, clearFiles, conversationId]);
 
-  // Chuyển sang Conversation khác → bỏ đoạn chat / tin nhắn của Conversation cũ
+  const handleNewChat = useCallback(() => {
+    resetChatUiState();
+    if (isValidUuid(effectiveSubjectId) && isValidUuid(conversationId)) {
+      workspaceStateCoordinator.reportChatSession(
+        effectiveSubjectId,
+        conversationId,
+        null
+      );
+    }
+  }, [resetChatUiState, effectiveSubjectId, conversationId]);
+
+  // Chuyển sang Conversation khác → chỉ reset UI cục bộ, không ghi đè chatSessionId thành null lên server
   const [trackedConversationId, setTrackedConversationId] = useState(conversationId);
   if (trackedConversationId !== conversationId) {
     setTrackedConversationId(conversationId);
-    handleNewChat();
+    resetChatUiState();
   }
 
   const handleSelectChat = useCallback(
@@ -864,6 +885,13 @@ export default function RightSidebar({
       if (typeof window !== "undefined" && conversationId) {
         window.sessionStorage.setItem(
           `studymate:active-session:${conversationId}`,
+          id
+        );
+      }
+      if (isValidUuid(effectiveSubjectId) && isValidUuid(conversationId)) {
+        workspaceStateCoordinator.reportChatSession(
+          effectiveSubjectId,
+          conversationId,
           id
         );
       }
@@ -900,10 +928,10 @@ export default function RightSidebar({
         setIsLoadingMessages(false);
       }
     },
-    [setMessages, conversationId]
+    [setMessages, conversationId, effectiveSubjectId]
   );
 
-  // Tự động phục hồi phiên chat đang mở khi người dùng refresh trình duyệt
+  // Tự động phục hồi phiên chat đang mở: ưu tiên sessionStorage của tab, fallback từ server xuyên thiết bị
   useEffect(() => {
     if (
       !conversationId ||
@@ -920,9 +948,28 @@ export default function RightSidebar({
       );
       if (savedSessionId && chatSessions.some((s) => s.id === savedSessionId)) {
         void handleSelectChat(savedSessionId);
+        return;
       }
     }
-  }, [conversationId, activeChatId, isLoading, chatSessions, handleSelectChat]);
+
+    if (restoreStatus !== "bootstrapping") {
+      const serverSessionId =
+        peekConversationIntent(conversationId)?.chatSessionId ?? null;
+      if (serverSessionId && chatSessions.some((s) => s.id === serverSessionId)) {
+        void handleSelectChat(serverSessionId);
+      }
+      clearChatSessionIntent(conversationId);
+    }
+  }, [
+    conversationId,
+    activeChatId,
+    isLoading,
+    chatSessions,
+    handleSelectChat,
+    restoreStatus,
+    peekConversationIntent,
+    clearChatSessionIntent,
+  ]);
 
   /** Ném lỗi nếu API thất bại → HistorySessionRow tự hiển thị thông báo */
   const handleRenameChat = useCallback(
@@ -1170,6 +1217,16 @@ export default function RightSidebar({
               if (typeof window !== "undefined" && conversationId) {
                 window.sessionStorage.setItem(
                   `studymate:active-session:${conversationId}`,
+                  created.id
+                );
+              }
+              if (
+                isValidUuid(effectiveSubjectId) &&
+                isValidUuid(conversationId)
+              ) {
+                workspaceStateCoordinator.reportChatSession(
+                  effectiveSubjectId,
+                  conversationId,
                   created.id
                 );
               }

@@ -42,6 +42,8 @@ export interface QuizTabProps {
   initialQuizId?: string;
   /** Nonce kích hoạt mở lại đề khi nhấn nhiều lần */
   openNonce?: number;
+  /** Callback báo cáo ID đề kiểm tra đang mở (hoặc null khi ở danh sách/tạo đề) */
+  onActiveQuizChange?: (quizId: string | null) => void;
   /** Yêu cầu mở nhanh chế độ tạo đề đặc trị từ Analytics hoặc TOC Heatmap PDF */
   targetedRequest?: TargetedQuizRequest | null;
   /** Các bộ Flashcard của không gian học tập (dùng cho "Tạo từ Flashcard" và "Chuyển câu sai thành Flashcard") */
@@ -67,7 +69,7 @@ type View =
   | { name: "grading"; quizId: string; attemptId: string }
   | { name: "result"; quizId: string; attemptId: string };
 
-export function QuizTab({ conversationId, initialQuizId, openNonce, targetedRequest, decks = [], documents = MOCK_DOCUMENTS, api, className, hasDocuments = true, onUploadDocument, onFlashcardsCreated }: QuizTabProps) {
+export function QuizTab({ conversationId, initialQuizId, openNonce, onActiveQuizChange, targetedRequest, decks = [], documents = MOCK_DOCUMENTS, api, className, hasDocuments = true, onUploadDocument, onFlashcardsCreated }: QuizTabProps) {
   const resolvedApi = useMemo(() => api ?? createMockQuizApi(conversationId), [api, conversationId]);
   const store = useQuizStore(resolvedApi, conversationId);
 
@@ -218,6 +220,22 @@ export function QuizTab({ conversationId, initialQuizId, openNonce, targetedRequ
       workspaceStore?.clearTabSlice("quiz");
     };
   }, [workspaceStore]);
+
+  // Báo cáo ID đề đang xem để lưu trạng thái xuyên thiết bị (luôn khôi phục về detail, không auto-resume taking)
+  useEffect(() => {
+    if (store.loading || pendingQuizId) return;
+    if (
+      (view.name === "detail" ||
+        view.name === "taking" ||
+        view.name === "grading" ||
+        view.name === "result") &&
+      quiz
+    ) {
+      onActiveQuizChange?.(quiz.id);
+    } else {
+      onActiveQuizChange?.(null);
+    }
+  }, [view.name, quiz, store.loading, pendingQuizId, onActiveQuizChange]);
 
   if (view.name === "list") {
     content = (

@@ -122,3 +122,8 @@ export type AgentBackgroundJob = Prisma.AgentBackgroundJobModel
  * 
  */
 export type AgentTrace = Prisma.AgentTraceModel
+/**
+ * Model UserWorkspaceState
+ * 
+ */
+export type UserWorkspaceState = Prisma.UserWorkspaceStateModel

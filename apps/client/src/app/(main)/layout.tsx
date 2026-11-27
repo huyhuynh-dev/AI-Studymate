@@ -10,8 +10,14 @@ import {
     WorkspaceContextProvider,
     useWorkspaceContextStore,
 } from "@/contexts/WorkspaceContextProvider";
+import {
+    WorkspaceRestoreProvider,
+    useWorkspaceRestore,
+} from "@/contexts/WorkspaceRestoreContext";
 import type { WorkspacePageType } from "@/contexts/workspace-context.types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { isValidUuid } from "@/lib/workspace-state-rules";
+import { workspaceStateCoordinator } from "@/lib/workspace-state.singleton";
 import { usePathname, useRouter } from "next/navigation";
 import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 
@@ -40,6 +46,13 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     } = useFocusMode();
     const { sidePanelTarget, closeSidePanelCitation } = useCitationNavigation();
     const workspaceStore = useWorkspaceContextStore();
+    const {
+        status: restoreStatus,
+        isRedirectingFromHome,
+        shouldHoldHomeRender,
+        restoredLayout,
+    } = useWorkspaceRestore();
+    const appliedRestoredLayoutRef = useRef(false);
     const pathname = usePathname();
 
     // Trích xuất subjectId từ URL: /home/{subjectId}/...
@@ -112,6 +125,48 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         }
     }, [workspaceStore, sidePanelTarget]);
 
+    // Áp trạng thái thu gọn sidebar đã lưu một lần từ server (không kích hoạt ghi ngược)
+    useEffect(() => {
+        if (!restoredLayout || appliedRestoredLayoutRef.current) return;
+        appliedRestoredLayoutRef.current = true;
+        setIsLeftCollapsed(restoredLayout.leftSidebarCollapsed);
+        setIsRightSidebarCollapsed(restoredLayout.rightSidebarCollapsed);
+    }, [restoredLayout, setIsRightSidebarCollapsed]);
+
+    // Đồng bộ vị trí route hiện tại vào WorkspaceStateCoordinator khi bootstrap đã xong
+    useEffect(() => {
+        if (restoreStatus === "bootstrapping") return;
+        if (isRedirectingFromHome && currentPageType === "home") return;
+        if (currentPageType === "profile") return;
+
+        if (
+            currentPageType === "conversation" &&
+            isValidUuid(currentSubjectId) &&
+            isValidUuid(currentConversationId)
+        ) {
+            workspaceStateCoordinator.reportConversation(
+                currentSubjectId,
+                currentConversationId,
+            );
+            return;
+        }
+
+        if (currentPageType === "subject" && isValidUuid(currentSubjectId)) {
+            workspaceStateCoordinator.reportSubject(currentSubjectId);
+            return;
+        }
+
+        if (currentPageType === "home") {
+            workspaceStateCoordinator.reportHome();
+        }
+    }, [
+        restoreStatus,
+        isRedirectingFromHome,
+        currentPageType,
+        currentSubjectId,
+        currentConversationId,
+    ]);
+
     const effectiveRightCollapsed = sidePanelTarget
         ? !showRightSidebar
         : isRightSidebarCollapsed || !showRightSidebar;
@@ -138,7 +193,14 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                                     : undefined
                             }
                             isCollapsed={isLeftCollapsed}
-                            onToggleCollapse={() => setIsLeftCollapsed(!isLeftCollapsed)}
+                            onToggleCollapse={() => {
+                                const nextLeft = !isLeftCollapsed;
+                                setIsLeftCollapsed(nextLeft);
+                                workspaceStateCoordinator.reportLayout({
+                                    leftSidebarCollapsed: nextLeft,
+                                    rightSidebarCollapsed: isRightSidebarCollapsed,
+                                });
+                            }}
                             onSettingsClick={() => router.push("/profile")}
                         />
                     </React.Suspense>
@@ -159,7 +221,13 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     {showRightSidebar && effectiveRightCollapsed && !sidePanelTarget && (
                         <button
                             type="button"
-                            onClick={() => setIsRightSidebarCollapsed(false)}
+                            onClick={() => {
+                                setIsRightSidebarCollapsed(false);
+                                workspaceStateCoordinator.reportLayout({
+                                    leftSidebarCollapsed: isLeftCollapsed,
+                                    rightSidebarCollapsed: false,
+                                });
+                            }}
                             aria-label="Mở Trợ lý StudyMate AI"
                             title="Mở Trợ lý StudyMate AI"
                             className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-[60] flex h-12 items-center gap-2 rounded-full border border-indigo-200/80 dark:border-indigo-500/40 bg-white/95 dark:bg-[#12151C]/95 px-3.5 text-xs font-semibold text-[#4F46E5] dark:text-[#818CF8] shadow-[0_12px_32px_-12px_rgba(79,70,229,0.45)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-500/60 hover:bg-indigo-50/90 dark:hover:bg-indigo-950/50 active:translate-y-0 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F46E5]"
@@ -181,7 +249,22 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                                   : "max-w-7xl mx-auto"
                         }`}
                     >
-                        {children}
+                        {shouldHoldHomeRender ? (
+                            <div
+                                aria-busy="true"
+                                aria-label="Đang khôi phục không gian học tập"
+                                className="flex flex-1 flex-col gap-5 py-4 animate-pulse"
+                            >
+                                <div className="h-9 w-56 rounded-xl bg-neutral-200/70 dark:bg-white/[0.06]" />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div className="h-36 rounded-2xl bg-neutral-200/60 dark:bg-white/[0.05]" />
+                                    <div className="h-36 rounded-2xl bg-neutral-200/60 dark:bg-white/[0.05]" />
+                                    <div className="h-36 rounded-2xl bg-neutral-200/60 dark:bg-white/[0.05]" />
+                                </div>
+                            </div>
+                        ) : (
+                            children
+                        )}
                     </div>
                 </main>
 
@@ -190,7 +273,14 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     <aside className="z-20 shrink-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]">
                         <RightSidebar
                             isCollapsed={effectiveRightCollapsed}
-                            onToggleCollapse={() => setIsRightSidebarCollapsed(!effectiveRightCollapsed)}
+                            onToggleCollapse={() => {
+                                const nextRight = !effectiveRightCollapsed;
+                                setIsRightSidebarCollapsed(nextRight);
+                                workspaceStateCoordinator.reportLayout({
+                                    leftSidebarCollapsed: isLeftCollapsed,
+                                    rightSidebarCollapsed: nextRight,
+                                });
+                            }}
                             subjectId={currentSubjectId}
                         />
                     </aside>
@@ -211,7 +301,9 @@ export default function MainLayout({
                 <WordAgentProvider>
                     <AskAiProvider>
                         <CitationNavigationProvider>
-                            <MainLayoutContent>{children}</MainLayoutContent>
+                            <WorkspaceRestoreProvider>
+                                <MainLayoutContent>{children}</MainLayoutContent>
+                            </WorkspaceRestoreProvider>
                         </CitationNavigationProvider>
                     </AskAiProvider>
                 </WordAgentProvider>

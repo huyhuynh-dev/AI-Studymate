@@ -15,6 +15,13 @@ import AnalyticsDashboardView from "@/components/analytics/AnalyticsDashboardVie
 import { useFocusMode } from "@/components/layout";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
+import { useWorkspaceRestore } from "@/contexts/WorkspaceRestoreContext";
+import {
+  isValidUuid,
+  resolveConversationRestorePlan,
+} from "@/lib/workspace-state-rules";
+import { workspaceStateCoordinator } from "@/lib/workspace-state.singleton";
+import type { WorkspaceDocumentState } from "@/types/workspace-state";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useConversations } from "@/hooks/useConversations";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -69,8 +76,28 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   const [unseenByConversation, setUnseenByConversation] = useState<
     Record<string, Partial<Record<TabKey, number>>>
   >({});
+  const [restoredDoc, setRestoredDoc] = useState<WorkspaceDocumentState | null>(
+    null,
+  );
+  const [restoredSummaryId, setRestoredSummaryId] = useState<string | null>(
+    null,
+  );
+  const [restoredDeckId, setRestoredDeckId] = useState<string | null>(null);
+  const [restoredQuizId, setRestoredQuizId] = useState<string | null>(null);
+  const [restoredForConvId, setRestoredForConvId] = useState<string | null>(
+    null,
+  );
   const activeTabRef = useRef<TabKey>(activeTab);
   const workspaceStore = useWorkspaceContextStore();
+  const {
+    status: restoreStatus,
+    isHoldingConversationTab,
+    peekConversationIntent,
+    clearTabDetailIntent,
+  } = useWorkspaceRestore();
+  const isHoldingTabRender =
+    restoredForConvId !== conversationId &&
+    isHoldingConversationTab(conversationId);
 
   useEffect(() => {
     activeTabRef.current = activeTab;
@@ -172,6 +199,129 @@ export default function ConversationPage({ params }: ConversationPageProps) {
     conversationId,
     activeTab === "analytics",
     analyticsWindowDays
+  );
+
+  // Áp dụng kế hoạch khôi phục tab & mục chi tiết một lần khi shell bootstrap xong (an toàn với React Strict Mode)
+  useEffect(() => {
+    if (isHoldingConversationTab(conversationId)) return;
+    if (restoredForConvId === conversationId) return;
+
+    const searchParams =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : null;
+    const rawPage = searchParams?.get("page");
+    const parsedPage = rawPage ? Number(rawPage) : undefined;
+    const intent = peekConversationIntent(conversationId);
+
+    const plan = resolveConversationRestorePlan(
+      {
+        queryTab: searchParams?.get("tab"),
+        queryDeckId: searchParams?.get("deckId"),
+        queryDocId: searchParams?.get("docId"),
+        queryPage:
+          parsedPage && Number.isFinite(parsedPage) && parsedPage > 0
+            ? parsedPage
+            : undefined,
+        openSummaryId:
+          typeof window !== "undefined"
+            ? window.sessionStorage.getItem("studymate:open-summary-id")
+            : null,
+        openDeckId:
+          typeof window !== "undefined"
+            ? window.sessionStorage.getItem("studymate:open-deck-id")
+            : null,
+        openQuizId:
+          typeof window !== "undefined"
+            ? window.sessionStorage.getItem("studymate:open-quiz-id")
+            : null,
+      },
+      intent
+        ? {
+            tab: intent.tab,
+            document: intent.document,
+            summaryId: intent.summaryId,
+            deckId: intent.deckId,
+            quizId: intent.quizId,
+          }
+        : null,
+    );
+
+    setActiveTab(plan.tab);
+    setRestoredDoc(plan.documentToRestore);
+    setRestoredSummaryId(plan.summaryIdToRestore);
+    setRestoredDeckId(plan.deckIdToRestore);
+    setRestoredQuizId(plan.quizIdToRestore);
+    setRestoredForConvId(conversationId);
+  }, [
+    conversationId,
+    restoredForConvId,
+    isHoldingConversationTab,
+    peekConversationIntent,
+  ]);
+
+  // Chỉ xóa intent sau khi commit state khôi phục thành công, và đồng bộ mọi thay đổi tab lên coordinator
+  useEffect(() => {
+    if (restoreStatus === "bootstrapping") return;
+    if (restoredForConvId !== conversationId) return;
+    clearTabDetailIntent(conversationId);
+    if (!isValidUuid(subjectId) || !isValidUuid(conversationId)) return;
+    workspaceStateCoordinator.reportTab(subjectId, conversationId, activeTab);
+  }, [
+    activeTab,
+    subjectId,
+    conversationId,
+    restoreStatus,
+    restoredForConvId,
+    clearTabDetailIntent,
+  ]);
+
+  const handleRestoreDocumentConsumed = useCallback(() => {
+    setRestoredDoc(null);
+  }, []);
+
+  const handleActiveDocumentChange = useCallback(
+    (doc: WorkspaceDocumentState | null) => {
+      if (!isValidUuid(subjectId) || !isValidUuid(conversationId)) return;
+      const isPageOnly = Boolean(
+        doc && restoredDoc === null && typeof doc.page === "number" && doc.page > 1,
+      );
+      workspaceStateCoordinator.reportDocument(
+        subjectId,
+        conversationId,
+        doc,
+        isPageOnly,
+      );
+    },
+    [subjectId, conversationId, restoredDoc],
+  );
+
+  const handleActiveSummaryChange = useCallback(
+    (summaryId: string | null) => {
+      if (!isValidUuid(subjectId) || !isValidUuid(conversationId)) return;
+      workspaceStateCoordinator.reportSummary(
+        subjectId,
+        conversationId,
+        summaryId,
+      );
+    },
+    [subjectId, conversationId],
+  );
+
+  const handleActiveDeckChange = useCallback(
+    (deckId: string | null) => {
+      if (!isValidUuid(subjectId) || !isValidUuid(conversationId)) return;
+      workspaceStateCoordinator.reportDeck(subjectId, conversationId, deckId);
+    },
+    [subjectId, conversationId],
+  );
+
+  const handleActiveQuizChange = useCallback(
+    (quizId: string | null) => {
+      if (!isValidUuid(subjectId) || !isValidUuid(conversationId)) return;
+      workspaceStateCoordinator.reportQuiz(subjectId, conversationId, quizId);
+    },
+    [subjectId, conversationId],
   );
 
   // Đọc tham số điều hướng ban đầu từ Subject Analytics (?tab=analytics|flashcard|quiz|documents&docId=&page=)
@@ -388,6 +538,10 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
   const handleTabChange = (tab: TabKey) => {
     clearTabUnseen(tab);
+    setRestoredDoc(null);
+    setRestoredSummaryId(null);
+    setRestoredDeckId(null);
+    setRestoredQuizId(null);
     setActiveTab(tab);
     if (tab === "documents") {
       closeSidePanelCitation();
@@ -566,6 +720,18 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               : "p-3 sm:p-5 lg:p-6 items-stretch justify-start overflow-y-auto"
           }`}
         >
+          {isHoldingTabRender ? (
+            <div
+              aria-busy="true"
+              aria-label="Đang khôi phục nội dung phiên học"
+              className="flex flex-1 flex-col gap-4 animate-pulse"
+            >
+              <div className="h-9 w-48 rounded-xl bg-neutral-200/70 dark:bg-white/[0.06]" />
+              <div className="h-44 rounded-2xl bg-neutral-200/60 dark:bg-white/[0.05]" />
+              <div className="h-44 rounded-2xl bg-neutral-200/50 dark:bg-white/[0.04]" />
+            </div>
+          ) : (
+            <>
           {activeTab === "documents" && (
             <DocumentsTab
               documents={documents}
@@ -579,6 +745,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               onDelete={deleteDocument}
               onDownload={downloadDocument}
               onDocumentUpdated={updateDocumentInCache}
+              restoreDocument={restoredDoc}
+              onRestoreDocumentConsumed={handleRestoreDocumentConsumed}
+              onActiveDocumentChange={handleActiveDocumentChange}
               onCreateTargetedQuiz={(opts) =>
                 handleTriggerTargetedQuiz({
                   chunkIds: opts.chunkIds,
@@ -595,7 +764,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
               key={summaryOpenRequest ? `summary-${summaryOpenRequest.nonce}` : "summary-default"}
               conversationId={conversationId}
               documents={documents}
-              initialSummaryId={summaryOpenRequest?.summaryId}
+              initialSummaryId={summaryOpenRequest?.summaryId ?? restoredSummaryId ?? undefined}
+              onActiveSummaryChange={handleActiveSummaryChange}
               onUploadDocument={handleGoToDocuments}
               className="w-full flex-1"
             />
@@ -604,8 +774,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           {activeTab === "flashcard" && (
             <FlashcardsTab
               conversationId={conversationId}
-              initialDeckId={flashcardOpenRequest?.deckId}
+              initialDeckId={flashcardOpenRequest?.deckId ?? restoredDeckId ?? undefined}
               openNonce={flashcardOpenRequest?.nonce}
+              onActiveDeckChange={handleActiveDeckChange}
               documents={documents.map((document) => ({
                 id: document.id,
                 name: document.file_name,
@@ -620,8 +791,9 @@ export default function ConversationPage({ params }: ConversationPageProps) {
           {activeTab === "quiz" && (
             <QuizTab
               conversationId={conversationId}
-              initialQuizId={quizOpenRequest?.quizId}
+              initialQuizId={quizOpenRequest?.quizId ?? restoredQuizId ?? undefined}
               openNonce={quizOpenRequest?.nonce}
+              onActiveQuizChange={handleActiveQuizChange}
               targetedRequest={quizTargetedRequest}
               decks={deckOptions}
               documents={documents.map((document) => ({
@@ -701,6 +873,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
                 }}
               />
             </div>
+          )}
+            </>
           )}
         </div>
       </main>

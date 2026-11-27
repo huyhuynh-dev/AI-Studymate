@@ -24,6 +24,8 @@ export interface FlashcardsTabProps {
   initialDeckId?: string;
   /** Nonce kích hoạt mở lại bộ thẻ khi nhấn nhiều lần */
   openNonce?: number;
+  /** Callback báo cáo ID bộ thẻ đang mở chi tiết (hoặc null khi ở danh sách) */
+  onActiveDeckChange?: (deckId: string | null) => void;
   documents?: AiDocument[];
   onUploadDocument?: () => void;
   /** Phiên học đã có tài liệu nguồn chưa (quyết định nút AI ở Empty State) */
@@ -40,6 +42,7 @@ export default function FlashcardsTab({
   conversationId,
   initialDeckId,
   openNonce,
+  onActiveDeckChange,
   documents,
   onUploadDocument,
   hasDocuments = true,
@@ -145,6 +148,20 @@ export default function FlashcardsTab({
       workspaceStore?.clearTabSlice("flashcard");
     };
   }, [workspaceStore]);
+
+  // Báo cáo ID bộ thẻ đang mở để lưu trạng thái xuyên thiết bị (tránh ghi đè lúc đang tải initialDeckId)
+  useEffect(() => {
+    if (isDecksLoading || pendingDeckId) return;
+    if (view.name === "detail" || view.name === "study") {
+      if (activeDeck) {
+        onActiveDeckChange?.(activeDeck.id);
+      } else {
+        onActiveDeckChange?.(null);
+      }
+    } else {
+      onActiveDeckChange?.(null);
+    }
+  }, [view, activeDeck, isDecksLoading, pendingDeckId, onActiveDeckChange]);
 
   // Đồng bộ Focus Mode: Tự động ẩn thanh tab & header khi vào Chế độ học (study)
   useEffect(() => {

@@ -28,6 +28,7 @@ export interface DocumentImageViewerProps {
   initialDocumentId: string;
   onClose: () => void;
   onDownload?: (documentId: string, fileName: string) => void;
+  onActiveImageChange?: (docId: string) => void;
   compactReaderMode?: boolean;
   className?: string;
 }
@@ -39,6 +40,7 @@ export default function DocumentImageViewer({
   initialDocumentId,
   onClose,
   onDownload,
+  onActiveImageChange,
   compactReaderMode = false,
   className = "",
 }: DocumentImageViewerProps) {
@@ -81,7 +83,8 @@ export default function DocumentImageViewer({
       fileName: currentDoc.file_name,
       viewerKind: "image",
     });
-  }, [workspaceStore, compactReaderMode, currentDoc]);
+    onActiveImageChange?.(currentDoc.id);
+  }, [workspaceStore, compactReaderMode, currentDoc, onActiveImageChange]);
 
   // Fetch URL cho ảnh qua thao tác trực tiếp hoặc thử lại
   const fetchImageUrl = useCallback(async (docId: string, force = false) => {

@@ -71,7 +71,8 @@ export const ModelName = {
   UserSession: 'UserSession',
   AgentActionLog: 'AgentActionLog',
   AgentBackgroundJob: 'AgentBackgroundJob',
-  AgentTrace: 'AgentTrace'
+  AgentTrace: 'AgentTrace',
+  UserWorkspaceState: 'UserWorkspaceState'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -472,6 +473,24 @@ export const AgentTraceScalarFieldEnum = {
 } as const
 
 export type AgentTraceScalarFieldEnum = (typeof AgentTraceScalarFieldEnum)[keyof typeof AgentTraceScalarFieldEnum]
+
+
+export const UserWorkspaceStateScalarFieldEnum = {
+  user_id: 'user_id',
+  schema_version: 'schema_version',
+  location_json: 'location_json',
+  location_source_id: 'location_source_id',
+  location_seq: 'location_seq',
+  location_updated_at: 'location_updated_at',
+  layout_json: 'layout_json',
+  layout_source_id: 'layout_source_id',
+  layout_seq: 'layout_seq',
+  layout_updated_at: 'layout_updated_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type UserWorkspaceStateScalarFieldEnum = (typeof UserWorkspaceStateScalarFieldEnum)[keyof typeof UserWorkspaceStateScalarFieldEnum]
 
 
 export const SortOrder = {

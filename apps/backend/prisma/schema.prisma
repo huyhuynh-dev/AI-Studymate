@@ -98,6 +98,7 @@ model User {
   agent_action_logs  AgentActionLog[]
   agent_jobs         AgentBackgroundJob[]
   agent_traces       AgentTrace[]
+  workspace_state    UserWorkspaceState?
 
   @@map("users")
 }
@@ -581,4 +582,23 @@ model AgentTrace {
   @@index([chat_session_id, created_at(sort: Desc)], map: "idx_agent_traces_session")
   @@index([created_at(sort: Desc)], map: "idx_agent_traces_created_at")
   @@map("agent_traces")
+}
+
+model UserWorkspaceState {
+  user_id             String    @id @db.Uuid
+  schema_version      Int       @default(1)
+  location_json       Json?     @db.JsonB
+  location_source_id  String?   @db.VarChar(64)
+  location_seq        Int       @default(0)
+  location_updated_at DateTime? @db.Timestamptz(6)
+  layout_json         Json?     @db.JsonB
+  layout_source_id    String?   @db.VarChar(64)
+  layout_seq          Int       @default(0)
+  layout_updated_at   DateTime? @db.Timestamptz(6)
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_workspace_states")
 }

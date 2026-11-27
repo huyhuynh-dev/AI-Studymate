@@ -417,7 +417,8 @@ export const ModelName = {
   UserSession: 'UserSession',
   AgentActionLog: 'AgentActionLog',
   AgentBackgroundJob: 'AgentBackgroundJob',
-  AgentTrace: 'AgentTrace'
+  AgentTrace: 'AgentTrace',
+  UserWorkspaceState: 'UserWorkspaceState'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -433,7 +434,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "subject" | "conversation" | "flashcardDeck" | "flashcard" | "flashcardReview" | "quiz" | "quizQuestion" | "quizAttempt" | "quizAttemptAnswer" | "document" | "documentChunk" | "documentAsset" | "chatSession" | "message" | "summary" | "aiUsageLog" | "userSession" | "agentActionLog" | "agentBackgroundJob" | "agentTrace"
+    modelProps: "user" | "subject" | "conversation" | "flashcardDeck" | "flashcard" | "flashcardReview" | "quiz" | "quizQuestion" | "quizAttempt" | "quizAttemptAnswer" | "document" | "documentChunk" | "documentAsset" | "chatSession" | "message" | "summary" | "aiUsageLog" | "userSession" | "agentActionLog" | "agentBackgroundJob" | "agentTrace" | "userWorkspaceState"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1991,6 +1992,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    UserWorkspaceState: {
+      payload: Prisma.$UserWorkspaceStatePayload<ExtArgs>
+      fields: Prisma.UserWorkspaceStateFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.UserWorkspaceStateFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserWorkspaceStatePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.UserWorkspaceStateFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserWorkspaceStatePayload>
+        }
+        findFirst: {
+          args: Prisma.UserWorkspaceStateFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserWorkspaceStatePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.UserWorkspaceStateFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserWorkspaceStatePayload>
+        }
+        findMany: {
+          args: Prisma.UserWorkspaceStateFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserWorkspaceStatePayload>[]
+        }
+        create: {
+          args: Prisma.UserWorkspaceStateCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserWorkspaceStatePayload>
+        }
+        createMany: {
+          args: Prisma.UserWorkspaceStateCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.UserWorkspaceStateCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserWorkspaceStatePayload>[]
+        }
+        delete: {
+          args: Prisma.UserWorkspaceStateDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserWorkspaceStatePayload>
+        }
+        update: {
+          args: Prisma.UserWorkspaceStateUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserWorkspaceStatePayload>
+        }
+        deleteMany: {
+          args: Prisma.UserWorkspaceStateDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.UserWorkspaceStateUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.UserWorkspaceStateUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserWorkspaceStatePayload>[]
+        }
+        upsert: {
+          args: Prisma.UserWorkspaceStateUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserWorkspaceStatePayload>
+        }
+        aggregate: {
+          args: Prisma.UserWorkspaceStateAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateUserWorkspaceState>
+        }
+        groupBy: {
+          args: Prisma.UserWorkspaceStateGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UserWorkspaceStateGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.UserWorkspaceStateCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UserWorkspaceStateCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -2412,6 +2487,24 @@ export const AgentTraceScalarFieldEnum = {
 } as const
 
 export type AgentTraceScalarFieldEnum = (typeof AgentTraceScalarFieldEnum)[keyof typeof AgentTraceScalarFieldEnum]
+
+
+export const UserWorkspaceStateScalarFieldEnum = {
+  user_id: 'user_id',
+  schema_version: 'schema_version',
+  location_json: 'location_json',
+  location_source_id: 'location_source_id',
+  location_seq: 'location_seq',
+  location_updated_at: 'location_updated_at',
+  layout_json: 'layout_json',
+  layout_source_id: 'layout_source_id',
+  layout_seq: 'layout_seq',
+  layout_updated_at: 'layout_updated_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type UserWorkspaceStateScalarFieldEnum = (typeof UserWorkspaceStateScalarFieldEnum)[keyof typeof UserWorkspaceStateScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -2870,6 +2963,7 @@ export type GlobalOmitConfig = {
   agentActionLog?: Prisma.AgentActionLogOmit
   agentBackgroundJob?: Prisma.AgentBackgroundJobOmit
   agentTrace?: Prisma.AgentTraceOmit
+  userWorkspaceState?: Prisma.UserWorkspaceStateOmit
 }
 
 /* Types for Logging */

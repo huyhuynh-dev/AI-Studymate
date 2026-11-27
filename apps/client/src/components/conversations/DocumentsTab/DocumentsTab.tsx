@@ -77,6 +77,9 @@ export interface DocumentsTabProps {
     chunkIds: string[];
     sectionTitle: string;
   }) => void;
+  restoreDocument?: { docId: string; page?: number } | null;
+  onRestoreDocumentConsumed?: () => void;
+  onActiveDocumentChange?: (doc: { docId: string; page?: number } | null) => void;
   className?: string;
   maxSizeMB?: number;
 }
@@ -140,6 +143,9 @@ export default function DocumentsTab({
   onDownload,
   onDocumentUpdated,
   onCreateTargetedQuiz,
+  restoreDocument = null,
+  onRestoreDocumentConsumed,
+  onActiveDocumentChange,
   className = "",
   maxSizeMB = 50,
 }: DocumentsTabProps) {
@@ -148,6 +154,10 @@ export default function DocumentsTab({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showImportGoogleModal, setShowImportGoogleModal] = useState(false);
   const [viewingDocId, setViewingDocId] = useState<string | null>(null);
+  const [restoredPdfPage, setRestoredPdfPage] = useState<{
+    docId: string;
+    page: number;
+  } | null>(null);
   const [pendingCitationTarget, setPendingCitationTarget] =
     useState<EditorCitationTarget | null>(null);
   const [filterType, setFilterType] = useState<"all" | "pdf" | "image">("all");
@@ -166,6 +176,11 @@ export default function DocumentsTab({
       setViewingDocId(targetDocId);
 
       const matchedDoc = documents.find((d) => d.id === targetDocId);
+      onActiveDocumentChange?.(
+        matchedDoc?.mime_type === "application/pdf"
+          ? { docId: targetDocId, page: activeTarget.pageNo || 1 }
+          : { docId: targetDocId },
+      );
       if (
         matchedDoc &&
         (isEditableTextDocument(matchedDoc) || isDocxDocument(matchedDoc))
@@ -192,7 +207,56 @@ export default function DocumentsTab({
     return () => {
       cancelled = true;
     };
-  }, [activeTarget, documents, consumeActiveTarget]);
+  }, [activeTarget, documents, consumeActiveTarget, onActiveDocumentChange]);
+
+  // Khôi phục tài liệu & trang đã lưu sau khi danh sách tài liệu tải xong (không kích hoạt banner trích dẫn)
+  useEffect(() => {
+    if (!restoreDocument || isLoading) return;
+
+    if (activeTarget?.documentId && activeTarget.mode !== "side-panel") {
+      onRestoreDocumentConsumed?.();
+      return;
+    }
+
+    const matchedDoc = documents.find((d) => d.id === restoreDocument.docId);
+    const canViewInline = Boolean(
+      matchedDoc &&
+        (matchedDoc.mime_type === "application/pdf" ||
+          matchedDoc.mime_type.startsWith("image/") ||
+          isEditableTextDocument(matchedDoc) ||
+          isDocxDocument(matchedDoc) ||
+          isLegacyWordOrOdtDocument(matchedDoc)),
+    );
+
+    if (matchedDoc && canViewInline) {
+      setPendingCitationTarget(null);
+      setViewingDocId(matchedDoc.id);
+      if (
+        matchedDoc.mime_type === "application/pdf" &&
+        typeof restoreDocument.page === "number" &&
+        restoreDocument.page > 1
+      ) {
+        setRestoredPdfPage({
+          docId: matchedDoc.id,
+          page: restoreDocument.page,
+        });
+      } else {
+        setRestoredPdfPage(null);
+      }
+    } else {
+      // Tài liệu đã bị xóa -> bỏ qua im lặng và xóa khỏi state đã lưu
+      onActiveDocumentChange?.(null);
+    }
+
+    onRestoreDocumentConsumed?.();
+  }, [
+    restoreDocument,
+    isLoading,
+    documents,
+    activeTarget,
+    onRestoreDocumentConsumed,
+    onActiveDocumentChange,
+  ]);
 
   const viewingDoc = useMemo(
     () => documents.find((d) => d.id === viewingDocId),
@@ -301,7 +365,13 @@ export default function DocumentsTab({
       isLegacyWordOrOdtDocument(doc)
     ) {
       setPendingCitationTarget(null);
+      setRestoredPdfPage(null);
       setViewingDocId(doc.id);
+      onActiveDocumentChange?.(
+        doc.mime_type === "application/pdf"
+          ? { docId: doc.id, page: 1 }
+          : { docId: doc.id },
+      );
     } else {
       onDownload?.(doc.id, doc.file_name);
     }
@@ -310,7 +380,9 @@ export default function DocumentsTab({
   const handleCloseViewer = () => {
     setFocusMode(false);
     setPendingCitationTarget(null);
+    setRestoredPdfPage(null);
     setViewingDocId(null);
+    onActiveDocumentChange?.(null);
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -431,6 +503,7 @@ export default function DocumentsTab({
           initialDocumentId={viewingDocId}
           onClose={handleCloseViewer}
           onDownload={onDownload}
+          onActiveImageChange={(docId) => onActiveDocumentChange?.({ docId })}
           className={className}
         />
       );
@@ -440,6 +513,14 @@ export default function DocumentsTab({
       return (
         <DocumentPdfViewer
           document={viewingDoc}
+          initialPage={
+            restoredPdfPage?.docId === viewingDoc.id
+              ? restoredPdfPage.page
+              : undefined
+          }
+          onPageChange={(page) =>
+            onActiveDocumentChange?.({ docId: viewingDoc.id, page })
+          }
           onClose={handleCloseViewer}
           onDocumentUpdated={onDocumentUpdated}
           onCreateTargetedQuiz={onCreateTargetedQuiz}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import {
   NotebookPen,
@@ -33,6 +33,8 @@ export interface SummaryTabProps {
   documents?: DocumentItem[];
   /** ID của ghi chú / bản tóm tắt cần mở trực tiếp (ví dụ khi nhấn Badge trong khung chat AI) */
   initialSummaryId?: string;
+  /** Callback báo cáo ID ghi chú đang mở chi tiết (hoặc null khi ở danh sách) */
+  onActiveSummaryChange?: (summaryId: string | null) => void;
   /** Callback khi bấm nút "Tải lên tài liệu" */
   onUploadDocument?: () => void;
   /** Class tùy chọn cho container ngoài cùng */
@@ -45,11 +47,13 @@ export default function SummaryTab({
   conversationId,
   documents = [],
   initialSummaryId,
+  onActiveSummaryChange,
   onUploadDocument,
   className = "",
 }: SummaryTabProps) {
   // Chế độ xem: 'list' (tổng quan danh sách) hoặc 'detail' (trang soạn thảo Notion-style)
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
+  const hasResolvedInitialSummaryRef = useRef(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isTtsOpen, setIsTtsOpen] = useState(false);
   const [autoFocusNoteId, setAutoFocusNoteId] = useState<string | null>(null);
@@ -83,9 +87,9 @@ export default function SummaryTab({
     deleteSummary,
   } = useSummaries(conversationId);
 
-  // Tự động mở chi tiết bản tóm tắt khi được điều hướng từ Badge trong AI Chat
+  // Tự động mở chi tiết bản tóm tắt khi được điều hướng từ Badge trong AI Chat hoặc khôi phục trạng thái
   useEffect(() => {
-    if (isSummariesLoading || summaries.length === 0) return;
+    if (isSummariesLoading) return;
 
     const storedId =
       typeof window !== "undefined"
@@ -99,8 +103,36 @@ export default function SummaryTab({
       if (typeof window !== "undefined") {
         window.sessionStorage.removeItem("studymate:open-summary-id");
       }
+    } else if (targetId && !summaries.some((s) => s.id === targetId)) {
+      // Ghi chú đã bị xóa -> bỏ qua im lặng và cập nhật trạng thái
+      onActiveSummaryChange?.(null);
     }
-  }, [initialSummaryId, isSummariesLoading, summaries, setSelectedSummaryId]);
+    hasResolvedInitialSummaryRef.current = true;
+  }, [
+    initialSummaryId,
+    isSummariesLoading,
+    summaries,
+    setSelectedSummaryId,
+    onActiveSummaryChange,
+  ]);
+
+  // Báo cáo thay đổi ghi chú đang xem chi tiết ra ngoài để đồng bộ trạng thái
+  useEffect(() => {
+    if (isSummariesLoading) return;
+    if (initialSummaryId && !hasResolvedInitialSummaryRef.current) return;
+
+    if (viewMode === "detail" && activeSummary) {
+      onActiveSummaryChange?.(activeSummary.id);
+    } else if (viewMode === "list") {
+      onActiveSummaryChange?.(null);
+    }
+  }, [
+    viewMode,
+    activeSummary,
+    isSummariesLoading,
+    initialSummaryId,
+    onActiveSummaryChange,
+  ]);
 
   // Đồng bộ trạng thái xem chi tiết ghi chú với FocusModeContext để tối ưu layout Box-in-box
   useEffect(() => {

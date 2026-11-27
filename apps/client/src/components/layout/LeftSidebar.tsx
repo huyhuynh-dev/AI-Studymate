@@ -24,7 +24,7 @@ import { useSWRConfig } from "swr";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSubjects } from "@/hooks/useSubjects";
 import { conversationsApi } from "@/services/conversations.api";
-import { usersApi } from "@/services/users.api";
+import { logoutWithWorkspaceStateFlush } from "@/lib/logout-with-state-flush";
 import { CURRENT_USER_CACHE_KEY } from "@/hooks/useCurrentUser";
 import type { Conversation, Subject } from "@/types";
 import {
@@ -542,7 +542,7 @@ export default function LeftSidebar({
   };
 
   const handleLogout = async () => {
-    await usersApi.logout();
+    await logoutWithWorkspaceStateFlush();
     await globalMutate(CURRENT_USER_CACHE_KEY, undefined, { revalidate: false });
     router.replace("/auth/login");
   };

@@ -2,6 +2,8 @@
 
 import { useCallback } from 'react';
 import useSWR from 'swr';
+import { logoutWithWorkspaceStateFlush } from '@/lib/logout-with-state-flush';
+import { workspaceStateCoordinator } from '@/lib/workspace-state.singleton';
 import { extractUserApiError, usersApi } from '@/services/users.api';
 import type {
   ChangePasswordInput,
@@ -54,6 +56,7 @@ export function useCurrentUser() {
       input: DeleteAccountInput,
     ): Promise<{ success: boolean; message: string }> => {
       const res = await usersApi.deleteAccount(input);
+      workspaceStateCoordinator.reset();
       await usersApi.logout().catch(() => {});
       await mutate(undefined, { revalidate: false });
       return res;
@@ -62,7 +65,7 @@ export function useCurrentUser() {
   );
 
   const logout = useCallback(async (): Promise<void> => {
-    await usersApi.logout();
+    await logoutWithWorkspaceStateFlush();
     await mutate(undefined, { revalidate: false });
   }, [mutate]);
 
