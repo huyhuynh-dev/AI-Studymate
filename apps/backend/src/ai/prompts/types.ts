@@ -74,6 +74,11 @@ export interface PromptPayloadMap {
     semanticQuery: string;
     keywords: string[];
   };
+  CHAT_COMPACTION: {
+    transcriptToCompact: string;
+    previousSummary?: string;
+    maxSummaryChars?: number;
+  };
 }
 
 export type FeatureKey = keyof PromptPayloadMap;

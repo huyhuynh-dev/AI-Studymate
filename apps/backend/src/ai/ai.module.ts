@@ -12,6 +12,7 @@ import { FlashcardAiService } from './flashcard-ai.service.js';
 import { PromptRegistryService } from './prompts/prompt-registry.service.js';
 import { ToolRegistryService } from './tools/tool-registry.service.js';
 import { AiTelemetryService } from './telemetry/ai-telemetry.service.js';
+import { ChatCompactionService } from './chat-compaction.service.js';
 
 @Module({
   imports: [PrismaModule],
@@ -25,6 +26,7 @@ import { AiTelemetryService } from './telemetry/ai-telemetry.service.js';
     VisionService,
     SummaryService,
     BlocknoteService,
+    ChatCompactionService,
     ChatAgentAiService,
     QuizAiService,
     FlashcardAiService,
@@ -39,6 +41,7 @@ import { AiTelemetryService } from './telemetry/ai-telemetry.service.js';
     VisionService,
     SummaryService,
     BlocknoteService,
+    ChatCompactionService,
     ChatAgentAiService,
     QuizAiService,
     FlashcardAiService,

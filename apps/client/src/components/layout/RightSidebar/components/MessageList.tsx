@@ -1,14 +1,17 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { Lightbulb } from "lucide-react";
-import type { ChatMessage } from "../types";
+import { Lightbulb, Loader2 } from "lucide-react";
+import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
+import { ASSISTANT_NAME } from "../constants";
+import type { AgentStatusEvent, ChatMessage } from "../types";
 import { AiMessage } from "./AiMessage";
 import { UserMessage } from "./UserMessage";
 
 interface MessageListProps {
   messages: ChatMessage[];
   isLoading?: boolean;
+  liveAgentStatus?: AgentStatusEvent | null;
   suggestions?: string[];
   isLoadingSuggestions?: boolean;
   onSelectSuggestion?: (suggestion: string) => void;
@@ -25,6 +28,7 @@ interface MessageListProps {
 export function MessageList({
   messages,
   isLoading,
+  liveAgentStatus = null,
   suggestions = [],
   isLoadingSuggestions = false,
   onSelectSuggestion,
@@ -37,7 +41,7 @@ export function MessageList({
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading, suggestions, isLoadingSuggestions]);
+  }, [messages, isLoading, liveAgentStatus, suggestions, isLoadingSuggestions]);
 
   // Xác định vị trí của tin nhắn AI cuối cùng để hiển thị Follow-up Chips bên dưới
   const lastAssistantIndex = (() => {
@@ -64,6 +68,8 @@ export function MessageList({
             ) : (
               <AiMessage
                 message={msg}
+                isStreaming={Boolean(isLoading && isLastAssistantMessage)}
+                liveAgentStatus={isLastAssistantMessage ? liveAgentStatus : null}
                 onAddToolOutput={onAddToolOutput}
                 onOpenSummary={onOpenSummary}
                 onOpenFlashcardDeck={onOpenFlashcardDeck}
@@ -112,6 +118,24 @@ export function MessageList({
           </div>
         );
       })}
+      {isLoading &&
+        messages.length > 0 &&
+        messages[messages.length - 1]?.role === "user" && (
+          <div className="space-y-2 select-none">
+            <div className="flex items-center gap-2">
+              <StudyMateAiIcon variant="full" className="h-6 w-6 shrink-0" />
+              <span className="text-xs font-bold text-[#0B1C30] dark:text-[#EFF0F6]">
+                {ASSISTANT_NAME}
+              </span>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-[20px] rounded-tl-[4px] border border-[#E5EEFF] dark:border-white/[0.08] bg-white dark:bg-[#161922] px-4 py-2.5 text-xs font-medium text-[#4F46E5] dark:text-[#818CF8] shadow-xs">
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+              <span>
+                {liveAgentStatus?.label || "Đang xem ngữ cảnh và suy nghĩ…"}
+              </span>
+            </div>
+          </div>
+        )}
       <div ref={endRef} />
     </div>
   );

@@ -193,8 +193,18 @@ export interface AskUserQuestionToolInput {
 }
 
 // ── Tool 4: createDocumentSummary (Server-Side Tool) ──
+export type CreateToolExecutionStatus =
+  | 'created'
+  | 'needs_clarification'
+  | 'empty_workspace';
+
+export interface ClarificationCandidateDocument {
+  documentId: string;
+  fileName: string;
+}
+
 export interface CreateDocumentSummaryToolInput {
-  scope: 'conversation' | 'document' | 'section';
+  scope?: 'conversation' | 'document' | 'section';
   documentIds?: string[];
   mode?: 'key_takeaways' | 'study_guide' | 'qa_style';
   length?: 'short' | 'standard' | 'detailed';
@@ -211,6 +221,11 @@ export interface CreateDocumentSummaryToolOutput {
   length: 'short' | 'standard' | 'detailed';
   documentNames: string[];
   createdAt: string;
+  status?: CreateToolExecutionStatus;
+  missingField?: 'documentIds';
+  candidates?: ClarificationCandidateDocument[];
+  appliedDefaults?: string[];
+  message?: string;
 }
 
 export type CreateDocumentSummaryCallback = (
@@ -333,6 +348,11 @@ export interface CreateFlashcardsToolOutput {
   types: Array<'basic' | 'cloze' | 'type_in'>;
   documentNames: string[];
   createdAt: string;
+  status?: CreateToolExecutionStatus;
+  missingField?: 'documentIds';
+  candidates?: ClarificationCandidateDocument[];
+  appliedDefaults?: string[];
+  message?: string;
 }
 
 export type CreateFlashcardsCallback = (
@@ -370,6 +390,11 @@ export interface CreateQuizToolOutput {
   difficulty: QuizToolDifficulty;
   documentNames: string[];
   createdAt: string;
+  status?: CreateToolExecutionStatus;
+  missingField?: 'documentIds';
+  candidates?: ClarificationCandidateDocument[];
+  appliedDefaults?: string[];
+  message?: string;
 }
 
 export type CreateQuizCallback = (

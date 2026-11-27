@@ -11,7 +11,7 @@ export const createFlashcardsInputSchema = z.object({
     .array(z.string())
     .optional()
     .describe(
-      'List of source document UUIDs from <workspace_documents> to generate flashcards from. Omit or leave empty to use all ready documents (or currently attached documents) in the conversation.',
+      'List of source document UUIDs from <workspace_documents> or <current_ui_context> to generate flashcards from. Omit if targeting the open/attached file.',
     ),
   count: z
     .number()
@@ -19,24 +19,22 @@ export const createFlashcardsInputSchema = z.object({
     .min(1)
     .max(50)
     .optional()
-    .default(10)
     .describe(
-      'Number of flashcards to generate (1 to 50, default: 10). Common presets: 10, 20, 30.',
+      'Optional number of flashcards to generate (1 to 50). Omit unless specified by the student (backend applies safe default: 10).',
     ),
   types: z
     .array(z.enum(['basic', 'cloze', 'type_in']))
     .min(1)
     .optional()
-    .default(['basic', 'cloze'])
     .describe(
-      'Allowed flashcard types: "basic" (front question/term, back answer), "cloze" (fill-in-the-blank sentence), "type_in" (short exact typed answer). Default: ["basic", "cloze"].',
+      'Optional allowed flashcard types: "basic", "cloze", "type_in". Omit unless specified by the student (backend applies safe default: ["basic", "cloze"]).',
     ),
   deckName: z
     .string()
     .max(255)
     .optional()
     .describe(
-      'Optional custom title for a NEW flashcard deck (ignored when deckId is provided). If omitted, an appropriate title is generated automatically based on the documents.',
+      'Optional custom title for a NEW flashcard deck (ignored when deckId is provided).',
     ),
   instructions: z
     .string()
@@ -68,6 +66,13 @@ export function toFlashcardLightweightOutput(
     types: output.types,
     documentNames: output.documentNames,
     createdAt: output.createdAt,
+    ...(output.status && output.status !== 'created'
+      ? { status: output.status }
+      : {}),
+    ...(output.appliedDefaults?.length
+      ? { appliedDefaults: output.appliedDefaults }
+      : {}),
+    ...(output.message ? { message: output.message } : {}),
   };
 }
 
@@ -77,7 +82,7 @@ export function createCreateFlashcardsTool(
 ) {
   return tool({
     description:
-      'CREATES and SAVES new AI spaced-repetition flashcards into the Flashcards tab (new deck or appended to deckId). Use ONLY when the student explicitly requests creating/adding flashcards (not for regular explanations). To READ or inspect existing flashcards in a deck, call getDeckCards instead. If the request is generic or missing key preferences (e.g., which document among multiple files, card count, or card types), call askUserQuestion first to clarify.',
+      'CREATES and SAVES new AI spaced-repetition flashcards into the Flashcards tab (new deck or appended to deckId). Use ONLY when the student explicitly requests creating/adding flashcards (not for regular explanations). To READ existing cards, call getDeckCards instead. Clarify via askUserQuestion ONLY when multiple documents exist and the source target is ambiguous; otherwise execute immediately and omit unspecified optional parameters so backend defaults apply.',
     inputSchema: createFlashcardsInputSchema,
     execute: async (
       input,
@@ -97,16 +102,42 @@ export function createCreateFlashcardsTool(
       return output;
     },
     toModelOutput: ({ output }) => {
-      if (!output?.deckId) {
+      if (output?.status === 'needs_clarification') {
+        const candidateLines = (output.candidates || [])
+          .map((c) => `- "${c.fileName}" (documentId: "${c.documentId}")`)
+          .join('\n');
         return {
           type: 'text',
-          value: 'Không thể khởi tạo bộ thẻ ghi nhớ (Flashcard).',
+          value: `CẦN HỎI LÀM RÕ NGUỒN TÀI LIỆU (Chưa tạo bộ thẻ): ${output.message || ''}\nDanh sách tài liệu khả dụng:\n${candidateLines}\nHãy gọi ngay tool \`askUserQuestion\` với 1 câu hỏi chọn nguồn (liệt kê các tài liệu trên + "Tất cả tài liệu trong phiên", allowMultiple: true, allowCustomInput: false) và KHÔNG khẳng định đã tạo.`,
         };
       }
 
+      if (output?.status === 'empty_workspace') {
+        return {
+          type: 'text',
+          value:
+            output.message ||
+            'Hiện chưa có tài liệu nào sẵn sàng trong phiên học. Hãy mời người dùng tải tài liệu lên trước.',
+        };
+      }
+
+      if (!output?.deckId) {
+        return {
+          type: 'text',
+          value:
+            output?.message ||
+            'Không thể khởi tạo bộ thẻ ghi nhớ (Flashcard).',
+        };
+      }
+
+      const defaultsLine =
+        Array.isArray(output.appliedDefaults) && output.appliedDefaults.length > 0
+          ? `\n- Tham số mặc định đã tự áp dụng (hãy nhắc ngắn 1 câu tự nhiên kèm lời mời điều chỉnh): ${output.appliedDefaults.join(', ')}`
+          : '';
+
       return {
         type: 'text',
-        value: `Đã tạo bộ thẻ Flashcard thành công!\n- Tên bộ thẻ: "${output.deckName}"\n- Mã bộ thẻ (deckId): "${output.deckId}"\n- Số lượng thẻ đã lưu: ${output.savedCount}/${output.requestedCount} thẻ\n- Loại thẻ: ${(output.types || []).join(', ')}\n- Tài liệu nguồn: ${(output.documentNames || []).join(', ') || 'Toàn bộ tài liệu phiên học'}`,
+        value: `Đã tạo bộ thẻ Flashcard thành công!\n- Tên bộ thẻ: "${output.deckName}"\n- Mã bộ thẻ (deckId): "${output.deckId}"\n- Số lượng thẻ đã lưu: ${output.savedCount}/${output.requestedCount} thẻ\n- Loại thẻ: ${(output.types || []).join(', ')}\n- Tài liệu nguồn: ${(output.documentNames || []).join(', ') || 'Toàn bộ tài liệu phiên học'}${defaultsLine}`,
       };
     },
   });

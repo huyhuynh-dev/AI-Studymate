@@ -62,6 +62,14 @@ export const FEATURE_MAP: Record<AiFeatureKey, FeatureRuntimeConfig> = {
     temperature: 0.1,
     maxRetries: 1,
   },
+  CHAT_COMPACTION: {
+    profile: 'FAST',
+    temperature: 0.1,
+    maxRetries: 1,
+    providerOptions: {
+      ollama: { think: false },
+    },
+  },
   DOCUMENT_RERANK: {
     profile: 'RERANK',
     maxRetries: 1,

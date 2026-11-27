@@ -47,12 +47,18 @@ function formatTabLabel(tab?: string): string {
   }
 }
 
+export interface RenderUiContextOptions {
+  omitDocumentSelection?: boolean;
+  clarificationCompleted?: boolean;
+}
+
 /**
  * Render block ngữ cảnh UI L1 siêu gọn, có ngân sách ký tự cứng (<= 1400 chars)
  * để tiêm tạm thời vào lượt hội thoại hiện tại mà không làm vỡ Prompt Cache.
  */
 export function renderEphemeralUiContextBlock(
   ctx: ResolvedWorkspaceContext,
+  options?: RenderUiContextOptions,
 ): string {
   const coreLines: string[] = [];
   const guardLines: string[] = [];
@@ -99,6 +105,11 @@ export function renderEphemeralUiContextBlock(
       '[GUARD: FLASHCARD_ANSWER_HIDDEN] Front of flashcard is shown and answer is not yet revealed. Give helpful hints without spoiling the exact answer unless explicitly asked to reveal.',
     );
   }
+  if (options?.clarificationCompleted) {
+    guardLines.push(
+      '[CLARIFICATION_COMPLETED] User already responded to or skipped clarification for this request. Proceed directly using reasonable defaults—do NOT call askUserQuestion again.',
+    );
+  }
 
   // 5. Attached documents in current turn
   if (ctx.attachedDocuments && ctx.attachedDocuments.length > 0) {
@@ -141,7 +152,7 @@ export function renderEphemeralUiContextBlock(
           `Nearby Outline: ${doc.nearbyTocHeadings.slice(0, 4).map((h) => sanitizeContextText(h, 55)).join(' | ')}`,
         );
       }
-      if (doc.selectedText) {
+      if (doc.selectedText && !options?.omitDocumentSelection) {
         selectionLine = doc.selectedText;
       }
     } else {

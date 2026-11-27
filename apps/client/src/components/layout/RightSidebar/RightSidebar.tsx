@@ -16,6 +16,7 @@ import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import { useFocusMode } from "@/components/layout/FocusModeContext";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useDocuments } from "@/hooks/useDocuments";
+import type { AgentStatusEvent } from "./types";
 import { formatSelectionAskPrompt } from "@/lib/ask-ai-prompt.helper";
 import { handleChatStreamDataPart } from "@/lib/workspace-sync";
 import { chatSessionsApi } from "@/services/chatSessions.api";
@@ -407,6 +408,8 @@ export default function RightSidebar({
   // ── Follow-up Suggestions state ──
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [liveAgentStatus, setLiveAgentStatus] =
+    useState<AgentStatusEvent | null>(null);
 
   // ── Model / reasoning ──
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
@@ -508,6 +511,40 @@ export default function RightSidebar({
         dataPart &&
         typeof dataPart === "object" &&
         "type" in dataPart &&
+        dataPart.type === "data-agent-status" &&
+        "data" in dataPart &&
+        dataPart.data &&
+        typeof dataPart.data === "object"
+      ) {
+        const statusPayload = dataPart.data as {
+          phase?: unknown;
+          label?: unknown;
+          toolName?: unknown;
+          stepIndex?: unknown;
+        };
+        if (
+          (statusPayload.phase === "compacted" ||
+            statusPayload.phase === "tool_running" ||
+            statusPayload.phase === "synthesizing") &&
+          typeof statusPayload.label === "string" &&
+          statusPayload.label.trim()
+        ) {
+          setLiveAgentStatus({
+            phase: statusPayload.phase,
+            label: statusPayload.label,
+            ...(typeof statusPayload.toolName === "string"
+              ? { toolName: statusPayload.toolName }
+              : {}),
+            ...(typeof statusPayload.stepIndex === "number"
+              ? { stepIndex: statusPayload.stepIndex }
+              : {}),
+          });
+        }
+      }
+      if (
+        dataPart &&
+        typeof dataPart === "object" &&
+        "type" in dataPart &&
         dataPart.type === "data-workspace-sync" &&
         "data" in dataPart &&
         dataPart.data &&
@@ -544,9 +581,11 @@ export default function RightSidebar({
     onError: (err) => {
       console.error("[RightSidebar] useChat onError:", err);
       setIsLoadingSuggestions(false);
+      setLiveAgentStatus(null);
     },
     onFinish: async ({ message }) => {
       console.log("[RightSidebar] useChat onFinish -> Tin nhắn AI nhận về thành công:", message);
+      setLiveAgentStatus(null);
       refreshSessions();
 
       // Tự động sinh 2-3 câu hỏi gợi ý tiếp nối sau khi AI trả lời xong
@@ -598,6 +637,12 @@ export default function RightSidebar({
     status === "streaming" ||
     isCreatingSession ||
     Boolean(pendingSubmission);
+
+  useEffect(() => {
+    if (!isSending) {
+      setLiveAgentStatus(null);
+    }
+  }, [isSending]);
 
   const sessions: ChatSessionItem[] = useMemo(
     () =>
@@ -700,6 +745,7 @@ export default function RightSidebar({
     setPendingSubmission(null);
     setSuggestions([]);
     setIsLoadingSuggestions(false);
+    setLiveAgentStatus(null);
     completedStreamToolCallIdsRef.current.clear();
     setMessages([]);
     setInputValue("");
@@ -731,6 +777,7 @@ export default function RightSidebar({
       }
       setSuggestions([]);
       setIsLoadingSuggestions(false);
+      setLiveAgentStatus(null);
       try {
         setIsLoadingMessages(true);
         const history = await chatSessionsApi.getMessages(id);
@@ -1565,6 +1612,7 @@ export default function RightSidebar({
             <MessageList
               messages={messages as unknown as ChatMessage[]}
               isLoading={isSending}
+              liveAgentStatus={liveAgentStatus}
               suggestions={suggestions}
               isLoadingSuggestions={isLoadingSuggestions}
               onSelectSuggestion={(selectedSuggestion) =>

@@ -1,11 +1,19 @@
 import { Logger } from '@nestjs/common';
 import { createUIMessageStream, type UIMessageChunk } from 'ai';
 import {
+  AGENT_STATUS_CHUNK_TYPE,
   WORKSPACE_SYNC_CHUNK_TYPE,
+  type AgentStatusChunk,
+  type AgentStatusEvent,
   type WorkspaceSyncChunk,
   type WorkspaceSyncEvent,
   type WorkspaceSyncNotifier,
 } from './workspace-sync.types.js';
+
+export interface PipeStreamStatusOptions {
+  initialStatusEvents?: AgentStatusEvent[];
+  emitStepStatus?: boolean;
+}
 
 export type WorkspaceSyncSink = (event: WorkspaceSyncEvent) => void;
 
@@ -82,11 +90,15 @@ export function pipeWorkspaceSyncIntoUIMessageStream(
   innerStream: ReadableStream<UIMessageChunk>,
   syncChannel: WorkspaceSyncChannel,
   onError?: (error: unknown) => string,
+  statusOptions?: PipeStreamStatusOptions,
 ): ReadableStream<UIMessageChunk> {
   return createUIMessageStream({
     execute: async ({ writer }) => {
       let hasSeenStart = false;
       const pendingBeforeStart: WorkspaceSyncEvent[] = [];
+      const emitStepStatus = statusOptions?.emitStepStatus !== false;
+      let stepIndex = 0;
+      let stepHadTool = false;
 
       const writeSyncEvent = (event: WorkspaceSyncEvent): void => {
         const chunk: WorkspaceSyncChunk = {
@@ -97,13 +109,29 @@ export function pipeWorkspaceSyncIntoUIMessageStream(
         writer.write(chunk);
       };
 
+      const writeStatusEvent = (event: AgentStatusEvent): void => {
+        const chunk: AgentStatusChunk = {
+          type: AGENT_STATUS_CHUNK_TYPE,
+          transient: true,
+          data: event,
+        };
+        writer.write(chunk as unknown as UIMessageChunk);
+      };
+
       const flushPendingBeforeStart = (): void => {
-        if (pendingBeforeStart.length === 0) {
-          return;
+        if (pendingBeforeStart.length > 0) {
+          const events = pendingBeforeStart.splice(0, pendingBeforeStart.length);
+          for (const event of events) {
+            writeSyncEvent(event);
+          }
         }
-        const events = pendingBeforeStart.splice(0, pendingBeforeStart.length);
-        for (const event of events) {
-          writeSyncEvent(event);
+        if (
+          Array.isArray(statusOptions?.initialStatusEvents) &&
+          statusOptions.initialStatusEvents.length > 0
+        ) {
+          for (const statusEvent of statusOptions.initialStatusEvents) {
+            writeStatusEvent(statusEvent);
+          }
         }
       };
 
@@ -123,11 +151,32 @@ export function pipeWorkspaceSyncIntoUIMessageStream(
             break;
           }
 
+          if (value.type === 'start-step') {
+            stepIndex += 1;
+            stepHadTool = false;
+          } else if (
+            value.type === 'tool-input-start' ||
+            value.type === 'tool-input-available' ||
+            value.type === 'tool-output-available'
+          ) {
+            stepHadTool = true;
+          }
+
           writer.write(value);
 
           if (!hasSeenStart && value.type === 'start') {
             hasSeenStart = true;
             flushPendingBeforeStart();
+          } else if (
+            value.type === 'finish-step' &&
+            emitStepStatus &&
+            stepHadTool
+          ) {
+            writeStatusEvent({
+              phase: 'synthesizing',
+              stepIndex,
+              label: 'Đang tổng hợp kết quả và viết câu trả lời…',
+            });
           }
         }
 

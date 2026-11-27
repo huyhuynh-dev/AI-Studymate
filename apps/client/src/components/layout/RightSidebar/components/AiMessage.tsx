@@ -27,7 +27,7 @@ import {
 import { useWordAgent } from "@/contexts/WordAgentContext";
 import { StudyMateAiIcon } from "@/components/ui/StudyMateAiIcon";
 import { ASSISTANT_NAME } from "../constants";
-import type { ChatMessage } from "../types";
+import type { AgentStatusEvent, ChatMessage } from "../types";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { MessageActions } from "./MessageActions";
 import { CollapsibleSourceBar } from "./CollapsibleSourceBar";
@@ -39,6 +39,8 @@ import {
 
 interface AiMessageProps {
   message: ChatMessage;
+  isStreaming?: boolean;
+  liveAgentStatus?: AgentStatusEvent | null;
   onAddToolOutput?: (params: {
     tool: string;
     toolCallId: string;
@@ -270,6 +272,8 @@ function AskUserQuestionCard({
 
 export const AiMessage = React.memo(function AiMessage({
   message,
+  isStreaming = false,
+  liveAgentStatus = null,
   onAddToolOutput,
   onOpenSummary,
   onOpenFlashcardDeck,
@@ -419,6 +423,26 @@ export const AiMessage = React.memo(function AiMessage({
       )) ||
     (Array.isArray(message.metadata?.citations) &&
       message.metadata.citations.length > 0);
+
+  const hasRunningTool = normalizedParts.some(
+    (p: any) =>
+      typeof p?.type === "string" &&
+      p.type.startsWith("tool-") &&
+      (p.state === "input-streaming" || p.state === "input-available")
+  );
+  const lastNormalizedPart =
+    normalizedParts.length > 0
+      ? normalizedParts[normalizedParts.length - 1]
+      : null;
+  const isActivelyStreamingText = Boolean(
+    lastNormalizedPart &&
+      (lastNormalizedPart.type === "text" ||
+        typeof lastNormalizedPart.text === "string") &&
+      String(lastNormalizedPart.text || "").trim().length > 0
+  );
+  const showStreamingStatusPill = Boolean(
+    isStreaming && !hasRunningTool && !isActivelyStreamingText
+  );
 
   return (
     <div className="space-y-2 select-text">
@@ -1618,6 +1642,14 @@ export const AiMessage = React.memo(function AiMessage({
                 );
               }
 
+              if (
+                isDone &&
+                (part.output?.status === "needs_clarification" ||
+                  part.output?.status === "empty_workspace")
+              ) {
+                return null;
+              }
+
               if (isDone && summaryId) {
                 const handleBadgeClick = () => {
                   if (onOpenSummary) {
@@ -1729,6 +1761,14 @@ export const AiMessage = React.memo(function AiMessage({
                     </span>
                   </div>
                 );
+              }
+
+              if (
+                isDone &&
+                (part.output?.status === "needs_clarification" ||
+                  part.output?.status === "empty_workspace")
+              ) {
+                return null;
               }
 
               if (isDone && deckId) {
@@ -1863,6 +1903,14 @@ export const AiMessage = React.memo(function AiMessage({
                     </span>
                   </div>
                 );
+              }
+
+              if (
+                isDone &&
+                (part.output?.status === "needs_clarification" ||
+                  part.output?.status === "empty_workspace")
+              ) {
+                return null;
               }
 
               if (isDone && quizId) {
@@ -2409,6 +2457,15 @@ export const AiMessage = React.memo(function AiMessage({
         )}
 
         {/* Thanh tổng hợp nguồn trích dẫn thu gọn (Collapsible Source Bar) */}
+        {showStreamingStatusPill && (
+          <div className="flex items-center gap-2 py-1 text-xs text-[#4F46E5] dark:text-[#818CF8] select-none">
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+            <span>
+              {liveAgentStatus?.label || "Đang tổng hợp câu trả lời…"}
+            </span>
+          </div>
+        )}
+
         {allCitedList.length > 0 && (
           <CollapsibleSourceBar citedList={allCitedList} />
         )}

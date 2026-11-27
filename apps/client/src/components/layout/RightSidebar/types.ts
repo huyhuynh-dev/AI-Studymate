@@ -7,6 +7,13 @@ export type ChatState = "empty" | "active";
 
 export type EffortLevel = "low" | "medium" | "high" | "extra" | "max";
 
+export interface AgentStatusEvent {
+  phase: "compacted" | "tool_running" | "synthesizing";
+  label: string;
+  toolName?: string;
+  stepIndex?: number;
+}
+
 export interface AttachedFile {
   id: string;
   name: string;
@@ -81,4 +88,11 @@ export interface SendMessageOptions {
   effort: EffortLevel;
   thinking: boolean;
   attachedFiles: AttachedFile[];
+}
+
+export interface AgentStatusEvent {
+  phase: "compacted" | "tool_running" | "synthesizing";
+  label: string;
+  toolName?: string;
+  stepIndex?: number;
 }

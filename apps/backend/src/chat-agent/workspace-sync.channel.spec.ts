@@ -5,6 +5,7 @@ import {
   pipeWorkspaceSyncIntoUIMessageStream,
 } from './workspace-sync.channel.js';
 import {
+  AGENT_STATUS_CHUNK_TYPE,
   WORKSPACE_SYNC_CHUNK_TYPE,
   type WorkspaceSyncEvent,
 } from './workspace-sync.types.js';
@@ -203,5 +204,66 @@ describe('pipeWorkspaceSyncIntoUIMessageStream', () => {
     expect(onError).toHaveBeenCalledTimes(1);
     expect(chunks.some((c) => c.type === 'start')).toBe(true);
     expect(chunks.some((c) => c.type === 'error' && c.errorText === 'Mapped stream error')).toBe(true);
+  });
+
+  it('nên phát transient data-agent-status cho compaction ban đầu và pha synthesizing sau tool finish-step', async () => {
+    const channel = new WorkspaceSyncChannel();
+    const innerStream = new ReadableStream<UIMessageChunk>({
+      start(controller) {
+        controller.enqueue({ type: 'start', messageId: 'msg-status-1' });
+        controller.enqueue({ type: 'start-step' });
+        controller.enqueue({
+          type: 'tool-input-available',
+          toolCallId: 'tc-1',
+          toolName: 'searchDocumentChunks',
+          input: { semanticQuery: 'AVL' },
+        });
+        controller.enqueue({
+          type: 'tool-output-available',
+          toolCallId: 'tc-1',
+          output: { totalChunks: 2 },
+        });
+        controller.enqueue({ type: 'finish-step' });
+        controller.enqueue({ type: 'start-step' });
+        controller.enqueue({ type: 'text-start', id: 't1' });
+        controller.enqueue({ type: 'text-delta', id: 't1', delta: 'Kết quả...' });
+        controller.enqueue({ type: 'text-end', id: 't1' });
+        controller.enqueue({ type: 'finish-step' });
+        controller.enqueue({ type: 'finish', finishReason: 'stop' });
+        controller.close();
+      },
+    });
+
+    const mergedStream = pipeWorkspaceSyncIntoUIMessageStream(
+      innerStream,
+      channel,
+      undefined,
+      {
+        initialStatusEvents: [
+          {
+            phase: 'compacted',
+            label: 'Đã tối ưu ngữ cảnh phiên trò chuyện dài',
+          },
+        ],
+        emitStepStatus: true,
+      },
+    );
+
+    const chunks = await readAllChunks(mergedStream);
+    const statusChunks = chunks.filter(
+      (c: any) => c.type === AGENT_STATUS_CHUNK_TYPE,
+    ) as Array<{ type: string; transient: boolean; data: { phase: string; stepIndex?: number } }>;
+
+    expect(statusChunks).toHaveLength(2);
+    expect(statusChunks[0]).toMatchObject({
+      type: AGENT_STATUS_CHUNK_TYPE,
+      transient: true,
+      data: { phase: 'compacted' },
+    });
+    expect(statusChunks[1]).toMatchObject({
+      type: AGENT_STATUS_CHUNK_TYPE,
+      transient: true,
+      data: { phase: 'synthesizing', stepIndex: 1 },
+    });
   });
 });

@@ -1377,4 +1377,129 @@ describe('ChatAgentService', () => {
       }),
     );
   });
+
+  describe('Phase 3 Clarification Gate, viewingDocumentId Fallback & Anti-Repeat', () => {
+    it('Clarification Gate chặn tạo Flashcards/Quiz/Summary khi có >= 2 tài liệu mơ hồ (0 service calls, 0 sync events)', async () => {
+      retrievalMock.getAvailableDocumentsCatalog.mockResolvedValueOnce([
+        { documentId: 'doc-1', fileName: 'Chuong1.pdf', uploadedAt: new Date() },
+        { documentId: 'doc-2', fileName: 'Chuong2.pdf', uploadedAt: new Date() },
+      ]);
+
+      const streamResult = await service.handleChatStream(
+        'user-1',
+        'session-1',
+        [
+          {
+            id: 'u-ambig-1',
+            role: 'user' as const,
+            parts: [{ type: 'text' as const, text: 'Tạo flashcard giúp mình' }],
+          },
+        ],
+        undefined,
+        [],
+      );
+
+      const syncChannel = (streamResult as { workspaceSyncChannel?: WorkspaceSyncChannel }).workspaceSyncChannel!;
+      const emitted: unknown[] = [];
+      syncChannel.attach((e) => emitted.push(e));
+
+      const aiOptions = aiMock.executeChatStream.mock.calls[0]?.[3] as any;
+      expect(aiOptions.chatSessionId).toBe('session-1');
+
+      const fcBlocked = await aiOptions.onCreateFlashcards({});
+      expect(fcBlocked.status).toBe('needs_clarification');
+      expect(fcBlocked.candidates).toHaveLength(2);
+      expect(flashcardAiManageMock.generateWithAi).not.toHaveBeenCalled();
+
+      const quizBlocked = await aiOptions.onCreateQuiz({});
+      expect(quizBlocked.status).toBe('needs_clarification');
+      expect(quizServiceMock.generateWithAI).not.toHaveBeenCalled();
+
+      const sumBlocked = await aiOptions.onCreateDocumentSummary({ scope: 'conversation' });
+      expect(sumBlocked.status).toBe('needs_clarification');
+      expect(summariesMock.createSummary).not.toHaveBeenCalled();
+
+      expect(emitted).toHaveLength(0);
+    });
+
+    it('viewingDocumentId giải mã tự động nguồn cho onCreateFlashcards & onCreateQuiz khi có >= 2 tài liệu', async () => {
+      retrievalMock.getAvailableDocumentsCatalog.mockResolvedValueOnce([
+        { documentId: 'doc-1', fileName: 'Chuong1.pdf', uploadedAt: new Date() },
+        { documentId: 'doc-2', fileName: 'Chuong2.pdf', uploadedAt: new Date() },
+      ]);
+      hydratorMock.hydrate.mockResolvedValueOnce({
+        location: { pageType: 'conversation', conversationId: 'conv-1', activeTab: 'documents' },
+        inventory: { documentsCount: 2, readyDocumentsCount: 2, notesCount: 0, decksCount: 0, quizzesCount: 0 },
+        documentsView: {
+          viewMode: 'viewer',
+          viewingDocument: { documentId: 'doc-2', fileName: 'Chuong2.pdf', viewerKind: 'pdf', currentPage: 3 },
+        },
+        guards: { examIntegrityGuard: false, hideFlashcardAnswerGuard: false },
+      });
+
+      await service.handleChatStream(
+        'user-1',
+        'session-1',
+        [{ id: 'u-view-1', role: 'user' as const, parts: [{ type: 'text' as const, text: 'Tạo flashcard giúp mình' }] }],
+        undefined,
+        [],
+      );
+
+      const aiOptions = aiMock.executeChatStream.mock.calls[0]?.[3] as any;
+      const fcRes = await aiOptions.onCreateFlashcards({});
+      expect(fcRes.status).toBe('created');
+      expect(fcRes.appliedDefaults).toEqual(['10 thẻ', 'loại Cơ bản & Điền khuyết']);
+      expect(flashcardAiManageMock.generateWithAi).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ documentIds: ['doc-2'], count: 10 }),
+      );
+
+      const quizRes = await aiOptions.onCreateQuiz({});
+      expect(quizRes.status).toBe('created');
+      expect(quizRes.appliedDefaults).toEqual(['10 câu hỏi', 'dạng Trắc nghiệm & Tự luận', 'độ khó Vận dụng']);
+      expect(quizServiceMock.generateWithAI).toHaveBeenCalledWith(
+        'user-1',
+        'conv-1',
+        expect.objectContaining({ documentIds: ['doc-2'], questionCount: 10 }),
+      );
+    });
+
+    it('Anti-Repeat mở khóa Gate khi người dùng bỏ qua askUserQuestion hoặc vừa trả lời trong chuỗi hiện tại', async () => {
+      retrievalMock.getAvailableDocumentsCatalog.mockResolvedValueOnce([
+        { documentId: 'doc-1', fileName: 'Chuong1.pdf', uploadedAt: new Date() },
+        { documentId: 'doc-2', fileName: 'Chuong2.pdf', uploadedAt: new Date() },
+      ]);
+
+      await service.handleChatStream(
+        'user-1',
+        'session-1',
+        [
+          { id: 'u1', role: 'user' as const, parts: [{ type: 'text' as const, text: 'Tạo flashcard giúp mình' }] },
+          {
+            id: 'a1',
+            role: 'assistant' as const,
+            parts: [
+              {
+                type: 'tool-askUserQuestion',
+                toolCallId: 'ask-1',
+                state: 'input-available',
+                input: { questions: [{ id: 'doc', question: 'Chọn file?' }] },
+              } as any,
+            ],
+          },
+          { id: 'u2', role: 'user' as const, parts: [{ type: 'text' as const, text: 'cứ làm mặc định đi' }] },
+        ],
+        undefined,
+        [],
+      );
+
+      const aiOptions = aiMock.executeChatStream.mock.calls[0]?.[3] as any;
+      const fcRes = await aiOptions.onCreateFlashcards({});
+      expect(fcRes.status).toBe('created');
+      expect(flashcardAiManageMock.generateWithAi).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ documentIds: 'all' }),
+      );
+    });
+  });
 });

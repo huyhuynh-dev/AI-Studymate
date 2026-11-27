@@ -25,8 +25,14 @@ function expectDocumentCitation(
 }
 import { createSearchDocumentChunksTool } from './definitions/documents/search-document-chunks.tool.js';
 import { createGetDocumentSectionOrPagesTool } from './definitions/documents/get-document-section-or-pages.tool.js';
-import { createSearchInternetTool } from './definitions/web/search-internet.tool.js';
-import { createExtractWebPageTool } from './definitions/web/extract-web-page.tool.js';
+import {
+  createSearchInternetTool,
+  toSearchInternetLightweightOutput,
+} from './definitions/web/search-internet.tool.js';
+import {
+  createExtractWebPageTool,
+  toExtractWebPageLightweightOutput,
+} from './definitions/web/extract-web-page.tool.js';
 import { createCreateFlashcardsTool } from './definitions/flashcards/create-flashcards.tool.js';
 import { createCreateQuizTool } from './definitions/quiz/create-quiz.tool.js';
 import { HttpLoggingFilter } from '../../common/filters/http-logging.filter.js';
@@ -1079,6 +1085,149 @@ describe('ToolRegistryService & ChatSessionToolTracker', () => {
           documentIds: ['doc-specific-1'],
         }),
       );
+    });
+  });
+
+  describe('Phase 3 Schema Backward Compatibility, Clarification toModelOutput & Web Lightweight Outputs', () => {
+    it('toModelOutput của createFlashcards/createQuiz/createDocumentSummary xử lý sạch needs_clarification, empty_workspace và appliedDefaults', async () => {
+      const registry = new ToolRegistryService();
+      const { tools } = registry.createChatSessionToolset({
+        onCreateFlashcards: vi.fn().mockResolvedValue({
+          status: 'needs_clarification',
+          missingField: 'documentIds',
+          candidates: [
+            { documentId: 'doc-1', fileName: 'Chuong1.pdf' },
+            { documentId: 'doc-2', fileName: 'Chuong2.pdf' },
+          ],
+          deckId: '',
+          deckName: '',
+          targetKind: 'new',
+          savedCount: 0,
+          requestedCount: 10,
+          droppedCount: 0,
+          types: ['basic', 'cloze'],
+          documentNames: [],
+          createdAt: '',
+          message: 'Cần chọn tài liệu nguồn',
+        }),
+        onCreateQuiz: vi.fn().mockResolvedValue({
+          status: 'empty_workspace',
+          quizId: '',
+          title: '',
+          source: 'ai',
+          questionCount: 0,
+          requestedCount: 10,
+          types: ['single_choice'],
+          difficulty: 'applied',
+          documentNames: [],
+          createdAt: '',
+          message: 'Kho tài liệu trống',
+        }),
+        onCreateDocumentSummary: vi.fn().mockResolvedValue({
+          status: 'created',
+          summaryId: 'sum-1',
+          title: 'Tóm tắt Chương 1',
+          scope: 'document',
+          mode: 'study_guide',
+          length: 'standard',
+          documentNames: ['Chuong1.pdf'],
+          createdAt: '2026-11-27T00:00:00.000Z',
+          appliedDefaults: ['phong cách Hướng dẫn ôn tập (study_guide)', 'độ dài Chuẩn (standard)'],
+        }),
+      });
+
+      const fcOut = await tools.createFlashcards.execute({}, { toolCallId: 'tc-fc-clarify' });
+      const fcModel = tools.createFlashcards.toModelOutput({ output: fcOut });
+      expect(fcModel.value).toContain('CẦN HỎI LÀM RÕ NGUỒN TÀI LIỆU');
+      expect(fcModel.value).toContain('Chuong1.pdf');
+      expect(fcModel.value).toContain('askUserQuestion');
+
+      const qOut = await tools.createQuiz.execute({}, { toolCallId: 'tc-q-empty' });
+      const qModel = tools.createQuiz.toModelOutput({ output: qOut });
+      expect(qModel.value).toContain('Kho tài liệu trống');
+
+      const sOut = await tools.createDocumentSummary.execute({}, { toolCallId: 'tc-s-ok' });
+      const sModel = tools.createDocumentSummary.toModelOutput({ output: sOut });
+      expect(sModel.value).toContain('sum-1');
+      expect(sModel.value).toContain('Tham số mặc định đã tự áp dụng');
+    });
+
+    it('validationTools chấp nhận lịch sử createFlashcards/createQuiz/createDocumentSummary cả khi thiếu hoặc đủ field tùy chọn', () => {
+      const registry = new ToolRegistryService();
+      const validationTools = registry.getChatValidationTools();
+
+      expect(validationTools.createFlashcards.inputSchema.safeParse({}).success).toBe(true);
+      expect(
+        validationTools.createFlashcards.inputSchema.safeParse({
+          count: 15,
+          types: ['basic'],
+        }).success,
+      ).toBe(true);
+
+      expect(validationTools.createQuiz.inputSchema.safeParse({}).success).toBe(true);
+      expect(
+        validationTools.createQuiz.inputSchema.safeParse({
+          questionCount: 5,
+          difficulty: 'advanced',
+        }).success,
+      ).toBe(true);
+
+      expect(validationTools.createDocumentSummary.inputSchema.safeParse({}).success).toBe(true);
+      expect(
+        validationTools.createDocumentSummary.inputSchema.safeParse({
+          scope: 'document',
+          mode: 'key_takeaways',
+        }).success,
+      ).toBe(true);
+    });
+
+    it('toSearchInternetLightweightOutput & toExtractWebPageLightweightOutput trích xuất metadata gọn nhẹ', () => {
+      expect(
+        toSearchInternetLightweightOutput({
+          query: 'AVL tree',
+          totalResults: 1,
+          results: [
+            {
+              citationId: 'w1',
+              title: 'AVL',
+              url: 'https://en.wikipedia.org/wiki/AVL_tree',
+              domain: 'en.wikipedia.org',
+              contentSnippet: 'long content...',
+            },
+          ],
+        }),
+      ).toEqual({
+        query: 'AVL tree',
+        totalResults: 1,
+        domains: ['en.wikipedia.org'],
+        citationIds: ['w1'],
+        message: undefined,
+      });
+
+      expect(
+        toExtractWebPageLightweightOutput({
+          query: 'AVL rotation',
+          totalSuccess: 1,
+          totalFailed: 0,
+          results: [
+            {
+              citationId: 'w1',
+              title: 'AVL',
+              url: 'https://react.dev',
+              domain: 'react.dev',
+              extractedContent: 'huge markdown...',
+            },
+          ],
+          failedResults: [],
+        }),
+      ).toEqual({
+        query: 'AVL rotation',
+        totalSuccess: 1,
+        totalFailed: 0,
+        domains: ['react.dev'],
+        citationIds: ['w1'],
+        message: undefined,
+      });
     });
   });
 });

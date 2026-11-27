@@ -23,6 +23,27 @@ export const extractWebPageInputSchema = z.object({
     ),
 });
 
+export function toExtractWebPageLightweightOutput(
+  output?: ExtractWebPageToolOutput,
+): Record<string, unknown> | undefined {
+  if (!output) return undefined;
+  const domains = [
+    ...new Set(
+      (output.results || [])
+        .map((r) => r.domain)
+        .filter((d): d is string => Boolean(d)),
+    ),
+  ].slice(0, 8);
+  return {
+    query: output.query,
+    totalSuccess: output.totalSuccess,
+    totalFailed: output.totalFailed,
+    domains,
+    citationIds: (output.results || []).map((r) => r.citationId),
+    message: output.message,
+  };
+}
+
 export function createExtractWebPageTool(
   callback: ExtractWebPageCallback,
   tracker?: ToolCallTracker,
@@ -31,7 +52,7 @@ export function createExtractWebPageTool(
     description:
       'Deeply extract clean Markdown content from 1–3 specific URLs via Tavily Extract API. Use when the student shares direct URLs or when deeper reading of a searchInternet result is needed. Always pass a clear `query`; if a URL is blocked or fails, fall back to search snippets or ask the student to paste the excerpt.',
     inputSchema: extractWebPageInputSchema,
-    execute: async (input): Promise<ExtractWebPageToolOutput> => {
+    execute: async (input, { toolCallId }): Promise<ExtractWebPageToolOutput> => {
       console.log(
         `[Tool:extractWebPage] 📖 AI Agent kích hoạt Tool: URLs=[${input.urls.join(', ')}], query="${input.query}"`,
       );
@@ -68,7 +89,7 @@ export function createExtractWebPageTool(
         `[Tool:extractWebPage] 🎯 Hoàn tất thực thi Tool cho query="${input.query}": Thành công ${mappedResults.length} URLs, Thất bại ${(response.failedResults || []).length} URLs`,
       );
 
-      return {
+      const output: ExtractWebPageToolOutput = {
         query: response.query,
         totalSuccess: mappedResults.length,
         totalFailed: (response.failedResults || []).length,
@@ -76,6 +97,17 @@ export function createExtractWebPageTool(
         failedResults: response.failedResults || [],
         message: response.message,
       };
+
+      if (toolCallId && tracker) {
+        tracker.recordOutput(
+          toolCallId,
+          'extractWebPage',
+          output,
+          toExtractWebPageLightweightOutput(output),
+        );
+      }
+
+      return output;
     },
     toModelOutput: ({ output }) => {
       const typedOutput = output as ExtractWebPageToolOutput;

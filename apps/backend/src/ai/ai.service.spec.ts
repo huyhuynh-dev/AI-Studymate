@@ -128,6 +128,18 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
       expect(rendered.prompt).toContain('So sánh thuật toán Round Robin và Banker');
       expect(rendered.prompt).toContain('Round Robin, Banker');
     });
+
+    it('renders CHAT_COMPACTION prompt correctly', () => {
+      const rendered = promptRegistry.render('CHAT_COMPACTION', {
+        transcriptToCompact: '[Student]: Tạo 10 thẻ từ Chuong2.pdf',
+        previousSummary: 'Đã mở Chuong2.pdf',
+        maxSummaryChars: 2500,
+      });
+      expect(rendered.system).toContain('conversation state summarizer');
+      expect(rendered.prompt).toContain('<previous_compacted_summary>');
+      expect(rendered.prompt).toContain('<conversation_turns_to_compact>');
+      expect(rendered.prompt).toContain('2500');
+    });
   });
 
   describe('SchemaRegistry (resolveFeatureSchema)', () => {
@@ -220,6 +232,16 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
       expect(prepared.prompt).toBe('Tính toán ma trận');
     });
 
+    it('prepares CHAT_COMPACTION using FAST profile', () => {
+      const prepared = service.prepare('CHAT_COMPACTION', {
+        transcriptToCompact: '[Student]: Hỏi bài',
+      });
+
+      expect(mockFactory.getModel).toHaveBeenCalledWith('FAST');
+      expect(prepared.model).toEqual({ id: 'model-FAST' });
+      expect(prepared.temperature).toBe(0.1);
+    });
+
     it('prepares structured object context with schema', () => {
       const preparedObj = service.prepareObject('ESSAY_GRADE', {
         questionPlain: 'Câu hỏi',
@@ -248,6 +270,19 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
 
       expect(mockFactory.getCustomModel).toHaveBeenCalledWith('cx/gpt-custom-model');
       expect(prepared.model).toEqual({ id: 'custom-cx/gpt-custom-model' });
+    });
+
+    it('renders CHAT_COMPACTION prompt and routes to FAST profile', () => {
+      const prepared = service.prepare('CHAT_COMPACTION', {
+        transcriptToCompact: '[Student]: Tạo flashcard\n[Tutor]: Đã tạo deck-1',
+        maxSummaryChars: 3000,
+      });
+
+      expect(mockFactory.getModel).toHaveBeenCalledWith('FAST');
+      expect(prepared.model).toEqual({ id: 'model-FAST' });
+      expect(prepared.temperature).toBe(0.1);
+      expect(prepared.system).toContain('conversation state summarizer');
+      expect(prepared.prompt).toContain('deck-1');
     });
 
     it('calls Vercel AI SDK rerank() via AiService.rerankDocuments', async () => {

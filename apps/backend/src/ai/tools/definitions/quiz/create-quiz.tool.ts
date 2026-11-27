@@ -11,7 +11,7 @@ export const createQuizInputSchema = z.object({
     .array(z.string())
     .optional()
     .describe(
-      'List of source document UUIDs from <workspace_documents> to generate the quiz from. Omit or leave empty to use all ready documents (or currently attached documents) in the conversation.',
+      'List of source document UUIDs from <workspace_documents> or <current_ui_context> to generate the quiz from. Omit if targeting the open/attached file.',
     ),
   questionCount: z
     .number()
@@ -19,9 +19,8 @@ export const createQuizInputSchema = z.object({
     .min(1)
     .max(30)
     .optional()
-    .default(10)
     .describe(
-      'Number of questions to generate (1 to 30, default: 10). Common presets: 5, 10, 15, 20.',
+      'Optional number of questions to generate (1 to 30). Omit unless specified by the student (backend applies safe default: 10).',
     ),
   types: z
     .array(
@@ -35,22 +34,20 @@ export const createQuizInputSchema = z.object({
     )
     .min(1)
     .optional()
-    .default(['single_choice', 'essay'])
     .describe(
-      'Allowed question types: "single_choice" (1 correct answer + 3 distractors), "multiple_choice" (2-4 correct answers), "true_false" (declarative statement), "short_answer" (short exact phrase <= 5 words), "essay" (long-form with sample answer & grading rubric). Note: when converting a flashcard deck via deckId, only "single_choice", "true_false", and "short_answer" are supported. Default: ["single_choice", "essay"].',
+      'Optional allowed question types: "single_choice", "multiple_choice", "true_false", "short_answer", "essay". When converting a flashcard deck via deckId, only single_choice/true_false/short_answer are supported. Omit unless specified (backend defaults safely).',
     ),
   difficulty: z
     .enum(['basic', 'applied', 'advanced'])
     .optional()
-    .default('applied')
     .describe(
-      'Difficulty level: "basic" (recall & core definitions), "applied" (apply concepts to scenarios & analyze examples), or "advanced" (deep synthesis & evaluation). Default: "applied".',
+      'Optional difficulty level: "basic", "applied", or "advanced". Omit unless specified by the student (backend defaults safely to "applied").',
     ),
   bloomPreset: z
     .enum(['familiarize', 'balanced', 'exam_prep'])
     .optional()
     .describe(
-      'Optional Bloom cognitive distribution preset: "familiarize" (75% Remember/Understand), "balanced" (balanced across 4 Bloom levels), or "exam_prep" (70% Apply/Analyze). When omitted, inferred from difficulty.',
+      'Optional Bloom cognitive distribution preset: "familiarize", "balanced", or "exam_prep". When omitted, inferred from difficulty.',
     ),
   deckId: z
     .string()
@@ -75,6 +72,13 @@ export function toQuizLightweightOutput(
     difficulty: output.difficulty,
     documentNames: output.documentNames,
     createdAt: output.createdAt,
+    ...(output.status && output.status !== 'created'
+      ? { status: output.status }
+      : {}),
+    ...(output.appliedDefaults?.length
+      ? { appliedDefaults: output.appliedDefaults }
+      : {}),
+    ...(output.message ? { message: output.message } : {}),
   };
 }
 
@@ -84,7 +88,7 @@ export function createCreateQuizTool(
 ) {
   return tool({
     description:
-      'CREATES and SAVES a NEW AI assessment quiz from workspace study documents (or from an existing flashcard deckId) into the Quiz tab. Use ONLY when the student explicitly requests creating/generating a new quiz, test, or practice exam. To READ questions or review attempt results of an existing quiz, call getQuizContent instead. If the request is generic or missing key preferences (e.g., which document among multiple files, question count, question types, or difficulty), call askUserQuestion first to clarify.',
+      'CREATES and SAVES a NEW AI assessment quiz from workspace study documents (or from an existing flashcard deckId) into the Quiz tab. Use ONLY when the student explicitly requests creating/generating a new quiz, test, or practice exam. To READ existing quiz questions/attempts, call getQuizContent instead. Clarify via askUserQuestion ONLY when multiple documents exist and the source target is ambiguous; otherwise execute immediately and omit unspecified optional parameters so backend defaults apply.',
     inputSchema: createQuizInputSchema,
     execute: async (
       input,
@@ -104,16 +108,40 @@ export function createCreateQuizTool(
       return output;
     },
     toModelOutput: ({ output }) => {
-      if (!output?.quizId) {
+      if (output?.status === 'needs_clarification') {
+        const candidateLines = (output.candidates || [])
+          .map((c) => `- "${c.fileName}" (documentId: "${c.documentId}")`)
+          .join('\n');
         return {
           type: 'text',
-          value: 'Không thể khởi tạo bài kiểm tra (Quiz).',
+          value: `CẦN HỎI LÀM RÕ NGUỒN TÀI LIỆU (Chưa tạo đề kiểm tra): ${output.message || ''}\nDanh sách tài liệu khả dụng:\n${candidateLines}\nHãy gọi ngay tool \`askUserQuestion\` với 1 câu hỏi chọn nguồn (liệt kê các tài liệu trên + "Tất cả tài liệu trong phiên", allowMultiple: true, allowCustomInput: false) và KHÔNG khẳng định đã tạo.`,
         };
       }
 
+      if (output?.status === 'empty_workspace') {
+        return {
+          type: 'text',
+          value:
+            output.message ||
+            'Hiện chưa có tài liệu nào sẵn sàng trong phiên học. Hãy mời người dùng tải tài liệu lên trước.',
+        };
+      }
+
+      if (!output?.quizId) {
+        return {
+          type: 'text',
+          value: output?.message || 'Không thể khởi tạo bài kiểm tra (Quiz).',
+        };
+      }
+
+      const defaultsLine =
+        Array.isArray(output.appliedDefaults) && output.appliedDefaults.length > 0
+          ? `\n- Tham số mặc định đã tự áp dụng (hãy nhắc ngắn 1 câu tự nhiên kèm lời mời điều chỉnh): ${output.appliedDefaults.join(', ')}`
+          : '';
+
       return {
         type: 'text',
-        value: `Đã tạo đề kiểm tra thành công!\n- Tên đề kiểm tra: "${output.title}"\n- Mã đề kiểm tra (quizId): "${output.quizId}"\n- Số lượng câu hỏi: ${output.questionCount}/${output.requestedCount} câu\n- Dạng câu hỏi: ${(output.types || []).join(', ')}\n- Độ khó: ${output.difficulty}\n- Nguồn: ${(output.documentNames || []).join(', ') || 'Toàn bộ tài liệu phiên học'}`,
+        value: `Đã tạo đề kiểm tra thành công!\n- Tên đề kiểm tra: "${output.title}"\n- Mã đề kiểm tra (quizId): "${output.quizId}"\n- Số lượng câu hỏi: ${output.questionCount}/${output.requestedCount} câu\n- Dạng câu hỏi: ${(output.types || []).join(', ')}\n- Độ khó: ${output.difficulty}\n- Nguồn: ${(output.documentNames || []).join(', ') || 'Toàn bộ tài liệu phiên học'}${defaultsLine}`,
       };
     },
   });

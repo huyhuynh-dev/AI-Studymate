@@ -22,6 +22,7 @@ import {
 import { blocknoteEditPrompt } from './templates/blocknote.prompt.js';
 import { visionOcrPrompt } from './templates/vision-ocr.prompt.js';
 import { queryDecomposePrompt } from './templates/query-decompose.prompt.js';
+import { chatCompactionPrompt } from './templates/chat-compaction.prompt.js';
 
 @Injectable()
 export class PromptRegistryService {
@@ -39,6 +40,7 @@ export class PromptRegistryService {
     BLOCKNOTE_EDIT: blocknoteEditPrompt,
     VISION_OCR: visionOcrPrompt,
     QUERY_DECOMPOSE: queryDecomposePrompt,
+    CHAT_COMPACTION: chatCompactionPrompt,
   };
 
   /**

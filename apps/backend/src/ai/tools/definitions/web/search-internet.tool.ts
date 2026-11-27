@@ -52,6 +52,26 @@ export const searchInternetInputSchema = z.object({
     ),
 });
 
+export function toSearchInternetLightweightOutput(
+  output?: SearchInternetToolOutput,
+): Record<string, unknown> | undefined {
+  if (!output) return undefined;
+  const domains = [
+    ...new Set(
+      (output.results || [])
+        .map((r) => r.domain)
+        .filter((d): d is string => Boolean(d)),
+    ),
+  ].slice(0, 8);
+  return {
+    query: output.query,
+    totalResults: output.totalResults,
+    domains,
+    citationIds: (output.results || []).map((r) => r.citationId),
+    message: output.message,
+  };
+}
+
 export function createSearchInternetTool(
   callback: SearchInternetCallback,
   tracker?: ToolCallTracker,
@@ -60,7 +80,7 @@ export function createSearchInternetTool(
     description:
       'Search the public Internet via Tavily Search API for factual information, academic papers, technical docs, or recent developments not covered in the user’s workspace documents. NEVER use this for private user data, grades, unpublished internal coursework, or searching the student\'s own StudyMate notes/decks/quizzes/past conversations (use searchWorkspaceResources instead). Returns snippets with web citation IDs [wX].',
     inputSchema: searchInternetInputSchema,
-    execute: async (input): Promise<SearchInternetToolOutput> => {
+    execute: async (input, { toolCallId }): Promise<SearchInternetToolOutput> => {
       console.log(
         `[Tool:searchInternet] 🔎 AI Agent kích hoạt Tool: query="${input.query}", depth="${input.searchDepth || 'basic'}", topic="general"`,
       );
@@ -100,12 +120,23 @@ export function createSearchInternetTool(
         `[Tool:searchInternet] 🎯 Hoàn tất thực thi Tool cho query="${input.query}": Cấp phát ${mappedResults.length} mã trích dẫn (${mappedResults.map((r) => `[${r.citationId}]: ${r.domain}`).join(', ')})`,
       );
 
-      return {
+      const output: SearchInternetToolOutput = {
         query: response.query,
         totalResults: mappedResults.length,
         results: mappedResults,
         message: response.message,
       };
+
+      if (toolCallId && tracker) {
+        tracker.recordOutput(
+          toolCallId,
+          'searchInternet',
+          output,
+          toSearchInternetLightweightOutput(output),
+        );
+      }
+
+      return output;
     },
     toModelOutput: ({ output }) => {
       const typedOutput = output as SearchInternetToolOutput;

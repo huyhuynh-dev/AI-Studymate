@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   convertToModelMessages,
   generateId,
@@ -8,6 +8,7 @@ import {
 } from 'ai';
 import type { ModelMessage, UIMessage } from 'ai';
 import { AiService } from './ai.service.js';
+import { ChatCompactionService } from './chat-compaction.service.js';
 import type {
   AvailableDocumentItem,
 } from '../documents/services/retrieval.service.js';
@@ -21,8 +22,15 @@ import { renderEphemeralUiContextBlock } from './prompts/templates/workspace-con
 import type { ResolvedWorkspaceContext } from './prompts/workspace-context.types.js';
 import {
   buildSystemPromptWithSuperDocAgent,
+  renderEphemeralWordSelectionBlock,
   type ActiveWordDocumentPromptContext,
 } from './prompts/templates/superdoc-agent.prompt.js';
+import { hasResolvedClarificationInCurrentChain } from './utils/clarification-policy.helper.js';
+import {
+  CLEAR_KEEP_RECENT_TURNS,
+  buildClearedToolSummariesMap,
+  clearOldToolResultsInModelMessages,
+} from './utils/chat-context-manager.helper.js';
 import {
   ToolRegistryService,
   type SearchDocumentChunksToolInput,
@@ -193,6 +201,8 @@ export class ChatAgentAiService {
   constructor(
     private readonly aiService: AiService,
     private readonly toolRegistry: ToolRegistryService,
+    @Optional()
+    private readonly chatCompactionService?: ChatCompactionService,
   ) {}
 
   /**
@@ -319,6 +329,7 @@ export class ChatAgentAiService {
       onSuperDocApiCall?: SuperDocApiCallCallback;
       superdocToolkitMeta?: SuperDocToolkitToolMeta;
       workspaceContext?: ResolvedWorkspaceContext;
+      chatSessionId?: string;
       chatConfig?: {
         modelName: string;
         temperature: number;
@@ -358,17 +369,57 @@ export class ChatAgentAiService {
         : 5;
 
     const sanitizedMessages = this.sanitizePendingToolCalls(messages);
+    const clarificationCompleted =
+      hasResolvedClarificationInCurrentChain(sanitizedMessages);
+    const clearedSummaryMap = buildClearedToolSummariesMap(
+      sanitizedMessages,
+      CLEAR_KEEP_RECENT_TURNS,
+    );
     const baseModelMessages = await convertToModelMessages(sanitizedMessages, {
       tools: activeTools,
     });
-    const ephemeralContextBlock = options?.workspaceContext
-      ? renderEphemeralUiContextBlock(options.workspaceContext)
-      : '';
-    const modelMessages = ephemeralContextBlock
-      ? injectEphemeralTurnContext(baseModelMessages, ephemeralContextBlock)
-      : baseModelMessages;
+    const clearingResult = clearOldToolResultsInModelMessages(
+      baseModelMessages,
+      clearedSummaryMap,
+    );
+    const compactionResult = this.chatCompactionService
+      ? await this.chatCompactionService.compactIfNeeded({
+          chatSessionId: options?.chatSessionId,
+          modelMessages: clearingResult.messages,
+          uiMessages: sanitizedMessages,
+        })
+      : {
+          messages: clearingResult.messages,
+          compacted: false,
+          fromCache: false,
+          usedFallback: false,
+          estimatedTokensBefore: 0,
+          estimatedTokensAfter: 0,
+          compactedTurns: 0,
+        };
+
+    const wordSelectionBlock = renderEphemeralWordSelectionBlock(
+      options?.activeWordDocument?.selectedText,
+    );
+    const ephemeralUiBlock = options?.workspaceContext
+      ? renderEphemeralUiContextBlock(options.workspaceContext, {
+          omitDocumentSelection: Boolean(wordSelectionBlock),
+          clarificationCompleted,
+        })
+      : clarificationCompleted
+        ? '<current_ui_context trust="application_verified" scope="turn_only">\n[CLARIFICATION_COMPLETED] User already responded to or skipped clarification for this request. Proceed directly using reasonable defaults—do NOT call askUserQuestion again.\n</current_ui_context>'
+        : '';
+    const combinedEphemeralBlock = [ephemeralUiBlock, wordSelectionBlock]
+      .filter(Boolean)
+      .join('\n\n');
+    const modelMessages = combinedEphemeralBlock
+      ? injectEphemeralTurnContext(
+          compactionResult.messages,
+          combinedEphemeralBlock,
+        )
+      : compactionResult.messages;
     this.logger.log(
-      `[ChatAgentAiService] convertToModelMessages: input count=${messages.length}, output count=${modelMessages.length}, activeTools=${activeTools ? Object.keys(activeTools).join(',') : 'none'}, model=${chatConfig.modelName}, temp=${chatConfig.temperature}, maxTokens=${chatConfig.maxOutputTokens}, topK=${chatConfig.topK}`,
+      `[ChatAgentAiService] contextPipeline: input=${messages.length}, modelMsgs=${modelMessages.length}, clearedTools=${clearingResult.clearedToolCount}, prunedReasoning=${clearingResult.prunedReasoningCount}, savedChars=${clearingResult.savedChars}, compacted=${compactionResult.compacted} (cache=${compactionResult.fromCache}, fallback=${compactionResult.usedFallback}, tokens=${compactionResult.estimatedTokensBefore}->${compactionResult.estimatedTokensAfter}), activeTools=${activeTools ? Object.keys(activeTools).join(',') : 'none'}, model=${chatConfig.modelName}`,
     );
 
     const startedAt = Date.now();
@@ -449,6 +500,11 @@ export class ChatAgentAiService {
     }
 
     (streamResult as any).tracker = tracker;
+    (streamResult as any).agentContextMeta = {
+      compacted: compactionResult.compacted,
+      compactedTurns: compactionResult.compactedTurns,
+      clearedToolCount: clearingResult.clearedToolCount,
+    };
 
     return streamResult;
   }

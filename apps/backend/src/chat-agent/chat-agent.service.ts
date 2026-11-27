@@ -50,6 +50,8 @@ import {
   WorkspaceSyncChannel,
   pipeWorkspaceSyncIntoUIMessageStream,
 } from './workspace-sync.channel.js';
+import type { AgentStatusEvent } from './workspace-sync.types.js';
+import { resolveArtifactSourceTarget } from '../ai/utils/clarification-policy.helper.js';
 
 export interface ResolvedChatConfig {
   modelName: string;
@@ -323,6 +325,17 @@ export class ChatAgentService {
     const syncChannel = streamResult?.workspaceSyncChannel as
       | WorkspaceSyncChannel
       | undefined;
+    const agentContextMeta = streamResult?.agentContextMeta as
+      | { compacted?: boolean; compactedTurns?: number }
+      | undefined;
+    const initialStatusEvents: AgentStatusEvent[] = agentContextMeta?.compacted
+      ? [
+          {
+            phase: 'compacted',
+            label: 'Đã tối ưu ngữ cảnh phiên trò chuyện dài',
+          },
+        ]
+      : [];
 
     if (
       syncChannel &&
@@ -333,6 +346,10 @@ export class ChatAgentService {
         innerStream,
         syncChannel,
         streamOnError,
+        {
+          initialStatusEvents,
+          emitStepStatus: true,
+        },
       );
     }
 
@@ -1047,6 +1064,11 @@ export class ChatAgentService {
       }
     }
 
+    const sanitizedTurnMessages =
+      typeof this.chatAgentAiService?.sanitizePendingToolCalls === 'function'
+        ? this.chatAgentAiService.sanitizePendingToolCalls(messages)
+        : messages;
+
     let streamResult;
     try {
       streamResult = await this.chatAgentAiService.executeChatStream(
@@ -1067,6 +1089,7 @@ export class ChatAgentService {
       abortSignal,
       ragContext
         ? {
+            chatSessionId,
             availableDocuments,
             attachedDocumentIds: ragContext.attachedDocumentIds,
             workspaceContext,
@@ -1221,41 +1244,86 @@ export class ChatAgentService {
                 throw new Error('SummariesService chưa được khởi tạo');
               }
 
-              const viewingDocId =
-                workspaceContext?.documentsView?.viewMode === 'viewer'
-                  ? workspaceContext.documentsView.viewingDocument?.documentId
-                  : undefined;
+              const sourceResolution = resolveArtifactSourceTarget({
+                toolKind: 'summary',
+                explicitDocumentIds: input.documentIds,
+                explicitConversationScope: input.scope === 'conversation',
+                availableDocuments,
+                attachedDocumentIds: ragContext.attachedDocumentIds,
+                workspaceContext,
+                messages: sanitizedTurnMessages,
+              });
 
-              const requestedDocIds =
-                Array.isArray(input.documentIds) && input.documentIds.length > 0
-                  ? input.documentIds
-                  : ragContext.attachedDocumentIds &&
-                      ragContext.attachedDocumentIds.length > 0
-                    ? ragContext.attachedDocumentIds
-                    : input.scope !== 'conversation' && viewingDocId
-                      ? [viewingDocId]
-                      : availableDocuments && availableDocuments.length === 1
-                        ? [availableDocuments[0].documentId]
-                        : [];
+              const resolvedMode = input.mode ?? 'study_guide';
+              const resolvedLength = input.length ?? 'standard';
+              const resolvedInputScope = input.scope ?? 'document';
+
+              if (sourceResolution.status !== 'resolved') {
+                return {
+                  summaryId: '',
+                  title: '',
+                  scope: resolvedInputScope,
+                  mode: resolvedMode,
+                  length: resolvedLength,
+                  documentNames: [],
+                  createdAt: '',
+                  status: sourceResolution.status,
+                  ...(sourceResolution.status === 'needs_clarification'
+                    ? {
+                        missingField: sourceResolution.missingField,
+                        candidates: sourceResolution.candidates,
+                      }
+                    : {}),
+                  message: sourceResolution.message,
+                };
+              }
+
+              const appliedDefaults: string[] = [];
+              if (!input.mode) {
+                appliedDefaults.push('phong cách Hướng dẫn ôn tập (study_guide)');
+              }
+              if (!input.length) {
+                appliedDefaults.push('độ dài Chuẩn (standard)');
+              }
+              if (sourceResolution.resolutionKind === 'anti_repeat_all') {
+                appliedDefaults.push('toàn bộ tài liệu trong phiên');
+              }
 
               const scopeEnum =
-                input.scope === 'document'
-                  ? SummaryScope.DOCUMENT
-                  : input.scope === 'section'
+                sourceResolution.resolutionKind === 'explicit_conversation_all' ||
+                sourceResolution.resolutionKind === 'anti_repeat_all'
+                  ? SummaryScope.CONVERSATION
+                  : input.scope === 'section' || input.fromPage || input.toPage
                     ? SummaryScope.SECTION
-                    : SummaryScope.CONVERSATION;
+                    : input.scope === 'conversation' &&
+                        sourceResolution.resolutionKind === 'single_doc'
+                      ? SummaryScope.CONVERSATION
+                      : SummaryScope.DOCUMENT;
+
+              const requestedDocIds =
+                scopeEnum === SummaryScope.CONVERSATION &&
+                sourceResolution.resolutionKind !== 'single_doc'
+                  ? []
+                  : sourceResolution.documentIds;
+
+              const outScope: 'conversation' | 'document' | 'section' =
+                scopeEnum === SummaryScope.CONVERSATION
+                  ? 'conversation'
+                  : scopeEnum === SummaryScope.SECTION
+                    ? 'section'
+                    : 'document';
 
               const modeEnum =
-                input.mode === 'key_takeaways'
+                resolvedMode === 'key_takeaways'
                   ? SummaryMode.KEY_TAKEAWAYS
-                  : input.mode === 'qa_style'
+                  : resolvedMode === 'qa_style'
                     ? SummaryMode.QA_STYLE
                     : SummaryMode.STUDY_GUIDE;
 
               const lengthEnum =
-                input.length === 'short'
+                resolvedLength === 'short'
                   ? SummaryLength.SHORT
-                  : input.length === 'detailed'
+                  : resolvedLength === 'detailed'
                     ? SummaryLength.DETAILED
                     : SummaryLength.STANDARD;
 
@@ -1311,34 +1379,19 @@ export class ChatAgentService {
               return {
                 summaryId: created.id,
                 title: created.title,
-                scope: input.scope,
-                mode: input.mode || 'study_guide',
-                length: input.length || 'standard',
+                scope: outScope,
+                mode: resolvedMode,
+                length: resolvedLength,
                 documentNames,
                 createdAt,
+                status: 'created',
+                ...(appliedDefaults.length > 0 ? { appliedDefaults } : {}),
               };
             },
             onCreateFlashcards: async (input) => {
               if (!this.flashcardAiManageService) {
                 throw new Error('FlashcardAiManageService chưa được khởi tạo');
               }
-
-              const catalogMap = new Map(
-                (availableDocuments ?? []).map((d) => [
-                  d.documentId,
-                  d.fileName,
-                ]),
-              );
-              const requestedIds = Array.isArray(input.documentIds)
-                ? input.documentIds.filter((id) => catalogMap.has(id))
-                : [];
-              const resolvedDocumentIds: string[] | 'all' =
-                requestedIds.length > 0
-                  ? [...new Set(requestedIds)]
-                  : ragContext.attachedDocumentIds &&
-                      ragContext.attachedDocumentIds.length > 0
-                    ? [...new Set(ragContext.attachedDocumentIds)]
-                    : 'all';
 
               const uuidRegex =
                 /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1367,6 +1420,60 @@ export class ChatAgentService {
                 : [];
               const types: Array<'basic' | 'cloze' | 'type_in'> =
                 filteredTypes.length > 0 ? filteredTypes : ['basic', 'cloze'];
+
+              const sourceResolution = resolveArtifactSourceTarget({
+                toolKind: 'flashcards',
+                explicitDocumentIds: input.documentIds,
+                availableDocuments,
+                attachedDocumentIds: ragContext.attachedDocumentIds,
+                workspaceContext,
+                messages: sanitizedTurnMessages,
+              });
+
+              if (sourceResolution.status !== 'resolved') {
+                return {
+                  deckId: '',
+                  deckName: '',
+                  targetKind: target.kind,
+                  savedCount: 0,
+                  requestedCount: count,
+                  droppedCount: 0,
+                  types,
+                  documentNames: [],
+                  createdAt: '',
+                  status: sourceResolution.status,
+                  ...(sourceResolution.status === 'needs_clarification'
+                    ? {
+                        missingField: sourceResolution.missingField,
+                        candidates: sourceResolution.candidates,
+                      }
+                    : {}),
+                  message: sourceResolution.message,
+                };
+              }
+
+              const appliedDefaults: string[] = [];
+              if (input.count === undefined) {
+                appliedDefaults.push('10 thẻ');
+              }
+              if (filteredTypes.length === 0) {
+                appliedDefaults.push('loại Cơ bản & Điền khuyết');
+              }
+              if (sourceResolution.resolutionKind === 'anti_repeat_all') {
+                appliedDefaults.push('toàn bộ tài liệu trong phiên');
+              }
+
+              const catalogMap = new Map(
+                (availableDocuments ?? []).map((d) => [
+                  d.documentId,
+                  d.fileName,
+                ]),
+              );
+              const resolvedDocumentIds: string[] | 'all' =
+                sourceResolution.resolutionKind === 'single_doc' ||
+                sourceResolution.resolutionKind === 'anti_repeat_all'
+                  ? 'all'
+                  : sourceResolution.documentIds;
 
               const created = await this.flashcardAiManageService.generateWithAi(
                 ragContext.userId,
@@ -1412,6 +1519,8 @@ export class ChatAgentService {
                 types,
                 documentNames,
                 createdAt,
+                status: 'created',
+                ...(appliedDefaults.length > 0 ? { appliedDefaults } : {}),
               };
             },
             onCreateQuiz: async (input) => {
@@ -1480,6 +1589,14 @@ export class ChatAgentService {
                         QuestionTypeEnum.short_answer,
                       ];
 
+                const deckDefaults: string[] = [];
+                if (input.questionCount === undefined) {
+                  deckDefaults.push('10 câu hỏi');
+                }
+                if (filteredTypes.length === 0) {
+                  deckDefaults.push('dạng Trắc nghiệm, Đúng/Sai & Điền từ');
+                }
+
                 const createdFromDeck =
                   await this.quizService.generateFromDeck(
                     ragContext.userId,
@@ -1522,7 +1639,56 @@ export class ChatAgentService {
                     ? [createdFromDeck.sourceDeckName]
                     : ['Bộ thẻ Flashcard'],
                   createdAt,
+                  status: 'created',
+                  ...(deckDefaults.length > 0
+                    ? { appliedDefaults: deckDefaults }
+                    : {}),
                 };
+              }
+
+              const sourceResolution = resolveArtifactSourceTarget({
+                toolKind: 'quiz',
+                explicitDocumentIds: input.documentIds,
+                availableDocuments,
+                attachedDocumentIds: ragContext.attachedDocumentIds,
+                workspaceContext,
+                messages: sanitizedTurnMessages,
+              });
+
+              if (sourceResolution.status !== 'resolved') {
+                return {
+                  quizId: '',
+                  title: '',
+                  source: 'ai',
+                  questionCount: 0,
+                  requestedCount: questionCount,
+                  types,
+                  difficulty,
+                  documentNames: [],
+                  createdAt: '',
+                  status: sourceResolution.status,
+                  ...(sourceResolution.status === 'needs_clarification'
+                    ? {
+                        missingField: sourceResolution.missingField,
+                        candidates: sourceResolution.candidates,
+                      }
+                    : {}),
+                  message: sourceResolution.message,
+                };
+              }
+
+              const appliedDefaults: string[] = [];
+              if (input.questionCount === undefined) {
+                appliedDefaults.push('10 câu hỏi');
+              }
+              if (filteredTypes.length === 0) {
+                appliedDefaults.push('dạng Trắc nghiệm & Tự luận');
+              }
+              if (!input.difficulty) {
+                appliedDefaults.push('độ khó Vận dụng');
+              }
+              if (sourceResolution.resolutionKind === 'anti_repeat_all') {
+                appliedDefaults.push('toàn bộ tài liệu trong phiên');
               }
 
               const catalogMap = new Map(
@@ -1531,16 +1697,10 @@ export class ChatAgentService {
                   d.fileName,
                 ]),
               );
-              const requestedIds = Array.isArray(input.documentIds)
-                ? input.documentIds.filter((id) => catalogMap.has(id))
-                : [];
               const resolvedDocumentIds: string[] | undefined =
-                requestedIds.length > 0
-                  ? [...new Set(requestedIds)]
-                  : ragContext.attachedDocumentIds &&
-                      ragContext.attachedDocumentIds.length > 0
-                    ? [...new Set(ragContext.attachedDocumentIds)]
-                    : undefined;
+                sourceResolution.resolutionKind === 'anti_repeat_all'
+                  ? undefined
+                  : sourceResolution.documentIds;
 
               const allowedBloomPresets = new Set<
                 'familiarize' | 'balanced' | 'exam_prep'
@@ -1594,10 +1754,12 @@ export class ChatAgentService {
                 difficulty,
                 documentNames,
                 createdAt,
+                status: 'created',
+                ...(appliedDefaults.length > 0 ? { appliedDefaults } : {}),
               };
             },
           }
-        : { chatConfig: config, ...webCallbacks },
+        : { chatSessionId, chatConfig: config, ...webCallbacks },
       );
     } catch (error) {
       await releaseSuperdocTurnSession?.().catch(() => undefined);

@@ -61,3 +61,20 @@ export interface WorkspaceSyncChunk {
 export interface WorkspaceSyncNotifier {
   emit(event: WorkspaceSyncEvent): void;
 }
+
+export const AGENT_STATUS_CHUNK_TYPE = 'data-agent-status' as const;
+
+export type AgentStatusPhase = 'compacted' | 'tool_running' | 'synthesizing';
+
+export interface AgentStatusEvent {
+  readonly phase: AgentStatusPhase;
+  readonly label: string;
+  readonly toolName?: string;
+  readonly stepIndex?: number;
+}
+
+export interface AgentStatusChunk {
+  readonly type: typeof AGENT_STATUS_CHUNK_TYPE;
+  readonly transient: true;
+  readonly data: AgentStatusEvent;
+}
