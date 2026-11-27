@@ -1,6 +1,7 @@
 import { Injectable, Optional } from '@nestjs/common';
 import {
   embedMany,
+  experimental_transcribe as transcribe,
   generateText,
   streamText,
   rerank,
@@ -34,6 +35,13 @@ export interface RerankDocumentsParams<
   query: string;
   documents: T[];
   topN?: number;
+  abortSignal?: AbortSignal;
+}
+
+export interface TranscribeAudioParams {
+  audio: Parameters<typeof transcribe>[0]['audio'];
+  mimeType?: string;
+  language?: string;
   abortSignal?: AbortSignal;
 }
 
@@ -343,6 +351,68 @@ export class AiService {
         profile: 'RERANK',
         modelName,
         promptTokens: estimateTokensFromChars(estimatedInputChars),
+        completionTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Chuyển đổi âm thanh thành văn bản qua Vercel AI SDK `transcribe`
+   */
+  async transcribeAudio(params: TranscribeAudioParams) {
+    const config = FEATURE_MAP.VOICE_TRANSCRIPTION;
+    const model = this.aiModelFactory.getTranscriptionModel();
+    const startedAt = Date.now();
+    const modelName = resolveModelName(model, 'groq/whisper-large-v3-turbo');
+
+    const baseOpenAiOptions =
+      config.providerOptions?.openai &&
+      typeof config.providerOptions.openai === 'object'
+        ? config.providerOptions.openai
+        : {};
+    const trimmedLanguage = params.language?.trim();
+    const trimmedMimeType = params.mimeType?.trim();
+    const providerOptions = {
+      ...config.providerOptions,
+      openai: {
+        ...baseOpenAiOptions,
+        ...(trimmedMimeType ? { mediaType: trimmedMimeType } : {}),
+        ...(trimmedLanguage ? { language: trimmedLanguage } : {}),
+      },
+    };
+
+    try {
+      const result = await transcribe({
+        model,
+        audio: params.audio,
+        maxRetries: config.maxRetries ?? 1,
+        abortSignal: params.abortSignal,
+        providerOptions: providerOptions as any,
+      });
+
+      const completionTokens = estimateTokensFromChars(result.text.length);
+      this.aiTelemetry?.recordUsage({
+        featureKey: 'VOICE_TRANSCRIPTION',
+        profile: 'TRANSCRIPTION',
+        modelName,
+        promptTokens: 0,
+        completionTokens,
+        totalTokens: completionTokens,
+        latencyMs: Date.now() - startedAt,
+        status: 'success',
+      });
+
+      return result;
+    } catch (error: unknown) {
+      this.aiTelemetry?.recordUsage({
+        featureKey: 'VOICE_TRANSCRIPTION',
+        profile: 'TRANSCRIPTION',
+        modelName,
+        promptTokens: 0,
         completionTokens: 0,
         latencyMs: Date.now() - startedAt,
         status: 'error',

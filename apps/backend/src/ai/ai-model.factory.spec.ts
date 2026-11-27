@@ -29,16 +29,44 @@ describe('AiModelFactory', () => {
     ).toThrow('Missing Google Generative AI API Key');
   });
 
-  it('throws when calling getModel("RERANK") instead of getRerankingModel()', () => {
+  it('throws when calling getModel("RERANK") or getModel("TRANSCRIPTION") instead of typed getters', () => {
     const factory = new AiModelFactory(createConfigMock());
     expect(() => factory.getModel('RERANK')).toThrow(
       'RERANK profile uses a RerankingModel; call getRerankingModel() instead.',
+    );
+    expect(() => factory.getModel('TRANSCRIPTION')).toThrow(
+      'TRANSCRIPTION profile uses a TranscriptionModel; call getTranscriptionModel() instead.',
     );
     expect(factory.getModel('FAST')).toBeDefined();
     expect(factory.getModel('STANDARD')).toBeDefined();
     expect(factory.getModel('REASONING')).toBeDefined();
     expect(factory.getModel('VISION')).toBeDefined();
     expect(factory.getEmbeddingModel()).toBeDefined();
+    expect(factory.getTranscriptionModel()).toBeDefined();
+  });
+
+  it('configures OpenAI-compatible transcription model from PROVIDER_* with optional STT_* overrides', () => {
+    const defaultFactory = new AiModelFactory(createConfigMock());
+    const defaultStt = defaultFactory.getTranscriptionModel();
+    expect(typeof defaultStt).toBe('object');
+    if (typeof defaultStt !== 'object' || defaultStt === null) {
+      throw new Error('Expected TranscriptionModel object');
+    }
+    expect(defaultStt.modelId).toBe('groq/whisper-large-v3-turbo');
+    expect(defaultStt.specificationVersion).toBe('v3');
+
+    const overrideFactory = new AiModelFactory(
+      createConfigMock({
+        STT_MODEL: 'groq/whisper-large-v3',
+        STT_BASE_URL: 'http://localhost:20128/v1',
+        STT_API_KEY: 'custom-stt-key',
+      }),
+    );
+    const overrideStt = overrideFactory.getTranscriptionModel();
+    if (typeof overrideStt !== 'object' || overrideStt === null) {
+      throw new Error('Expected TranscriptionModel object');
+    }
+    expect(overrideStt.modelId).toBe('groq/whisper-large-v3');
   });
 
   it('normalizes LLAMA_SERVER_URL_RERANK with trailing slashes and existing /v1 suffix without duplicating /v1', async () => {

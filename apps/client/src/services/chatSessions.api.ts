@@ -1,4 +1,5 @@
 import { axiosClient } from "@/lib/axios.client";
+import { blobToBase64 } from "@/services/documents.api";
 import type { UIMessage } from "ai";
 import type { ChatSession } from "@/hooks/useChatSessions";
 
@@ -26,6 +27,42 @@ export interface AgentActionLogItem {
   targetId?: string | null;
   summary?: string | null;
   createdAt: string;
+}
+
+export interface TranscribeAudioParams {
+  audioBlob: Blob;
+  language?: string;
+  signal?: AbortSignal;
+}
+
+export interface TranscribeAudioResult {
+  text: string;
+  language: string | null;
+  durationInSeconds: number | null;
+}
+
+interface RawTranscribeAudioResponse {
+  text?: string | null;
+  language?: string | null;
+  durationInSeconds?: number | null;
+  duration_in_seconds?: number | null;
+}
+
+function mapTranscribeAudioResponse(
+  raw: RawTranscribeAudioResponse | null | undefined,
+): TranscribeAudioResult {
+  const duration = raw?.durationInSeconds ?? raw?.duration_in_seconds;
+  return {
+    text: typeof raw?.text === "string" ? raw.text.trim() : "",
+    language:
+      typeof raw?.language === "string" && raw.language.trim()
+        ? raw.language.trim()
+        : null,
+    durationInSeconds:
+      typeof duration === "number" && Number.isFinite(duration)
+        ? duration
+        : null,
+  };
 }
 
 export const chatSessionsApi = {
@@ -143,5 +180,28 @@ export const chatSessionsApi = {
       message?: string;
     }>(`/chat-agent/actions/${actionLogId}/undo`);
     return response.data;
+  },
+
+  /**
+   * Chuyển đổi đoạn âm thanh ghi âm từ Micro thành văn bản (STT).
+   * POST /api/proxy/chat-agent/transcribe
+   */
+  async transcribeAudio({
+    audioBlob,
+    language,
+    signal,
+  }: TranscribeAudioParams): Promise<TranscribeAudioResult> {
+    const audioBase64 = await blobToBase64(audioBlob);
+    const mimeType = audioBlob.type || "audio/webm";
+    const response = await axiosClient.post<RawTranscribeAudioResponse>(
+      "/chat-agent/transcribe",
+      {
+        audioBase64,
+        mimeType,
+        ...(language?.trim() ? { language: language.trim() } : {}),
+      },
+      { signal },
+    );
+    return mapTranscribeAudioResponse(response.data);
   },
 };

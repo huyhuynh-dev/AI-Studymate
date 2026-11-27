@@ -19,6 +19,7 @@ import { CreateChatSessionDto } from './dto/create-chat-session.dto.js';
 import { UpdateChatSessionDto } from './dto/update-chat-session.dto.js';
 import { ChatStreamDto } from './dto/chat-stream.dto.js';
 import { GenerateSuggestionsDto } from './dto/generate-suggestions.dto.js';
+import { TranscribeAudioDto } from './dto/transcribe-audio.dto.js';
 import { ChatAgentService } from './chat-agent.service.js';
 
 @Controller('chat-agent')
@@ -129,6 +130,26 @@ export class ChatAgentController {
     return this.chatAgentService.undoAgentAction(
       this.getUserId(req),
       actionLogId,
+    );
+  }
+
+  @Post('transcribe')
+  async transcribeAudio(
+    @Req() req: Request,
+    @Res({ passthrough: true }) response: ExpressResponse,
+    @Body() data: TranscribeAudioDto,
+  ) {
+    const abortController = new AbortController();
+    req.on('close', () => {
+      if (!response.writableEnded) {
+        abortController.abort();
+      }
+    });
+
+    return this.chatAgentService.transcribeAudio(
+      this.getUserId(req),
+      data,
+      abortController.signal,
     );
   }
 

@@ -1,7 +1,10 @@
 import type { ModelProfile } from '../ai-model.factory.js';
 import type { FeatureKey } from '../prompts/types.js';
 
-export type AiFeatureKey = FeatureKey | 'DOCUMENT_RERANK';
+export type AiFeatureKey =
+  | FeatureKey
+  | 'DOCUMENT_RERANK'
+  | 'VOICE_TRANSCRIPTION';
 
 export interface FeatureRuntimeConfig {
   profile: ModelProfile;
@@ -73,5 +76,15 @@ export const FEATURE_MAP: Record<AiFeatureKey, FeatureRuntimeConfig> = {
   DOCUMENT_RERANK: {
     profile: 'RERANK',
     maxRetries: 1,
+  },
+  VOICE_TRANSCRIPTION: {
+    profile: 'TRANSCRIPTION',
+    maxRetries: 1,
+    providerOptions: {
+      openai: {
+        temperature: 0,
+        responseFormat: 'verbose_json',
+      },
+    },
   },
 };

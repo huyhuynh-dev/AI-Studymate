@@ -17,10 +17,17 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
     modelId: string;
     doRerank: ReturnType<typeof vi.fn>;
   };
+  let mockTranscriptionModel: {
+    specificationVersion: 'v3';
+    provider: string;
+    modelId: string;
+    doGenerate: ReturnType<typeof vi.fn>;
+  };
   let mockFactory: {
     getModel: ReturnType<typeof vi.fn>;
     getEmbeddingModel: ReturnType<typeof vi.fn>;
     getRerankingModel: ReturnType<typeof vi.fn>;
+    getTranscriptionModel: ReturnType<typeof vi.fn>;
     getCustomModel: ReturnType<typeof vi.fn>;
     getModelForTask: ReturnType<typeof vi.fn>;
   };
@@ -41,10 +48,30 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
       }),
     };
 
+    mockTranscriptionModel = {
+      specificationVersion: 'v3',
+      provider: 'openai-compatible.transcription',
+      modelId: 'groq/whisper-large-v3-turbo',
+      doGenerate: vi.fn().mockResolvedValue({
+        text: 'Giải thích thuật toán Dijkstra',
+        segments: [
+          { text: 'Giải thích thuật toán Dijkstra', startSecond: 0, endSecond: 2.1 },
+        ],
+        language: 'Vietnamese',
+        durationInSeconds: 2.1,
+        warnings: [],
+        response: {
+          timestamp: new Date(),
+          modelId: 'groq/whisper-large-v3-turbo',
+        },
+      }),
+    };
+
     mockFactory = {
       getModel: vi.fn((profile) => ({ id: `model-${profile}` }) as any),
       getEmbeddingModel: vi.fn(() => ({ id: 'model-embedding' }) as any),
       getRerankingModel: vi.fn(() => mockRerankingModel as any),
+      getTranscriptionModel: vi.fn(() => mockTranscriptionModel as any),
       getCustomModel: vi.fn((name) => ({ id: `custom-${name}` }) as any),
       getModelForTask: vi.fn((task) => ({ id: `task-${task}` }) as any),
     };
@@ -314,6 +341,33 @@ describe('AiService, AiModelFactory, SchemaRegistry & ToolRegistryService', () =
           document: 'Hôm nay trời nắng đẹp.',
         },
       ]);
+    });
+
+    it('calls Vercel AI SDK transcribe() via AiService.transcribeAudio', async () => {
+      const audioBytes = Buffer.from([26, 69, 223, 163, 1, 2, 3, 4]);
+      const result = await service.transcribeAudio({
+        audio: audioBytes,
+        mimeType: 'audio/webm',
+        language: 'vi',
+      });
+
+      expect(mockFactory.getTranscriptionModel).toHaveBeenCalledTimes(1);
+      expect(mockTranscriptionModel.doGenerate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mediaType: 'audio/webm',
+          providerOptions: expect.objectContaining({
+            openai: expect.objectContaining({
+              temperature: 0,
+              responseFormat: 'verbose_json',
+              mediaType: 'audio/webm',
+              language: 'vi',
+            }),
+          }),
+        }),
+      );
+      expect(result.text).toBe('Giải thích thuật toán Dijkstra');
+      expect(result.language).toBe('Vietnamese');
+      expect(result.durationInSeconds).toBe(2.1);
     });
   });
 

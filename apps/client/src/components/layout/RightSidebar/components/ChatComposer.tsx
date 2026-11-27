@@ -8,12 +8,16 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { ArrowUp, FileText } from "lucide-react";
+import { AlertCircle, ArrowUp, FileText, Mic, X } from "lucide-react";
 import { useClickOutside } from "../hooks/useClickOutside";
+import { useVoiceRecorder } from "../hooks/useVoiceRecorder";
 import type { AttachedFile, ModelConfig, WorkspaceDoc } from "../types";
+import { mergeTranscribedPromptText } from "../utils/voice-input.helper";
 import { AttachMenu } from "./AttachMenu";
 import { ContextChip, FileChip } from "./ComposerChips";
+import { IconButton } from "./IconButton";
 import { ModelSelector } from "./ModelSelector";
+import { VoiceRecorderBar } from "./VoiceRecorderBar";
 
 const MIN_HEIGHT = 44;
 const MAX_HEIGHT = 160;
@@ -39,6 +43,8 @@ interface ChatComposerProps {
   contextLabel?: string;
   /** Nhãn đầy đủ, hiển thị khi rê chuột vào chip */
   contextTitle?: string;
+  /** Khóa ngữ cảnh để tự động hủy ghi âm khi đổi phiên/cuộc trò chuyện */
+  voiceResetKey?: string | null;
 }
 
 export function ChatComposer({
@@ -57,9 +63,46 @@ export function ChatComposer({
   onModelConfigChange,
   contextLabel,
   contextTitle,
+  voiceResetKey,
 }: ChatComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mentionContainerRef = useRef<HTMLDivElement>(null);
+  const latestValueRef = useRef(value);
+  latestValueRef.current = value;
+
+  const handleVoiceTranscript = useCallback(
+    (transcript: string) => {
+      const nextValue = mergeTranscribedPromptText(
+        latestValueRef.current,
+        transcript,
+      );
+      onChange(nextValue);
+
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (el) {
+          el.focus();
+          el.setSelectionRange(nextValue.length, nextValue.length);
+        }
+      });
+    },
+    [onChange],
+  );
+
+  const {
+    status: voiceStatus,
+    durationMs: voiceDurationMs,
+    waveformBars: voiceWaveformBars,
+    error: voiceError,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+    clearError: clearVoiceError,
+  } = useVoiceRecorder({
+    onTranscript: handleVoiceTranscript,
+    resetKey: voiceResetKey,
+    disabled,
+  });
 
   // Trạng thái autocomplete popup khi gõ '@'
   const [mentionState, setMentionState] = useState<{
@@ -80,7 +123,8 @@ export function ChatComposer({
 
   const canSend =
     (value.trim().length > 0 || attachedFiles.length > 0) &&
-    !disabled;
+    !disabled &&
+    voiceStatus === "idle";
 
   const syncTextareaHeight = useCallback(() => {
     const el = textareaRef.current;
@@ -159,6 +203,9 @@ export function ChatComposer({
 
   // Xử lý khi thay đổi nội dung ô nhập để phát hiện ký tự '@'
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (voiceError) {
+      clearVoiceError();
+    }
     const newValue = e.target.value;
     const cursor = e.target.selectionStart ?? newValue.length;
     onChange(newValue);
@@ -314,6 +361,26 @@ export function ChatComposer({
           </div>
         )}
 
+        {voiceError && (
+          <div
+            role="alert"
+            className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50/90 px-2.5 py-1.5 text-xs text-[#BA1A1A] dark:border-rose-500/25 dark:bg-rose-950/35 dark:text-rose-300"
+          >
+            <div className="flex min-w-0 items-center gap-1.5">
+              <AlertCircle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{voiceError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={clearVoiceError}
+              aria-label="Đóng thông báo lỗi giọng nói"
+              className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-rose-100 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#4F46E5] dark:hover:bg-rose-900/40"
+            >
+              <X aria-hidden="true" className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+
         <textarea
           ref={textareaRef}
           value={value}
@@ -326,40 +393,61 @@ export function ChatComposer({
           className="block max-h-40 min-h-11 w-full resize-none overflow-y-auto wrap-break-word bg-transparent text-[13.5px] leading-relaxed text-[#0B1C30] dark:text-[#EFF0F6] placeholder-[#777587] dark:placeholder-neutral-500 outline-none select-text"
         />
 
-        <div className="mt-1 flex items-center justify-between gap-2">
-          {/* Nút (+) Popover menu nhúng danh sách tài liệu */}
-          <AttachMenu
-            onSelectLocal={onSelectLocalFile}
-            availableDocs={availableDocs}
-            attachedFiles={attachedFiles}
-            onSelectWorkspaceDoc={onSelectWorkspaceDoc}
+        {voiceStatus !== "idle" ? (
+          <VoiceRecorderBar
+            status={voiceStatus}
+            durationMs={voiceDurationMs}
+            waveformBars={voiceWaveformBars}
+            onStop={stopRecording}
+            onCancel={cancelRecording}
           />
+        ) : (
+          <div className="mt-1 flex items-center justify-between gap-2">
+            {/* Nút (+) Popover menu nhúng danh sách tài liệu */}
+            <AttachMenu
+              onSelectLocal={onSelectLocalFile}
+              availableDocs={availableDocs}
+              attachedFiles={attachedFiles}
+              onSelectWorkspaceDoc={onSelectWorkspaceDoc}
+            />
 
-          <div className="flex min-w-0 items-center gap-1.5">
-            <ModelSelector config={modelConfig} onChange={onModelConfigChange} />
+            <div className="flex min-w-0 items-center gap-1.5">
+              <ModelSelector config={modelConfig} onChange={onModelConfigChange} />
 
-            <button
-              type="button"
-              onClick={onSend}
-              disabled={!canSend}
-              aria-label="Gửi tin nhắn"
-              title={
-                disabled
-                  ? "Đang gửi tin nhắn…"
-                  : isAnyFilePending
-                  ? "Gửi (sẽ tự động gửi khi tài liệu xử lý xong)"
-                  : "Gửi (Enter)"
-              }
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-[background-color,color,transform] duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-[#4F46E5] focus-visible:outline-offset-2 ${
-                canSend
-                  ? "cursor-pointer bg-[#4F46E5] hover:bg-[#3525CD] text-white shadow-xs active:scale-95"
-                  : "cursor-not-allowed bg-[#E5EEFF] dark:bg-white/[0.06] text-[#777587] dark:text-neutral-500"
-              }`}
-            >
-              <ArrowUp aria-hidden="true" className="h-4 w-4 stroke-[2.5]" />
-            </button>
+              <IconButton
+                label="Nhập bằng giọng nói"
+                onClick={() => void startRecording()}
+                disabled={disabled}
+              >
+                <Mic aria-hidden="true" className="h-4 w-4 stroke-[2]" />
+              </IconButton>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (voiceError) clearVoiceError();
+                  onSend();
+                }}
+                disabled={!canSend}
+                aria-label="Gửi tin nhắn"
+                title={
+                  disabled
+                    ? "Đang gửi tin nhắn…"
+                    : isAnyFilePending
+                    ? "Gửi (sẽ tự động gửi khi tài liệu xử lý xong)"
+                    : "Gửi (Enter)"
+                }
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-[background-color,color,transform] duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-[#4F46E5] focus-visible:outline-offset-2 ${
+                  canSend
+                    ? "cursor-pointer bg-[#4F46E5] hover:bg-[#3525CD] text-white shadow-xs active:scale-95"
+                    : "cursor-not-allowed bg-[#E5EEFF] dark:bg-white/[0.06] text-[#777587] dark:text-neutral-500"
+                }`}
+              >
+                <ArrowUp aria-hidden="true" className="h-4 w-4 stroke-[2.5]" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <p className="mt-2 text-center text-[10.5px] text-[#777587] dark:text-neutral-500">

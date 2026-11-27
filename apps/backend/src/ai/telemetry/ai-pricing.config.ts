@@ -4,7 +4,8 @@ export type TelemetryProfile =
   | 'REASONING'
   | 'VISION'
   | 'EMBEDDING'
-  | 'RERANK';
+  | 'RERANK'
+  | 'TRANSCRIPTION';
 
 export interface ProfilePricingRate {
   readonly inputPerMillionUsd: number;
@@ -18,6 +19,7 @@ export const AI_PROFILE_PRICING_USD: Record<TelemetryProfile, ProfilePricingRate
   VISION: { inputPerMillionUsd: 0.15, outputPerMillionUsd: 0.6 },
   EMBEDDING: { inputPerMillionUsd: 0, outputPerMillionUsd: 0 },
   RERANK: { inputPerMillionUsd: 0, outputPerMillionUsd: 0 },
+  TRANSCRIPTION: { inputPerMillionUsd: 0, outputPerMillionUsd: 0 },
 };
 
 export function estimateAiCostUsd(params: {

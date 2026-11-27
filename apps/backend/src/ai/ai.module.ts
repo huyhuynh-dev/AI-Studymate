@@ -14,6 +14,7 @@ import { ToolRegistryService } from './tools/tool-registry.service.js';
 import { AiTelemetryService } from './telemetry/ai-telemetry.service.js';
 import { AgentTelemetryService } from './telemetry/agent-telemetry.service.js';
 import { ChatCompactionService } from './chat-compaction.service.js';
+import { TranscriptionAiService } from './transcription-ai.service.js';
 
 @Module({
   imports: [PrismaModule],
@@ -32,6 +33,7 @@ import { ChatCompactionService } from './chat-compaction.service.js';
     ChatAgentAiService,
     QuizAiService,
     FlashcardAiService,
+    TranscriptionAiService,
   ],
   exports: [
     AiModelFactory,
@@ -48,6 +50,7 @@ import { ChatCompactionService } from './chat-compaction.service.js';
     ChatAgentAiService,
     QuizAiService,
     FlashcardAiService,
+    TranscriptionAiService,
   ],
 })
 export class AiModule {}

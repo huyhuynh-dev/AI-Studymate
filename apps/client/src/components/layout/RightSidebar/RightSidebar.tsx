@@ -1854,6 +1854,7 @@ export default function RightSidebar({
             onModelConfigChange={updateModelConfig}
             contextLabel={shortContext}
             contextTitle={contextTitle}
+            voiceResetKey={`${conversationId ?? ""}:${activeChatId ?? ""}`}
           />
         </div>
       </div>

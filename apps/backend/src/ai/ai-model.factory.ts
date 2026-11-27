@@ -11,10 +11,12 @@ import type {
     EmbeddingModel,
     LanguageModel,
     RerankingModel,
+    TranscriptionModel,
 } from 'ai';
+import { OpenAICompatibleTranscriptionModel } from './models/openai-compatible-transcription.model.js';
 
 export type LanguageModelProfile = 'FAST' | 'STANDARD' | 'REASONING' | 'VISION';
-export type ModelProfile = LanguageModelProfile | 'RERANK';
+export type ModelProfile = LanguageModelProfile | 'RERANK' | 'TRANSCRIPTION';
 
 export type AiTask =
     | 'EMBEDDING'
@@ -76,6 +78,7 @@ export class AiModelFactory {
     private readonly models: Record<LanguageModelProfile, LanguageModel>;
     private readonly embeddingModel: EmbeddingModel;
     private readonly rerankingModel: RerankingModel;
+    private readonly transcriptionModel: TranscriptionModel;
 
     constructor(
         private readonly configService: ConfigService,
@@ -143,6 +146,27 @@ export class AiModelFactory {
         });
 
         this.rerankingModel = llamaRerankProvider.reranking('bge-reranker-v2-m3');
+
+        // OpenAI-compatible Speech-to-Text (Groq Whisper Large v3 Turbo)
+        const sttBaseUrl =
+            this.configService.get<string>('STT_BASE_URL')
+            ?? this.configService.get<string>('PROVIDER_BASE_URL')
+            ?? 'http://localhost:20128/v1';
+        const sttApiKey =
+            this.configService.get<string>('STT_API_KEY')
+            ?? this.configService.get<string>('PROVIDER_API_KEY');
+        const sttModelId =
+            this.configService.get<string>('STT_MODEL')
+            ?? 'groq/whisper-large-v3-turbo';
+
+        this.transcriptionModel = new OpenAICompatibleTranscriptionModel(
+            sttModelId,
+            {
+                provider: 'openai-compatible.transcription',
+                baseURL: sttBaseUrl,
+                apiKey: sttApiKey,
+            },
+        );
     }
 
     /**
@@ -152,6 +176,11 @@ export class AiModelFactory {
         if (profile === 'RERANK') {
             throw new Error(
                 'RERANK profile uses a RerankingModel; call getRerankingModel() instead.',
+            );
+        }
+        if (profile === 'TRANSCRIPTION') {
+            throw new Error(
+                'TRANSCRIPTION profile uses a TranscriptionModel; call getTranscriptionModel() instead.',
             );
         }
         const model = this.models[profile];
@@ -173,6 +202,13 @@ export class AiModelFactory {
      */
     getRerankingModel(): RerankingModel {
         return this.rerankingModel;
+    }
+
+    /**
+     * Lấy Transcription Model (groq/whisper-large-v3-turbo)
+     */
+    getTranscriptionModel(): TranscriptionModel {
+        return this.transcriptionModel;
     }
 
     /**

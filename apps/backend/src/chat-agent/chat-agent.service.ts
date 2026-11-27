@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  Optional,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { createIdGenerator, type UIMessage } from 'ai';
 import { ChatAgentRepoService } from '../repo/chat-agent-repo/chat-agent-repo.service.js';
 import { DocumentsRepoService } from '../repo/documents-repo/documents-repo.service.js';
@@ -57,6 +63,11 @@ import {
   WorkspaceMutationService,
   type WorkspaceMutationContext,
 } from './workspace-mutation.service.js';
+import {
+  MAX_TRANSCRIPTION_AUDIO_BYTES,
+  TranscriptionAiService,
+} from '../ai/transcription-ai.service.js';
+import type { TranscribeAudioDto } from './dto/transcribe-audio.dto.js';
 
 export interface ResolvedChatConfig {
   modelName: string;
@@ -120,7 +131,44 @@ export class ChatAgentService {
     @Optional() private readonly workspaceL2ReadService?: WorkspaceL2ReadService,
     @Optional() private readonly agentActionAuditService?: AgentActionAuditService,
     @Optional() private readonly workspaceMutationService?: WorkspaceMutationService,
+    @Optional() private readonly transcriptionAiService?: TranscriptionAiService,
   ) {}
+
+  async transcribeAudio(
+    _userId: string,
+    dto: TranscribeAudioDto,
+    abortSignal?: AbortSignal,
+  ) {
+    if (!this.transcriptionAiService) {
+      throw new ServiceUnavailableException(
+        'Dịch vụ chuyển đổi giọng nói chưa sẵn sàng.',
+      );
+    }
+
+    const cleanBase64 = dto.audioBase64
+      .replace(/^data:[^;]+;base64,/, '')
+      .trim();
+    if (!cleanBase64 || !/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
+      throw new BadRequestException('Dữ liệu âm thanh base64 không hợp lệ.');
+    }
+
+    const audioBuffer = Buffer.from(cleanBase64, 'base64');
+    if (audioBuffer.byteLength === 0) {
+      throw new BadRequestException('Dữ liệu âm thanh trống.');
+    }
+    if (audioBuffer.byteLength > MAX_TRANSCRIPTION_AUDIO_BYTES) {
+      throw new BadRequestException(
+        'Tệp âm thanh vượt quá giới hạn tối đa 10 MB.',
+      );
+    }
+
+    return this.transcriptionAiService.transcribe({
+      audioBuffer,
+      mimeType: dto.mimeType,
+      language: dto.language,
+      abortSignal,
+    });
+  }
 
   async listConversationAgentActions(userId: string, conversationId: string) {
     if (!this.agentActionAuditService) {
