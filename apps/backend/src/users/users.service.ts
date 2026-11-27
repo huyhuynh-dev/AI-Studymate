@@ -20,6 +20,10 @@ import { Prisma, User } from '../generated/prisma/client.js';
 import { StorageService } from '../storage/storage.service.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import {
+  normalizeUserPreferences,
+  type UserPreferences,
+} from './user-preferences.types.js';
+import {
   AVATAR_MAX_SIZE_BYTES,
   RequestAvatarUploadDto,
 } from './dto/request-avatar-upload.dto.js';
@@ -36,6 +40,7 @@ export interface UserProfileResponse {
   is_active: boolean;
   is_verified: boolean;
   daily_goal_minutes: number;
+  preferences: UserPreferences;
   provider: string | null;
   has_password: boolean;
   created_at: Date;
@@ -125,6 +130,7 @@ export class UsersService {
       is_active: record.is_active,
       is_verified: record.is_verified,
       daily_goal_minutes: record.daily_goal_minutes ?? 15,
+      preferences: normalizeUserPreferences(record.preferences),
       provider: record.provider,
       has_password: record.has_password,
       created_at: record.created_at,
@@ -174,7 +180,8 @@ export class UsersService {
     if (
       dto.name === undefined &&
       dto.avatarStorageKey === undefined &&
-      dto.dailyGoalMinutes === undefined
+      dto.dailyGoalMinutes === undefined &&
+      dto.preferences === undefined
     ) {
       throw new BadRequestException('Vui lòng cung cấp thông tin cần cập nhật');
     }
@@ -192,6 +199,20 @@ export class UsersService {
 
     if (dto.dailyGoalMinutes !== undefined) {
       updateData.daily_goal_minutes = dto.dailyGoalMinutes;
+    }
+
+    if (dto.preferences !== undefined) {
+      const currentPrefs = normalizeUserPreferences(existing.preferences);
+      const mergedPrefs: UserPreferences = normalizeUserPreferences({
+        ...currentPrefs,
+        ...(dto.preferences.theme !== undefined
+          ? { theme: dto.preferences.theme }
+          : {}),
+        ...(dto.preferences.aiResponseLanguage !== undefined
+          ? { aiResponseLanguage: dto.preferences.aiResponseLanguage }
+          : {}),
+      });
+      updateData.preferences = mergedPrefs as unknown as Prisma.InputJsonValue;
     }
 
     let previousAvatarKeyToDelete: string | null = null;

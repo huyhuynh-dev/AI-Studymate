@@ -142,9 +142,16 @@ export interface ResolvedWorkspaceGuards {
   hideFlashcardAnswerGuard: boolean;
 }
 
+export interface ResolvedUserPreferencesContext {
+  theme: 'system' | 'light' | 'dark';
+  aiResponseLanguage: 'auto' | 'vi' | 'en';
+  dailyGoalMinutes?: number;
+}
+
 export interface ResolvedWorkspaceContext {
   location: ResolvedWorkspaceLocation;
   inventory: ResolvedWorkspaceInventory;
+  userPreferences?: ResolvedUserPreferencesContext;
   attachedDocuments?: Array<{ documentId: string; fileName: string }>;
   documentsView?: ResolvedDocumentsViewContext;
   summaryView?: ResolvedSummaryViewContext;

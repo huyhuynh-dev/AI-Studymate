@@ -78,3 +78,32 @@ export const ChunkType = {
 } as const
 
 export type ChunkType = (typeof ChunkType)[keyof typeof ChunkType]
+
+
+export const AgentActionRiskTier = {
+  tier_1: 'tier_1',
+  tier_2: 'tier_2'
+} as const
+
+export type AgentActionRiskTier = (typeof AgentActionRiskTier)[keyof typeof AgentActionRiskTier]
+
+
+export const AgentActionStatus = {
+  executed: 'executed',
+  undone: 'undone',
+  denied: 'denied',
+  failed: 'failed'
+} as const
+
+export type AgentActionStatus = (typeof AgentActionStatus)[keyof typeof AgentActionStatus]
+
+
+export const AgentBackgroundJobStatus = {
+  queued: 'queued',
+  running: 'running',
+  completed: 'completed',
+  failed: 'failed',
+  cancelled: 'cancelled'
+} as const
+
+export type AgentBackgroundJobStatus = (typeof AgentBackgroundJobStatus)[keyof typeof AgentBackgroundJobStatus]

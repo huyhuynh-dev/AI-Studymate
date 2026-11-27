@@ -8,9 +8,15 @@ import {
   HelpCircle,
   Loader2,
   LogOut,
+  Monitor,
+  Moon,
   Settings,
+  Sun,
   User,
 } from "lucide-react";
+import { useThemePreference } from "@/contexts/ThemePreferenceProvider";
+import { usersApi } from "@/services/users.api";
+import type { UserThemePreference } from "@/types/user";
 
 export interface UserProfileMenuProps {
   displayName: string;
@@ -31,8 +37,16 @@ export default function UserProfileMenu({
 }: UserProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { theme, setTheme } = useThemePreference();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const handleThemeSelect = (nextTheme: UserThemePreference) => {
+    setTheme(nextTheme);
+    void usersApi
+      .updateProfile({ preferences: { theme: nextTheme } })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -145,6 +159,41 @@ export default function UserProfileMenu({
                   />
                   <span>Hồ sơ</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Nhóm 1.5: Giao diện */}
+            <div className="my-1 border-t border-[#E5EEFF] dark:border-white/[0.08]" />
+            <div className="px-2 py-1">
+              <p className="px-1.5 pb-1 text-[0.6875rem] font-semibold tracking-wider text-[#777587] dark:text-neutral-400 uppercase">
+                Giao diện
+              </p>
+              <div className="grid grid-cols-3 gap-1 rounded-xl bg-[#F4F6FF] dark:bg-white/[0.05] p-1">
+                {(
+                  [
+                    { id: "light", label: "Sáng", icon: Sun },
+                    { id: "dark", label: "Tối", icon: Moon },
+                    { id: "system", label: "Hệ thống", icon: Monitor },
+                  ] as const
+                ).map((item) => {
+                  const Icon = item.icon;
+                  const active = theme === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleThemeSelect(item.id)}
+                      className={`flex items-center justify-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+                        active
+                          ? "bg-white dark:bg-[#1E2330] text-[#4F46E5] dark:text-[#818CF8] shadow-2xs"
+                          : "text-[#777587] dark:text-neutral-400 hover:text-[#0B1C30] dark:hover:text-white"
+                      }`}
+                    >
+                      <Icon className="h-3 w-3 shrink-0" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

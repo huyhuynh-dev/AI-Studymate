@@ -4,9 +4,11 @@ export type WorkspaceSyncResource =
   | 'summary'
   | 'flashcard'
   | 'quiz'
-  | 'word-document';
+  | 'word-document'
+  | 'document'
+  | 'preferences';
 
-export type WorkspaceSyncAction = 'created' | 'updated';
+export type WorkspaceSyncAction = 'created' | 'updated' | 'deleted';
 
 export type WorkspaceSyncEvent =
   | {
@@ -46,6 +48,24 @@ export type WorkspaceSyncEvent =
       readonly count?: number;
       readonly requiresSnapshotReload?: boolean;
       readonly occurredAt: string;
+    }
+  | {
+      readonly resource: 'document';
+      readonly action: WorkspaceSyncAction;
+      readonly conversationId: string;
+      readonly entityId: string;
+      readonly title?: string;
+      readonly version?: number;
+      readonly occurredAt: string;
+    }
+  | {
+      readonly resource: 'preferences';
+      readonly action: WorkspaceSyncAction;
+      readonly conversationId: string;
+      readonly entityId: string;
+      readonly theme?: 'system' | 'light' | 'dark';
+      readonly aiResponseLanguage?: 'auto' | 'vi' | 'en';
+      readonly occurredAt: string;
     };
 
 export type WorkspaceSyncDataTypes = {
@@ -60,6 +80,42 @@ export interface WorkspaceSyncChunk {
 
 export interface WorkspaceSyncNotifier {
   emit(event: WorkspaceSyncEvent): void;
+  emitAction?(event: WorkspaceActionEvent): void;
+}
+
+export const WORKSPACE_ACTION_CHUNK_TYPE = 'data-workspace-action' as const;
+
+export type WorkspaceActionEvent =
+  | {
+      readonly type: 'navigate';
+      readonly target: {
+        readonly page?: 'home' | 'subject' | 'conversation' | 'profile';
+        readonly subjectId?: string;
+        readonly conversationId?: string;
+        readonly tab?: 'documents' | 'summary' | 'flashcard' | 'quiz' | 'analytics';
+        readonly resourceType?: 'document' | 'summary' | 'deck' | 'quiz';
+        readonly resourceId?: string;
+      };
+      readonly occurredAt: string;
+    }
+  | {
+      readonly type: 'theme_changed';
+      readonly theme: 'system' | 'light' | 'dark';
+      readonly occurredAt: string;
+    }
+  | {
+      readonly type: 'job_enqueued';
+      readonly jobId: string;
+      readonly jobType: string;
+      readonly title: string;
+      readonly conversationId: string;
+      readonly occurredAt: string;
+    };
+
+export interface WorkspaceActionChunk {
+  readonly type: typeof WORKSPACE_ACTION_CHUNK_TYPE;
+  readonly transient: true;
+  readonly data: WorkspaceActionEvent;
 }
 
 export const AGENT_STATUS_CHUNK_TYPE = 'data-agent-status' as const;

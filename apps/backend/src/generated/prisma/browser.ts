@@ -107,3 +107,18 @@ export type AiUsageLog = Prisma.AiUsageLogModel
  * 
  */
 export type UserSession = Prisma.UserSessionModel
+/**
+ * Model AgentActionLog
+ * 
+ */
+export type AgentActionLog = Prisma.AgentActionLogModel
+/**
+ * Model AgentBackgroundJob
+ * 
+ */
+export type AgentBackgroundJob = Prisma.AgentBackgroundJobModel
+/**
+ * Model AgentTrace
+ * 
+ */
+export type AgentTrace = Prisma.AgentTraceModel

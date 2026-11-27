@@ -31,11 +31,12 @@ import {
 } from "@/lib/workspace-sync";
 import type { SourceReference, StudyRecommendation } from "@/types";
 
-const SYNC_RESOURCE_TO_TAB: Record<WorkspaceSyncResource, TabKey> = {
+const SYNC_RESOURCE_TO_TAB: Partial<Record<WorkspaceSyncResource, TabKey>> = {
   summary: "summary",
   flashcard: "flashcard",
   quiz: "quiz",
   "word-document": "documents",
+  document: "documents",
 };
 
 interface ConversationPageProps {
@@ -113,10 +114,10 @@ export default function ConversationPage({ params }: ConversationPageProps) {
   useEffect(() => {
     return subscribeWorkspaceSync(
       conversationId,
-      ["summary", "flashcard", "quiz"],
+      ["summary", "flashcard", "quiz", "document"],
       (event) => {
         const targetTab = SYNC_RESOURCE_TO_TAB[event.resource];
-        if (activeTabRef.current === targetTab) return;
+        if (!targetTab || activeTabRef.current === targetTab) return;
         setUnseenByConversation((prev) => {
           const current = prev[conversationId] ?? {};
           return {
@@ -300,6 +301,48 @@ export default function ConversationPage({ params }: ConversationPageProps) {
       window.removeEventListener("studymate:open-quiz", handleOpenQuizEvent);
     };
   }, [setFocusMode, clearTabUnseen]);
+
+  // Lắng nghe sự kiện chuyển tab trực tiếp từ AI RightSidebar (`manageWorkspaceAndJobs`)
+  useEffect(() => {
+    const handleSwitchTabEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ tab?: TabKey }>;
+      const targetTab = customEvent.detail?.tab;
+      if (
+        targetTab === "documents" ||
+        targetTab === "summary" ||
+        targetTab === "flashcard" ||
+        targetTab === "quiz"
+      ) {
+        clearTabUnseen(targetTab);
+        setFocusMode(false);
+        setActiveTab(targetTab);
+      }
+    };
+
+    const handleOpenDocumentEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        documentId?: string;
+        pageNo?: number;
+      }>;
+      const docId = customEvent.detail?.documentId;
+      if (!docId) return;
+      clearTabUnseen("documents");
+      setFocusMode(false);
+      setActiveTab("documents");
+      navigateToDocumentCitation({
+        documentId: docId,
+        fileName: "Tài liệu",
+        pageNo: customEvent.detail?.pageNo ?? 1,
+      });
+    };
+
+    window.addEventListener("studymate:switch-tab", handleSwitchTabEvent);
+    window.addEventListener("studymate:open-document", handleOpenDocumentEvent);
+    return () => {
+      window.removeEventListener("studymate:switch-tab", handleSwitchTabEvent);
+      window.removeEventListener("studymate:open-document", handleOpenDocumentEvent);
+    };
+  }, [setFocusMode, clearTabUnseen, navigateToDocumentCitation]);
 
   // Lấy dữ liệu người dùng, môn học và danh sách cuộc hội thoại thực tế
   const { user, updateProfile } = useCurrentUser();

@@ -14,10 +14,15 @@ import type {
 } from '../documents/services/retrieval.service.js';
 import {
   CHAT_AGENT_SYSTEM_PROMPT,
+  CHAT_AGENT_PROMPT_VERSION,
   AUTO_HEADER_SYSTEM_PROMPT,
   FOLLOW_UP_SUGGESTIONS_SYSTEM_PROMPT,
   buildSystemPromptWithDocumentCatalog,
 } from './prompts/templates/chat-agent.prompt.js';
+import {
+  AgentTelemetryService,
+  type AgentTaskTraceSession,
+} from './telemetry/agent-telemetry.service.js';
 import { renderEphemeralUiContextBlock } from './prompts/templates/workspace-context.formatter.js';
 import type { ResolvedWorkspaceContext } from './prompts/workspace-context.types.js';
 import {
@@ -31,6 +36,10 @@ import {
   buildClearedToolSummariesMap,
   clearOldToolResultsInModelMessages,
 } from './utils/chat-context-manager.helper.js';
+import {
+  evaluateToolRiskTier,
+  resolveActiveToolsForTurn,
+} from './utils/risk-gate.helper.js';
 import {
   ToolRegistryService,
   type SearchDocumentChunksToolInput,
@@ -84,6 +93,11 @@ import {
   type SuperDocApiSearchCallback,
   type SuperDocApiCallCallback,
   type SuperDocToolkitToolMeta,
+  type ManageNotesCallback,
+  type ManageFlashcardsCallback,
+  type ManageQuizCallback,
+  type ManageEditableDocumentCallback,
+  type ManageWorkspaceAndJobsCallback,
   type CitationItem,
   type DocumentCitationItem,
   type WebCitationItem,
@@ -203,6 +217,8 @@ export class ChatAgentAiService {
     private readonly toolRegistry: ToolRegistryService,
     @Optional()
     private readonly chatCompactionService?: ChatCompactionService,
+    @Optional()
+    private readonly agentTelemetryService?: AgentTelemetryService,
   ) {}
 
   /**
@@ -274,18 +290,36 @@ export class ChatAgentAiService {
         if (
           part &&
           typeof part.type === 'string' &&
-          part.type.startsWith('tool-') &&
-          (part.state === 'input-available' || part.state === 'input-streaming')
+          part.type.startsWith('tool-')
         ) {
-          hasPendingTool = true;
-          return {
-            ...part,
-            state: 'output-available',
-            output: {
-              skipped: true,
-              note: 'User bypassed the interactive question widget and sent a new message directly.',
-            },
-          };
+          if (
+            part.state === 'input-available' ||
+            part.state === 'input-streaming'
+          ) {
+            hasPendingTool = true;
+            return {
+              ...part,
+              state: 'output-available',
+              output: {
+                skipped: true,
+                note: 'User bypassed the interactive question widget and sent a new message directly.',
+              },
+            };
+          }
+          if (part.state === 'approval-requested') {
+            hasPendingTool = true;
+            return {
+              ...part,
+              state: 'output-denied',
+              approval: {
+                ...part.approval,
+                id: part.approval?.id ?? part.toolCallId,
+                approved: false,
+                reason:
+                  'User bypassed the approval confirmation card and sent a new message directly.',
+              },
+            };
+          }
         }
         return part;
       });
@@ -328,8 +362,15 @@ export class ChatAgentAiService {
       onSuperDocApiSearch?: SuperDocApiSearchCallback;
       onSuperDocApiCall?: SuperDocApiCallCallback;
       superdocToolkitMeta?: SuperDocToolkitToolMeta;
+      onManageNotes?: ManageNotesCallback;
+      onManageFlashcards?: ManageFlashcardsCallback;
+      onManageQuiz?: ManageQuizCallback;
+      onManageEditableDocument?: ManageEditableDocumentCallback;
+      onManageWorkspaceAndJobs?: ManageWorkspaceAndJobsCallback;
       workspaceContext?: ResolvedWorkspaceContext;
       chatSessionId?: string;
+      userId?: string;
+      conversationId?: string;
       chatConfig?: {
         modelName: string;
         temperature: number;
@@ -363,10 +404,33 @@ export class ChatAgentAiService {
     );
 
     const activeTools = Object.keys(tools).length > 0 ? tools : undefined;
+    const lastUserText = (() => {
+      for (let i = messages.length - 1; i >= 0; i -= 1) {
+        const msg = messages[i];
+        if (msg?.role === 'user' && Array.isArray(msg.parts)) {
+          return msg.parts
+            .filter((p: any) => p?.type === 'text' && typeof p.text === 'string')
+            .map((p: any) => p.text)
+            .join(' ');
+        }
+      }
+      return '';
+    })();
+    const scopedActiveToolNames = activeTools
+      ? resolveActiveToolsForTurn({
+          registeredToolNames: Object.keys(activeTools),
+          hasActiveWordDocument: Boolean(options?.activeWordDocument?.documentId),
+          lastUserMessageText: lastUserText,
+        })
+      : undefined;
+    const toolApprovalSecret =
+      process.env.AGENT_TOOL_APPROVAL_SECRET ||
+      process.env.JWT_SECRET ||
+      'studymate-phase4-tool-approval-secret';
     const maxSteps =
       options?.onSuperDocPerformAction || options?.onSuperDocStreamText
         ? 12
-        : 5;
+        : 8;
 
     const sanitizedMessages = this.sanitizePendingToolCalls(messages);
     const clarificationCompleted =
@@ -419,7 +483,7 @@ export class ChatAgentAiService {
         )
       : compactionResult.messages;
     this.logger.log(
-      `[ChatAgentAiService] contextPipeline: input=${messages.length}, modelMsgs=${modelMessages.length}, clearedTools=${clearingResult.clearedToolCount}, prunedReasoning=${clearingResult.prunedReasoningCount}, savedChars=${clearingResult.savedChars}, compacted=${compactionResult.compacted} (cache=${compactionResult.fromCache}, fallback=${compactionResult.usedFallback}, tokens=${compactionResult.estimatedTokensBefore}->${compactionResult.estimatedTokensAfter}), activeTools=${activeTools ? Object.keys(activeTools).join(',') : 'none'}, model=${chatConfig.modelName}`,
+      `[ChatAgentAiService] contextPipeline: input=${messages.length}, modelMsgs=${modelMessages.length}, clearedTools=${clearingResult.clearedToolCount}, prunedReasoning=${clearingResult.prunedReasoningCount}, savedChars=${clearingResult.savedChars}, compacted=${compactionResult.compacted} (cache=${compactionResult.fromCache}, fallback=${compactionResult.usedFallback}, tokens=${compactionResult.estimatedTokensBefore}->${compactionResult.estimatedTokensAfter}), activeTools=${scopedActiveToolNames ? scopedActiveToolNames.join(',') : 'none'} (${scopedActiveToolNames?.length ?? 0}), model=${chatConfig.modelName}`,
     );
 
     const startedAt = Date.now();
@@ -427,16 +491,105 @@ export class ChatAgentAiService {
       typeof this.aiService.getTelemetryService === 'function'
         ? this.aiService.getTelemetryService()
         : undefined;
-    const capturedUserId = telemetryService?.getCurrentUserId();
+    const capturedUserId =
+      options?.userId ?? telemetryService?.getCurrentUserId();
+
+    const traceSession: AgentTaskTraceSession | undefined =
+      this.agentTelemetryService?.startTaskTrace({
+        userId: capturedUserId,
+        conversationId: options?.conversationId,
+        chatSessionId: options?.chatSessionId,
+        modelName: chatConfig.modelName,
+        promptVersion: CHAT_AGENT_PROMPT_VERSION,
+        uiPageType: options?.workspaceContext?.location?.pageType ?? null,
+        activeToolsCount: scopedActiveToolNames?.length ?? 0,
+      });
+
+    if (compactionResult.compacted) {
+      traceSession?.recordCompactionSpan({
+        compactedTurns: compactionResult.compactedTurns,
+        tokensBefore: compactionResult.estimatedTokensBefore,
+        tokensAfter: compactionResult.estimatedTokensAfter,
+        usedFallback: compactionResult.usedFallback,
+      });
+    }
 
     const streamResult = this.aiService.streamChatAgent(chatConfig.modelName, {
       system: finalSystemPrompt,
       messages: modelMessages,
       tools: activeTools,
+      ...(scopedActiveToolNames && scopedActiveToolNames.length > 0
+        ? { activeTools: scopedActiveToolNames }
+        : {}),
+      experimental_toolApprovalSecret: toolApprovalSecret,
+      experimental_telemetry: {
+        isEnabled: true,
+        functionId: 'studymate.chat_agent',
+        metadata: {
+          chatSessionId: options?.chatSessionId ?? '',
+          promptVersion: CHAT_AGENT_PROMPT_VERSION,
+        },
+      },
       temperature: chatConfig.temperature,
       maxOutputTokens: chatConfig.maxOutputTokens,
       stopWhen: stepCountIs(maxSteps),
       abortSignal,
+      onStepFinish: (stepEvent: any) => {
+        const stepUsage = stepEvent?.usage ?? {};
+        const cacheReadTokens =
+          stepUsage?.cachedInputTokens ??
+          stepUsage?.inputTokenDetails?.cacheReadTokens ??
+          0;
+        traceSession?.recordStepSpan({
+          stepNumber: Number(stepEvent?.stepNumber ?? 1),
+          inputTokens: stepUsage?.inputTokens ?? stepUsage?.promptTokens ?? 0,
+          outputTokens:
+            stepUsage?.outputTokens ?? stepUsage?.completionTokens ?? 0,
+          cacheReadTokens:
+            typeof cacheReadTokens === 'number' ? cacheReadTokens : 0,
+          finishReason:
+            typeof stepEvent?.finishReason === 'string'
+              ? stepEvent.finishReason
+              : undefined,
+        });
+        if (Array.isArray(stepEvent?.toolCalls)) {
+          for (const tc of stepEvent.toolCalls) {
+            const tcName = String(tc?.toolName ?? 'unknown');
+            const tcId = String(tc?.toolCallId ?? '');
+            const hasApprovalReq =
+              Array.isArray(stepEvent?.content) &&
+              stepEvent.content.some(
+                (p: any) =>
+                  p?.type === 'tool-approval-request' && p?.toolCallId === tcId,
+              );
+            traceSession?.recordToolSpan({
+              toolName: tcName,
+              toolCallId: tcId,
+              riskTier: evaluateToolRiskTier(tcName, tc?.input),
+              outcome: hasApprovalReq ? 'approval_requested' : 'ok',
+            });
+          }
+        }
+      },
+      onAbort: () => {
+        traceSession?.finish({
+          status: 'aborted',
+          compacted: compactionResult.compacted,
+        });
+      },
+      onError: (err) => {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : typeof (err as any)?.error === 'string'
+              ? (err as any).error
+              : 'Stream error';
+        traceSession?.finish({
+          status: 'error',
+          compacted: compactionResult.compacted,
+          errorMessage: msg,
+        });
+      },
       onFinish: async (event) => {
         const rawUsage = (event as { totalUsage?: unknown; usage?: unknown })
           .totalUsage ?? (event as { usage?: unknown }).usage;
@@ -446,21 +599,30 @@ export class ChatAgentAiService {
           totalTokens?: number;
           promptTokens?: number;
           completionTokens?: number;
+          cachedInputTokens?: number;
+          inputTokenDetails?: { cacheReadTokens?: number };
         } | null;
+
+        const inputTok =
+          usageObj?.inputTokens ??
+          usageObj?.promptTokens ??
+          Math.max(1, Math.ceil(finalSystemPrompt.length / 4));
+        const outputTok =
+          usageObj?.outputTokens ??
+          usageObj?.completionTokens ??
+          Math.max(0, Math.ceil((event.text?.length ?? 0) / 4));
+        const cacheReadTok =
+          usageObj?.cachedInputTokens ??
+          usageObj?.inputTokenDetails?.cacheReadTokens ??
+          0;
 
         telemetryService?.recordUsage({
           userId: capturedUserId,
           featureKey: 'CHAT_AGENT',
           profile: 'REASONING',
           modelName: chatConfig.modelName,
-          promptTokens:
-            usageObj?.inputTokens ??
-            usageObj?.promptTokens ??
-            Math.max(1, Math.ceil(finalSystemPrompt.length / 4)),
-          completionTokens:
-            usageObj?.outputTokens ??
-            usageObj?.completionTokens ??
-            Math.max(0, Math.ceil((event.text?.length ?? 0) / 4)),
+          promptTokens: inputTok,
+          completionTokens: outputTok,
           totalTokens: usageObj?.totalTokens,
           latencyMs: Date.now() - startedAt,
           status: 'success',
@@ -472,6 +634,17 @@ export class ChatAgentAiService {
           tracker,
           event.text,
         );
+        const hasPendingApproval = assistantParts.some(
+          (p: any) => p?.state === 'approval-requested',
+        );
+
+        traceSession?.finish({
+          status: hasPendingApproval ? 'approval_paused' : 'success',
+          inputTokens: inputTok,
+          outputTokens: outputTok,
+          cacheReadTokens: typeof cacheReadTok === 'number' ? cacheReadTok : 0,
+          compacted: compactionResult.compacted,
+        });
 
         const collectedChunkIds = tracker.getCollectedChunkIds();
         this.logger.log(

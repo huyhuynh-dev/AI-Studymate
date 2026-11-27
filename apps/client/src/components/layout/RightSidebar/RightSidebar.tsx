@@ -3,25 +3,33 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithApprovalResponses,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import { useCitationNavigation } from "@/contexts/CitationNavigationContext";
 import { useAskAi } from "@/contexts/AskAiContext";
+import { useThemePreference } from "@/contexts/ThemePreferenceProvider";
 import { useWordAgent } from "@/contexts/WordAgentContext";
 import { useWorkspaceContextStore } from "@/contexts/WorkspaceContextProvider";
 import { useFocusMode } from "@/components/layout/FocusModeContext";
+import { useAgentJobs } from "@/hooks/useAgentJobs";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useDocuments } from "@/hooks/useDocuments";
 import type { AgentStatusEvent } from "./types";
 import { formatSelectionAskPrompt } from "@/lib/ask-ai-prompt.helper";
-import { handleChatStreamDataPart } from "@/lib/workspace-sync";
+import {
+  handleChatStreamDataPart,
+  parseWorkspaceActionDataPart,
+  publishWorkspaceSync,
+} from "@/lib/workspace-sync";
 import { chatSessionsApi } from "@/services/chatSessions.api";
 import { documentsApi } from "@/services/documents.api";
 
+import { BackgroundJobsTray } from "./components/BackgroundJobsTray";
 import { ChatComposer } from "./components/ChatComposer";
 import { ChatHeader } from "./components/ChatHeader";
 import { EmptyState } from "./components/EmptyState";
@@ -178,6 +186,13 @@ export default function RightSidebar({
 }: RightSidebarProps) {
   // Tự động trích xuất conversationId từ URL params (/home/[subjectId]/[conversationId]) nếu prop không truyền vào
   const params = useParams();
+  const router = useRouter();
+  const routeSubjectId =
+    typeof params?.subjectId === "string"
+      ? params.subjectId
+      : Array.isArray(params?.subjectId)
+        ? params.subjectId[0]
+        : null;
   const routeConversationId =
     typeof params?.conversationId === "string"
       ? params.conversationId
@@ -186,6 +201,18 @@ export default function RightSidebar({
         : null;
 
   const conversationId = propConversationId || routeConversationId;
+  const { setTheme } = useThemePreference();
+  const {
+    jobs,
+    activeJobsCount,
+    latestNotification,
+    dismissNotification,
+    refreshJobs,
+    retryJob,
+    cancelJob,
+  } = useAgentJobs(conversationId);
+  const refreshJobsRef = useRef(refreshJobs);
+  refreshJobsRef.current = refreshJobs;
 
   // ── Chat state (activeChatId = id của ChatSession đang mở) ──
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -500,13 +527,78 @@ export default function RightSidebar({
     setMessages,
     sendMessage: aiSendMessage,
     addToolOutput,
+    addToolApprovalResponse,
     status,
     error: chatError,
   } = useChat({
     transport,
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    sendAutomaticallyWhen: ({ messages: currentMessages }) =>
+      lastAssistantMessageIsCompleteWithToolCalls({ messages: currentMessages }) ||
+      lastAssistantMessageIsCompleteWithApprovalResponses({
+        messages: currentMessages,
+      }),
     onData: (dataPart) => {
       handleChatStreamDataPart(dataPart);
+      const workspaceAction = parseWorkspaceActionDataPart(dataPart);
+      if (workspaceAction) {
+        if (workspaceAction.type === "theme_changed") {
+          setTheme(workspaceAction.theme, { persistLocal: true });
+        } else if (workspaceAction.type === "job_enqueued") {
+          void refreshJobsRef.current();
+        } else if (workspaceAction.type === "navigate") {
+          const target = workspaceAction.target;
+          if (target.page === "profile") {
+            router.push("/profile");
+          } else if (target.page === "home") {
+            router.push("/home");
+          } else if (target.page === "subject" && target.subjectId) {
+            router.push(`/home/${target.subjectId}`);
+          } else if (
+            target.conversationId &&
+            target.conversationId !== conversationId
+          ) {
+            const sub = target.subjectId || routeSubjectId;
+            if (sub) {
+              router.push(`/home/${sub}/${target.conversationId}`);
+            }
+          } else if (typeof window !== "undefined") {
+            if (target.resourceType === "summary" && target.resourceId) {
+              window.dispatchEvent(
+                new CustomEvent("studymate:open-summary", {
+                  detail: { summaryId: target.resourceId },
+                }),
+              );
+            } else if (target.resourceType === "deck" && target.resourceId) {
+              window.dispatchEvent(
+                new CustomEvent("studymate:open-flashcard-deck", {
+                  detail: { deckId: target.resourceId },
+                }),
+              );
+            } else if (target.resourceType === "quiz" && target.resourceId) {
+              window.dispatchEvent(
+                new CustomEvent("studymate:open-quiz", {
+                  detail: { quizId: target.resourceId },
+                }),
+              );
+            } else if (
+              target.resourceType === "document" &&
+              target.resourceId
+            ) {
+              window.dispatchEvent(
+                new CustomEvent("studymate:open-document", {
+                  detail: { documentId: target.resourceId },
+                }),
+              );
+            } else if (target.tab) {
+              window.dispatchEvent(
+                new CustomEvent("studymate:switch-tab", {
+                  detail: { tab: target.tab },
+                }),
+              );
+            }
+          }
+        }
+      }
       if (
         dataPart &&
         typeof dataPart === "object" &&
@@ -1378,6 +1470,52 @@ export default function RightSidebar({
     }
   }, [messages, status]);
 
+  const handleApproveTool = useCallback(
+    (approval: { id: string; approved: boolean; reason?: string }) => {
+      void addToolApprovalResponse(approval);
+    },
+    [addToolApprovalResponse],
+  );
+
+  const handleUndoAction = useCallback(
+    async (actionLogId: string) => {
+      await chatSessionsApi.undoAgentAction(actionLogId);
+      if (conversationId) {
+        const occurredAt = new Date().toISOString();
+        publishWorkspaceSync({
+          resource: "summary",
+          action: "updated",
+          conversationId,
+          entityId: actionLogId,
+          occurredAt,
+        });
+        publishWorkspaceSync({
+          resource: "flashcard",
+          action: "updated",
+          conversationId,
+          entityId: actionLogId,
+          targetKind: "deck",
+          occurredAt,
+        });
+        publishWorkspaceSync({
+          resource: "quiz",
+          action: "updated",
+          conversationId,
+          entityId: actionLogId,
+          occurredAt,
+        });
+        publishWorkspaceSync({
+          resource: "document",
+          action: "updated",
+          conversationId,
+          entityId: actionLogId,
+          occurredAt,
+        });
+      }
+    },
+    [conversationId],
+  );
+
   // Chỉ xuất hiện ở cấp độ Conversation (khi có conversationId hợp lệ)
   if (!conversationId) {
     return null;
@@ -1593,6 +1731,14 @@ export default function RightSidebar({
           onNewChat={handleNewChat}
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+          headerRightSlot={
+            <BackgroundJobsTray
+              jobs={jobs}
+              activeCount={activeJobsCount}
+              onRetryJob={retryJob}
+              onCancelJob={cancelJob}
+            />
+          }
           onClose={() => {
             if (isFullscreen) {
               setIsFullscreen(false);
@@ -1600,6 +1746,27 @@ export default function RightSidebar({
             onToggleCollapse?.();
           }}
         />
+
+        {latestNotification && (
+          <div
+            className={`mx-4 mt-2 flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs ${
+              latestNotification.status === "completed"
+                ? "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/80 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200"
+                : "border-rose-200 dark:border-rose-900/50 bg-rose-50/80 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200"
+            }`}
+          >
+            <span className="min-w-0 flex-1 truncate font-medium">
+              {latestNotification.message}
+            </span>
+            <button
+              type="button"
+              onClick={dismissNotification}
+              className="shrink-0 text-[11px] font-semibold underline-offset-2 hover:underline cursor-pointer"
+            >
+              Đóng
+            </button>
+          </div>
+        )}
 
         <div
           className={`flex flex-1 flex-col min-h-0 overflow-hidden ${
@@ -1619,6 +1786,8 @@ export default function RightSidebar({
                 void sendMessage(selectedSuggestion)
               }
               onAddToolOutput={addToolOutput as any}
+              onApproveTool={handleApproveTool}
+              onUndoAction={handleUndoAction}
               onOpenSummary={handleOpenSummary}
               onOpenFlashcardDeck={handleOpenFlashcardDeck}
               onOpenQuiz={handleOpenQuiz}

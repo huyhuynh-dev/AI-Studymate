@@ -2,22 +2,30 @@
 
 import { mutate } from 'swr';
 import { deckApi } from '@/services/deck.api';
+import { documentsApi } from '@/services/documents.api';
 import { flashcardApi } from '@/services/flashcard.api';
 import { summariesApi } from '@/services/summaries.api';
+import { usersApi } from '@/services/users.api';
 import {
+  WORKSPACE_ACTION_DATA_PART_TYPE,
   WORKSPACE_SYNC_DATA_PART_TYPE,
   createWorkspaceSyncHub,
+  parseWorkspaceActionDataPart,
   parseWorkspaceSyncDataPart,
   workspaceSwrKeys,
+  type WorkspaceActionEvent,
   type WorkspaceSyncEvent,
   type WorkspaceSyncListener,
   type WorkspaceSyncResource,
 } from './workspace-sync.core';
 
 export {
+  WORKSPACE_ACTION_DATA_PART_TYPE,
   WORKSPACE_SYNC_DATA_PART_TYPE,
+  parseWorkspaceActionDataPart,
   parseWorkspaceSyncDataPart,
   workspaceSwrKeys,
+  type WorkspaceActionEvent,
   type WorkspaceSyncEvent,
   type WorkspaceSyncListener,
   type WorkspaceSyncResource,
@@ -31,6 +39,9 @@ const workspaceSyncHub = createWorkspaceSyncHub({
       summariesApi.getByConversationId(conversationId),
     decks: (conversationId) => deckApi.getByConversationId(conversationId),
     flashcards: (deckId) => flashcardApi.getByDeckId(deckId),
+    documents: (conversationId) =>
+      documentsApi.getByConversationId(conversationId),
+    currentUser: () => usersApi.getMe(),
   },
   createBroadcastChannel: (name) => {
     if (typeof BroadcastChannel === 'undefined') return null;

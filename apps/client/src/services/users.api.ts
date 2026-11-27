@@ -27,6 +27,10 @@ interface RawUserProfileResponse {
   is_active?: boolean;
   is_verified?: boolean;
   daily_goal_minutes?: number;
+  preferences?: {
+    theme?: string;
+    aiResponseLanguage?: string;
+  } | null;
   provider?: string | null;
   has_password?: boolean;
   created_at: string | Date;
@@ -54,6 +58,20 @@ function mapUserProfile(raw: RawUserProfileResponse): UserProfile {
       typeof raw.daily_goal_minutes === 'number' && Number.isFinite(raw.daily_goal_minutes)
         ? raw.daily_goal_minutes
         : 15,
+    preferences: {
+      theme:
+        raw.preferences?.theme === 'light' ||
+        raw.preferences?.theme === 'dark' ||
+        raw.preferences?.theme === 'system'
+          ? raw.preferences.theme
+          : 'system',
+      aiResponseLanguage:
+        raw.preferences?.aiResponseLanguage === 'vi' ||
+        raw.preferences?.aiResponseLanguage === 'en' ||
+        raw.preferences?.aiResponseLanguage === 'auto'
+          ? raw.preferences.aiResponseLanguage
+          : 'auto',
+    },
     provider: raw.provider ?? null,
     hasPassword: Boolean(raw.has_password),
     createdAt: toIsoString(raw.created_at),

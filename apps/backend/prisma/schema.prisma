@@ -83,8 +83,9 @@ model User {
   updated_at         DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
   provider           String?           @db.VarChar(20)
   provider_id        String?           @db.VarChar(255)
-  refresh_token      String?           @db.VarChar(500)
-  token_version      Int               @default(0)
+  refresh_token      String?              @db.VarChar(500)
+  token_version      Int                  @default(0)
+  preferences        Json                 @default("{}") @db.JsonB
   user_sessions      UserSession[]
   subjects           Subject[]
   conversations      Conversation[]
@@ -94,6 +95,9 @@ model User {
   quizzes            Quiz[]
   quiz_attempts      QuizAttempt[]
   ai_usage_logs      AiUsageLog[]
+  agent_action_logs  AgentActionLog[]
+  agent_jobs         AgentBackgroundJob[]
+  agent_traces       AgentTrace[]
 
   @@map("users")
 }
@@ -465,4 +469,116 @@ model UserSession {
   @@index([user_id, revoked_at])
   @@index([expires_at])
   @@map("user_sessions")
+}
+
+enum AgentActionRiskTier {
+  tier_1
+  tier_2
+
+  @@map("agent_action_risk_tier")
+}
+
+enum AgentActionStatus {
+  executed
+  undone
+  denied
+  failed
+
+  @@map("agent_action_status")
+}
+
+model AgentActionLog {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String              @db.Uuid
+  conversation_id String?             @db.Uuid
+  chat_session_id String?             @db.Uuid
+  tool_call_id    String?             @db.VarChar(128)
+  tool_name       String              @db.VarChar(80)
+  action_name     String              @db.VarChar(80)
+  risk_tier       AgentActionRiskTier @default(tier_1)
+  status          AgentActionStatus   @default(executed)
+  resource_type   String              @db.VarChar(40)
+  resource_ids    String[]            @default([])
+  summary_text    String              @db.VarChar(500)
+  before_state    Json?               @db.JsonB
+  after_state     Json?               @db.JsonB
+  undoable        Boolean             @default(true)
+  undone_at       DateTime?           @db.Timestamptz(6)
+  expires_at      DateTime            @db.Timestamptz(6)
+  created_at      DateTime            @default(now()) @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at(sort: Desc)], map: "idx_agent_action_logs_user_date")
+  @@index([chat_session_id, created_at(sort: Desc)], map: "idx_agent_action_logs_session")
+  @@index([conversation_id, created_at(sort: Desc)], map: "idx_agent_action_logs_conversation")
+  @@map("agent_action_logs")
+}
+
+enum AgentBackgroundJobStatus {
+  queued
+  running
+  completed
+  failed
+  cancelled
+
+  @@map("agent_background_job_status")
+}
+
+model AgentBackgroundJob {
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String                   @db.Uuid
+  conversation_id  String                   @db.Uuid
+  chat_session_id  String?                  @db.Uuid
+  job_type         String                   @db.VarChar(60)
+  title            String                   @db.VarChar(255)
+  status           AgentBackgroundJobStatus @default(queued)
+  progress_percent Int                      @default(0)
+  total_steps      Int                      @default(1)
+  completed_steps  Int                      @default(0)
+  step_logs        Json                     @default("[]") @db.JsonB
+  payload_json     Json                     @db.JsonB
+  result_json      Json?                    @db.JsonB
+  error_message    String?                  @db.Text
+  bullmq_job_id    String?                  @db.VarChar(128)
+  started_at       DateTime?                @db.Timestamptz(6)
+  finished_at      DateTime?                @db.Timestamptz(6)
+  created_at       DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime                 @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at(sort: Desc)], map: "idx_agent_bg_jobs_user_date")
+  @@index([conversation_id, status], map: "idx_agent_bg_jobs_conv_status")
+  @@map("agent_background_jobs")
+}
+
+model AgentTrace {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trace_id             String   @unique @db.VarChar(64)
+  user_id              String?  @db.Uuid
+  conversation_id      String?  @db.Uuid
+  chat_session_id      String?  @db.Uuid
+  model_name           String   @db.VarChar(120)
+  prompt_version       String   @db.VarChar(40)
+  ui_page_type         String?  @db.VarChar(40)
+  step_count           Int      @default(0)
+  tool_calls_count     Int      @default(0)
+  tool_errors_count    Int      @default(0)
+  hitl_approvals_count Int      @default(0)
+  compacted            Boolean  @default(false)
+  input_tokens         Int      @default(0)
+  output_tokens        Int      @default(0)
+  cache_read_tokens    Int      @default(0)
+  estimated_cost_usd   Float    @default(0) @db.DoublePrecision
+  latency_ms           Int      @default(0)
+  status               String   @default("success") @db.VarChar(20)
+  spans_json           Json     @default("[]") @db.JsonB
+  created_at           DateTime @default(now()) @db.Timestamptz(6)
+
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([chat_session_id, created_at(sort: Desc)], map: "idx_agent_traces_session")
+  @@index([created_at(sort: Desc)], map: "idx_agent_traces_created_at")
+  @@map("agent_traces")
 }

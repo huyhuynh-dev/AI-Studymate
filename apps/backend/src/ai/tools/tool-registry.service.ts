@@ -59,6 +59,18 @@ import {
   createSuperDocApiCallTool,
   superdocApiCallInputSchema,
 } from './definitions/superdoc/index.js';
+import {
+  createManageEditableDocumentTool,
+  createManageFlashcardsTool,
+  createManageNotesTool,
+  createManageQuizTool,
+  createManageWorkspaceAndJobsTool,
+  manageEditableDocumentInputSchema,
+  manageFlashcardsInputSchema,
+  manageNotesInputSchema,
+  manageQuizInputSchema,
+  manageWorkspaceAndJobsInputSchema,
+} from './definitions/mutations/index.js';
 
 export class ChatSessionToolTracker implements ToolCallTracker {
   private readonly collectedChunkIds = new Set<string>();
@@ -291,6 +303,31 @@ export class ToolRegistryService {
         description: 'Thực thi các lệnh Document API cấp thấp trên tài liệu Word',
         inputSchema: superdocApiCallInputSchema,
       }),
+      manageNotes: tool({
+        description:
+          'Tạo, đổi tên, chỉnh sửa section, viết lại hoặc xóa Notes/Summaries',
+        inputSchema: manageNotesInputSchema,
+      }),
+      manageFlashcards: tool({
+        description:
+          'Quản lý Flashcard Decks, thêm/sửa/xóa/di chuyển và gộp thẻ trùng lặp',
+        inputSchema: manageFlashcardsInputSchema,
+      }),
+      manageQuiz: tool({
+        description:
+          'Cập nhật đề kiểm tra Quiz và thêm/sửa/xóa câu hỏi kiểm tra',
+        inputSchema: manageQuizInputSchema,
+      }),
+      manageEditableDocument: tool({
+        description:
+          'Đọc, chỉnh sửa và chuyển đổi tài liệu văn bản (.md, .txt, ...)',
+        inputSchema: manageEditableDocumentInputSchema,
+      }),
+      manageWorkspaceAndJobs: tool({
+        description:
+          'Điều hướng giao diện, cập nhật cài đặt, hoàn tác hành động và quản lý tác vụ nền',
+        inputSchema: manageWorkspaceAndJobsInputSchema,
+      }),
     };
   }
 
@@ -459,6 +496,41 @@ export class ToolRegistryService {
       );
     }
 
+    if (callbacks?.onManageNotes) {
+      tools.manageNotes = createManageNotesTool(
+        callbacks.onManageNotes,
+        tracker,
+      );
+    }
+
+    if (callbacks?.onManageFlashcards) {
+      tools.manageFlashcards = createManageFlashcardsTool(
+        callbacks.onManageFlashcards,
+        tracker,
+      );
+    }
+
+    if (callbacks?.onManageQuiz) {
+      tools.manageQuiz = createManageQuizTool(
+        callbacks.onManageQuiz,
+        tracker,
+      );
+    }
+
+    if (callbacks?.onManageEditableDocument) {
+      tools.manageEditableDocument = createManageEditableDocumentTool(
+        callbacks.onManageEditableDocument,
+        tracker,
+      );
+    }
+
+    if (callbacks?.onManageWorkspaceAndJobs) {
+      tools.manageWorkspaceAndJobs = createManageWorkspaceAndJobsTool(
+        callbacks.onManageWorkspaceAndJobs,
+        tracker,
+      );
+    }
+
     return {
       tools,
       tracker,
@@ -475,12 +547,31 @@ export class ToolRegistryService {
   ): any[] {
     const parts: any[] = [];
 
-    // Tập hợp các toolCallId đã có tool-result trong responseMessages
+    // Tập hợp các toolCallId đã có tool-result, tool-approval-request, hoặc tool-output-denied trong responseMessages
     const completedToolResultsByCallId = new Map<string, unknown>();
+    const approvalRequestsByCallId = new Map<
+      string,
+      { id: string; signature?: string }
+    >();
+    const deniedToolCallIds = new Set<string>();
+
     for (const msg of responseMessages) {
-      if (msg?.role === 'tool' && Array.isArray(msg.content)) {
+      if (msg?.role === 'assistant' && Array.isArray(msg.content)) {
         for (const item of msg.content) {
-          if (item?.type === 'tool-result' && item.toolCallId) {
+          if (item?.type === 'tool-approval-request' && item.toolCallId) {
+            approvalRequestsByCallId.set(item.toolCallId, {
+              id: String(item.approvalId ?? item.toolCallId),
+              ...(typeof item.signature === 'string'
+                ? { signature: item.signature }
+                : {}),
+            });
+          }
+        }
+      } else if (msg?.role === 'tool' && Array.isArray(msg.content)) {
+        for (const item of msg.content) {
+          if (item?.type === 'tool-output-denied' && item.toolCallId) {
+            deniedToolCallIds.add(item.toolCallId);
+          } else if (item?.type === 'tool-result' && item.toolCallId) {
             completedToolResultsByCallId.set(
               item.toolCallId,
               item.output ?? item.result,
@@ -510,11 +601,15 @@ export class ToolRegistryService {
           const toolName = (contentPart.toolName ||
             'searchDocumentChunks') as ChatAgentToolName;
           const toolCallId = contentPart.toolCallId;
+          const hasResult =
+            Boolean(toolCallId) && completedToolResultsByCallId.has(toolCallId);
+          const approvalReq = toolCallId
+            ? approvalRequestsByCallId.get(toolCallId)
+            : undefined;
+          const isDenied = Boolean(toolCallId) && deniedToolCallIds.has(toolCallId);
 
           // Client-Side Tool: askUserQuestion (khi dừng chờ người dùng trả lời thì chưa có kết quả)
           if (toolName === 'askUserQuestion') {
-            const hasResult =
-              toolCallId && completedToolResultsByCallId.has(toolCallId);
             parts.push({
               type: 'tool-askUserQuestion',
               toolCallId,
@@ -523,6 +618,28 @@ export class ToolRegistryService {
               ...(hasResult
                 ? { output: completedToolResultsByCallId.get(toolCallId) }
                 : {}),
+            });
+            continue;
+          }
+
+          if (isDenied && !hasResult) {
+            parts.push({
+              type: `tool-${toolName}`,
+              toolCallId,
+              state: 'output-denied',
+              input: contentPart.input,
+              ...(approvalReq ? { approval: approvalReq } : {}),
+            });
+            continue;
+          }
+
+          if (approvalReq && !hasResult) {
+            parts.push({
+              type: `tool-${toolName}`,
+              toolCallId,
+              state: 'approval-requested',
+              input: contentPart.input,
+              approval: approvalReq,
             });
             continue;
           }

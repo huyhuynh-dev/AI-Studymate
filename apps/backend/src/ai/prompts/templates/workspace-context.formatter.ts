@@ -89,9 +89,28 @@ export function renderEphemeralUiContextBlock(
     `Workspace Inventory: ${ctx.inventory.documentsCount} documents (${ctx.inventory.readyDocumentsCount} ready), ${ctx.inventory.notesCount} notes, ${ctx.inventory.decksCount} decks, ${ctx.inventory.quizzesCount} quizzes`,
   );
 
-  // 3. Active Tab
+  // 3. Active Tab & User Preferences (ephemeral — giữ Prefix Cache nguyên vẹn)
   if (ctx.location.activeTab) {
     coreLines.push(`Active Tab: ${formatTabLabel(ctx.location.activeTab)}`);
+  }
+  if (ctx.userPreferences) {
+    const prefs = ctx.userPreferences;
+    const goalPart =
+      typeof prefs.dailyGoalMinutes === 'number'
+        ? ` daily_goal_minutes="${prefs.dailyGoalMinutes}"`
+        : '';
+    coreLines.push(
+      `<user_preferences theme="${prefs.theme}" ai_response_language="${prefs.aiResponseLanguage}"${goalPart} />`,
+    );
+    if (prefs.aiResponseLanguage === 'vi') {
+      guardLines.push(
+        '[PREFERENCE: AI_LANGUAGE=vi] Always reply in Vietnamese unless the user explicitly asks to translate or draft in another language.',
+      );
+    } else if (prefs.aiResponseLanguage === 'en') {
+      guardLines.push(
+        '[PREFERENCE: AI_LANGUAGE=en] Always reply in English unless the user explicitly asks to translate or draft in another language.',
+      );
+    }
   }
 
   // 4. Guards (ưu tiên tối cao, không bao giờ bị cắt)

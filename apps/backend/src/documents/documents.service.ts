@@ -622,6 +622,73 @@ export class DocumentsService {
         };
     }
 
+    async createEditableDocumentFromText(params: {
+        userId: string;
+        conversationId: string;
+        fileName: string;
+        content: string;
+    }): Promise<DocumentResponse> {
+        const { userId, conversationId, fileName, content } = params;
+        const trimmedName = fileName.trim();
+        const canonicalMime = resolveCanonicalMimeType(trimmedName, undefined);
+        if (!canonicalMime || !isEditableTextDocument(canonicalMime, trimmedName)) {
+            throw new BadRequestException(
+                'Tên tệp phải có phần mở rộng văn bản được hỗ trợ (.md, .txt, .html, .json, .yaml, .csv, .xml, .toml)'
+            );
+        }
+
+        const conversation = await this.conversationsRepo.getConversationById(conversationId, userId);
+        if (!conversation) {
+            throw new NotFoundException('Không tìm thấy cuộc trò chuyện hoặc bạn không có quyền truy cập');
+        }
+
+        const buffer = Buffer.from(content, 'utf-8');
+        if (buffer.length > MAX_EDITABLE_TEXT_BYTES) {
+            throw new BadRequestException('Dung lượng tài liệu vượt quá giới hạn 2 MB cho phép');
+        }
+
+        const documentId = randomUUID();
+        const safeName = this.sanitizeFileName(trimmedName);
+        const storageKey = `users/${userId}/conversations/${conversationId}/${documentId}-${safeName}`;
+        const sha256 = createHash('sha256').update(buffer).digest('hex');
+
+        await this.storageService.uploadObjectBuffer(storageKey, buffer, canonicalMime);
+
+        const { extractedRawText } = prepareTextForHybridChunking(
+            content,
+            canonicalMime,
+            trimmedName,
+        );
+
+        const document = await this.documentsRepo.createDocument({
+            id: documentId,
+            conversation_id: conversationId,
+            user_id: userId,
+            file_name: trimmedName,
+            mime_type: canonicalMime,
+            file_size: BigInt(buffer.length),
+            file_hash: sha256,
+            raw_text: extractedRawText,
+            storage_key: storageKey,
+            ocr_status: 'done',
+            embed_status: 'pending',
+            content_version: 1,
+            indexed_version: 0,
+            uploaded_at: new Date(),
+        });
+
+        await this.documentsQueueService.addProcessingJob({
+            documentId: document.id,
+            mimeType: document.mime_type,
+            storageKey: document.storage_key,
+            fileName: document.file_name,
+            targetVersion: 1,
+            isReindex: false,
+        });
+
+        return document;
+    }
+
     async deleteDocument(
         userId: string,
         documentId: string

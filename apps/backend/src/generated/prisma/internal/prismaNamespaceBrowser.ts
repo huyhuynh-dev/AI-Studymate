@@ -68,7 +68,10 @@ export const ModelName = {
   Message: 'Message',
   Summary: 'Summary',
   AiUsageLog: 'AiUsageLog',
-  UserSession: 'UserSession'
+  UserSession: 'UserSession',
+  AgentActionLog: 'AgentActionLog',
+  AgentBackgroundJob: 'AgentBackgroundJob',
+  AgentTrace: 'AgentTrace'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -102,7 +105,8 @@ export const UserScalarFieldEnum = {
   provider: 'provider',
   provider_id: 'provider_id',
   refresh_token: 'refresh_token',
-  token_version: 'token_version'
+  token_version: 'token_version',
+  preferences: 'preferences'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -394,12 +398,95 @@ export const UserSessionScalarFieldEnum = {
 export type UserSessionScalarFieldEnum = (typeof UserSessionScalarFieldEnum)[keyof typeof UserSessionScalarFieldEnum]
 
 
+export const AgentActionLogScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  conversation_id: 'conversation_id',
+  chat_session_id: 'chat_session_id',
+  tool_call_id: 'tool_call_id',
+  tool_name: 'tool_name',
+  action_name: 'action_name',
+  risk_tier: 'risk_tier',
+  status: 'status',
+  resource_type: 'resource_type',
+  resource_ids: 'resource_ids',
+  summary_text: 'summary_text',
+  before_state: 'before_state',
+  after_state: 'after_state',
+  undoable: 'undoable',
+  undone_at: 'undone_at',
+  expires_at: 'expires_at',
+  created_at: 'created_at'
+} as const
+
+export type AgentActionLogScalarFieldEnum = (typeof AgentActionLogScalarFieldEnum)[keyof typeof AgentActionLogScalarFieldEnum]
+
+
+export const AgentBackgroundJobScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  conversation_id: 'conversation_id',
+  chat_session_id: 'chat_session_id',
+  job_type: 'job_type',
+  title: 'title',
+  status: 'status',
+  progress_percent: 'progress_percent',
+  total_steps: 'total_steps',
+  completed_steps: 'completed_steps',
+  step_logs: 'step_logs',
+  payload_json: 'payload_json',
+  result_json: 'result_json',
+  error_message: 'error_message',
+  bullmq_job_id: 'bullmq_job_id',
+  started_at: 'started_at',
+  finished_at: 'finished_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type AgentBackgroundJobScalarFieldEnum = (typeof AgentBackgroundJobScalarFieldEnum)[keyof typeof AgentBackgroundJobScalarFieldEnum]
+
+
+export const AgentTraceScalarFieldEnum = {
+  id: 'id',
+  trace_id: 'trace_id',
+  user_id: 'user_id',
+  conversation_id: 'conversation_id',
+  chat_session_id: 'chat_session_id',
+  model_name: 'model_name',
+  prompt_version: 'prompt_version',
+  ui_page_type: 'ui_page_type',
+  step_count: 'step_count',
+  tool_calls_count: 'tool_calls_count',
+  tool_errors_count: 'tool_errors_count',
+  hitl_approvals_count: 'hitl_approvals_count',
+  compacted: 'compacted',
+  input_tokens: 'input_tokens',
+  output_tokens: 'output_tokens',
+  cache_read_tokens: 'cache_read_tokens',
+  estimated_cost_usd: 'estimated_cost_usd',
+  latency_ms: 'latency_ms',
+  status: 'status',
+  spans_json: 'spans_json',
+  created_at: 'created_at'
+} as const
+
+export type AgentTraceScalarFieldEnum = (typeof AgentTraceScalarFieldEnum)[keyof typeof AgentTraceScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const NullableJsonNullValueInput = {
@@ -410,27 +497,12 @@ export const NullableJsonNullValueInput = {
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
-export const JsonNullValueInput = {
-  JsonNull: JsonNull
-} as const
-
-export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
-
-
 export const QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
 } as const
 
 export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
-
-
-export const NullsOrder = {
-  first: 'first',
-  last: 'last'
-} as const
-
-export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 
 
 export const JsonNullValueFilter = {
@@ -440,4 +512,12 @@ export const JsonNullValueFilter = {
 } as const
 
 export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
+
+
+export const NullsOrder = {
+  first: 'first',
+  last: 'last'
+} as const
+
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 

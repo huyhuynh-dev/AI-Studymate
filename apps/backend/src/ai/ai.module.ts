@@ -12,6 +12,7 @@ import { FlashcardAiService } from './flashcard-ai.service.js';
 import { PromptRegistryService } from './prompts/prompt-registry.service.js';
 import { ToolRegistryService } from './tools/tool-registry.service.js';
 import { AiTelemetryService } from './telemetry/ai-telemetry.service.js';
+import { AgentTelemetryService } from './telemetry/agent-telemetry.service.js';
 import { ChatCompactionService } from './chat-compaction.service.js';
 
 @Module({
@@ -21,6 +22,7 @@ import { ChatCompactionService } from './chat-compaction.service.js';
     PromptRegistryService,
     ToolRegistryService,
     AiTelemetryService,
+    AgentTelemetryService,
     AiService,
     EmbeddingService,
     VisionService,
@@ -36,6 +38,7 @@ import { ChatCompactionService } from './chat-compaction.service.js';
     PromptRegistryService,
     ToolRegistryService,
     AiTelemetryService,
+    AgentTelemetryService,
     AiService,
     EmbeddingService,
     VisionService,

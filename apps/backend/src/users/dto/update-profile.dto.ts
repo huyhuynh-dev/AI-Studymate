@@ -1,5 +1,29 @@
 import { Transform, Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+
+export class UpdateUserPreferencesDto {
+  @IsOptional()
+  @IsIn(['system', 'light', 'dark'], {
+    message: 'Giao diện hợp lệ gồm: system, light, dark',
+  })
+  theme?: 'system' | 'light' | 'dark';
+
+  @IsOptional()
+  @IsIn(['auto', 'vi', 'en'], {
+    message: 'Ngôn ngữ phản hồi AI hợp lệ gồm: auto, vi, en',
+  })
+  aiResponseLanguage?: 'auto' | 'vi' | 'en';
+}
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -25,4 +49,9 @@ export class UpdateProfileDto {
   @Min(5, { message: 'Mục tiêu học mỗi ngày tối thiểu là 5 phút' })
   @Max(240, { message: 'Mục tiêu học mỗi ngày tối đa là 240 phút' })
   dailyGoalMinutes?: number;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateUserPreferencesDto)
+  preferences?: UpdateUserPreferencesDto;
 }

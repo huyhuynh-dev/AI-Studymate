@@ -21,7 +21,9 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-    "benchmark:rag": "tsc -p tsconfig.build.json && node dist/rag-benchmark/cli/run-rag-benchmark.js"
+    "benchmark:rag": "tsc -p tsconfig.build.json && node dist/rag-benchmark/cli/run-rag-benchmark.js",
+    "eval:agent": "tsc -p tsconfig.build.json && node dist/agent-evals/cli/run-agent-evals.js --mode=deterministic",
+    "eval:agent:live": "tsc -p tsconfig.build.json && node dist/agent-evals/cli/run-agent-evals.js --mode=live"
   },
   "dependencies": {
     "@ai-sdk/cohere": "^3.0.78",

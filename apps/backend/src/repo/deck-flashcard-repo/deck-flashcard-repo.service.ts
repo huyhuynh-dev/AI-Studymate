@@ -503,6 +503,75 @@ export class DeckFlashcardRepoService {
         }
     }
 
+    async moveFlashcardsToDeck(
+        cardIds: string[],
+        targetDeckId: string,
+        userId: string
+    ): Promise<Prisma.FlashcardModel[]> {
+        await this.assertDeckOwnership(targetDeckId, userId);
+        const uniqueIds = Array.from(new Set(cardIds.filter(Boolean)));
+        if (uniqueIds.length === 0) return [];
+
+        return await this.prisma.$transaction(async (tx) => {
+            const ownedCards = await tx.flashcard.findMany({
+                where: {
+                    id: { in: uniqueIds },
+                    deck: { user_id: userId },
+                },
+            });
+
+            if (ownedCards.length !== uniqueIds.length) {
+                throw new NotFoundException(
+                    'Một hoặc nhiều thẻ ghi nhớ không tồn tại hoặc không thuộc quyền sở hữu của bạn'
+                );
+            }
+
+            await tx.flashcard.updateMany({
+                where: { id: { in: uniqueIds } },
+                data: {
+                    deck_id: targetDeckId,
+                    updated_at: new Date(),
+                },
+            });
+
+            await tx.flashcardDeck.update({
+                where: { id: targetDeckId },
+                data: { updated_at: new Date() },
+            });
+
+            return ownedCards;
+        });
+    }
+
+    async deleteManyFlashcards(
+        cardIds: string[],
+        userId: string
+    ): Promise<Prisma.FlashcardModel[]> {
+        const uniqueIds = Array.from(new Set(cardIds.filter(Boolean)));
+        if (uniqueIds.length === 0) return [];
+
+        return await this.prisma.$transaction(async (tx) => {
+            const ownedCards = await tx.flashcard.findMany({
+                where: {
+                    id: { in: uniqueIds },
+                    deck: { user_id: userId },
+                },
+            });
+
+            if (ownedCards.length !== uniqueIds.length) {
+                throw new NotFoundException(
+                    'Một hoặc nhiều thẻ ghi nhớ không tồn tại hoặc không thuộc quyền sở hữu của bạn'
+                );
+            }
+
+            await tx.flashcard.deleteMany({
+                where: { id: { in: uniqueIds } },
+            });
+
+            return ownedCards;
+        });
+    }
+
     /**
      * Lấy các thẻ khó nhớ (ease_factor < 2.1, đang relearning hoặc từng bị bấm Again rating=1)
      * trong một phiên học để phục vụ chẩn đoán và sinh đề đặc trị vùng yếu.

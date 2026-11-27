@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { fontSans, fontHeading, fontMono } from "./font";
 import "./globals.css";
 import OAuthCallbackHandler from "@/components/auth/OAuthCallbackHandler";
+import { ThemePreferenceProvider } from "@/contexts/ThemePreferenceProvider";
 
 export const metadata: Metadata = {
   title: "AI StudyMate - Nền tảng học tập thông minh",
@@ -29,10 +30,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col font-sans">
-        <Suspense fallback={null}>
-          <OAuthCallbackHandler />
-        </Suspense>
-        {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('studymate:theme')||'system';var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var r=document.documentElement;r.classList.remove('light','dark');if(t==='dark'){r.classList.add('dark');r.style.colorScheme='dark';}else if(t==='light'){r.classList.add('light');r.style.colorScheme='light';}else if(d){r.classList.add('dark');r.style.colorScheme='dark';}}catch(e){}})();`,
+          }}
+        />
+        <ThemePreferenceProvider>
+          <Suspense fallback={null}>
+            <OAuthCallbackHandler />
+          </Suspense>
+          {children}
+        </ThemePreferenceProvider>
       </body>
     </html>
   );

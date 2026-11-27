@@ -52,6 +52,11 @@ import {
 } from './workspace-sync.channel.js';
 import type { AgentStatusEvent } from './workspace-sync.types.js';
 import { resolveArtifactSourceTarget } from '../ai/utils/clarification-policy.helper.js';
+import { AgentActionAuditService } from './agent-action-audit.service.js';
+import {
+  WorkspaceMutationService,
+  type WorkspaceMutationContext,
+} from './workspace-mutation.service.js';
 
 export interface ResolvedChatConfig {
   modelName: string;
@@ -113,7 +118,27 @@ export class ChatAgentService {
     @Optional() private readonly superdocCollaborationService?: SuperDocCollaborationService,
     @Optional() private readonly workspaceContextHydrator?: WorkspaceContextHydratorService,
     @Optional() private readonly workspaceL2ReadService?: WorkspaceL2ReadService,
+    @Optional() private readonly agentActionAuditService?: AgentActionAuditService,
+    @Optional() private readonly workspaceMutationService?: WorkspaceMutationService,
   ) {}
+
+  async listConversationAgentActions(userId: string, conversationId: string) {
+    if (!this.agentActionAuditService) {
+      return [];
+    }
+    return this.agentActionAuditService.listRecentActions(
+      userId,
+      conversationId,
+      20,
+    );
+  }
+
+  async undoAgentAction(userId: string, actionLogId: string) {
+    if (!this.agentActionAuditService) {
+      throw new Error('AgentActionAuditService chưa được khởi tạo');
+    }
+    return this.agentActionAuditService.undoAction(userId, actionLogId);
+  }
 
   async createChatSession(
     userId: string,
@@ -1090,6 +1115,8 @@ export class ChatAgentService {
       ragContext
         ? {
             chatSessionId,
+            userId: ragContext.userId,
+            conversationId: ragContext.conversationId,
             availableDocuments,
             attachedDocumentIds: ragContext.attachedDocumentIds,
             workspaceContext,
@@ -1758,6 +1785,56 @@ export class ChatAgentService {
                 ...(appliedDefaults.length > 0 ? { appliedDefaults } : {}),
               };
             },
+            ...(this.workspaceMutationService
+              ? (() => {
+                  const mutationCtx: WorkspaceMutationContext = {
+                    userId: ragContext.userId,
+                    conversationId: ragContext.conversationId,
+                    chatSessionId,
+                    subjectId: workspaceContext?.location.subjectId,
+                    workspaceContext,
+                    syncNotifier: workspaceSyncChannel,
+                  };
+                  return {
+                    onManageNotes: (input: any, toolCallId?: string) =>
+                      this.workspaceMutationService!.executeManageNotes(
+                        mutationCtx,
+                        input,
+                        toolCallId,
+                      ),
+                    onManageFlashcards: (input: any, toolCallId?: string) =>
+                      this.workspaceMutationService!.executeManageFlashcards(
+                        mutationCtx,
+                        input,
+                        toolCallId,
+                      ),
+                    onManageQuiz: (input: any, toolCallId?: string) =>
+                      this.workspaceMutationService!.executeManageQuiz(
+                        mutationCtx,
+                        input,
+                        toolCallId,
+                      ),
+                    onManageEditableDocument: (
+                      input: any,
+                      toolCallId?: string,
+                    ) =>
+                      this.workspaceMutationService!.executeManageEditableDocument(
+                        mutationCtx,
+                        input,
+                        toolCallId,
+                      ),
+                    onManageWorkspaceAndJobs: (
+                      input: any,
+                      toolCallId?: string,
+                    ) =>
+                      this.workspaceMutationService!.executeManageWorkspaceAndJobs(
+                        mutationCtx,
+                        input,
+                        toolCallId,
+                      ),
+                  };
+                })()
+              : {}),
           }
         : { chatSessionId, chatConfig: config, ...webCallbacks },
       );

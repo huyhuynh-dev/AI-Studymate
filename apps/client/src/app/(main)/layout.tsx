@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { LeftSidebar, RightSidebar, FocusModeProvider, useFocusMode } from "@/components/layout";
 import { AskAiProvider } from "@/contexts/AskAiContext";
 import { CitationNavigationProvider, useCitationNavigation } from "@/contexts/CitationNavigationContext";
+import { useThemePreference } from "@/contexts/ThemePreferenceProvider";
 import { WordAgentProvider } from "@/contexts/WordAgentContext";
 import {
     WorkspaceContextProvider,
@@ -18,6 +19,16 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
     const router = useRouter();
     const { user: currentUser } = useCurrentUser();
+    const { setTheme } = useThemePreference();
+    const lastSyncedServerThemeRef = useRef<string | undefined>(undefined);
+
+    useEffect(() => {
+        const prefTheme = currentUser?.preferences?.theme;
+        if (!prefTheme) return;
+        if (lastSyncedServerThemeRef.current === prefTheme) return;
+        lastSyncedServerThemeRef.current = prefTheme;
+        setTheme(prefTheme, { persistLocal: true });
+    }, [currentUser?.preferences?.theme, setTheme]);
 
     const {
         isFocusMode,

@@ -110,6 +110,28 @@ export class ChatAgentController {
     );
   }
 
+  @Get('conversations/:conversationId/actions')
+  async listConversationAgentActions(
+    @Req() req: Request,
+    @Param('conversationId', new ParseUUIDPipe()) conversationId: string,
+  ) {
+    return this.chatAgentService.listConversationAgentActions(
+      this.getUserId(req),
+      conversationId,
+    );
+  }
+
+  @Post('actions/:actionLogId/undo')
+  async undoAgentAction(
+    @Req() req: Request,
+    @Param('actionLogId', new ParseUUIDPipe()) actionLogId: string,
+  ) {
+    return this.chatAgentService.undoAgentAction(
+      this.getUserId(req),
+      actionLogId,
+    );
+  }
+
   @Post('sessions/:id/chat')
   async streamChat(
     @Req() req: Request,

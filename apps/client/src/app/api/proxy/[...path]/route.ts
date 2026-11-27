@@ -64,8 +64,13 @@ async function handleProxy(
       return res;
     };
 
-    // Nếu là endpoint chat stream, chuyển tiếp trực tiếp stream real-time về Client
-    if (targetPath.endsWith('/chat')) {
+    // Nếu là endpoint chat stream hoặc SSE stream, chuyển tiếp trực tiếp stream real-time về Client
+    const backendContentType = backendResponse.headers.get('content-type') || '';
+    if (
+      targetPath.endsWith('/chat') ||
+      targetPath.endsWith('/stream') ||
+      backendContentType.includes('text/event-stream')
+    ) {
       const responseHeaders = new Headers();
       backendResponse.headers.forEach((val, key) => {
         if (key.toLowerCase() !== 'set-cookie') {

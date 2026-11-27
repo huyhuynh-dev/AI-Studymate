@@ -16,6 +16,18 @@ export interface GenerateSuggestionsParams {
   lastUserQuestion?: string;
 }
 
+export interface AgentActionLogItem {
+  id: string;
+  toolName: string;
+  action: string;
+  riskTier: "tier_0" | "tier_1" | "tier_2";
+  status: string;
+  targetType?: string | null;
+  targetId?: string | null;
+  summary?: string | null;
+  createdAt: string;
+}
+
 export const chatSessionsApi = {
   /**
    * Lấy danh sách các phiên trò chuyện thuộc một Conversation.
@@ -103,5 +115,33 @@ export const chatSessionsApi = {
     return Array.isArray(response.data?.suggestions)
       ? response.data.suggestions
       : [];
+  },
+
+  /**
+   * Lấy danh sách lịch sử hành động AI (AgentActionLog) trong một Conversation.
+   * GET /api/proxy/chat-agent/conversations/{conversationId}/actions
+   */
+  async listAgentActions(conversationId: string): Promise<AgentActionLogItem[]> {
+    const response = await axiosClient.get<
+      AgentActionLogItem[] | { actions?: AgentActionLogItem[] }
+    >(`/chat-agent/conversations/${conversationId}/actions`);
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    return Array.isArray(response.data?.actions) ? response.data.actions : [];
+  },
+
+  /**
+   * Hoàn tác một hành động thay đổi dữ liệu của AI theo actionLogId.
+   * POST /api/proxy/chat-agent/actions/{actionLogId}/undo
+   */
+  async undoAgentAction(
+    actionLogId: string,
+  ): Promise<{ success: boolean; message?: string }> {
+    const response = await axiosClient.post<{
+      success: boolean;
+      message?: string;
+    }>(`/chat-agent/actions/${actionLogId}/undo`);
+    return response.data;
   },
 };

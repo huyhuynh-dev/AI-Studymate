@@ -414,7 +414,10 @@ export const ModelName = {
   Message: 'Message',
   Summary: 'Summary',
   AiUsageLog: 'AiUsageLog',
-  UserSession: 'UserSession'
+  UserSession: 'UserSession',
+  AgentActionLog: 'AgentActionLog',
+  AgentBackgroundJob: 'AgentBackgroundJob',
+  AgentTrace: 'AgentTrace'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -430,7 +433,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "subject" | "conversation" | "flashcardDeck" | "flashcard" | "flashcardReview" | "quiz" | "quizQuestion" | "quizAttempt" | "quizAttemptAnswer" | "document" | "documentChunk" | "documentAsset" | "chatSession" | "message" | "summary" | "aiUsageLog" | "userSession"
+    modelProps: "user" | "subject" | "conversation" | "flashcardDeck" | "flashcard" | "flashcardReview" | "quiz" | "quizQuestion" | "quizAttempt" | "quizAttemptAnswer" | "document" | "documentChunk" | "documentAsset" | "chatSession" | "message" | "summary" | "aiUsageLog" | "userSession" | "agentActionLog" | "agentBackgroundJob" | "agentTrace"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1766,6 +1769,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AgentActionLog: {
+      payload: Prisma.$AgentActionLogPayload<ExtArgs>
+      fields: Prisma.AgentActionLogFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AgentActionLogFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentActionLogPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AgentActionLogFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentActionLogPayload>
+        }
+        findFirst: {
+          args: Prisma.AgentActionLogFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentActionLogPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AgentActionLogFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentActionLogPayload>
+        }
+        findMany: {
+          args: Prisma.AgentActionLogFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentActionLogPayload>[]
+        }
+        create: {
+          args: Prisma.AgentActionLogCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentActionLogPayload>
+        }
+        createMany: {
+          args: Prisma.AgentActionLogCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AgentActionLogCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentActionLogPayload>[]
+        }
+        delete: {
+          args: Prisma.AgentActionLogDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentActionLogPayload>
+        }
+        update: {
+          args: Prisma.AgentActionLogUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentActionLogPayload>
+        }
+        deleteMany: {
+          args: Prisma.AgentActionLogDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AgentActionLogUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AgentActionLogUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentActionLogPayload>[]
+        }
+        upsert: {
+          args: Prisma.AgentActionLogUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentActionLogPayload>
+        }
+        aggregate: {
+          args: Prisma.AgentActionLogAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAgentActionLog>
+        }
+        groupBy: {
+          args: Prisma.AgentActionLogGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentActionLogGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AgentActionLogCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentActionLogCountAggregateOutputType> | number
+        }
+      }
+    }
+    AgentBackgroundJob: {
+      payload: Prisma.$AgentBackgroundJobPayload<ExtArgs>
+      fields: Prisma.AgentBackgroundJobFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AgentBackgroundJobFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentBackgroundJobPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AgentBackgroundJobFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentBackgroundJobPayload>
+        }
+        findFirst: {
+          args: Prisma.AgentBackgroundJobFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentBackgroundJobPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AgentBackgroundJobFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentBackgroundJobPayload>
+        }
+        findMany: {
+          args: Prisma.AgentBackgroundJobFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentBackgroundJobPayload>[]
+        }
+        create: {
+          args: Prisma.AgentBackgroundJobCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentBackgroundJobPayload>
+        }
+        createMany: {
+          args: Prisma.AgentBackgroundJobCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AgentBackgroundJobCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentBackgroundJobPayload>[]
+        }
+        delete: {
+          args: Prisma.AgentBackgroundJobDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentBackgroundJobPayload>
+        }
+        update: {
+          args: Prisma.AgentBackgroundJobUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentBackgroundJobPayload>
+        }
+        deleteMany: {
+          args: Prisma.AgentBackgroundJobDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AgentBackgroundJobUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AgentBackgroundJobUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentBackgroundJobPayload>[]
+        }
+        upsert: {
+          args: Prisma.AgentBackgroundJobUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentBackgroundJobPayload>
+        }
+        aggregate: {
+          args: Prisma.AgentBackgroundJobAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAgentBackgroundJob>
+        }
+        groupBy: {
+          args: Prisma.AgentBackgroundJobGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentBackgroundJobGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AgentBackgroundJobCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentBackgroundJobCountAggregateOutputType> | number
+        }
+      }
+    }
+    AgentTrace: {
+      payload: Prisma.$AgentTracePayload<ExtArgs>
+      fields: Prisma.AgentTraceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AgentTraceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentTracePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AgentTraceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentTracePayload>
+        }
+        findFirst: {
+          args: Prisma.AgentTraceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentTracePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AgentTraceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentTracePayload>
+        }
+        findMany: {
+          args: Prisma.AgentTraceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentTracePayload>[]
+        }
+        create: {
+          args: Prisma.AgentTraceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentTracePayload>
+        }
+        createMany: {
+          args: Prisma.AgentTraceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AgentTraceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentTracePayload>[]
+        }
+        delete: {
+          args: Prisma.AgentTraceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentTracePayload>
+        }
+        update: {
+          args: Prisma.AgentTraceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentTracePayload>
+        }
+        deleteMany: {
+          args: Prisma.AgentTraceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AgentTraceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AgentTraceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentTracePayload>[]
+        }
+        upsert: {
+          args: Prisma.AgentTraceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentTracePayload>
+        }
+        aggregate: {
+          args: Prisma.AgentTraceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAgentTrace>
+        }
+        groupBy: {
+          args: Prisma.AgentTraceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentTraceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AgentTraceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentTraceCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1820,7 +2045,8 @@ export const UserScalarFieldEnum = {
   provider: 'provider',
   provider_id: 'provider_id',
   refresh_token: 'refresh_token',
-  token_version: 'token_version'
+  token_version: 'token_version',
+  preferences: 'preferences'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -2112,12 +2338,95 @@ export const UserSessionScalarFieldEnum = {
 export type UserSessionScalarFieldEnum = (typeof UserSessionScalarFieldEnum)[keyof typeof UserSessionScalarFieldEnum]
 
 
+export const AgentActionLogScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  conversation_id: 'conversation_id',
+  chat_session_id: 'chat_session_id',
+  tool_call_id: 'tool_call_id',
+  tool_name: 'tool_name',
+  action_name: 'action_name',
+  risk_tier: 'risk_tier',
+  status: 'status',
+  resource_type: 'resource_type',
+  resource_ids: 'resource_ids',
+  summary_text: 'summary_text',
+  before_state: 'before_state',
+  after_state: 'after_state',
+  undoable: 'undoable',
+  undone_at: 'undone_at',
+  expires_at: 'expires_at',
+  created_at: 'created_at'
+} as const
+
+export type AgentActionLogScalarFieldEnum = (typeof AgentActionLogScalarFieldEnum)[keyof typeof AgentActionLogScalarFieldEnum]
+
+
+export const AgentBackgroundJobScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  conversation_id: 'conversation_id',
+  chat_session_id: 'chat_session_id',
+  job_type: 'job_type',
+  title: 'title',
+  status: 'status',
+  progress_percent: 'progress_percent',
+  total_steps: 'total_steps',
+  completed_steps: 'completed_steps',
+  step_logs: 'step_logs',
+  payload_json: 'payload_json',
+  result_json: 'result_json',
+  error_message: 'error_message',
+  bullmq_job_id: 'bullmq_job_id',
+  started_at: 'started_at',
+  finished_at: 'finished_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type AgentBackgroundJobScalarFieldEnum = (typeof AgentBackgroundJobScalarFieldEnum)[keyof typeof AgentBackgroundJobScalarFieldEnum]
+
+
+export const AgentTraceScalarFieldEnum = {
+  id: 'id',
+  trace_id: 'trace_id',
+  user_id: 'user_id',
+  conversation_id: 'conversation_id',
+  chat_session_id: 'chat_session_id',
+  model_name: 'model_name',
+  prompt_version: 'prompt_version',
+  ui_page_type: 'ui_page_type',
+  step_count: 'step_count',
+  tool_calls_count: 'tool_calls_count',
+  tool_errors_count: 'tool_errors_count',
+  hitl_approvals_count: 'hitl_approvals_count',
+  compacted: 'compacted',
+  input_tokens: 'input_tokens',
+  output_tokens: 'output_tokens',
+  cache_read_tokens: 'cache_read_tokens',
+  estimated_cost_usd: 'estimated_cost_usd',
+  latency_ms: 'latency_ms',
+  status: 'status',
+  spans_json: 'spans_json',
+  created_at: 'created_at'
+} as const
+
+export type AgentTraceScalarFieldEnum = (typeof AgentTraceScalarFieldEnum)[keyof typeof AgentTraceScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const NullableJsonNullValueInput = {
@@ -2128,27 +2437,12 @@ export const NullableJsonNullValueInput = {
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
-export const JsonNullValueInput = {
-  JsonNull: JsonNull
-} as const
-
-export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
-
-
 export const QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
 } as const
 
 export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
-
-
-export const NullsOrder = {
-  first: 'first',
-  last: 'last'
-} as const
-
-export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 
 
 export const JsonNullValueFilter = {
@@ -2158,6 +2452,14 @@ export const JsonNullValueFilter = {
 } as const
 
 export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
+
+
+export const NullsOrder = {
+  first: 'first',
+  last: 'last'
+} as const
+
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 
 
 
@@ -2216,20 +2518,6 @@ export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaM
 
 
 /**
- * Reference to a field of type 'CardTypeEnum'
- */
-export type EnumCardTypeEnumFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CardTypeEnum'>
-    
-
-
-/**
- * Reference to a field of type 'CardTypeEnum[]'
- */
-export type ListEnumCardTypeEnumFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CardTypeEnum[]'>
-    
-
-
-/**
  * Reference to a field of type 'Json'
  */
 export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
@@ -2240,6 +2528,20 @@ export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'J
  * Reference to a field of type 'QueryMode'
  */
 export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+/**
+ * Reference to a field of type 'CardTypeEnum'
+ */
+export type EnumCardTypeEnumFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CardTypeEnum'>
+    
+
+
+/**
+ * Reference to a field of type 'CardTypeEnum[]'
+ */
+export type ListEnumCardTypeEnumFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CardTypeEnum[]'>
     
 
 
@@ -2352,6 +2654,48 @@ export type EnumChunkTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$Prisma
  * Reference to a field of type 'ChunkType[]'
  */
 export type ListEnumChunkTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ChunkType[]'>
+    
+
+
+/**
+ * Reference to a field of type 'AgentActionRiskTier'
+ */
+export type EnumAgentActionRiskTierFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AgentActionRiskTier'>
+    
+
+
+/**
+ * Reference to a field of type 'AgentActionRiskTier[]'
+ */
+export type ListEnumAgentActionRiskTierFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AgentActionRiskTier[]'>
+    
+
+
+/**
+ * Reference to a field of type 'AgentActionStatus'
+ */
+export type EnumAgentActionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AgentActionStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'AgentActionStatus[]'
+ */
+export type ListEnumAgentActionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AgentActionStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'AgentBackgroundJobStatus'
+ */
+export type EnumAgentBackgroundJobStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AgentBackgroundJobStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'AgentBackgroundJobStatus[]'
+ */
+export type ListEnumAgentBackgroundJobStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AgentBackgroundJobStatus[]'>
     
 
 /**
@@ -2523,6 +2867,9 @@ export type GlobalOmitConfig = {
   summary?: Prisma.SummaryOmit
   aiUsageLog?: Prisma.AiUsageLogOmit
   userSession?: Prisma.UserSessionOmit
+  agentActionLog?: Prisma.AgentActionLogOmit
+  agentBackgroundJob?: Prisma.AgentBackgroundJobOmit
+  agentTrace?: Prisma.AgentTraceOmit
 }
 
 /* Types for Logging */

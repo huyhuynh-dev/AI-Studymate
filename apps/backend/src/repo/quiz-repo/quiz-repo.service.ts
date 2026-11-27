@@ -537,6 +537,102 @@ export class QuizRepoService {
         });
     }
 
+    async addQuizQuestions(
+        quizId: string,
+        userId: string,
+        questionsData: QuestionCreatePayload[]
+    ) {
+        const existingQuiz = await this.assertQuizOwnership(quizId, userId);
+        const startOrder = existingQuiz.questions.length;
+
+        return await this.prisma.$transaction(async (tx) => {
+            const created = await tx.quizQuestion.createManyAndReturn({
+                data: questionsData.map((q, idx) => ({
+                    quiz_id: quizId,
+                    question_type: q.question_type,
+                    order_index: q.order_index ?? startOrder + idx,
+                    question_text: q.question_text,
+                    image_url: q.image_url ?? null,
+                    audio_url: q.audio_url ?? null,
+                    points: q.points,
+                    options: q.options ?? Prisma.DbNull,
+                    sample_answer: q.sample_answer ?? null,
+                    grading_criteria: q.grading_criteria ?? [],
+                    explanation: q.explanation ?? null,
+                    bloom_level: q.bloom_level ?? null,
+                    source_refs: q.source_refs ?? Prisma.DbNull,
+                })),
+            });
+
+            await tx.quiz.update({
+                where: { id: quizId },
+                data: { updated_at: new Date() },
+            });
+
+            return created;
+        });
+    }
+
+    async updateQuizQuestion(
+        quizId: string,
+        questionId: string,
+        userId: string,
+        data: Prisma.QuizQuestionUpdateInput
+    ) {
+        await this.assertQuizOwnership(quizId, userId);
+
+        return await this.prisma.$transaction(async (tx) => {
+            const updated = await tx.quizQuestion.update({
+                where: {
+                    id: questionId,
+                    quiz_id: quizId,
+                },
+                data: {
+                    ...data,
+                    updated_at: new Date(),
+                },
+            });
+
+            await tx.quiz.update({
+                where: { id: quizId },
+                data: { updated_at: new Date() },
+            });
+
+            return updated;
+        });
+    }
+
+    async deleteQuizQuestions(
+        quizId: string,
+        questionIds: string[],
+        userId: string
+    ) {
+        const existingQuiz = await this.assertQuizOwnership(quizId, userId);
+        const targetIds = new Set(questionIds.filter(Boolean));
+        const toDelete = existingQuiz.questions.filter((q) =>
+            targetIds.has(q.id)
+        );
+        if (toDelete.length === 0) {
+            return [];
+        }
+
+        await this.prisma.$transaction(async (tx) => {
+            await tx.quizQuestion.deleteMany({
+                where: {
+                    quiz_id: quizId,
+                    id: { in: toDelete.map((q) => q.id) },
+                },
+            });
+
+            await tx.quiz.update({
+                where: { id: quizId },
+                data: { updated_at: new Date() },
+            });
+        });
+
+        return toDelete;
+    }
+
     /* ==========================================================
      * NHÓM 2: LÀM BÀI & LƯU NHÁP (ATTEMPT EXECUTION)
      * ========================================================== */

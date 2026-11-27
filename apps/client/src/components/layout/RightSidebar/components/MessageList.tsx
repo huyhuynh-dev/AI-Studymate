@@ -20,6 +20,12 @@ interface MessageListProps {
     toolCallId: string;
     output: unknown;
   }) => void;
+  onApproveTool?: (params: {
+    id: string;
+    approved: boolean;
+    reason?: string;
+  }) => void;
+  onUndoAction?: (actionLogId: string) => Promise<void>;
   onOpenSummary?: (summaryId: string) => void;
   onOpenFlashcardDeck?: (deckId: string) => void;
   onOpenQuiz?: (quizId: string) => void;
@@ -33,6 +39,8 @@ export function MessageList({
   isLoadingSuggestions = false,
   onSelectSuggestion,
   onAddToolOutput,
+  onApproveTool,
+  onUndoAction,
   onOpenSummary,
   onOpenFlashcardDeck,
   onOpenQuiz,
@@ -71,6 +79,8 @@ export function MessageList({
                 isStreaming={Boolean(isLoading && isLastAssistantMessage)}
                 liveAgentStatus={isLastAssistantMessage ? liveAgentStatus : null}
                 onAddToolOutput={onAddToolOutput}
+                onApproveTool={onApproveTool}
+                onUndoAction={onUndoAction}
                 onOpenSummary={onOpenSummary}
                 onOpenFlashcardDeck={onOpenFlashcardDeck}
                 onOpenQuiz={onOpenQuiz}

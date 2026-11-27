@@ -464,3 +464,396 @@ export function extractNoteSectionOrSlice(
     nextCharOffset: cutEnd,
   };
 }
+
+export interface BlockNoteInlineSpan {
+  type: 'text' | 'link' | 'math';
+  text?: string;
+  styles?: Record<string, boolean>;
+  href?: string;
+  content?: BlockNoteInlineSpan[] | string;
+}
+
+export interface BlockNoteBlock {
+  type: string;
+  props?: Record<string, unknown>;
+  content?: unknown;
+  children?: BlockNoteBlock[];
+}
+
+function parseInlineMarkdown(raw: string): BlockNoteInlineSpan[] {
+  const input = raw.trimEnd();
+  if (!input) return [];
+
+  const spans: BlockNoteInlineSpan[] = [];
+  const tokenRegex =
+    /(\*\*[^*]+?\*\*|~~[^~]+?~~|\*[^*\n]+?\*|`[^`\n]+?`|\$[^$\n]+?\$|\[[^\]]+?\]\(https?:\/\/[^\s)]+\))/g;
+
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = tokenRegex.exec(input)) !== null) {
+    if (match.index > lastIndex) {
+      spans.push({
+        type: 'text',
+        text: input.slice(lastIndex, match.index),
+        styles: {},
+      });
+    }
+
+    const token = match[0];
+    if (token.startsWith('**') && token.endsWith('**')) {
+      spans.push({
+        type: 'text',
+        text: token.slice(2, -2),
+        styles: { bold: true },
+      });
+    } else if (token.startsWith('~~') && token.endsWith('~~')) {
+      spans.push({
+        type: 'text',
+        text: token.slice(2, -2),
+        styles: { strike: true },
+      });
+    } else if (token.startsWith('*') && token.endsWith('*')) {
+      spans.push({
+        type: 'text',
+        text: token.slice(1, -1),
+        styles: { italic: true },
+      });
+    } else if (token.startsWith('`') && token.endsWith('`')) {
+      spans.push({
+        type: 'text',
+        text: token.slice(1, -1),
+        styles: { code: true },
+      });
+    } else if (token.startsWith('$') && token.endsWith('$')) {
+      spans.push({
+        type: 'math',
+        content: token.slice(1, -1).trim(),
+      });
+    } else if (token.startsWith('[')) {
+      const linkMatch = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/.exec(token);
+      if (linkMatch) {
+        spans.push({
+          type: 'link',
+          href: linkMatch[2],
+          content: [{ type: 'text', text: linkMatch[1], styles: {} }],
+        });
+      } else {
+        spans.push({ type: 'text', text: token, styles: {} });
+      }
+    }
+
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < input.length) {
+    spans.push({
+      type: 'text',
+      text: input.slice(lastIndex),
+      styles: {},
+    });
+  }
+
+  return spans;
+}
+
+/**
+ * Chuyển đổi Markdown sang mảng BlockNote JSON chuẩn hợp lệ cho StudyMate Summaries/Notes.
+ */
+export function parseMarkdownToBlockNoteBlocks(
+  markdown: string,
+): BlockNoteBlock[] {
+  const normalized = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = normalized.split('\n');
+  const blocks: BlockNoteBlock[] = [];
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      i += 1;
+      continue;
+    }
+
+    // Fenced Code / Mermaid Block
+    const fenceMatch = /^```([a-zA-Z0-9_-]*)\s*$/.exec(trimmed);
+    if (fenceMatch) {
+      const lang = fenceMatch[1].toLowerCase();
+      const bodyLines: string[] = [];
+      i += 1;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        bodyLines.push(lines[i]);
+        i += 1;
+      }
+      if (i < lines.length && lines[i].trim().startsWith('```')) {
+        i += 1;
+      }
+      const codeContent = bodyLines.join('\n');
+      if (lang === 'mermaid') {
+        blocks.push({ type: 'diagram', content: codeContent });
+      } else {
+        blocks.push({
+          type: 'codeBlock',
+          props: { language: lang || 'text' },
+          content: codeContent,
+        });
+      }
+      continue;
+    }
+
+    // Math Block $$ ... $$
+    if (trimmed === '$$') {
+      const mathLines: string[] = [];
+      i += 1;
+      while (i < lines.length && lines[i].trim() !== '$$') {
+        mathLines.push(lines[i]);
+        i += 1;
+      }
+      if (i < lines.length && lines[i].trim() === '$$') {
+        i += 1;
+      }
+      blocks.push({
+        type: 'mathBlock',
+        content: mathLines.join('\n').trim(),
+      });
+      continue;
+    }
+
+    // Divider ---
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+      blocks.push({ type: 'divider' });
+      i += 1;
+      continue;
+    }
+
+    // Heading H1..H6 (BlockNote built-in levels 1..3/6)
+    const headingMatch = /^(#{1,6})\s+(.+)$/.exec(trimmed);
+    if (headingMatch) {
+      const level = Math.min(3, headingMatch[1].length);
+      blocks.push({
+        type: 'heading',
+        props: { level },
+        content: parseInlineMarkdown(headingMatch[2].trim()),
+      });
+      i += 1;
+      continue;
+    }
+
+    // GFM Table
+    if (
+      trimmed.startsWith('|') &&
+      i + 1 < lines.length &&
+      /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/.test(lines[i + 1].trim())
+    ) {
+      const parseTableRow = (rowLine: string): BlockNoteInlineSpan[][] => {
+        const inner = rowLine.trim().replace(/^\|/, '').replace(/\|$/, '');
+        return inner
+          .split('|')
+          .map((cell) => parseInlineMarkdown(cell.trim()));
+      };
+      const rows: Array<{ cells: BlockNoteInlineSpan[][] }> = [
+        { cells: parseTableRow(lines[i]) },
+      ];
+      i += 2; // skip header + separator
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        rows.push({ cells: parseTableRow(lines[i]) });
+        i += 1;
+      }
+      blocks.push({
+        type: 'table',
+        content: { type: 'tableContent', rows },
+      });
+      continue;
+    }
+
+    // Check list item
+    const checkMatch = /^[-*]\s+\[( |x|X)\]\s+(.+)$/.exec(trimmed);
+    if (checkMatch) {
+      blocks.push({
+        type: 'checkListItem',
+        props: { checked: checkMatch[1].toLowerCase() === 'x' },
+        content: parseInlineMarkdown(checkMatch[2]),
+      });
+      i += 1;
+      continue;
+    }
+
+    // Bullet list item
+    const bulletMatch = /^[-*+]\s+(.+)$/.exec(trimmed);
+    if (bulletMatch) {
+      blocks.push({
+        type: 'bulletListItem',
+        content: parseInlineMarkdown(bulletMatch[1]),
+      });
+      i += 1;
+      continue;
+    }
+
+    // Numbered list item
+    const numberedMatch = /^(\d+)\.\s+(.+)$/.exec(trimmed);
+    if (numberedMatch) {
+      blocks.push({
+        type: 'numberedListItem',
+        props: { start: Number(numberedMatch[1]) || 1 },
+        content: parseInlineMarkdown(numberedMatch[2]),
+      });
+      i += 1;
+      continue;
+    }
+
+    // Blockquote
+    if (trimmed.startsWith('>')) {
+      const quoteLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith('>')) {
+        quoteLines.push(lines[i].trim().replace(/^>\s?/, ''));
+        i += 1;
+      }
+      blocks.push({
+        type: 'quote',
+        content: parseInlineMarkdown(quoteLines.join(' ')),
+      });
+      continue;
+    }
+
+    // Paragraph (gom các dòng thường liền kề tới dòng trống hoặc block mới)
+    const paraLines: string[] = [trimmed];
+    i += 1;
+    while (i < lines.length) {
+      const nextTrimmed = lines[i].trim();
+      if (
+        !nextTrimmed ||
+        /^(#{1,6}\s|```|\$\$|---|\*\*\*|[-*+]\s|\d+\.\s|>|\|)/.test(nextTrimmed)
+      ) {
+        break;
+      }
+      paraLines.push(nextTrimmed);
+      i += 1;
+    }
+    blocks.push({
+      type: 'paragraph',
+      content: parseInlineMarkdown(paraLines.join(' ')),
+    });
+  }
+
+  return blocks;
+}
+
+function getHeadingPlainText(rawBlock: unknown): {
+  isHeading: boolean;
+  level: number;
+  text: string;
+} {
+  if (!rawBlock || typeof rawBlock !== 'object') {
+    return { isHeading: false, level: 0, text: '' };
+  }
+  const block = rawBlock as RawBlockNode;
+  if (block.type !== 'heading') {
+    return { isHeading: false, level: 0, text: '' };
+  }
+  const level =
+    typeof block.props?.level === 'number'
+      ? Math.min(6, Math.max(1, Math.round(block.props.level)))
+      : 1;
+  return {
+    isHeading: true,
+    level,
+    text: renderPlainInlineText(block.content),
+  };
+}
+
+/**
+ * Sửa cục bộ hoặc chèn thêm section vào mảng BlockNote blocks hiện có
+ * mà KHÔNG làm mất các block hoặc media `r2://` ở những phần khác.
+ */
+export function replaceOrAppendNoteSection(
+  existingBlocks: unknown[],
+  options: {
+    sectionHeading?: string;
+    markdownContent: string;
+    mode: 'append' | 'replace_section';
+  },
+): { blocks: unknown[]; matchedHeading: string | null } {
+  const safeExisting = Array.isArray(existingBlocks) ? [...existingBlocks] : [];
+  const incomingBlocks = parseMarkdownToBlockNoteBlocks(options.markdownContent);
+
+  if (options.mode === 'append' && !options.sectionHeading?.trim()) {
+    return {
+      blocks: [...safeExisting, ...incomingBlocks],
+      matchedHeading: null,
+    };
+  }
+
+  const needle = normalizeHeadingKey(options.sectionHeading ?? '');
+  if (!needle) {
+    return {
+      blocks: [...safeExisting, ...incomingBlocks],
+      matchedHeading: null,
+    };
+  }
+
+  let matchIndex = -1;
+  let matchLevel = 1;
+  let matchedHeading: string | null = null;
+
+  for (let idx = 0; idx < safeExisting.length; idx += 1) {
+    const info = getHeadingPlainText(safeExisting[idx]);
+    if (!info.isHeading) continue;
+    const norm = normalizeHeadingKey(info.text);
+    if (norm === needle || (norm && norm.includes(needle))) {
+      matchIndex = idx;
+      matchLevel = info.level;
+      matchedHeading = info.text;
+      if (norm === needle) break;
+    }
+  }
+
+  if (matchIndex === -1) {
+    // Không tìm thấy heading tương ứng: thêm heading + nội dung vào cuối nếu append
+    if (options.mode === 'append') {
+      return {
+        blocks: [...safeExisting, ...incomingBlocks],
+        matchedHeading: null,
+      };
+    }
+    return {
+      blocks: safeExisting,
+      matchedHeading: null,
+    };
+  }
+
+  // Tìm ranh giới kết thúc section (heading tiếp theo có level <= matchLevel)
+  let sectionEnd = safeExisting.length;
+  for (let idx = matchIndex + 1; idx < safeExisting.length; idx += 1) {
+    const info = getHeadingPlainText(safeExisting[idx]);
+    if (info.isHeading && info.level <= matchLevel) {
+      sectionEnd = idx;
+      break;
+    }
+  }
+
+  if (options.mode === 'append') {
+    const updated = [
+      ...safeExisting.slice(0, sectionEnd),
+      ...incomingBlocks,
+      ...safeExisting.slice(sectionEnd),
+    ];
+    return { blocks: updated, matchedHeading };
+  }
+
+  // replace_section: giữ lại heading gốc nếu incomingBlocks chưa bắt đầu bằng heading tương đương
+  const firstIncoming = getHeadingPlainText(incomingBlocks[0]);
+  const replacement = firstIncoming.isHeading
+    ? incomingBlocks
+    : [safeExisting[matchIndex], ...incomingBlocks];
+
+  return {
+    blocks: [
+      ...safeExisting.slice(0, matchIndex),
+      ...replacement,
+      ...safeExisting.slice(sectionEnd),
+    ],
+    matchedHeading,
+  };
+}

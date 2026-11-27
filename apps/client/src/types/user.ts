@@ -1,3 +1,11 @@
+export type UserThemePreference = 'system' | 'light' | 'dark';
+export type AiResponseLanguagePreference = 'auto' | 'vi' | 'en';
+
+export interface UserPreferences {
+  theme: UserThemePreference;
+  aiResponseLanguage: AiResponseLanguagePreference;
+}
+
 export interface UserAccountStats {
   subjectsCount: number;
   conversationsCount: number;
@@ -16,6 +24,7 @@ export interface UserProfile {
   isActive: boolean;
   isVerified: boolean;
   dailyGoalMinutes: number;
+  preferences: UserPreferences;
   provider: string | null;
   hasPassword: boolean;
   createdAt: string;
@@ -27,6 +36,7 @@ export interface UpdateUserProfileInput {
   name?: string;
   avatarStorageKey?: string;
   dailyGoalMinutes?: number;
+  preferences?: Partial<UserPreferences>;
 }
 
 export interface RequestAvatarUploadInput {

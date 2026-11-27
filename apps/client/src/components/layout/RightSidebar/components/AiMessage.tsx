@@ -31,6 +31,8 @@ import type { AgentStatusEvent, ChatMessage } from "../types";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { MessageActions } from "./MessageActions";
 import { CollapsibleSourceBar } from "./CollapsibleSourceBar";
+import { ToolApprovalCard } from "./ToolApprovalCard";
+import { MutationResultCard } from "./MutationResultCard";
 import {
   extractCitationsMap,
   sanitizeStreamingCitations,
@@ -46,6 +48,12 @@ interface AiMessageProps {
     toolCallId: string;
     output: unknown;
   }) => void;
+  onApproveTool?: (params: {
+    id: string;
+    approved: boolean;
+    reason?: string;
+  }) => void;
+  onUndoAction?: (actionLogId: string) => Promise<void>;
   onOpenSummary?: (summaryId: string) => void;
   onOpenFlashcardDeck?: (deckId: string) => void;
   onOpenQuiz?: (quizId: string) => void;
@@ -275,6 +283,8 @@ export const AiMessage = React.memo(function AiMessage({
   isStreaming = false,
   liveAgentStatus = null,
   onAddToolOutput,
+  onApproveTool,
+  onUndoAction,
   onOpenSummary,
   onOpenFlashcardDeck,
   onOpenQuiz,
@@ -497,6 +507,60 @@ export const AiMessage = React.memo(function AiMessage({
                   </div>
                 </details>
               );
+            }
+
+            const resolvedToolName =
+              part.type === "dynamic-tool"
+                ? String(part.toolName || "")
+                : typeof part.type === "string" && part.type.startsWith("tool-")
+                  ? part.type.slice("tool-".length)
+                  : "";
+
+            if (
+              resolvedToolName &&
+              (part.state === "approval-requested" ||
+                part.state === "approval-responded" ||
+                part.state === "output-denied")
+            ) {
+              const approvalId = String(
+                part.approval?.id || part.approvalId || part.toolCallId || "",
+              );
+              if (approvalId && onApproveTool) {
+                return (
+                  <ToolApprovalCard
+                    key={index}
+                    toolName={resolvedToolName}
+                    approvalId={approvalId}
+                    state={part.state}
+                    input={
+                      part.input && typeof part.input === "object"
+                        ? (part.input as Record<string, unknown>)
+                        : undefined
+                    }
+                    approved={
+                      typeof part.approval?.approved === "boolean"
+                        ? part.approval.approved
+                        : undefined
+                    }
+                    reason={
+                      typeof part.approval?.reason === "string"
+                        ? part.approval.reason
+                        : undefined
+                    }
+                    diffPreview={
+                      typeof part.output?.diffPreview === "string"
+                        ? part.output.diffPreview
+                        : undefined
+                    }
+                    riskReason={
+                      typeof part.output?.riskReason === "string"
+                        ? part.output.riskReason
+                        : undefined
+                    }
+                    onApprove={onApproveTool}
+                  />
+                );
+              }
             }
 
             // 1. Tool 1: Tìm kiếm đoạn trích cụ thể (searchDocumentChunks / searchDocuments)
@@ -2413,6 +2477,45 @@ export const AiMessage = React.memo(function AiMessage({
                   </div>
                 );
               }
+            }
+
+            if (
+              resolvedToolName === "manageNotes" ||
+              resolvedToolName === "manageFlashcards" ||
+              resolvedToolName === "manageQuiz" ||
+              resolvedToolName === "manageEditableDocument" ||
+              resolvedToolName === "manageWorkspaceAndJobs"
+            ) {
+              return (
+                <MutationResultCard
+                  key={index}
+                  toolName={resolvedToolName}
+                  state={String(part.state || "input-available")}
+                  input={
+                    part.input && typeof part.input === "object"
+                      ? (part.input as Record<string, unknown>)
+                      : undefined
+                  }
+                  output={
+                    part.output && typeof part.output === "object"
+                      ? (part.output as Record<string, unknown>)
+                      : undefined
+                  }
+                  onOpenSummary={onOpenSummary}
+                  onOpenFlashcardDeck={onOpenFlashcardDeck}
+                  onOpenQuiz={onOpenQuiz}
+                  onOpenDocument={(docId) => {
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(
+                        new CustomEvent("studymate:open-document", {
+                          detail: { documentId: docId },
+                        }),
+                      );
+                    }
+                  }}
+                  onUndoAction={onUndoAction}
+                />
+              );
             }
 
             if (part.type === "tool-invocation") {

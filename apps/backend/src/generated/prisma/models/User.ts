@@ -88,6 +88,7 @@ export type UserCountAggregateOutputType = {
   provider_id: number
   refresh_token: number
   token_version: number
+  preferences: number
   _all: number
 }
 
@@ -154,6 +155,7 @@ export type UserCountAggregateInputType = {
   provider_id?: true
   refresh_token?: true
   token_version?: true
+  preferences?: true
   _all?: true
 }
 
@@ -259,6 +261,7 @@ export type UserGroupByOutputType = {
   provider_id: string | null
   refresh_token: string | null
   token_version: number
+  preferences: runtime.JsonValue
   _count: UserCountAggregateOutputType | null
   _avg: UserAvgAggregateOutputType | null
   _sum: UserSumAggregateOutputType | null
@@ -300,6 +303,7 @@ export type UserWhereInput = {
   provider_id?: Prisma.StringNullableFilter<"User"> | string | null
   refresh_token?: Prisma.StringNullableFilter<"User"> | string | null
   token_version?: Prisma.IntFilter<"User"> | number
+  preferences?: Prisma.JsonFilter<"User">
   user_sessions?: Prisma.UserSessionListRelationFilter
   subjects?: Prisma.SubjectListRelationFilter
   conversations?: Prisma.ConversationListRelationFilter
@@ -309,6 +313,9 @@ export type UserWhereInput = {
   quizzes?: Prisma.QuizListRelationFilter
   quiz_attempts?: Prisma.QuizAttemptListRelationFilter
   ai_usage_logs?: Prisma.AiUsageLogListRelationFilter
+  agent_action_logs?: Prisma.AgentActionLogListRelationFilter
+  agent_jobs?: Prisma.AgentBackgroundJobListRelationFilter
+  agent_traces?: Prisma.AgentTraceListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -327,6 +334,7 @@ export type UserOrderByWithRelationInput = {
   provider_id?: Prisma.SortOrderInput | Prisma.SortOrder
   refresh_token?: Prisma.SortOrderInput | Prisma.SortOrder
   token_version?: Prisma.SortOrder
+  preferences?: Prisma.SortOrder
   user_sessions?: Prisma.UserSessionOrderByRelationAggregateInput
   subjects?: Prisma.SubjectOrderByRelationAggregateInput
   conversations?: Prisma.ConversationOrderByRelationAggregateInput
@@ -336,6 +344,9 @@ export type UserOrderByWithRelationInput = {
   quizzes?: Prisma.QuizOrderByRelationAggregateInput
   quiz_attempts?: Prisma.QuizAttemptOrderByRelationAggregateInput
   ai_usage_logs?: Prisma.AiUsageLogOrderByRelationAggregateInput
+  agent_action_logs?: Prisma.AgentActionLogOrderByRelationAggregateInput
+  agent_jobs?: Prisma.AgentBackgroundJobOrderByRelationAggregateInput
+  agent_traces?: Prisma.AgentTraceOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -357,6 +368,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   provider_id?: Prisma.StringNullableFilter<"User"> | string | null
   refresh_token?: Prisma.StringNullableFilter<"User"> | string | null
   token_version?: Prisma.IntFilter<"User"> | number
+  preferences?: Prisma.JsonFilter<"User">
   user_sessions?: Prisma.UserSessionListRelationFilter
   subjects?: Prisma.SubjectListRelationFilter
   conversations?: Prisma.ConversationListRelationFilter
@@ -366,6 +378,9 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   quizzes?: Prisma.QuizListRelationFilter
   quiz_attempts?: Prisma.QuizAttemptListRelationFilter
   ai_usage_logs?: Prisma.AiUsageLogListRelationFilter
+  agent_action_logs?: Prisma.AgentActionLogListRelationFilter
+  agent_jobs?: Prisma.AgentBackgroundJobListRelationFilter
+  agent_traces?: Prisma.AgentTraceListRelationFilter
 }, "id" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -384,6 +399,7 @@ export type UserOrderByWithAggregationInput = {
   provider_id?: Prisma.SortOrderInput | Prisma.SortOrder
   refresh_token?: Prisma.SortOrderInput | Prisma.SortOrder
   token_version?: Prisma.SortOrder
+  preferences?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
   _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
@@ -410,6 +426,7 @@ export type UserScalarWhereWithAggregatesInput = {
   provider_id?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   refresh_token?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   token_version?: Prisma.IntWithAggregatesFilter<"User"> | number
+  preferences?: Prisma.JsonWithAggregatesFilter<"User">
 }
 
 export type UserCreateInput = {
@@ -428,6 +445,7 @@ export type UserCreateInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
@@ -437,6 +455,9 @@ export type UserCreateInput = {
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -455,6 +476,7 @@ export type UserUncheckedCreateInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
@@ -464,6 +486,9 @@ export type UserUncheckedCreateInput = {
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -482,6 +507,7 @@ export type UserUpdateInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
@@ -491,6 +517,9 @@ export type UserUpdateInput = {
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -509,6 +538,7 @@ export type UserUncheckedUpdateInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
@@ -518,6 +548,9 @@ export type UserUncheckedUpdateInput = {
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -536,6 +569,7 @@ export type UserCreateManyInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
 export type UserUpdateManyMutationInput = {
@@ -554,6 +588,7 @@ export type UserUpdateManyMutationInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
 export type UserUncheckedUpdateManyInput = {
@@ -572,6 +607,7 @@ export type UserUncheckedUpdateManyInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
 }
 
 export type UserCountOrderByAggregateInput = {
@@ -590,6 +626,7 @@ export type UserCountOrderByAggregateInput = {
   provider_id?: Prisma.SortOrder
   refresh_token?: Prisma.SortOrder
   token_version?: Prisma.SortOrder
+  preferences?: Prisma.SortOrder
 }
 
 export type UserAvgOrderByAggregateInput = {
@@ -800,6 +837,50 @@ export type UserUpdateOneRequiredWithoutUser_sessionsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutUser_sessionsInput, Prisma.UserUpdateWithoutUser_sessionsInput>, Prisma.UserUncheckedUpdateWithoutUser_sessionsInput>
 }
 
+export type UserCreateNestedOneWithoutAgent_action_logsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAgent_action_logsInput, Prisma.UserUncheckedCreateWithoutAgent_action_logsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAgent_action_logsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutAgent_action_logsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAgent_action_logsInput, Prisma.UserUncheckedCreateWithoutAgent_action_logsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAgent_action_logsInput
+  upsert?: Prisma.UserUpsertWithoutAgent_action_logsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAgent_action_logsInput, Prisma.UserUpdateWithoutAgent_action_logsInput>, Prisma.UserUncheckedUpdateWithoutAgent_action_logsInput>
+}
+
+export type UserCreateNestedOneWithoutAgent_jobsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAgent_jobsInput, Prisma.UserUncheckedCreateWithoutAgent_jobsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAgent_jobsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutAgent_jobsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAgent_jobsInput, Prisma.UserUncheckedCreateWithoutAgent_jobsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAgent_jobsInput
+  upsert?: Prisma.UserUpsertWithoutAgent_jobsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAgent_jobsInput, Prisma.UserUpdateWithoutAgent_jobsInput>, Prisma.UserUncheckedUpdateWithoutAgent_jobsInput>
+}
+
+export type UserCreateNestedOneWithoutAgent_tracesInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAgent_tracesInput, Prisma.UserUncheckedCreateWithoutAgent_tracesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAgent_tracesInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutAgent_tracesNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAgent_tracesInput, Prisma.UserUncheckedCreateWithoutAgent_tracesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAgent_tracesInput
+  upsert?: Prisma.UserUpsertWithoutAgent_tracesInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAgent_tracesInput, Prisma.UserUpdateWithoutAgent_tracesInput>, Prisma.UserUncheckedUpdateWithoutAgent_tracesInput>
+}
+
 export type UserCreateWithoutSubjectsInput = {
   id?: string
   email: string
@@ -816,6 +897,7 @@ export type UserCreateWithoutSubjectsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
@@ -824,6 +906,9 @@ export type UserCreateWithoutSubjectsInput = {
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSubjectsInput = {
@@ -842,6 +927,7 @@ export type UserUncheckedCreateWithoutSubjectsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
@@ -850,6 +936,9 @@ export type UserUncheckedCreateWithoutSubjectsInput = {
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSubjectsInput = {
@@ -884,6 +973,7 @@ export type UserUpdateWithoutSubjectsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
@@ -892,6 +982,9 @@ export type UserUpdateWithoutSubjectsInput = {
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSubjectsInput = {
@@ -910,6 +1003,7 @@ export type UserUncheckedUpdateWithoutSubjectsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
@@ -918,6 +1012,9 @@ export type UserUncheckedUpdateWithoutSubjectsInput = {
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutConversationsInput = {
@@ -936,6 +1033,7 @@ export type UserCreateWithoutConversationsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
@@ -944,6 +1042,9 @@ export type UserCreateWithoutConversationsInput = {
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutConversationsInput = {
@@ -962,6 +1063,7 @@ export type UserUncheckedCreateWithoutConversationsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
@@ -970,6 +1072,9 @@ export type UserUncheckedCreateWithoutConversationsInput = {
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutConversationsInput = {
@@ -1004,6 +1109,7 @@ export type UserUpdateWithoutConversationsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
@@ -1012,6 +1118,9 @@ export type UserUpdateWithoutConversationsInput = {
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutConversationsInput = {
@@ -1030,6 +1139,7 @@ export type UserUncheckedUpdateWithoutConversationsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
@@ -1038,6 +1148,9 @@ export type UserUncheckedUpdateWithoutConversationsInput = {
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutFlashcard_decksInput = {
@@ -1056,6 +1169,7 @@ export type UserCreateWithoutFlashcard_decksInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
@@ -1064,6 +1178,9 @@ export type UserCreateWithoutFlashcard_decksInput = {
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFlashcard_decksInput = {
@@ -1082,6 +1199,7 @@ export type UserUncheckedCreateWithoutFlashcard_decksInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
@@ -1090,6 +1208,9 @@ export type UserUncheckedCreateWithoutFlashcard_decksInput = {
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFlashcard_decksInput = {
@@ -1124,6 +1245,7 @@ export type UserUpdateWithoutFlashcard_decksInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
@@ -1132,6 +1254,9 @@ export type UserUpdateWithoutFlashcard_decksInput = {
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFlashcard_decksInput = {
@@ -1150,6 +1275,7 @@ export type UserUncheckedUpdateWithoutFlashcard_decksInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
@@ -1158,6 +1284,9 @@ export type UserUncheckedUpdateWithoutFlashcard_decksInput = {
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutFlashcard_reviewsInput = {
@@ -1176,6 +1305,7 @@ export type UserCreateWithoutFlashcard_reviewsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
@@ -1184,6 +1314,9 @@ export type UserCreateWithoutFlashcard_reviewsInput = {
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFlashcard_reviewsInput = {
@@ -1202,6 +1335,7 @@ export type UserUncheckedCreateWithoutFlashcard_reviewsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
@@ -1210,6 +1344,9 @@ export type UserUncheckedCreateWithoutFlashcard_reviewsInput = {
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFlashcard_reviewsInput = {
@@ -1244,6 +1381,7 @@ export type UserUpdateWithoutFlashcard_reviewsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
@@ -1252,6 +1390,9 @@ export type UserUpdateWithoutFlashcard_reviewsInput = {
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFlashcard_reviewsInput = {
@@ -1270,6 +1411,7 @@ export type UserUncheckedUpdateWithoutFlashcard_reviewsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
@@ -1278,6 +1420,9 @@ export type UserUncheckedUpdateWithoutFlashcard_reviewsInput = {
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutQuizzesInput = {
@@ -1296,6 +1441,7 @@ export type UserCreateWithoutQuizzesInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
@@ -1304,6 +1450,9 @@ export type UserCreateWithoutQuizzesInput = {
   flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutQuizzesInput = {
@@ -1322,6 +1471,7 @@ export type UserUncheckedCreateWithoutQuizzesInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
@@ -1330,6 +1480,9 @@ export type UserUncheckedCreateWithoutQuizzesInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutQuizzesInput = {
@@ -1364,6 +1517,7 @@ export type UserUpdateWithoutQuizzesInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
@@ -1372,6 +1526,9 @@ export type UserUpdateWithoutQuizzesInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutQuizzesInput = {
@@ -1390,6 +1547,7 @@ export type UserUncheckedUpdateWithoutQuizzesInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
@@ -1398,6 +1556,9 @@ export type UserUncheckedUpdateWithoutQuizzesInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutQuiz_attemptsInput = {
@@ -1416,6 +1577,7 @@ export type UserCreateWithoutQuiz_attemptsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
@@ -1424,6 +1586,9 @@ export type UserCreateWithoutQuiz_attemptsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutQuiz_attemptsInput = {
@@ -1442,6 +1607,7 @@ export type UserUncheckedCreateWithoutQuiz_attemptsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
@@ -1450,6 +1616,9 @@ export type UserUncheckedCreateWithoutQuiz_attemptsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutQuiz_attemptsInput = {
@@ -1484,6 +1653,7 @@ export type UserUpdateWithoutQuiz_attemptsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
@@ -1492,6 +1662,9 @@ export type UserUpdateWithoutQuiz_attemptsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutQuiz_attemptsInput = {
@@ -1510,6 +1683,7 @@ export type UserUncheckedUpdateWithoutQuiz_attemptsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
@@ -1518,6 +1692,9 @@ export type UserUncheckedUpdateWithoutQuiz_attemptsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutDocumentsInput = {
@@ -1536,6 +1713,7 @@ export type UserCreateWithoutDocumentsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
@@ -1544,6 +1722,9 @@ export type UserCreateWithoutDocumentsInput = {
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutDocumentsInput = {
@@ -1562,6 +1743,7 @@ export type UserUncheckedCreateWithoutDocumentsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
@@ -1570,6 +1752,9 @@ export type UserUncheckedCreateWithoutDocumentsInput = {
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutDocumentsInput = {
@@ -1604,6 +1789,7 @@ export type UserUpdateWithoutDocumentsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
@@ -1612,6 +1798,9 @@ export type UserUpdateWithoutDocumentsInput = {
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutDocumentsInput = {
@@ -1630,6 +1819,7 @@ export type UserUncheckedUpdateWithoutDocumentsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
@@ -1638,6 +1828,9 @@ export type UserUncheckedUpdateWithoutDocumentsInput = {
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAi_usage_logsInput = {
@@ -1656,6 +1849,7 @@ export type UserCreateWithoutAi_usage_logsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
@@ -1664,6 +1858,9 @@ export type UserCreateWithoutAi_usage_logsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAi_usage_logsInput = {
@@ -1682,6 +1879,7 @@ export type UserUncheckedCreateWithoutAi_usage_logsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
@@ -1690,6 +1888,9 @@ export type UserUncheckedCreateWithoutAi_usage_logsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAi_usage_logsInput = {
@@ -1724,6 +1925,7 @@ export type UserUpdateWithoutAi_usage_logsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
@@ -1732,6 +1934,9 @@ export type UserUpdateWithoutAi_usage_logsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAi_usage_logsInput = {
@@ -1750,6 +1955,7 @@ export type UserUncheckedUpdateWithoutAi_usage_logsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
@@ -1758,6 +1964,9 @@ export type UserUncheckedUpdateWithoutAi_usage_logsInput = {
   flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutUser_sessionsInput = {
@@ -1776,6 +1985,7 @@ export type UserCreateWithoutUser_sessionsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
@@ -1784,6 +1994,9 @@ export type UserCreateWithoutUser_sessionsInput = {
   quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUser_sessionsInput = {
@@ -1802,6 +2015,7 @@ export type UserUncheckedCreateWithoutUser_sessionsInput = {
   provider_id?: string | null
   refresh_token?: string | null
   token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
   conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
@@ -1810,6 +2024,9 @@ export type UserUncheckedCreateWithoutUser_sessionsInput = {
   quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUser_sessionsInput = {
@@ -1844,6 +2061,7 @@ export type UserUpdateWithoutUser_sessionsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
@@ -1852,6 +2070,9 @@ export type UserUpdateWithoutUser_sessionsInput = {
   quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUser_sessionsInput = {
@@ -1870,6 +2091,7 @@ export type UserUncheckedUpdateWithoutUser_sessionsInput = {
   provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
   conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
@@ -1878,6 +2100,417 @@ export type UserUncheckedUpdateWithoutUser_sessionsInput = {
   quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
   quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
   ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutAgent_action_logsInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  daily_goal_minutes?: number
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
+  subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutAgent_action_logsInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  daily_goal_minutes?: number
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
+  subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutAgent_action_logsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAgent_action_logsInput, Prisma.UserUncheckedCreateWithoutAgent_action_logsInput>
+}
+
+export type UserUpsertWithoutAgent_action_logsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAgent_action_logsInput, Prisma.UserUncheckedUpdateWithoutAgent_action_logsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAgent_action_logsInput, Prisma.UserUncheckedCreateWithoutAgent_action_logsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAgent_action_logsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAgent_action_logsInput, Prisma.UserUncheckedUpdateWithoutAgent_action_logsInput>
+}
+
+export type UserUpdateWithoutAgent_action_logsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
+  subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAgent_action_logsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
+  subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutAgent_jobsInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  daily_goal_minutes?: number
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
+  subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutAgent_jobsInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  daily_goal_minutes?: number
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
+  subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_traces?: Prisma.AgentTraceUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutAgent_jobsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAgent_jobsInput, Prisma.UserUncheckedCreateWithoutAgent_jobsInput>
+}
+
+export type UserUpsertWithoutAgent_jobsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAgent_jobsInput, Prisma.UserUncheckedUpdateWithoutAgent_jobsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAgent_jobsInput, Prisma.UserUncheckedCreateWithoutAgent_jobsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAgent_jobsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAgent_jobsInput, Prisma.UserUncheckedUpdateWithoutAgent_jobsInput>
+}
+
+export type UserUpdateWithoutAgent_jobsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
+  subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAgent_jobsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
+  subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_traces?: Prisma.AgentTraceUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutAgent_tracesInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  daily_goal_minutes?: number
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
+  subjects?: Prisma.SubjectCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutAgent_tracesInput = {
+  id?: string
+  email: string
+  password_hash?: string | null
+  name: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  daily_goal_minutes?: number
+  created_at?: Date | string
+  updated_at?: Date | string
+  provider?: string | null
+  provider_id?: string | null
+  refresh_token?: string | null
+  token_version?: number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
+  subjects?: Prisma.SubjectUncheckedCreateNestedManyWithoutUserInput
+  conversations?: Prisma.ConversationUncheckedCreateNestedManyWithoutUserInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedCreateNestedManyWithoutUserInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedCreateNestedManyWithoutUserInput
+  quizzes?: Prisma.QuizUncheckedCreateNestedManyWithoutUserInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedCreateNestedManyWithoutUserInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedCreateNestedManyWithoutUserInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedCreateNestedManyWithoutUserInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutAgent_tracesInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAgent_tracesInput, Prisma.UserUncheckedCreateWithoutAgent_tracesInput>
+}
+
+export type UserUpsertWithoutAgent_tracesInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAgent_tracesInput, Prisma.UserUncheckedUpdateWithoutAgent_tracesInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAgent_tracesInput, Prisma.UserUncheckedCreateWithoutAgent_tracesInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAgent_tracesInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAgent_tracesInput, Prisma.UserUncheckedUpdateWithoutAgent_tracesInput>
+}
+
+export type UserUpdateWithoutAgent_tracesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
+  subjects?: Prisma.SubjectUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAgent_tracesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password_hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar_url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  is_verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  daily_goal_minutes?: Prisma.IntFieldUpdateOperationsInput | number
+  created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updated_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  provider?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  provider_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refresh_token?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  token_version?: Prisma.IntFieldUpdateOperationsInput | number
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  user_sessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
+  subjects?: Prisma.SubjectUncheckedUpdateManyWithoutUserNestedInput
+  conversations?: Prisma.ConversationUncheckedUpdateManyWithoutUserNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_decks?: Prisma.FlashcardDeckUncheckedUpdateManyWithoutUserNestedInput
+  flashcard_reviews?: Prisma.FlashcardReviewUncheckedUpdateManyWithoutUserNestedInput
+  quizzes?: Prisma.QuizUncheckedUpdateManyWithoutUserNestedInput
+  quiz_attempts?: Prisma.QuizAttemptUncheckedUpdateManyWithoutUserNestedInput
+  ai_usage_logs?: Prisma.AiUsageLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_action_logs?: Prisma.AgentActionLogUncheckedUpdateManyWithoutUserNestedInput
+  agent_jobs?: Prisma.AgentBackgroundJobUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -1895,6 +2528,9 @@ export type UserCountOutputType = {
   quizzes: number
   quiz_attempts: number
   ai_usage_logs: number
+  agent_action_logs: number
+  agent_jobs: number
+  agent_traces: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1907,6 +2543,9 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   quizzes?: boolean | UserCountOutputTypeCountQuizzesArgs
   quiz_attempts?: boolean | UserCountOutputTypeCountQuiz_attemptsArgs
   ai_usage_logs?: boolean | UserCountOutputTypeCountAi_usage_logsArgs
+  agent_action_logs?: boolean | UserCountOutputTypeCountAgent_action_logsArgs
+  agent_jobs?: boolean | UserCountOutputTypeCountAgent_jobsArgs
+  agent_traces?: boolean | UserCountOutputTypeCountAgent_tracesArgs
 }
 
 /**
@@ -1982,6 +2621,27 @@ export type UserCountOutputTypeCountAi_usage_logsArgs<ExtArgs extends runtime.Ty
   where?: Prisma.AiUsageLogWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAgent_action_logsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AgentActionLogWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAgent_jobsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AgentBackgroundJobWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAgent_tracesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AgentTraceWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1999,6 +2659,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   provider_id?: boolean
   refresh_token?: boolean
   token_version?: boolean
+  preferences?: boolean
   user_sessions?: boolean | Prisma.User$user_sessionsArgs<ExtArgs>
   subjects?: boolean | Prisma.User$subjectsArgs<ExtArgs>
   conversations?: boolean | Prisma.User$conversationsArgs<ExtArgs>
@@ -2008,6 +2669,9 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   quizzes?: boolean | Prisma.User$quizzesArgs<ExtArgs>
   quiz_attempts?: boolean | Prisma.User$quiz_attemptsArgs<ExtArgs>
   ai_usage_logs?: boolean | Prisma.User$ai_usage_logsArgs<ExtArgs>
+  agent_action_logs?: boolean | Prisma.User$agent_action_logsArgs<ExtArgs>
+  agent_jobs?: boolean | Prisma.User$agent_jobsArgs<ExtArgs>
+  agent_traces?: boolean | Prisma.User$agent_tracesArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -2027,6 +2691,7 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   provider_id?: boolean
   refresh_token?: boolean
   token_version?: boolean
+  preferences?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -2045,6 +2710,7 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   provider_id?: boolean
   refresh_token?: boolean
   token_version?: boolean
+  preferences?: boolean
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectScalar = {
@@ -2063,9 +2729,10 @@ export type UserSelectScalar = {
   provider_id?: boolean
   refresh_token?: boolean
   token_version?: boolean
+  preferences?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "password_hash" | "name" | "avatar_url" | "role" | "is_active" | "is_verified" | "daily_goal_minutes" | "created_at" | "updated_at" | "provider" | "provider_id" | "refresh_token" | "token_version", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "password_hash" | "name" | "avatar_url" | "role" | "is_active" | "is_verified" | "daily_goal_minutes" | "created_at" | "updated_at" | "provider" | "provider_id" | "refresh_token" | "token_version" | "preferences", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user_sessions?: boolean | Prisma.User$user_sessionsArgs<ExtArgs>
   subjects?: boolean | Prisma.User$subjectsArgs<ExtArgs>
@@ -2076,6 +2743,9 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   quizzes?: boolean | Prisma.User$quizzesArgs<ExtArgs>
   quiz_attempts?: boolean | Prisma.User$quiz_attemptsArgs<ExtArgs>
   ai_usage_logs?: boolean | Prisma.User$ai_usage_logsArgs<ExtArgs>
+  agent_action_logs?: boolean | Prisma.User$agent_action_logsArgs<ExtArgs>
+  agent_jobs?: boolean | Prisma.User$agent_jobsArgs<ExtArgs>
+  agent_traces?: boolean | Prisma.User$agent_tracesArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -2093,6 +2763,9 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     quizzes: Prisma.$QuizPayload<ExtArgs>[]
     quiz_attempts: Prisma.$QuizAttemptPayload<ExtArgs>[]
     ai_usage_logs: Prisma.$AiUsageLogPayload<ExtArgs>[]
+    agent_action_logs: Prisma.$AgentActionLogPayload<ExtArgs>[]
+    agent_jobs: Prisma.$AgentBackgroundJobPayload<ExtArgs>[]
+    agent_traces: Prisma.$AgentTracePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2110,6 +2783,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     provider_id: string | null
     refresh_token: string | null
     token_version: number
+    preferences: runtime.JsonValue
   }, ExtArgs["result"]["user"]>
   composites: {}
 }
@@ -2513,6 +3187,9 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   quizzes<T extends Prisma.User$quizzesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$quizzesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$QuizPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   quiz_attempts<T extends Prisma.User$quiz_attemptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$quiz_attemptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$QuizAttemptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   ai_usage_logs<T extends Prisma.User$ai_usage_logsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ai_usage_logsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AiUsageLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  agent_action_logs<T extends Prisma.User$agent_action_logsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$agent_action_logsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentActionLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  agent_jobs<T extends Prisma.User$agent_jobsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$agent_jobsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentBackgroundJobPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  agent_traces<T extends Prisma.User$agent_tracesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$agent_tracesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentTracePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2557,6 +3234,7 @@ export interface UserFieldRefs {
   readonly provider_id: Prisma.FieldRef<"User", 'String'>
   readonly refresh_token: Prisma.FieldRef<"User", 'String'>
   readonly token_version: Prisma.FieldRef<"User", 'Int'>
+  readonly preferences: Prisma.FieldRef<"User", 'Json'>
 }
     
 
@@ -3163,6 +3841,78 @@ export type User$ai_usage_logsArgs<ExtArgs extends runtime.Types.Extensions.Inte
   take?: number
   skip?: number
   distinct?: Prisma.AiUsageLogScalarFieldEnum | Prisma.AiUsageLogScalarFieldEnum[]
+}
+
+/**
+ * User.agent_action_logs
+ */
+export type User$agent_action_logsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AgentActionLog
+   */
+  select?: Prisma.AgentActionLogSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AgentActionLog
+   */
+  omit?: Prisma.AgentActionLogOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AgentActionLogInclude<ExtArgs> | null
+  where?: Prisma.AgentActionLogWhereInput
+  orderBy?: Prisma.AgentActionLogOrderByWithRelationInput | Prisma.AgentActionLogOrderByWithRelationInput[]
+  cursor?: Prisma.AgentActionLogWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AgentActionLogScalarFieldEnum | Prisma.AgentActionLogScalarFieldEnum[]
+}
+
+/**
+ * User.agent_jobs
+ */
+export type User$agent_jobsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AgentBackgroundJob
+   */
+  select?: Prisma.AgentBackgroundJobSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AgentBackgroundJob
+   */
+  omit?: Prisma.AgentBackgroundJobOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AgentBackgroundJobInclude<ExtArgs> | null
+  where?: Prisma.AgentBackgroundJobWhereInput
+  orderBy?: Prisma.AgentBackgroundJobOrderByWithRelationInput | Prisma.AgentBackgroundJobOrderByWithRelationInput[]
+  cursor?: Prisma.AgentBackgroundJobWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AgentBackgroundJobScalarFieldEnum | Prisma.AgentBackgroundJobScalarFieldEnum[]
+}
+
+/**
+ * User.agent_traces
+ */
+export type User$agent_tracesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AgentTrace
+   */
+  select?: Prisma.AgentTraceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AgentTrace
+   */
+  omit?: Prisma.AgentTraceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AgentTraceInclude<ExtArgs> | null
+  where?: Prisma.AgentTraceWhereInput
+  orderBy?: Prisma.AgentTraceOrderByWithRelationInput | Prisma.AgentTraceOrderByWithRelationInput[]
+  cursor?: Prisma.AgentTraceWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AgentTraceScalarFieldEnum | Prisma.AgentTraceScalarFieldEnum[]
 }
 
 /**

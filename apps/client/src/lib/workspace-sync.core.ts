@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const WORKSPACE_SYNC_DATA_PART_TYPE = 'data-workspace-sync' as const;
+export const WORKSPACE_ACTION_DATA_PART_TYPE = 'data-workspace-action' as const;
 export const WORKSPACE_SYNC_BROADCAST_CHANNEL = 'studymate:workspace-sync' as const;
 
 export const workspaceSwrKeys = {
@@ -10,6 +11,9 @@ export const workspaceSwrKeys = {
     `/deck-flashcard/decks?conversationId=${conversationId}`,
   flashcards: (deckId: string): string =>
     `/deck-flashcard/decks/${deckId}/flashcards`,
+  documents: (conversationId: string): string =>
+    `/conversations/${conversationId}/documents`,
+  currentUser: '/users/me',
   conversationAnalytics: (
     conversationId: string,
     windowDays: number,
@@ -20,7 +24,39 @@ export const workspaceSwrKeys = {
     key[0] === `/analytics/conversations/${conversationId}`,
 } as const;
 
-const syncActionSchema = z.enum(['created', 'updated']);
+const syncActionSchema = z.enum(['created', 'updated', 'deleted']);
+
+export const workspaceActionEventSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('navigate'),
+    target: z.object({
+      page: z.enum(['home', 'subject', 'conversation', 'profile']).optional(),
+      subjectId: z.string().optional(),
+      conversationId: z.string().optional(),
+      tab: z.enum(['documents', 'summary', 'flashcard', 'quiz', 'analytics']).optional(),
+      resourceType: z.enum(['document', 'summary', 'deck', 'quiz']).optional(),
+      resourceId: z.string().optional(),
+    }),
+    occurredAt: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('theme_changed'),
+    theme: z.enum(['light', 'dark', 'system']),
+    occurredAt: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('job_enqueued'),
+    conversationId: z.string().min(1),
+    jobId: z.string().min(1),
+    jobType: z.string().min(1),
+    title: z.string().min(1),
+    occurredAt: z.string().min(1),
+  }),
+]);
+
+export type WorkspaceActionEvent = Readonly<
+  z.infer<typeof workspaceActionEventSchema>
+>;
 
 export const workspaceSyncEventSchema = z.discriminatedUnion('resource', [
   z.object({
@@ -61,6 +97,21 @@ export const workspaceSyncEventSchema = z.discriminatedUnion('resource', [
     requiresSnapshotReload: z.boolean().optional(),
     occurredAt: z.string().min(1),
   }),
+  z.object({
+    resource: z.literal('document'),
+    action: syncActionSchema,
+    conversationId: z.string().min(1),
+    entityId: z.string().min(1),
+    title: z.string().optional(),
+    occurredAt: z.string().min(1),
+  }),
+  z.object({
+    resource: z.literal('preferences'),
+    action: syncActionSchema,
+    conversationId: z.string().min(1),
+    entityId: z.string().min(1),
+    occurredAt: z.string().min(1),
+  }),
 ]);
 
 export type WorkspaceSyncEvent = Readonly<
@@ -86,6 +137,8 @@ export interface WorkspaceSyncHubDeps {
     summaries: (conversationId: string) => Promise<unknown>;
     decks: (conversationId: string) => Promise<unknown>;
     flashcards: (deckId: string) => Promise<unknown>;
+    documents?: (conversationId: string) => Promise<unknown>;
+    currentUser?: () => Promise<unknown>;
   };
   createBroadcastChannel?: (name: string) => BroadcastChannelAdapter | null;
   tabInstanceId?: string;
@@ -137,6 +190,29 @@ export function parseWorkspaceSyncDataPart(
   if (!parsed.success) {
     logger.warn(
       '[workspace-sync] Bỏ qua payload đồng bộ không hợp lệ:',
+      parsed.error.issues,
+    );
+    return null;
+  }
+
+  return parsed.data;
+}
+
+/**
+ * Kiểm định Zero-Trust cho `data-workspace-action` từ SSE stream.
+ */
+export function parseWorkspaceActionDataPart(
+  part: unknown,
+  logger: { warn: (message: string, error?: unknown) => void } = console,
+): WorkspaceActionEvent | null {
+  if (!isRecord(part) || part.type !== WORKSPACE_ACTION_DATA_PART_TYPE) {
+    return null;
+  }
+
+  const parsed = workspaceActionEventSchema.safeParse(part.data);
+  if (!parsed.success) {
+    logger.warn(
+      '[workspace-action] Bỏ qua payload điều hướng không hợp lệ:',
       parsed.error.issues,
     );
     return null;
@@ -203,6 +279,30 @@ export function createWorkspaceSyncHub(deps: WorkspaceSyncHubDeps) {
     },
     'word-document': () => {
       // DocumentWordEditor quản lý working snapshot trực tiếp qua subscriber word-document.
+    },
+    document: (event) => {
+      if (!deps.fetchers.documents) return;
+      const fetcher = deps.fetchers.documents;
+      safeMutate(
+        deps.mutateKey(
+          workspaceSwrKeys.documents(event.conversationId),
+          () => fetcher(event.conversationId),
+          { revalidate: false },
+        ),
+        `documents:${event.conversationId}`,
+      );
+    },
+    preferences: () => {
+      if (!deps.fetchers.currentUser) return;
+      const fetcher = deps.fetchers.currentUser;
+      safeMutate(
+        deps.mutateKey(
+          workspaceSwrKeys.currentUser,
+          () => fetcher(),
+          { revalidate: false },
+        ),
+        'preferences:current-user',
+      );
     },
   };
 

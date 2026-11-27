@@ -17,6 +17,8 @@ interface ChatHeaderProps {
   onNewChat: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  /** Slot bổ sung bên phải (ví dụ khay tác vụ nền) */
+  headerRightSlot?: React.ReactNode;
   /** Nếu không truyền, nút đóng sẽ được ẩn */
   onClose?: () => void;
 }
@@ -32,6 +34,7 @@ export function ChatHeader({
   onNewChat,
   isFullscreen = false,
   onToggleFullscreen,
+  headerRightSlot,
   onClose,
 }: ChatHeaderProps) {
   return (
@@ -46,6 +49,7 @@ export function ChatHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
+        {headerRightSlot}
         <HistoryMenu
           sessions={sessions}
           isLoading={isLoading}

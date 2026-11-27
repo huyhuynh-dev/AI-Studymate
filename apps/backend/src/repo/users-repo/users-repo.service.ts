@@ -3,6 +3,11 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma, User } from '../../generated/prisma/client.js';
 import { collectNoteMediaKeysFromBlocks } from '../../summaries/note-media.constants.js';
 
+import {
+  normalizeUserPreferences,
+  type UserPreferences,
+} from '../../users/user-preferences.types.js';
+
 export interface UserProfileStats {
     subjects_count: number;
     conversations_count: number;
@@ -20,6 +25,7 @@ export interface UserProfileRecord {
     is_active: boolean;
     is_verified: boolean;
     daily_goal_minutes: number;
+    preferences: UserPreferences;
     provider: string | null;
     has_password: boolean;
     created_at: Date;
@@ -70,6 +76,7 @@ export class UsersRepoService {
                 is_active: true,
                 is_verified: true,
                 daily_goal_minutes: true,
+                preferences: true,
                 provider: true,
                 password_hash: true,
                 created_at: true,
@@ -99,6 +106,7 @@ export class UsersRepoService {
             is_active: row.is_active,
             is_verified: row.is_verified,
             daily_goal_minutes: row.daily_goal_minutes,
+            preferences: normalizeUserPreferences(row.preferences),
             provider: row.provider,
             has_password: Boolean(row.password_hash),
             created_at: row.created_at,

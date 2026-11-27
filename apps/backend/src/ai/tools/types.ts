@@ -668,6 +668,254 @@ export interface SuperDocToolkitToolMeta {
   apiCallInputSchema?: Record<string, unknown>;
 }
 
+// ── Phase 4 Mutation Tools (Domain-Consolidated) ──
+export interface ManageNotesToolInput {
+  action:
+    | 'create_manual'
+    | 'rename'
+    | 'append_section'
+    | 'update_section'
+    | 'replace_content'
+    | 'refine_note'
+    | 'delete_note'
+    | 'batch_reorganize';
+  summaryId?: string;
+  title?: string;
+  sectionHeading?: string;
+  markdownContent?: string;
+  instruction?: string;
+  batchItems?: Array<{
+    summaryId: string;
+    newTitle?: string;
+    newMarkdownContent?: string;
+  }>;
+}
+
+export interface ManageNotesToolOutput {
+  ok: boolean;
+  action: ManageNotesToolInput['action'];
+  riskTier: 'tier_1' | 'tier_2';
+  summaryId?: string;
+  title?: string;
+  affectedIds?: string[];
+  actionLogId?: string;
+  undoable?: boolean;
+  message: string;
+}
+
+export type ManageNotesCallback = (
+  input: ManageNotesToolInput,
+  toolCallId?: string,
+) => Promise<ManageNotesToolOutput>;
+
+export interface ManageFlashcardsToolInput {
+  action:
+    | 'create_deck'
+    | 'rename_deck'
+    | 'delete_deck'
+    | 'add_cards'
+    | 'update_card'
+    | 'delete_cards'
+    | 'move_cards'
+    | 'merge_duplicates';
+  deckId?: string;
+  targetDeckId?: string;
+  deckName?: string;
+  deckDescription?: string;
+  cardId?: string;
+  cardIds?: string[];
+  cards?: Array<{
+    cardType?: 'basic' | 'cloze' | 'type_in';
+    frontText: string;
+    backText?: string;
+  }>;
+  frontText?: string;
+  backText?: string;
+  cardType?: 'basic' | 'cloze' | 'type_in';
+  mergeGroups?: Array<{
+    keepCardId: string;
+    deleteCardIds: string[];
+    updatedFrontText?: string;
+    updatedBackText?: string;
+  }>;
+}
+
+export interface ManageFlashcardsToolOutput {
+  ok: boolean;
+  action: ManageFlashcardsToolInput['action'];
+  riskTier: 'tier_1' | 'tier_2';
+  deckId?: string;
+  deckName?: string;
+  affectedCount?: number;
+  affectedIds?: string[];
+  actionLogId?: string;
+  undoable?: boolean;
+  message: string;
+}
+
+export type ManageFlashcardsCallback = (
+  input: ManageFlashcardsToolInput,
+  toolCallId?: string,
+) => Promise<ManageFlashcardsToolOutput>;
+
+export interface ManageQuizToolInput {
+  action:
+    | 'update_metadata'
+    | 'add_question'
+    | 'update_question'
+    | 'delete_questions'
+    | 'batch_update_questions'
+    | 'delete_quiz';
+  quizId: string;
+  title?: string;
+  description?: string;
+  timeLimitSec?: number | null;
+  questionId?: string;
+  questionIds?: string[];
+  question?: {
+    questionId?: string;
+    questionType?: QuizToolQuestionType;
+    questionText: string;
+    points?: number;
+    options?: Array<{ id?: string; text: string; isCorrect: boolean }>;
+    sampleAnswer?: string;
+    explanation?: string;
+  };
+  questions?: Array<{
+    questionId: string;
+    questionType?: QuizToolQuestionType;
+    questionText: string;
+    points?: number;
+    options?: Array<{ id?: string; text: string; isCorrect: boolean }>;
+    sampleAnswer?: string;
+    explanation?: string;
+  }>;
+}
+
+export interface ManageQuizToolOutput {
+  ok: boolean;
+  action: ManageQuizToolInput['action'];
+  riskTier: 'tier_1' | 'tier_2';
+  quizId?: string;
+  title?: string;
+  affectedCount?: number;
+  affectedIds?: string[];
+  blockedReason?: 'blocked_exam_integrity';
+  actionLogId?: string;
+  undoable?: boolean;
+  message: string;
+}
+
+export type ManageQuizCallback = (
+  input: ManageQuizToolInput,
+  toolCallId?: string,
+) => Promise<ManageQuizToolOutput>;
+
+export interface ManageEditableDocumentToolInput {
+  action:
+    | 'read_content'
+    | 'update_content'
+    | 'save_as_new_document'
+    | 'convert_note_to_markdown'
+    | 'convert_markdown_to_note';
+  documentId?: string;
+  summaryId?: string;
+  charOffset?: number;
+  expectedVersion?: number;
+  replaceSnippet?: {
+    oldSnippet: string;
+    newSnippet: string;
+  };
+  newContent?: string;
+  newFileName?: string;
+  noteTitle?: string;
+}
+
+export interface ManageEditableDocumentToolOutput {
+  ok: boolean;
+  action: ManageEditableDocumentToolInput['action'];
+  riskTier: 'tier_0' | 'tier_1' | 'tier_2';
+  documentId?: string;
+  summaryId?: string;
+  fileName?: string;
+  version?: number;
+  content?: string;
+  totalChars?: number;
+  returnedChars?: number;
+  truncated?: boolean;
+  nextCharOffset?: number;
+  diffPreview?: string;
+  actionLogId?: string;
+  undoable?: boolean;
+  message: string;
+}
+
+export type ManageEditableDocumentCallback = (
+  input: ManageEditableDocumentToolInput,
+  toolCallId?: string,
+) => Promise<ManageEditableDocumentToolOutput>;
+
+export interface ManageWorkspaceAndJobsToolInput {
+  action:
+    | 'navigate'
+    | 'get_preferences'
+    | 'update_preferences'
+    | 'list_action_history'
+    | 'undo_action'
+    | 'enqueue_background_job'
+    | 'list_jobs'
+    | 'get_job_status'
+    | 'retry_job'
+    | 'cancel_job';
+  navigationTarget?: {
+    page?: 'home' | 'subject' | 'conversation' | 'profile';
+    subjectId?: string;
+    conversationId?: string;
+    tab?: 'documents' | 'summary' | 'flashcard' | 'quiz' | 'analytics';
+    resourceType?: 'document' | 'summary' | 'deck' | 'quiz';
+    resourceId?: string;
+  };
+  theme?: 'system' | 'light' | 'dark';
+  aiResponseLanguage?: 'auto' | 'vi' | 'en';
+  dailyGoalMinutes?: number;
+  actionLogId?: string;
+  jobType?:
+    | 'bulk_flashcards'
+    | 'bulk_quiz'
+    | 'deep_multi_doc_summary'
+    | 'batch_study_workflow';
+  jobTitle?: string;
+  documentIds?: string[];
+  count?: number;
+  deckName?: string;
+  instructions?: string;
+  jobId?: string;
+  limit?: number;
+}
+
+export interface ManageWorkspaceAndJobsToolOutput {
+  ok: boolean;
+  action: ManageWorkspaceAndJobsToolInput['action'];
+  riskTier: 'tier_0' | 'tier_1';
+  actionLogId?: string;
+  undoable?: boolean;
+  jobId?: string;
+  jobStatus?: string;
+  jobs?: Array<Record<string, unknown>>;
+  actions?: Array<Record<string, unknown>>;
+  preferences?: {
+    theme: 'system' | 'light' | 'dark';
+    aiResponseLanguage: 'auto' | 'vi' | 'en';
+    dailyGoalMinutes?: number;
+  };
+  message: string;
+}
+
+export type ManageWorkspaceAndJobsCallback = (
+  input: ManageWorkspaceAndJobsToolInput,
+  toolCallId?: string,
+) => Promise<ManageWorkspaceAndJobsToolOutput>;
+
 // ── Tên định danh các Tool của Chat Agent ──
 export type ChatAgentToolName =
   | 'searchDocumentChunks'
@@ -688,7 +936,12 @@ export type ChatAgentToolName =
   | 'superdoc_perform_action'
   | 'superdoc_stream_text'
   | 'superdoc_api_search'
-  | 'superdoc_api_call';
+  | 'superdoc_api_call'
+  | 'manageNotes'
+  | 'manageFlashcards'
+  | 'manageQuiz'
+  | 'manageEditableDocument'
+  | 'manageWorkspaceAndJobs';
 
 export interface ToolCallTracker {
   recordChunkId(chunkId: string): void;
@@ -733,4 +986,9 @@ export interface ChatSessionToolCallbacks {
   onSuperDocApiSearch?: SuperDocApiSearchCallback;
   onSuperDocApiCall?: SuperDocApiCallCallback;
   superdocToolkitMeta?: SuperDocToolkitToolMeta;
+  onManageNotes?: ManageNotesCallback;
+  onManageFlashcards?: ManageFlashcardsCallback;
+  onManageQuiz?: ManageQuizCallback;
+  onManageEditableDocument?: ManageEditableDocumentCallback;
+  onManageWorkspaceAndJobs?: ManageWorkspaceAndJobsCallback;
 }

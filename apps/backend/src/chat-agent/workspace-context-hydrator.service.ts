@@ -10,6 +10,8 @@ import { SubjectsRepoService } from '../repo/subjects-repo/subjects-repo.service
 import { SummariesRepoService } from '../repo/summaries-repo/summaries-repo.service.js';
 import { DeckFlashcardRepoService } from '../repo/deck-flashcard-repo/deck-flashcard-repo.service.js';
 import { QuizRepoService } from '../repo/quiz-repo/quiz-repo.service.js';
+import { UsersRepoService } from '../repo/users-repo/users-repo.service.js';
+import { normalizeUserPreferences } from '../users/user-preferences.types.js';
 import type { WorkspaceUiContextDto } from './dto/ui-context.dto.js';
 
 const MAX_LIST_ITEMS = 15;
@@ -110,6 +112,7 @@ export class WorkspaceContextHydratorService {
     @Optional() private readonly summariesRepo?: SummariesRepoService,
     @Optional() private readonly deckFlashcardRepo?: DeckFlashcardRepoService,
     @Optional() private readonly quizRepo?: QuizRepoService,
+    @Optional() private readonly usersRepo?: UsersRepoService,
   ) {}
 
   async hydrate(params: {
@@ -145,8 +148,8 @@ export class WorkspaceContextHydratorService {
 
     const now = new Date();
 
-    // 1. Chạy song song truy vấn Location + Inventory nhẹ (< 25ms)
-    const [conversationRecord, notesCount, rawDecks, quizzesCount] =
+    // 1. Chạy song song truy vấn Location + Inventory + User Preferences nhẹ (< 25ms)
+    const [conversationRecord, notesCount, rawDecks, quizzesCount, userRecord] =
       await Promise.all([
         this.conversationsRepo
           ?.getConversationById(conversationId, userId)
@@ -180,6 +183,14 @@ export class WorkspaceContextHydratorService {
             );
             return 0;
           }) ?? Promise.resolve(0),
+        this.usersRepo
+          ?.findUserById(userId)
+          .catch((err) => {
+            this.logger.warn(
+              `[Hydrator] findUserById failed: ${err?.message}`,
+            );
+            return null;
+          }) ?? Promise.resolve(null),
       ]);
 
     const resolvedSubjectId =
@@ -204,6 +215,13 @@ export class WorkspaceContextHydratorService {
       .filter((d): d is AvailableDocumentItem => Boolean(d))
       .map((d) => ({ documentId: d.documentId, fileName: d.fileName }));
 
+    const hydratedUserPrefs = userRecord
+      ? {
+          ...normalizeUserPreferences(userRecord.preferences),
+          dailyGoalMinutes: userRecord.daily_goal_minutes,
+        }
+      : undefined;
+
     const resolved: ResolvedWorkspaceContext = {
       location: {
         pathname: uiContext?.location?.pathname,
@@ -222,6 +240,7 @@ export class WorkspaceContextHydratorService {
         decksCount: Array.isArray(rawDecks) ? rawDecks.length : 0,
         quizzesCount: Number(quizzesCount ?? 0),
       },
+      ...(hydratedUserPrefs ? { userPreferences: hydratedUserPrefs } : {}),
       ...(attachedDocs.length > 0 ? { attachedDocuments: attachedDocs } : {}),
       guards: {
         examIntegrityGuard: false,
