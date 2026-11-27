@@ -37,9 +37,14 @@ export default function UserProfileMenu({
 }: UserProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
   const { theme, setTheme } = useThemePreference();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const handleThemeSelect = (nextTheme: UserThemePreference) => {
     setTheme(nextTheme);
@@ -177,7 +182,7 @@ export default function UserProfileMenu({
                   ] as const
                 ).map((item) => {
                   const Icon = item.icon;
-                  const active = theme === item.id;
+                  const active = hasMounted && theme === item.id;
                   return (
                     <button
                       key={item.id}
